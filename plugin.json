@@ -1,0 +1,24 @@
+{
+  "slug": "Gendyn",
+  "name": "juuh",
+  "version": "1.0.0",
+  "license": "proprietary",
+  "brand": "Xenakios",
+  "author": "Xenakios",
+  "authorEmail": "",
+  "authorUrl": "",
+  "pluginUrl": "",
+  "manualUrl": "",
+  "sourceUrl": "",
+  "donateUrl": "",
+  "modules": [
+    {
+      "slug": "Spatializer",
+      "name": "Spatializer",
+      "description": "Pan 16 inputs to a quadrophonic space",
+      "tags": [
+        "Panner"
+      ]
+    }
+  ]
+}
