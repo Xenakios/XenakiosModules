@@ -3,11 +3,26 @@
 
 Plugin *pluginInstance;
 
+float table_sqrt[1024];
+
+void init_table_sqrt()
+{
+	for (int i=0;i<1024;++i)
+	{
+		float x = -10.0+20.0/1024*i;
+		table_sqrt[i]=std::sqrt(x);
+	}
+}
+
 inline float distance2d(float x0, float y0, float x1, float y1)
 {
 	float temp0 = (x1-x0)*(x1-x0);
 	float temp1 = (y1-y0)*(y1-y0);
-	return sqrt(temp0+temp1);
+	float temp2 = temp0+temp1;
+	int tabindex = 1024.0/20*(temp2+10.0);
+	//assert(tabindex>=0 && tabindex<1024);
+	return table_sqrt[tabindex];
+	//return std::sqrt(temp0+temp1);
 }
 
 inline float myclamp(float val, float minval, float maxval)
@@ -66,7 +81,7 @@ public:
 			for (int j=0;j<4;++j)
 			{
 				float distance = 0.5*distance2d(input_x,input_y,speaker_positions[j][0],speaker_positions[j][1]);
-				float gain = myclamp(1.0f-distance,0.0f,1.0f);
+				float gain = clamp(1.0f-distance,0.0f,1.0f);
 				m_speaker_gains[i][j]=gain;
 			}
 		}
@@ -117,13 +132,48 @@ public:
 	}
 };
 
+class SpatWidget : public TransparentWidget
+{
+public:
+	SpatWidget(MyModule* m) : m_mod(m) 
+	{}
+	void draw(const DrawArgs &args) override
+	{
+		if (m_mod == nullptr)
+			return;
+		nvgSave(args.vg);
+		
+		float w = box.size.x;
+		float h = box.size.y;
+		for (int i=0;i<16;++i)
+		{
+			float x = m_mod->m_positions[i].first;
+			float y = m_mod->m_positions[i].second;
+			float xcor = w/2.0*(x+1.0);
+			float ycor = h/2.0*(y+1.0);
+			nvgBeginPath(args.vg);
+			nvgStrokeColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
+			nvgCircle(args.vg,xcor,ycor,5.0f);
+			nvgFill(args.vg);
+		}
+		nvgRestore(args.vg);
+	}
+private:
+	MyModule* m_mod = nullptr;
+};
+
 class MyModuleWidget : public ModuleWidget
 {
 public:
+	SpatWidget* m_spatWidget = nullptr;	
 	MyModuleWidget(MyModule* module)
 	{
 		setModule(module);
 		setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/drawing.svg")));
+		m_spatWidget = new SpatWidget(module);
+		m_spatWidget->box.pos = Vec(5,75);
+		m_spatWidget->box.size = Vec(150,150);
+		addChild(m_spatWidget);
 		for (int i=0;i<16;++i)
 		{
 			addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.099+10.0*i, 96.025)), module, i));
@@ -134,12 +184,16 @@ public:
 		}
 		addParam(createParam<RoundHugeBlackKnob>(Vec(3, 3), module, 0));
 		addParam(createParam<RoundHugeBlackKnob>(Vec(60, 3), module, 1));
+		
+		
+				
 	}
 };
 
 void init(Plugin *p) {
+	init_table_sqrt();
 	pluginInstance = p;
-	std::cout << "yhhyh" << "\n";
+	
 	// Add modules here
 	p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
 	
