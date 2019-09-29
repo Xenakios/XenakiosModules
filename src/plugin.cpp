@@ -5,15 +5,6 @@ Plugin *pluginInstance;
 
 float table_sqrt[1024];
 
-void init_table_sqrt()
-{
-	for (int i=0;i<1024;++i)
-	{
-		float x = -10.0+20.0/1024*i;
-		table_sqrt[i]=std::sqrt(x);
-	}
-}
-
 inline float distance2d(float x0, float y0, float x1, float y1)
 {
 	float temp0 = (x1-x0)*(x1-x0);
@@ -22,16 +13,7 @@ inline float distance2d(float x0, float y0, float x1, float y1)
 	return std::sqrt(temp2);
 }
 
-inline float myclamp(float val, float minval, float maxval)
-{
-	if (val<minval)
-		return minval;
-	if (val>maxval)
-		return maxval;
-	return val;
-}
-
-const float pi = 3.141592654;
+const float pi = 3.14159265359;
 const float pi2 = pi*2.0f;
 
 const float speaker_positions[4][2]={
@@ -206,14 +188,7 @@ public:
 	}
 };
 
-void juuh()
-{
-	//rack::dsp::SchmittTrigger trig;
-	//rescale()
-}
-
 void init(Plugin *p) {
-	init_table_sqrt();
 	pluginInstance = p;
 	p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
 }
