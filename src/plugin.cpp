@@ -19,10 +19,7 @@ inline float distance2d(float x0, float y0, float x1, float y1)
 	float temp0 = (x1-x0)*(x1-x0);
 	float temp1 = (y1-y0)*(y1-y0);
 	float temp2 = temp0+temp1;
-	int tabindex = 1024.0/20*(temp2+10.0);
-	//assert(tabindex>=0 && tabindex<1024);
-	return table_sqrt[tabindex];
-	//return std::sqrt(temp0+temp1);
+	return std::sqrt(temp2);
 }
 
 inline float myclamp(float val, float minval, float maxval)
@@ -56,24 +53,29 @@ public:
 	std::array<std::pair<float,float>,1024> m_sincostable;
 	float m_previous_rot = 0.0f;
 	float m_previous_spread = 0.0;
+	int m_previous_max_chans = 0;
 	float m_speaker_gains[16][4];
+	int m_lazy_update_counter = 0;
+	int m_lazy_update_interval = 44100;
 	MyModule()
 	{
-		config(2, 16, 4, 0);
+		config(4, 16, 4, 0);
 		configParam(0, 0.0, 360.0, 0.0, "Rotate", "Degrees", 0, 1.0);
 		configParam(1, 0.0, 1.0, 0.0, "Spread", "Degrees", 0, 1.0);
+		configParam(2, 1.0, 16.0, 16.0, "Max inputs to process", "", 0, 1.0);
+		configParam(3, 0.0, 2.0, 0.125, "Master volume", "%", 0, 1.0);
 		int tabsize = m_sincostable.size();
 		for (int i=0;i<tabsize;++i)
 		{
 			m_sincostable[i].first=cos(pi2/tabsize*i);
 			m_sincostable[i].second=sin(pi2/tabsize*i);
 		}
-		updatePositions();
-		updateSpeakerGains();
+		updatePositions(16);
+		updateSpeakerGains(16);
 	}
-	void updateSpeakerGains()
+	void updateSpeakerGains(int numchans)
 	{
-		for (int i=0;i<16;++i)
+		for (int i=0;i<numchans;++i)
 		{
 			if (!inputs[i].isConnected())
 				continue;
@@ -88,15 +90,15 @@ public:
 			}
 		}
 	}
-	void updatePositions()
+	void updatePositions(int numchans)
 	{
 		float rotphase = pi2/360.0*params[0].getValue();
 		float dist_from_center = params[1].getValue();
-		for (int i=0;i<16;++i)
+		for (int i=0;i<numchans;++i)
 		{
 			if (!inputs[i].isConnected())
 				continue;
-			float phase = pi2/16*i+rotphase;
+			float phase = pi2/numchans*i+rotphase;
 			int tabindex = (int)(m_sincostable.size()/pi2*phase) & 1023;
 			m_positions[i].first=dist_from_center*m_sincostable[tabindex].first;
 			m_positions[i].second=dist_from_center*m_sincostable[tabindex].second;
@@ -104,27 +106,37 @@ public:
 	}
 	void process(const ProcessArgs& args) override
 	{
-		
 		for (int i=0;i<4;++i)
 			outputs[i].setVoltage(0.0f);
-		
-		if (params[0].getValue()!=m_previous_rot || params[1].getValue()!=m_previous_spread)
+		++m_lazy_update_counter;
+		int maxinchans = params[2].getValue();
+		if (params[0].getValue()!=m_previous_rot 
+			|| params[1].getValue()!=m_previous_spread
+			|| maxinchans!=m_previous_max_chans
+			|| m_lazy_update_counter>=m_lazy_update_interval)
 		{
-			updatePositions();
-			updateSpeakerGains();
+			updatePositions(maxinchans);
+			updateSpeakerGains(maxinchans);
 			m_previous_rot = params[0].getValue();
 			m_previous_spread = params[1].getValue();
+			m_previous_max_chans = maxinchans;
+			m_lazy_update_counter = 0;
 		}
-		for (int i=0;i<16;++i)
+		for (int i=0;i<maxinchans;++i)
 		{
 			if (!inputs[i].isConnected())
 				continue;
 			for (int j=0;j<4;++j)
 			{
 				float gain = m_speaker_gains[i][j];
-				float outv = outputs[j].getVoltage()+0.1*gain*inputs[i].getVoltage();
+				float outv = outputs[j].getVoltage()+gain*inputs[i].getVoltage();
 				outputs[j].setVoltage(outv);
 			}
+		}
+		float mastergain = params[3].getValue();
+		for (int i=0;i<4;++i)
+		{
+			outputs[i].setVoltage(mastergain*outputs[i].getVoltage());
 		}
 	}
 };
@@ -146,14 +158,15 @@ public:
 		nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
 		nvgRect(args.vg,0.0f,0.0f,w,h);
 		nvgFill(args.vg);
-		for (int i=0;i<16;++i)
+		int numchans = m_mod->params[2].getValue();
+		for (int i=0;i<numchans;++i)
 		{
 			if (!m_mod->inputs[i].isConnected())
 				continue;
 			float x = m_mod->m_positions[i].first;
 			float y = m_mod->m_positions[i].second;
-			float xcor = w/2.0*(x+1.0);
-			float ycor = h/2.0*(y+1.0);
+			float xcor = rescale(x,-1.0f,1.0f,0.0f,w); //w/2.0*(x+1.0);
+			float ycor = rescale(y,-1.0f,1.0f,0.0f,h); // h/2.0*(y+1.0);
 			nvgBeginPath(args.vg);
 			nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
 			nvgCircle(args.vg,xcor,ycor,5.0f);
@@ -186,20 +199,21 @@ public:
 			addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(8.099+10.0*i, 106.025)), module, i));
 		}
 		addParam(createParam<RoundHugeBlackKnob>(Vec(3, 3), module, 0));
-		addParam(createParam<RoundHugeBlackKnob>(Vec(60, 3), module, 1));
-		
-		
+		addParam(createParam<RoundHugeBlackKnob>(Vec(63, 3), module, 1));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(123, 3), module, 2));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(183, 3), module, 3));
 				
 	}
 };
 
+void juuh()
+{
+	//rack::dsp::SchmittTrigger trig;
+	//rescale()
+}
+
 void init(Plugin *p) {
 	init_table_sqrt();
 	pluginInstance = p;
-	
-	// Add modules here
 	p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
-	
-	// Any other plugin initialization may go here.
-	// As an alternative, consider lazy-loading assets and lookup tables when your module is created to reduce startup times of Rack.
 }
