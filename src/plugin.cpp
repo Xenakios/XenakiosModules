@@ -75,6 +75,8 @@ public:
 	{
 		for (int i=0;i<16;++i)
 		{
+			if (!inputs[i].isConnected())
+				continue;
 			float input_x = m_positions[i].first;
 			float input_y = m_positions[i].second;
 
@@ -92,14 +94,12 @@ public:
 		float dist_from_center = params[1].getValue();
 		for (int i=0;i<16;++i)
 		{
-			float phase = pi2/15*i+rotphase;
+			if (!inputs[i].isConnected())
+				continue;
+			float phase = pi2/16*i+rotphase;
 			int tabindex = (int)(m_sincostable.size()/pi2*phase) & 1023;
 			m_positions[i].first=dist_from_center*m_sincostable[tabindex].first;
 			m_positions[i].second=dist_from_center*m_sincostable[tabindex].second;
-			//sincosf(pi2/15*i+rotphase,&m_positions[i].first,&m_positions[i].second);
-			//float input_x = dist_from_center * cos(pi2/15*i+rotphase);
-			//float input_y = dist_from_center * sin(pi2/15*i+rotphase);
-			//multippair(m_positions[i],dist_from_center);
 		}
 	}
 	void process(const ProcessArgs& args) override
@@ -117,13 +117,10 @@ public:
 		}
 		for (int i=0;i<16;++i)
 		{
-			//float input_x = m_positions[i].first;
-			//float input_y = m_positions[i].second;
-
+			if (!inputs[i].isConnected())
+				continue;
 			for (int j=0;j<4;++j)
 			{
-				//float distance = 0.5*distance2d(input_x,input_y,speaker_positions[j][0],speaker_positions[j][1]);
-				//float gain = myclamp(1.0f-distance,0.0f,1.0f);
 				float gain = m_speaker_gains[i][j];
 				float outv = outputs[j].getVoltage()+0.1*gain*inputs[i].getVoltage();
 				outputs[j].setVoltage(outv);
@@ -145,14 +142,20 @@ public:
 		
 		float w = box.size.x;
 		float h = box.size.y;
+		nvgBeginPath(args.vg);
+		nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
+		nvgRect(args.vg,0.0f,0.0f,w,h);
+		nvgFill(args.vg);
 		for (int i=0;i<16;++i)
 		{
+			if (!m_mod->inputs[i].isConnected())
+				continue;
 			float x = m_mod->m_positions[i].first;
 			float y = m_mod->m_positions[i].second;
 			float xcor = w/2.0*(x+1.0);
 			float ycor = h/2.0*(y+1.0);
 			nvgBeginPath(args.vg);
-			nvgStrokeColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
+			nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
 			nvgCircle(args.vg,xcor,ycor,5.0f);
 			nvgFill(args.vg);
 		}
