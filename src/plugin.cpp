@@ -167,9 +167,10 @@ public:
 	MyModuleWidget(MyModule* module)
 	{
 		setModule(module);
-		setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/drawing.svg")));
+		box.size.x = 500;
+		//setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/drawing.svg")));
 		m_spatWidget = new SpatWidget(module);
-		m_spatWidget->box.pos = Vec(5,75);
+		m_spatWidget->box.pos = Vec(5,90);
 		m_spatWidget->box.size = Vec(150,150);
 		addChild(m_spatWidget);
 		for (int i=0;i<16;++i)
@@ -180,11 +181,24 @@ public:
 		{
 			addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(8.099+10.0*i, 106.025)), module, i));
 		}
-		addParam(createParam<RoundHugeBlackKnob>(Vec(3, 3), module, 0));
-		addParam(createParam<RoundHugeBlackKnob>(Vec(63, 3), module, 1));
-		addParam(createParam<RoundHugeBlackKnob>(Vec(123, 3), module, 2));
-		addParam(createParam<RoundHugeBlackKnob>(Vec(183, 3), module, 3));
-				
+		addParam(createParam<RoundHugeBlackKnob>(Vec(3, 30), module, 0));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(63, 30), module, 1));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(123, 30), module, 2));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(183, 30), module, 3));
+	}
+	void draw(const DrawArgs &args) override
+	{
+		
+		nvgSave(args.vg);
+		
+		float w = box.size.x;
+		float h = box.size.y;
+		nvgBeginPath(args.vg);
+		nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+		nvgRect(args.vg,0.0f,0.0f,w,h);
+		nvgFill(args.vg);
+		nvgRestore(args.vg);
+		ModuleWidget::draw(args);
 	}
 };
 
