@@ -32,7 +32,7 @@ class MyModule : public rack::Module
 {
 public:
 	std::array<std::pair<float,float>,16> m_positions;
-	std::array<std::pair<float,float>,1024> m_sincostable;
+	std::array<float,1024> m_sintable;
 	float m_previous_rot = 0.0f;
 	float m_previous_spread = 0.0;
 	int m_previous_max_chans = 0;
@@ -42,15 +42,17 @@ public:
 	MyModule()
 	{
 		config(4, 16, 4, 0);
+		// source orientation
+		// source size
+		// source aperture
 		configParam(0, 0.0, 360.0, 0.0, "Rotate", "Degrees", 0, 1.0);
 		configParam(1, 0.0, 1.0, 0.0, "Spread", "Degrees", 0, 1.0);
 		configParam(2, 1.0, 16.0, 16.0, "Max inputs to process", "", 0, 1.0);
 		configParam(3, 0.0, 2.0, 0.125, "Master volume", "%", 0, 1.0);
-		int tabsize = m_sincostable.size();
+		int tabsize = m_sintable.size();
 		for (int i=0;i<tabsize;++i)
 		{
-			m_sincostable[i].first=cos(pi2/tabsize*i);
-			m_sincostable[i].second=sin(pi2/tabsize*i);
+			m_sintable[i]=sinf(pi2/tabsize*i);
 		}
 		updatePositions(16);
 		updateSpeakerGains(16);
@@ -81,9 +83,11 @@ public:
 			if (!inputs[i].isConnected())
 				continue;
 			float phase = pi2/numchans*i+rotphase;
-			int tabindex = (int)(m_sincostable.size()/pi2*phase) & 1023;
-			m_positions[i].first=dist_from_center*m_sincostable[tabindex].first;
-			m_positions[i].second=dist_from_center*m_sincostable[tabindex].second;
+			int tabindex = (int)(m_sintable.size()/pi2*phase) & 1023;
+			m_positions[i].first=dist_from_center*m_sintable[tabindex];
+			phase = pi/2.0-phase;
+			tabindex = (int)(m_sintable.size()/pi2*phase) & 1023;
+			m_positions[i].second=dist_from_center*m_sintable[tabindex];
 		}
 	}
 	void process(const ProcessArgs& args) override
@@ -164,11 +168,12 @@ class MyModuleWidget : public ModuleWidget
 {
 public:
 	SpatWidget* m_spatWidget = nullptr;	
+	std::shared_ptr<Font> font;
 	MyModuleWidget(MyModule* module)
 	{
+		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
 		setModule(module);
 		box.size.x = 500;
-		//setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/drawing.svg")));
 		m_spatWidget = new SpatWidget(module);
 		m_spatWidget->box.pos = Vec(5,90);
 		m_spatWidget->box.size = Vec(150,150);
@@ -197,6 +202,15 @@ public:
 		nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
 		nvgRect(args.vg,0.0f,0.0f,w,h);
 		nvgFill(args.vg);
+		
+		nvgFontSize(args.vg, 13);
+		nvgFontFaceId(args.vg, font->handle);
+		nvgTextLetterSpacing(args.vg, -2);
+		
+
+		nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+		nvgText(args.vg, 3 , 10, "SPATIALIZER", NULL);
+		
 		nvgRestore(args.vg);
 		ModuleWidget::draw(args);
 	}
