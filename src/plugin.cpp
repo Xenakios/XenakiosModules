@@ -82,11 +82,11 @@ public:
 		{
 			if (!inputs[i].isConnected())
 				continue;
-			float phase = pi2/numchans*i+rotphase;
-			int tabindex = (int)(m_sintable.size()/pi2*phase) & 1023;
+			float sinphase = pi2/numchans*i+rotphase;
+			float cosphase = pi/2.0-sinphase;
+			int tabindex = (int)(m_sintable.size()/pi2*cosphase) & 1023;
 			m_positions[i].first=dist_from_center*m_sintable[tabindex];
-			phase = pi/2.0-phase;
-			tabindex = (int)(m_sintable.size()/pi2*phase) & 1023;
+			tabindex = (int)(m_sintable.size()/pi2*sinphase) & 1023;
 			m_positions[i].second=dist_from_center*m_sintable[tabindex];
 		}
 	}
@@ -127,6 +127,8 @@ public:
 	}
 };
 
+std::shared_ptr<Font> g_font;
+
 class SpatWidget : public TransparentWidget
 {
 public:
@@ -157,6 +159,14 @@ public:
 			nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
 			nvgCircle(args.vg,xcor,ycor,5.0f);
 			nvgFill(args.vg);
+			
+			nvgFontSize(args.vg, 13);
+			nvgFontFaceId(args.vg, g_font->handle);
+			nvgTextLetterSpacing(args.vg, -2);
+			nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+			char buf[10];
+			sprintf(buf,"%d",i+1);
+			nvgText(args.vg, xcor , ycor+15.0f , buf, NULL);
 		}
 		nvgRestore(args.vg);
 	}
@@ -168,10 +178,11 @@ class MyModuleWidget : public ModuleWidget
 {
 public:
 	SpatWidget* m_spatWidget = nullptr;	
-	std::shared_ptr<Font> font;
+	
 	MyModuleWidget(MyModule* module)
 	{
-		font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
+		if (!g_font)
+			g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
 		setModule(module);
 		box.size.x = 500;
 		m_spatWidget = new SpatWidget(module);
@@ -204,10 +215,8 @@ public:
 		nvgFill(args.vg);
 		
 		nvgFontSize(args.vg, 13);
-		nvgFontFaceId(args.vg, font->handle);
+		nvgFontFaceId(args.vg, g_font->handle);
 		nvgTextLetterSpacing(args.vg, -2);
-		
-
 		nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
 		nvgText(args.vg, 3 , 10, "SPATIALIZER", NULL);
 		
