@@ -99,6 +99,8 @@ public:
 		//float spread = params[paramids::SPREAD].getValue();
 		float rotphase = pi2/360.0*params[paramids::ROTATE].getValue();
 		float dist_from_center = params[paramids::SIZE].getValue();
+		float pos_x = params[paramids::POS_X].getValue();
+		float pos_y = params[paramids::POS_Y].getValue();
 		for (int i=0;i<numchans;++i)
 		{
 			if (!inputs[i].isConnected())
@@ -106,9 +108,11 @@ public:
 			float sinphase = pi2/numchans*i+rotphase;
 			float cosphase = pi/2.0-sinphase;
 			int tabindex = (int)(m_sintable.size()/pi2*cosphase) & 1023;
-			m_positions[i].first=dist_from_center*m_sintable[tabindex];
+			m_positions[i].first=pos_x + dist_from_center*m_sintable[tabindex];
 			tabindex = (int)(m_sintable.size()/pi2*sinphase) & 1023;
-			m_positions[i].second=dist_from_center*m_sintable[tabindex];
+			m_positions[i].second=pos_y + dist_from_center*m_sintable[tabindex];
+			m_positions[i].first = clamp(m_positions[i].first,-1.0f,1.0f);
+			m_positions[i].second = clamp(m_positions[i].second,-1.0f,1.0f);
 		}
 	}
 	bool areParametersDirty()
@@ -118,7 +122,7 @@ public:
 		|| params[paramids::SPREAD].getValue()!=m_previous_spread
 		|| params[paramids::SIZE].getValue()!=m_previous_size
 		|| params[paramids::ROTATE].getValue()!=m_previous_rot
-		|| params[paramids::MAXCHANS].getValue()!=m_previous_max_chans;
+		|| (int)params[paramids::MAXCHANS].getValue()!=m_previous_max_chans;
 	}
 	void process(const ProcessArgs& args) override
 	{
