@@ -31,24 +31,44 @@ inline void multippair(std::pair<float,float>& p, float multip)
 class MyModule : public rack::Module
 {
 public:
+	enum paramids
+	{
+		POS_X=0,
+		POS_Y,
+		ROTATE,
+		SPREAD,
+		SIZE,
+		MAXCHANS,
+		MASTERVOL,
+		LASTPAR
+	};
 	std::array<std::pair<float,float>,16> m_positions;
 	std::array<float,1024> m_sintable;
+	float m_previous_x = 0.0f;
+	float m_previous_y = 0.0f;
 	float m_previous_rot = 0.0f;
-	float m_previous_spread = 0.0;
+	float m_previous_spread = 0.0f;
+	float m_previous_size = 0.0f;
 	int m_previous_max_chans = 0;
 	float m_speaker_gains[16][4];
 	int m_lazy_update_counter = 0;
 	int m_lazy_update_interval = 44100;
+	int m_samples_processed = 0;
+	int m_updates_processed = 0;
+	double m_update_freq = 0.0;
 	MyModule()
 	{
-		config(4, 16, 4, 0);
+		config(LASTPAR, 16, 4, 0);
 		// source orientation
 		// source size
 		// source aperture
-		configParam(0, 0.0, 360.0, 0.0, "Rotate", "Degrees", 0, 1.0);
-		configParam(1, 0.0, 1.0, 0.0, "Spread", "Degrees", 0, 1.0);
-		configParam(2, 1.0, 16.0, 16.0, "Max inputs to process", "", 0, 1.0);
-		configParam(3, 0.0, 2.0, 0.125, "Master volume", "%", 0, 1.0);
+		configParam(0, -1.0f, 1.0f, 0.0f, "X pos", "", 0, 1.0);
+		configParam(1, -1.0f, 1.0f, 0.0f, "Y pos", "", 0, 1.0);
+		configParam(2, 0.0, 360.0, 0.0, "Rotate", "Degrees", 0, 1.0);
+		configParam(3, 0.0, 2.0, 0.0, "Spread", "", 0, 1.0);
+		configParam(4, 0.0, 1.0, 0.0, "Size", "", 0, 1.0);
+		configParam(5, 1.0, 16.0, 16.0, "Max inputs to process", "", 0, 1.0);
+		configParam(6, 0.0, 2.0, 0.125, "Master volume", "%", 0, 1.0);
 		int tabsize = m_sintable.size();
 		for (int i=0;i<tabsize;++i)
 		{
@@ -76,8 +96,9 @@ public:
 	}
 	void updatePositions(int numchans)
 	{
-		float rotphase = pi2/360.0*params[0].getValue();
-		float dist_from_center = params[1].getValue();
+		//float spread = params[paramids::SPREAD].getValue();
+		float rotphase = pi2/360.0*params[paramids::ROTATE].getValue();
+		float dist_from_center = params[paramids::SIZE].getValue();
 		for (int i=0;i<numchans;++i)
 		{
 			if (!inputs[i].isConnected())
@@ -90,23 +111,34 @@ public:
 			m_positions[i].second=dist_from_center*m_sintable[tabindex];
 		}
 	}
+	bool areParametersDirty()
+	{
+		return params[paramids::POS_X].getValue()!=m_previous_x
+		|| params[paramids::POS_Y].getValue()!=m_previous_y
+		|| params[paramids::SPREAD].getValue()!=m_previous_spread
+		|| params[paramids::SIZE].getValue()!=m_previous_size
+		|| params[paramids::ROTATE].getValue()!=m_previous_rot
+		|| params[paramids::MAXCHANS].getValue()!=m_previous_max_chans;
+	}
 	void process(const ProcessArgs& args) override
 	{
 		for (int i=0;i<4;++i)
 			outputs[i].setVoltage(0.0f);
+		++m_samples_processed;
 		++m_lazy_update_counter;
-		int maxinchans = params[2].getValue();
-		if (params[0].getValue()!=m_previous_rot 
-			|| params[1].getValue()!=m_previous_spread
-			|| maxinchans!=m_previous_max_chans
-			|| m_lazy_update_counter>=m_lazy_update_interval)
+		int maxinchans = params[paramids::MAXCHANS].getValue();
+		if (areParametersDirty() || m_lazy_update_counter>=m_lazy_update_interval)
 		{
 			updatePositions(maxinchans);
 			updateSpeakerGains(maxinchans);
-			m_previous_rot = params[0].getValue();
-			m_previous_spread = params[1].getValue();
+			m_previous_x = params[paramids::POS_X].getValue();
+			m_previous_y = params[paramids::POS_Y].getValue();
+			m_previous_size = params[paramids::SIZE].getValue();
+			m_previous_rot = params[paramids::ROTATE].getValue();
+			m_previous_spread = params[paramids::SPREAD].getValue();
 			m_previous_max_chans = maxinchans;
 			m_lazy_update_counter = 0;
+			++m_updates_processed;
 		}
 		for (int i=0;i<maxinchans;++i)
 		{
@@ -119,11 +151,12 @@ public:
 				outputs[j].setVoltage(outv);
 			}
 		}
-		float mastergain = params[3].getValue();
+		float mastergain = params[paramids::MASTERVOL].getValue();
 		for (int i=0;i<4;++i)
 		{
 			outputs[i].setVoltage(mastergain*outputs[i].getVoltage());
 		}
+		m_update_freq = (float)m_samples_processed/m_updates_processed;
 	}
 };
 
@@ -146,7 +179,7 @@ public:
 		nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
 		nvgRect(args.vg,0.0f,0.0f,w,h);
 		nvgFill(args.vg);
-		int numchans = m_mod->params[2].getValue();
+		int numchans = m_mod->params[MyModule::MAXCHANS].getValue();
 		for (int i=0;i<numchans;++i)
 		{
 			if (!m_mod->inputs[i].isConnected())
@@ -197,10 +230,13 @@ public:
 		{
 			addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(8.099+10.0*i, 106.025)), module, i));
 		}
-		addParam(createParam<RoundHugeBlackKnob>(Vec(3, 30), module, 0));
-		addParam(createParam<RoundHugeBlackKnob>(Vec(63, 30), module, 1));
-		addParam(createParam<RoundHugeBlackKnob>(Vec(123, 30), module, 2));
-		addParam(createParam<RoundHugeBlackKnob>(Vec(183, 30), module, 3));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(3, 30), module, MyModule::POS_X));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(63, 30), module, MyModule::POS_Y));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(123, 30), module, MyModule::ROTATE));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(183, 30), module, MyModule::SPREAD));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(243, 30), module, MyModule::SIZE));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(303, 30), module, MyModule::MAXCHANS));
+		addParam(createParam<RoundHugeBlackKnob>(Vec(363, 30), module, MyModule::MASTERVOL));
 	}
 	void draw(const DrawArgs &args) override
 	{
@@ -214,12 +250,17 @@ public:
 		nvgRect(args.vg,0.0f,0.0f,w,h);
 		nvgFill(args.vg);
 		
-		nvgFontSize(args.vg, 13);
-		nvgFontFaceId(args.vg, g_font->handle);
-		nvgTextLetterSpacing(args.vg, -2);
-		nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-		nvgText(args.vg, 3 , 10, "SPATIALIZER", NULL);
-		
+		auto mod = dynamic_cast<MyModule*>(this->module);
+		if (mod && g_font)
+		{
+			nvgFontSize(args.vg, 13);
+			nvgFontFaceId(args.vg, g_font->handle);
+			nvgTextLetterSpacing(args.vg, -2);
+			nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+			char buf[200];
+			sprintf(buf,"SPATIALIZER (%d param updates)",mod->m_updates_processed);
+			nvgText(args.vg, 3 , 10, buf, NULL);
+		}
 		nvgRestore(args.vg);
 		ModuleWidget::draw(args);
 	}
