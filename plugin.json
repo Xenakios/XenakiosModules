@@ -1,24 +1,25 @@
 {
-  "slug": "Gendyn",
-  "name": "juuh",
+  "slug": "Xenakios",
+  "name": "Xenakios",
   "version": "1.0.0",
-  "license": "proprietary",
+  "license": "GPL-3.0-only",
   "brand": "Xenakios",
   "author": "Xenakios",
-  "authorEmail": "",
-  "authorUrl": "",
+  "authorEmail": "xenakios@gmail.com",
+  "authorUrl": "https://xenakios.wordpress.com/",
   "pluginUrl": "",
   "manualUrl": "",
   "sourceUrl": "",
   "donateUrl": "",
   "modules": [
     {
-      "slug": "Spatializer",
-      "name": "Spatializer",
-      "description": "Pan 16 inputs to a quadrophonic space",
+      "slug": "WeightedRandom",
+      "name": "WeightedRandom",
+      "description": "Output random numbers/triggers based on weights",
       "tags": [
-        "Panner"
+        "Random"
       ]
     }
+
   ]
 }

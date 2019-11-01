@@ -1,5 +1,5 @@
 #include "plugin.hpp"
-
+#include "weightedrandom.h"
 
 Plugin *pluginInstance;
 
@@ -272,5 +272,6 @@ public:
 
 void init(Plugin *p) {
 	pluginInstance = p;
-	p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
+	//p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
+	p->addModel(createModel<WeightedRandomModule,WeightedRandomWidget>("WeightedRandom"));
 }
