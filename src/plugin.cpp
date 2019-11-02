@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include "weightedrandom.h"
+#include <array>
 
 Plugin *pluginInstance;
 

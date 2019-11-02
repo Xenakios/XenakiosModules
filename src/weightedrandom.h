@@ -1,3 +1,4 @@
+#include <rack.hpp>
 #include "plugin.hpp"
 
 const int WR_NUM_OUTPUTS = 8;
