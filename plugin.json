@@ -15,9 +15,17 @@
     {
       "slug": "WeightedRandom",
       "name": "WeightedRandom",
-      "description": "Output random numbers/triggers based on weights",
+      "description": "Routes incoming gate/trigger randomly with weights",
       "tags": [
         "Random"
+      ]
+    },
+    {
+      "slug": "Histogram",
+      "name": "Histogram",
+      "description": "Shows histogram of incoming voltages",
+      "tags": [
+        "Visual","Statistics"
       ]
     }
 

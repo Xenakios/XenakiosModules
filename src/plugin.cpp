@@ -275,4 +275,5 @@ void init(Plugin *p) {
 	pluginInstance = p;
 	//p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
 	p->addModel(createModel<WeightedRandomModule,WeightedRandomWidget>("WeightedRandom"));
+	p->addModel(createModel<HistogramModule,HistogramModuleWidget>("Histogram"));
 }

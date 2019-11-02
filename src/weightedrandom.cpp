@@ -105,3 +105,96 @@ void WeightedRandomWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
 	ModuleWidget::draw(args);
 }
+
+HistogramModule::HistogramModule()
+{
+    m_data.resize(m_data_size);
+    config(0,2,0,0);
+}
+
+void HistogramModule::process(const ProcessArgs& args) 
+{
+    if (m_reset_trig.process(inputs[1].getVoltage()))
+    {
+        std::fill(m_data.begin(),m_data.end(),0);
+    }
+    if (inputs[0].isConnected())
+    {
+        float v = inputs[0].getVoltage();
+        if (v>=m_volt_min && v<=m_volt_max)
+        {
+            int index = rescale(v,m_volt_min,m_volt_max,0,m_data.size()-1);
+            ++m_data[index];
+        }
+    }
+}
+
+void HistogramWidget::draw(const DrawArgs &args) 
+    {
+        nvgSave(args.vg);
+		float w = box.size.x;
+		float h = box.size.y;
+		nvgBeginPath(args.vg);
+		nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
+		nvgRect(args.vg,0.0f,0.0f,w,h);
+		nvgFill(args.vg);
+        if (DataRequestFunc.operator bool())
+        {
+            auto data = DataRequestFunc();
+            auto maxe = *std::max_element(data.begin(),data.end());
+            float yscaler = h/maxe;
+            for (int i=0;i<data.size();++i)
+            {
+                float xcor = rescale(i,0,data.size()-1,0,w);
+                float y = data[i]*yscaler;
+                //continue;
+                if (y>=1.0f)
+                {
+                    nvgBeginPath(args.vg);
+			        nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+                    nvgRect(args.vg,xcor,h-y,2.0f,y);
+			        nvgFill(args.vg);
+                }
+                
+                
+            }
+            
+        }
+        nvgRestore(args.vg);
+    }
+
+HistogramModuleWidget::HistogramModuleWidget(HistogramModule* mod_)
+{
+    if (!g_font)
+    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
+    box.size.x = 500;
+    setModule(mod_);
+    addInput(createInput<PJ301MPort>(Vec(5, 20), module, 0));
+    addInput(createInput<PJ301MPort>(Vec(35, 20), module, 1));
+    m_hwid = new HistogramWidget;
+    if (mod_!=nullptr)
+        m_hwid->DataRequestFunc = [mod_](){ return mod_->getData(); };
+    m_hwid->box.pos = Vec(5,50);
+    m_hwid->box.size = Vec(box.size.x-10,300);
+    addChild(m_hwid);
+}
+
+void HistogramModuleWidget::draw(const DrawArgs &args)
+{
+    nvgSave(args.vg);
+    float w = box.size.x;
+    float h = box.size.y;
+    nvgBeginPath(args.vg);
+    nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+    nvgRect(args.vg,0.0f,0.0f,w,h);
+    nvgFill(args.vg);
+
+    nvgFontSize(args.vg, 15);
+    nvgFontFaceId(args.vg, g_font->handle);
+    nvgTextLetterSpacing(args.vg, -1);
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+    nvgText(args.vg, 3 , 10, "Histogram", NULL);
+    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+    nvgRestore(args.vg);
+    ModuleWidget::draw(args);
+}
