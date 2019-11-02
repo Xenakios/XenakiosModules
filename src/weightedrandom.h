@@ -25,6 +25,7 @@ public:
 private:
     dsp::SchmittTrigger m_trig;
     bool m_outcomes[WR_NUM_OUTPUTS];
+    float m_cur_discrete_output = 0.0f;
     bool m_in_trig_high = false;
 };
 

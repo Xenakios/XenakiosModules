@@ -2,7 +2,7 @@
 
 WeightedRandomModule::WeightedRandomModule()
 {
-    config(LASTPAR, 9, 8, 0);
+    config(LASTPAR, 9, 9, 0);
 	for (int i=0;i<WR_NUM_OUTPUTS;++i)
     {
         m_outcomes[i]=false;
@@ -51,7 +51,7 @@ void WeightedRandomModule::process(const ProcessArgs& args)
                 {
                     m_outcomes[i] = i == result;
                 }
-                
+                m_cur_discrete_output = rescale(result,0,7,0.0f,10.0f);
             }
             
         }
@@ -64,6 +64,7 @@ void WeightedRandomModule::process(const ProcessArgs& args)
         else
             outputs[i].setVoltage(0.0f);    
     }
+    outputs[WR_NUM_OUTPUTS].setVoltage(m_cur_discrete_output);
 }
 
 extern std::shared_ptr<Font> g_font;
@@ -76,7 +77,7 @@ WeightedRandomWidget::WeightedRandomWidget(WeightedRandomModule* mod)
     box.size.x = 130;
     
     addInput(createInput<PJ301MPort>(Vec(5, 20), module, 0));
-    
+    addOutput(createOutput<PJ301MPort>(Vec(85, 20), module, WR_NUM_OUTPUTS));
     for (int i=0;i<WR_NUM_OUTPUTS;++i)
     {
         addInput(createInput<PJ301MPort>(Vec(5, 50+i*40), module, i+1));
