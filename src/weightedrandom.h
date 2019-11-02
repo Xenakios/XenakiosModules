@@ -24,9 +24,6 @@ public:
 private:
     dsp::SchmittTrigger m_trig;
     bool m_outcomes[WR_NUM_OUTPUTS];
-    float m_lastTime = 0.0;
-    
-    float m_sr = 44100.0f;
     bool m_in_trig_high = false;
 };
 

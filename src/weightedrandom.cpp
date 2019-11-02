@@ -66,10 +66,12 @@ void WeightedRandomModule::process(const ProcessArgs& args)
     }
 }
 
+extern std::shared_ptr<Font> g_font;
+
 WeightedRandomWidget::WeightedRandomWidget(WeightedRandomModule* mod)
 {
-    //if (!g_font)
-    //	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
+    if (!g_font)
+    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(mod);
     box.size.x = 130;
     
