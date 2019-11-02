@@ -95,6 +95,13 @@ void WeightedRandomWidget::draw(const DrawArgs &args)
     nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
     nvgRect(args.vg,0.0f,0.0f,w,h);
     nvgFill(args.vg);
+
+    nvgFontSize(args.vg, 15);
+    nvgFontFaceId(args.vg, g_font->handle);
+    nvgTextLetterSpacing(args.vg, -1);
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+    nvgText(args.vg, 3 , 10, "Octauilli Gate", NULL);
+    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
     nvgRestore(args.vg);
 	ModuleWidget::draw(args);
 }
