@@ -142,13 +142,12 @@ void HistogramWidget::draw(const DrawArgs &args)
         if (DataRequestFunc.operator bool())
         {
             auto data = DataRequestFunc();
-            auto maxe = *std::max_element(data.begin(),data.end());
+            auto maxe = *std::max_element(data->begin(),data->end());
             float yscaler = h/maxe;
-            for (int i=0;i<data.size();++i)
+            for (int i=0;i<(int)data->size();++i)
             {
-                float xcor = rescale(i,0,data.size()-1,0,w);
-                float y = data[i]*yscaler;
-                //continue;
+                float xcor = rescale(i,0,data->size()-1,0,w-2.0f);
+                float y = (*data)[i]*yscaler;
                 if (y>=1.0f)
                 {
                     nvgBeginPath(args.vg);

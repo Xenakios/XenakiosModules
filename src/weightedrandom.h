@@ -43,9 +43,9 @@ class HistogramModule : public rack::Module
 public:
     HistogramModule();
     void process(const ProcessArgs& args) override;
-    const std::vector<int>& getData()
+    std::vector<int>* getData()
     {
-        return m_data;
+        return &m_data;
     }
 private:
     std::vector<int> m_data;
@@ -61,7 +61,7 @@ public:
     HistogramWidget() {}
     void draw(const DrawArgs &args) override;
     
-    std::function<std::vector<int>(void)> DataRequestFunc;
+    std::function<std::vector<int>*(void)> DataRequestFunc;
 private:
 };
 
