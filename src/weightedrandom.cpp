@@ -139,20 +139,21 @@ void HistogramWidget::draw(const DrawArgs &args)
 		nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
 		nvgRect(args.vg,0.0f,0.0f,w,h);
 		nvgFill(args.vg);
-        if (DataRequestFunc.operator bool())
+        if (DataRequestFunc)
         {
             auto data = DataRequestFunc();
             auto maxe = *std::max_element(data->begin(),data->end());
             float yscaler = h/maxe;
+            float barwidth = w/data->size();
             for (int i=0;i<(int)data->size();++i)
             {
-                float xcor = rescale(i,0,data->size()-1,0,w-2.0f);
+                float xcor = rescale(i,0,data->size()-1,0,w-barwidth);
                 float y = (*data)[i]*yscaler;
                 if (y>=1.0f)
                 {
                     nvgBeginPath(args.vg);
 			        nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-                    nvgRect(args.vg,xcor,h-y,2.0f,y);
+                    nvgRect(args.vg,xcor,h-y,barwidth,y);
 			        nvgFill(args.vg);
                 }
                 
