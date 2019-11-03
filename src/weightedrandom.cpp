@@ -236,14 +236,16 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
             outputs[dest].setChannels(2);
             destnumchans = 2;
         }
-        for (int j=0;j<destnumchans;++j)
+        for (int j=0;j<16;++j)
         {
-            float v = outputs[dest].getVoltage(j);
-            for (int k=0;k<16;++k)
-            {
-                v += inputs[src].getVoltage(k);
-            }
+            float v = 0.0f;
             outputs[dest].setVoltage(v,j);
+            for (int k=0;k<destnumchans;++k)
+            {
+                //float v = outputs[dest].getPolyVoltage(j);
+                //v += inputs[src].getPolyVoltage(j);
+            }
+            
         }
         
     }
