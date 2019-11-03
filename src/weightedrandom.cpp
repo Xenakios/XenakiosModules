@@ -217,14 +217,8 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
 {
     for (int i=0;i<outputs.size();++i)
     {
-        if (!outputs[i].isPolyphonic())
-            outputs[i].setVoltage(0.0f);
-        else
-        {
-            for (int j=0;j<outputs[i].getChannels();++j)
-                outputs[j].setVoltage(0.0f,j);
-        }
-        
+        for (int j=0;j<16;++j)
+            outputs[i].setVoltage(0.0f,j);
     }
     // this is very nasty, need to figure out some other way to deal with the thread safety
     if (m_changing_state == true)
@@ -244,13 +238,12 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
         }
         for (int j=0;j<destnumchans;++j)
         {
-            
-            for (int k=0;k<srcnumchans;++k)
+            float v = outputs[dest].getVoltage(j);
+            for (int k=0;k<16;++k)
             {
-                float v = inputs[src].getVoltage(k);
-                outputs[dest].setVoltage(v,j);
+                v += inputs[src].getVoltage(k);
             }
-            
+            outputs[dest].setVoltage(v,j);
         }
         
     }
