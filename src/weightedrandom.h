@@ -1,6 +1,7 @@
 #include <rack.hpp>
 #include "plugin.hpp"
 #include <functional>
+#include <atomic>
 
 const int WR_NUM_OUTPUTS = 8;
 
@@ -74,3 +75,43 @@ public:
 private:
     HistogramWidget* m_hwid = nullptr;
 };
+
+class MatrixSwitchModule : public rack::Module
+{
+public:
+    struct connection
+    {
+        connection() {}
+        connection(int s,int d) : m_src(s), m_dest(d) {}
+        int m_src = -1;
+        int m_dest = -1;
+    };
+    MatrixSwitchModule();
+    void process(const ProcessArgs& args) override;
+    std::vector<connection> m_connections;
+    bool isConnected(int x, int y);
+    void setConnected(int x, int y, bool connect);
+    json_t* dataToJson() override;
+    void dataFromJson(json_t* root) override;
+private:
+    std::atomic<bool> m_changing_state{false};
+};
+
+class MatrixGridWidget : public TransparentWidget
+{
+public:
+    MatrixGridWidget(MatrixSwitchModule*);
+    void onButton(const event::Button& e) override;
+    void draw(const DrawArgs &args) override;
+private:
+    MatrixSwitchModule* m_mod = nullptr;
+};
+
+class MatrixSwitchWidget : public ModuleWidget
+{
+public:
+    MatrixSwitchWidget(MatrixSwitchModule*);
+
+    void draw(const DrawArgs &args) override;
+};
+

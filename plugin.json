@@ -27,6 +27,14 @@
       "tags": [
         "Visual","Statistics"
       ]
+    },
+    {
+      "slug": "MatrixSwitcher",
+      "name": "Matrix Switcher",
+      "description": "16x16 switch",
+      "tags": [
+        "Matrix","Switcher","Router"
+      ]
     }
 
   ]

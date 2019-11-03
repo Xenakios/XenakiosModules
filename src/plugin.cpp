@@ -276,4 +276,5 @@ void init(Plugin *p) {
 	//p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
 	p->addModel(createModel<WeightedRandomModule,WeightedRandomWidget>("WeightedRandom"));
 	p->addModel(createModel<HistogramModule,HistogramModuleWidget>("Histogram"));
+	p->addModel(createModel<MatrixSwitchModule,MatrixSwitchWidget>("MatrixSwitcher"));
 }

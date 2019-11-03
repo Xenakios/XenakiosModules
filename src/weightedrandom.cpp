@@ -199,3 +199,206 @@ void HistogramModuleWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }
+
+MatrixSwitchModule::MatrixSwitchModule()
+{
+    config(0,16,16,0);
+    m_connections.reserve(128);
+    m_connections.emplace_back(0,0);
+    m_connections.emplace_back(0,5);
+    m_connections.emplace_back(15,1);
+    m_connections.emplace_back(15,14);
+    m_connections.emplace_back(8,7);
+}
+
+void MatrixSwitchModule::process(const ProcessArgs& args)
+{
+    for (int i=0;i<outputs.size();++i)
+            outputs[i].setVoltage(0.0f);
+    // this is very nasty, need to figure out some other way to deal with the thread safety
+    if (m_changing_state == true)
+    {
+        return;
+    }
+    for (int i=0;i<m_connections.size();++i)
+    {
+        int src = m_connections[i].m_src;
+        int dest = m_connections[i].m_dest;
+        float v = outputs[dest].getVoltage()+inputs[src].getVoltage();
+        outputs[dest].setVoltage(v);
+    }
+}
+
+json_t* MatrixSwitchModule::dataToJson()
+{
+    json_t* resultJ = json_object();
+    json_t* arrayJ = json_array();
+    for (int i=0;i<m_connections.size();++i)
+    {
+        json_t* conJ = json_object();
+        json_object_set(conJ,"src",json_integer(m_connections[i].m_src));
+        json_object_set(conJ,"dest",json_integer(m_connections[i].m_dest));
+        json_array_append(arrayJ,conJ);
+    }
+    json_object_set(resultJ,"connections",arrayJ);
+    return resultJ;
+}
+
+void MatrixSwitchModule::dataFromJson(json_t* root)
+{
+    json_t* arrayJ = json_object_get(root,"connections");
+    if (arrayJ==nullptr)
+        return;
+    int numcons = json_array_size(arrayJ);
+    if (numcons>0 && numcons<256)
+    {
+        m_changing_state = true;
+        m_connections.clear();
+        for (int i=0;i<numcons;++i)
+        {
+            json_t* conJ = json_array_get(arrayJ,i);
+            int src = json_integer_value(json_object_get(conJ,"src"));
+            int dest = json_integer_value(json_object_get(conJ,"dest"));
+            m_connections.emplace_back(src,dest);
+        }
+        m_changing_state = false;
+    }
+}
+
+bool MatrixSwitchModule::isConnected(int x, int y)
+{
+    for (int i=0;i<m_connections.size();++i)
+    {
+        if (m_connections[i].m_src == x && m_connections[i].m_dest == y)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void MatrixSwitchModule::setConnected(int x, int y, bool c)
+{
+    if (c == true && isConnected(x,y))
+        return;
+    if (c == true)
+    {
+        m_changing_state = true;
+        m_connections.emplace_back(x,y);
+        m_changing_state = false;
+    }
+    if (c == false)
+    {
+        for (int i=0;i<m_connections.size();++i)
+        {
+            if (m_connections[i].m_src == x && m_connections[i].m_dest == y)
+            {
+                m_changing_state = true;
+                m_connections.erase(m_connections.begin()+i);
+                m_changing_state = false;
+                return;
+            }
+        }
+    }
+}
+
+MatrixSwitchWidget::MatrixSwitchWidget(MatrixSwitchModule* module_)
+{
+    if (!g_font)
+    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
+    setModule(module_);
+    box.size.x = 500;
+    for (int i=0;i<16;++i)
+    {
+        int x = i / 8;
+        int y = i % 8;
+        float ycor = 20.0f+y*25.0;
+        addInput(createInput<PJ301MPort>(Vec(5+25.0f*x, ycor), module, i));
+    }
+    for (int i=0;i<16;++i)
+    {
+        int x = i / 8;
+        int y = i % 8;
+        float ycor = 20.0f+y*25.0;
+        addOutput(createOutput<PJ301MPort>(Vec(450.0+25.0f*x, ycor), module, i));
+    }
+    MatrixGridWidget* grid = new MatrixGridWidget(module_);
+    grid->box.pos.x = 60;
+    grid->box.pos.y = 20;
+    grid->box.size.x = 330;
+    addChild(grid);
+}
+
+void MatrixSwitchWidget::draw(const DrawArgs &args)
+{
+    nvgSave(args.vg);
+    float w = box.size.x;
+    float h = box.size.y;
+    nvgBeginPath(args.vg);
+    nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+    nvgRect(args.vg,0.0f,0.0f,w,h);
+    nvgFill(args.vg);
+
+    nvgFontSize(args.vg, 15);
+    nvgFontFaceId(args.vg, g_font->handle);
+    nvgTextLetterSpacing(args.vg, -1);
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+    nvgText(args.vg, 3 , 10, "Matrix switch", NULL);
+    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+    nvgRestore(args.vg);
+    ModuleWidget::draw(args);
+}
+
+MatrixGridWidget::MatrixGridWidget(MatrixSwitchModule* mod_)
+{
+    m_mod = mod_;
+}
+
+void MatrixGridWidget::onButton(const event::Button& e)
+{
+    float w = box.size.x;
+    float boxsize = w/16;
+    if (e.action==GLFW_PRESS)
+    {
+        int x = (e.pos.x/boxsize);
+        int y = (e.pos.y/boxsize);
+        bool isconnected = m_mod->isConnected(x,y);
+        m_mod->setConnected(x,y,!isconnected);
+    }
+    
+}
+
+void MatrixGridWidget::draw(const DrawArgs &args)
+{
+    if (m_mod==nullptr)
+        return;
+    nvgSave(args.vg);
+    float w = box.size.x;
+    //float h = box.size.y;
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+    float boxsize = w/16.0-1.0;
+    for (int i=0;i<16;++i)
+    {
+        for (int j=0;j<16;++j)
+        {
+            float xcor = w/16*i;
+            float ycor = w/16*j;
+            nvgBeginPath(args.vg);
+            nvgRect(args.vg,xcor,ycor,boxsize,boxsize);
+            nvgFill(args.vg);
+        }
+    }
+    nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
+    auto& cons = m_mod->m_connections;
+    for (auto& con : cons)
+    {
+        float xcor = w/16*con.m_src;
+        float ycor = w/16*con.m_dest;
+        nvgBeginPath(args.vg);
+        nvgRoundedRect(args.vg,xcor,ycor,boxsize,boxsize,8.0f);
+        nvgFill(args.vg);
+    }
+    nvgRestore(args.vg);
+}
+
+
