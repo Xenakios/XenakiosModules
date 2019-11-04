@@ -217,8 +217,7 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
 {
     for (int i=0;i<outputs.size();++i)
     {
-        for (int j=0;j<16;++j)
-            outputs[i].setVoltage(0.0f,j);
+        outputs[i].setVoltage(0.0f);
     }
     // this is very nasty, need to figure out some other way to deal with the thread safety
     if (m_changing_state == true)
@@ -229,25 +228,9 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
     {
         int src = m_connections[i].m_src;
         int dest = m_connections[i].m_dest;
-        int srcnumchans = inputs[src].getChannels();
-        int destnumchans = outputs[dest].getChannels();
-        if (dest>=14 && dest<16)
-        {
-            outputs[dest].setChannels(2);
-            destnumchans = 2;
-        }
-        for (int j=0;j<16;++j)
-        {
-            float v = 0.0f;
-            outputs[dest].setVoltage(v,j);
-            for (int k=0;k<destnumchans;++k)
-            {
-                //float v = outputs[dest].getPolyVoltage(j);
-                //v += inputs[src].getPolyVoltage(j);
-            }
-            
-        }
-        
+        float v = outputs[dest].getVoltage();
+        v += inputs[src].getVoltage();
+        outputs[dest].setVoltage(v);
     }
 }
 
