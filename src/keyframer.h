@@ -27,7 +27,7 @@ public:
             params[0].setValue(rescale(index,0,m_maxsnapshots-1,0.0f,1.0));
             for (int i=0;i<8;++i)
             {
-                m_interpolated[i]=m_scenes[index][i];
+                params[i+1].setValue(m_scenes[index][i]);
             }
         }
     }

@@ -48,6 +48,8 @@ public:
     }
     void draw(const DrawArgs &args) override
     {
+        if (!m_mod)
+            return;
         nvgSave(args.vg);
 		nvgFontSize(args.vg, 13);
 		nvgFontFaceId(args.vg, g_font->handle);
@@ -117,7 +119,7 @@ KeyFramerWidget::KeyFramerWidget(KeyFramerModule* m)
     if (!g_font)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
-    box.size.x = 400;
+    box.size.x = 255;
     addInput(createInput<PJ301MPort>(Vec(70, 35), module, 0));
     auto bigknob = createParam<RoundHugeBlackKnob>(Vec(5, 30), module, 0);
     //bigknob->box.size.x = 200;
