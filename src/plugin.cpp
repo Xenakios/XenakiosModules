@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include "weightedrandom.h"
+#include "keyframer.h"
 #include <array>
 
 Plugin *pluginInstance;
@@ -277,4 +278,5 @@ void init(Plugin *p) {
 	p->addModel(createModel<WeightedRandomModule,WeightedRandomWidget>("WeightedRandom"));
 	p->addModel(createModel<HistogramModule,HistogramModuleWidget>("Histogram"));
 	p->addModel(createModel<MatrixSwitchModule,MatrixSwitchWidget>("MatrixSwitcher"));
+	p->addModel(createModel<KeyFramerModule,KeyFramerWidget>("XKeyFramer"));
 }

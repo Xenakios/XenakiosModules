@@ -202,20 +202,20 @@ void HistogramModuleWidget::draw(const DrawArgs &args)
 
 MatrixSwitchModule::MatrixSwitchModule()
 {
-    config(0,16,16,0);
-   
-    
+    config(0,18,16,0);
     m_connections.reserve(128);
+    /*
     m_connections.emplace_back(0,0);
     m_connections.emplace_back(0,5);
     m_connections.emplace_back(15,1);
     m_connections.emplace_back(15,14);
     m_connections.emplace_back(8,7);
+    */
 }
 
 void MatrixSwitchModule::process(const ProcessArgs& args)
 {
-    for (int i=0;i<outputs.size();++i)
+    for (int i=0;i<(int)outputs.size();++i)
     {
         outputs[i].setVoltage(0.0f);
     }
@@ -224,7 +224,7 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
     {
         return;
     }
-    for (int i=0;i<m_connections.size();++i)
+    for (int i=0;i<(int)m_connections.size();++i)
     {
         int src = m_connections[i].m_src;
         int dest = m_connections[i].m_dest;
@@ -232,13 +232,14 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
         v += inputs[src].getVoltage();
         outputs[dest].setVoltage(v);
     }
+    
 }
 
 json_t* MatrixSwitchModule::dataToJson()
 {
     json_t* resultJ = json_object();
     json_t* arrayJ = json_array();
-    for (int i=0;i<m_connections.size();++i)
+    for (int i=0;i<(int)m_connections.size();++i)
     {
         json_t* conJ = json_object();
         json_object_set(conJ,"src",json_integer(m_connections[i].m_src));
@@ -272,7 +273,11 @@ void MatrixSwitchModule::dataFromJson(json_t* root)
 
 bool MatrixSwitchModule::isConnected(int x, int y)
 {
-    for (int i=0;i<m_connections.size();++i)
+    if (x<0 || x>18)
+        return false;
+    if (y<0 || y>16)
+        return false;
+    for (int i=0;i<(int)m_connections.size();++i)
     {
         if (m_connections[i].m_src == x && m_connections[i].m_dest == y)
         {
@@ -284,6 +289,10 @@ bool MatrixSwitchModule::isConnected(int x, int y)
 
 void MatrixSwitchModule::setConnected(int x, int y, bool c)
 {
+    if (x<0 || x>18)
+        return;
+    if (y<0 || y>16)
+        return;
     if (c == true && isConnected(x,y))
         return;
     if (c == true)
@@ -294,7 +303,7 @@ void MatrixSwitchModule::setConnected(int x, int y, bool c)
     }
     if (c == false)
     {
-        for (int i=0;i<m_connections.size();++i)
+        for (int i=0;i<(int)m_connections.size();++i)
         {
             if (m_connections[i].m_src == x && m_connections[i].m_dest == y)
             {
@@ -313,10 +322,10 @@ MatrixSwitchWidget::MatrixSwitchWidget(MatrixSwitchModule* module_)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(module_);
     box.size.x = 500;
-    for (int i=0;i<16;++i)
+    for (int i=0;i<18;++i)
     {
-        int x = i / 8;
-        int y = i % 8;
+        int x = i / 9;
+        int y = i % 9;
         float ycor = 20.0f+y*25.0;
         addInput(createInput<PJ301MPort>(Vec(5+25.0f*x, ycor), module, i));
     }
@@ -382,7 +391,7 @@ void MatrixGridWidget::draw(const DrawArgs &args)
     //float h = box.size.y;
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     float boxsize = w/16.0-1.0;
-    for (int i=0;i<16;++i)
+    for (int i=0;i<18;++i)
     {
         for (int j=0;j<16;++j)
         {
@@ -405,5 +414,3 @@ void MatrixGridWidget::draw(const DrawArgs &args)
     }
     nvgRestore(args.vg);
 }
-
-

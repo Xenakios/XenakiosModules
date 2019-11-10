@@ -35,6 +35,14 @@
       "tags": [
         "Matrix","Switcher","Router"
       ]
+    },
+    {
+      "slug": "XKeyFramer",
+      "name": "KeyFramer",
+      "description": "KeyFramer",
+      "tags": [
+        "Interpolation","Scenes"
+      ]
     }
 
   ]
