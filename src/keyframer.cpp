@@ -18,6 +18,43 @@ KeyFramerModule::KeyFramerModule()
     }
 }
 
+json_t* KeyFramerModule::dataToJson()
+{
+    json_t* resultJ = json_object();
+    json_t* arrayJ = json_array();
+    for (int i=0;i<(int)NUMSNAPSHOTS;++i)
+    {
+        json_t* array2J = json_array();
+        for (int j=0;j<8;++j)
+        {
+            json_array_append(array2J,json_real(m_scenes[i][j]));
+        }
+        json_array_append(arrayJ,array2J);
+    }
+    json_object_set(resultJ,"snapshots_v1",arrayJ);
+    return resultJ;
+}
+
+void KeyFramerModule::dataFromJson(json_t* root)
+{
+    json_t* arrayJ = json_object_get(root,"snapshots_v1");
+    if (arrayJ)
+    {
+        for (int i=0;i<NUMSNAPSHOTS;++i)
+        {
+            json_t* array2J = json_array_get(arrayJ,i);
+            if (array2J)
+            {
+                for (int j=0;j<8;++j)
+                {
+                    float v = json_number_value(json_array_get(array2J,j));
+                    m_scenes[i][j]=v;
+                }
+            }
+        }
+    }
+}
+
 void KeyFramerModule::process(const ProcessArgs& args)
 {
     m_maxsnapshots = params[9].getValue();
@@ -54,8 +91,8 @@ public:
 		nvgFontSize(args.vg, 13);
 		nvgFontFaceId(args.vg, g_font->handle);
 		nvgTextLetterSpacing(args.vg, -2);
-		float w = box.size.x;
-		float h = box.size.y;
+		//float w = box.size.x;
+		//float h = box.size.y;
 		for (int i=0;i<NUMSNAPSHOTS;++i)
         {
             int xpos = i % 8;
@@ -87,7 +124,7 @@ public:
     }
     void onButton(const event::Button& e) override
     {
-        float w = box.size.x;
+        //float w = box.size.x;
         float boxsize = 30.0f;
         if (e.action==GLFW_PRESS)
         {
@@ -122,8 +159,6 @@ KeyFramerWidget::KeyFramerWidget(KeyFramerModule* m)
     box.size.x = 255;
     addInput(createInput<PJ301MPort>(Vec(70, 35), module, 0));
     auto bigknob = createParam<RoundHugeBlackKnob>(Vec(5, 30), module, 0);
-    //bigknob->box.size.x = 200;
-    //bigknob->box.size.y = 200;
     addParam(bigknob);
     addParam(createParam<RoundHugeBlackKnob>(Vec(95, 30), module, 9));
     for (int i=0;i<8;++i)
@@ -131,18 +166,6 @@ KeyFramerWidget::KeyFramerWidget(KeyFramerModule* m)
         addParam(createParam<RoundSmallBlackKnob>(Vec(5+30*i, 300), module, i+1));    
         addOutput(createOutput<PJ301MPort>(Vec(5+30*i, 330), module, i));
     }
-    /*
-    for (int i=0;i<NUMSNAPSHOTS;++i)
-    {
-        int xpos = i % 8;
-        int ypos = i / 8;
-        CKD6* but = new CKD6;
-        
-        but->box.pos.x = 5+xpos*30;
-        but->box.pos.y = 90+ypos*30;
-        addChild(but);
-    }
-    */
     KeyframerSnaphotsWidget* sw = new KeyframerSnaphotsWidget(m);
     sw->box.pos = Vec(5.0f,90.0f);
     sw->box.size = Vec(300.0f,150.0f);

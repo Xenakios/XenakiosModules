@@ -33,6 +33,8 @@ public:
     }
     int m_maxsnapshots = 32;
     float m_cur_morph = 0.0f;
+    json_t* dataToJson() override;
+    void dataFromJson(json_t* root) override;
 private:
     float m_interpolated[8];
     float m_scenes[NUMSNAPSHOTS][8];
