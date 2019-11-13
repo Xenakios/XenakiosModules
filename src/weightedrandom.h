@@ -117,3 +117,78 @@ public:
     void draw(const DrawArgs &args) override;
 };
 
+class RandomClock
+{
+public:
+    RandomClock()
+    {
+        m_cur_interval = generateInterval();
+    }
+    float process(float timeDelta)
+    {
+        m_phase+=timeDelta;
+        float newphase = m_phase+timeDelta;
+        if (m_phase>=m_cur_interval)
+        {
+            m_clock_high = true;
+            m_phase = 0.0f;
+            m_cur_interval = generateInterval();
+        } else
+        if (m_phase>=m_cur_interval * m_gate_len)
+        {
+            m_clock_high = false;
+        }
+        if (m_clock_high)
+            return 1.0f;
+        return 0.0f;
+    }
+    void setDensity(float m)
+    {
+        m_density = clamp(m,0.01,200.0f);
+    }
+    float generateInterval()
+    {
+        // exponential distribution starts from zero and can also produce very large values
+        // draw new numbers from it until get a number in a more limited range
+        // this should usually only take one iteration or so
+        // could also do a simple clamping of the distribution output, but let's be fancy...
+        int sanitycheck = 0;
+        while (true)
+        {
+            float td = (-log(random::uniform()))/(m_density);
+            if (td>=0.005 && td<10.0)
+                return td;
+            ++sanitycheck;
+            if (sanitycheck>100)
+                break;
+        }
+        // failed to produce a number in the desired range, just return the mean
+        return 1.0/m_density;
+    }
+private:
+    bool m_clock_high = true;
+    float m_phase = 0.0f;
+    float m_cur_interval = 0.0f;
+    float m_density = 1.0f;
+    float m_gate_len = 0.5f;
+};
+
+class RandomClockModule : public rack::Module
+{
+public:
+    RandomClockModule();
+    void process(const ProcessArgs& args) override;
+private:
+    RandomClock m_clocks[8];
+    float m_last_time = 0.0f;
+};
+
+class RandomClockWidget : public ModuleWidget
+{
+public:
+    RandomClockWidget(RandomClockModule*);
+    void draw(const DrawArgs &args) override;
+private:
+    RandomClockModule* m_mod = nullptr;
+};
+

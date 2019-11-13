@@ -414,3 +414,65 @@ void MatrixGridWidget::draw(const DrawArgs &args)
     }
     nvgRestore(args.vg);
 }
+
+RandomClockModule::RandomClockModule()
+{
+    config(17,1,8);
+    configParam(0,0.0f,1.0f,0.1); // master clock density
+    for (int i=0;i<8;++i)
+    {
+        configParam(i+1,0.1,10.0f,1.0f); // clock multiplier
+        // gate len
+        // >=0.0 && <=0.5 deterministic percentage 1% to 99% of clock interval
+        // >0.5 && <=1.0 stochastic distribution favoring short and long values
+        configParam(i+8,0.0,1.0f,0.5f); 
+    }
+}
+
+void RandomClockModule::process(const ProcessArgs& args)
+{
+    float masterdensity = params[0].getValue();
+    masterdensity = pow(masterdensity,2.0f);
+    masterdensity = rescale(masterdensity,0.0f,1.0f,0.01,200.0f);
+    for (int i=0;i<8;++i)
+    {
+        m_clocks[i].setDensity(masterdensity*params[i+1].getValue());
+        outputs[i].setVoltage(10.0f*m_clocks[i].process(args.sampleTime));    
+    }
+}
+
+RandomClockWidget::RandomClockWidget(RandomClockModule* m)
+{
+    if (!g_font)
+    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
+    setModule(m);
+    box.size.x = 100;
+    m_mod = m;
+    for (int i=0;i<8;++i)
+    {
+        addOutput(createOutput<PJ301MPort>(Vec(5,30+30*i), module, i));
+        addParam(createParam<RoundSmallBlackKnob>(Vec(35, 30+30*i), module, i+1));    
+    }
+    addParam(createParam<RoundBlackKnob>(Vec(5, 30+30*8), module, 0));    
+
+}
+
+void RandomClockWidget::draw(const DrawArgs &args)
+{
+    nvgSave(args.vg);
+    float w = box.size.x;
+    float h = box.size.y;
+    nvgBeginPath(args.vg);
+    nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+    nvgRect(args.vg,0.0f,0.0f,w,h);
+    nvgFill(args.vg);
+
+    nvgFontSize(args.vg, 15);
+    nvgFontFaceId(args.vg, g_font->handle);
+    nvgTextLetterSpacing(args.vg, -1);
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+    nvgText(args.vg, 3 , 10, "Random clock", NULL);
+    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+    nvgRestore(args.vg);
+    ModuleWidget::draw(args);
+}
