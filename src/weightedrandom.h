@@ -183,7 +183,6 @@ public:
     void process(const ProcessArgs& args) override;
 private:
     RandomClock m_clocks[8];
-    float m_last_time = 0.0f;
 };
 
 class RandomClockWidget : public ModuleWidget
