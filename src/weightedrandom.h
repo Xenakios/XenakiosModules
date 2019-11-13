@@ -127,7 +127,6 @@ public:
     float process(float timeDelta)
     {
         m_phase+=timeDelta;
-        float newphase = m_phase+timeDelta;
         if (m_phase>=m_cur_interval)
         {
             m_clock_high = true;
@@ -145,6 +144,10 @@ public:
     void setDensity(float m)
     {
         m_density = clamp(m,0.01,200.0f);
+    }
+    void setGateLen(float gl) // percent
+    {
+        m_gate_len = clamp(gl,0.01f,0.99f);
     }
     float generateInterval()
     {
