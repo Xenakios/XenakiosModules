@@ -61,11 +61,12 @@ private:
 class HistogramWidget : public TransparentWidget
 {
 public:
-    HistogramWidget() {}
+    HistogramWidget(HistogramModule* m) { m_mod = m; }
     void draw(const DrawArgs &args) override;
     
-    std::function<std::vector<int>*(void)> DataRequestFunc;
+    
 private:
+    HistogramModule* m_mod = nullptr;
 };
 
 class HistogramModuleWidget : public ModuleWidget

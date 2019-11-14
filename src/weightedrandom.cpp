@@ -110,7 +110,8 @@ void WeightedRandomWidget::draw(const DrawArgs &args)
 HistogramModule::HistogramModule()
 {
     m_data.resize(m_data_size);
-    config(0,2,0,0);
+    config(1,2,0,0);
+    configParam(0,0.0f,1.0f,0.0f);
 }
 
 void HistogramModule::process(const ProcessArgs& args) 
@@ -132,6 +133,8 @@ void HistogramModule::process(const ProcessArgs& args)
 
 void HistogramWidget::draw(const DrawArgs &args) 
     {
+        if (m_mod==nullptr)
+            return;
         nvgSave(args.vg);
 		float w = box.size.x;
 		float h = box.size.y;
@@ -139,26 +142,27 @@ void HistogramWidget::draw(const DrawArgs &args)
 		nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
 		nvgRect(args.vg,0.0f,0.0f,w,h);
 		nvgFill(args.vg);
-        if (DataRequestFunc)
+        
+        auto data = m_mod->getData();
+        auto maxe = *std::max_element(data->begin(),data->end());
+        float yscaler = h/maxe;
+        float manualscale = m_mod->params[0].getValue();
+        if (manualscale>0.0f)
+            yscaler = h/10000.0f*manualscale;
+        float barwidth = w/data->size();
+        for (int i=0;i<(int)data->size();++i)
         {
-            auto data = DataRequestFunc();
-            auto maxe = *std::max_element(data->begin(),data->end());
-            float yscaler = h/maxe;
-            float barwidth = w/data->size();
-            for (int i=0;i<(int)data->size();++i)
+            float xcor = rescale(i,0,data->size()-1,0,w-barwidth);
+            float y = (*data)[i]*yscaler;
+            y = clamp(y,0.0f,h);
+            if (y>=1.0f)
             {
-                float xcor = rescale(i,0,data->size()-1,0,w-barwidth);
-                float y = (*data)[i]*yscaler;
-                if (y>=1.0f)
-                {
-                    nvgBeginPath(args.vg);
-			        nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-                    nvgRect(args.vg,xcor,h-y,barwidth,y);
-			        nvgFill(args.vg);
-                }
-                
-                
+                nvgBeginPath(args.vg);
+                nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+                nvgRect(args.vg,xcor,h-y,barwidth,y);
+                nvgFill(args.vg);
             }
+            
             
         }
         nvgRestore(args.vg);
@@ -172,9 +176,9 @@ HistogramModuleWidget::HistogramModuleWidget(HistogramModule* mod_)
     setModule(mod_);
     addInput(createInput<PJ301MPort>(Vec(5, 20), module, 0));
     addInput(createInput<PJ301MPort>(Vec(35, 20), module, 1));
-    m_hwid = new HistogramWidget;
-    if (mod_!=nullptr)
-        m_hwid->DataRequestFunc = [mod_](){ return mod_->getData(); };
+    addParam(createParam<RoundBlackKnob>(Vec(65, 17), module, 0));    
+    m_hwid = new HistogramWidget(mod_);
+    
     m_hwid->box.pos = Vec(5,50);
     m_hwid->box.size = Vec(box.size.x-10,300);
     addChild(m_hwid);
