@@ -433,8 +433,20 @@ RandomClockModule::RandomClockModule()
 void RandomClockModule::process(const ProcessArgs& args)
 {
     float masterdensity = params[0].getValue();
-    masterdensity = pow(masterdensity,2.0f);
-    masterdensity = rescale(masterdensity,0.0f,1.0f,0.01,200.0f);
+    if (masterdensity<0.5f)
+    {
+        masterdensity = rescale(masterdensity,0.0f,0.5f,0.0f,1.0f);
+        masterdensity = pow(masterdensity,0.7f);
+        masterdensity = rescale(masterdensity,0.0f,1.0f,0.05f,1.0f);
+    }
+    else
+    {
+        masterdensity = rescale(masterdensity,0.5f,1.0f,0.0f,1.0f);
+        masterdensity = pow(masterdensity,4.0f);
+        masterdensity = rescale(masterdensity,0.0f,1.0f,1.0f,200.0f);
+    }
+    m_curDensity = masterdensity;
+    
     for (int i=0;i<8;++i)
     {
         float multip = rescale(params[i+1].getValue(),0.0f,1.0f,0.1f,10.0f);
@@ -477,7 +489,15 @@ void RandomClockWidget::draw(const DrawArgs &args)
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Random clock", NULL);
-    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+    char buf[100];
+    if (m_mod)
+        sprintf(buf,"Xenakios %f",m_mod->m_curDensity);
+    else
+    {
+        sprintf(buf,"Xenakios");
+    }
+    
+    nvgText(args.vg, 3 , h-11, buf, NULL);
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }

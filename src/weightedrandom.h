@@ -181,6 +181,7 @@ class RandomClockModule : public rack::Module
 public:
     RandomClockModule();
     void process(const ProcessArgs& args) override;
+    float m_curDensity = 0.0f;
 private:
     RandomClock m_clocks[8];
 };
