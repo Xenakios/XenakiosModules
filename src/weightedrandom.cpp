@@ -421,7 +421,7 @@ void MatrixGridWidget::draw(const DrawArgs &args)
 
 RandomClockModule::RandomClockModule()
 {
-    config(17,1,8);
+    config(17,1,9);
     configParam(0,0.0f,1.0f,0.1); // master clock density
     float defmult = rescale(1.0f,0.1f,10.0f,0.0f,1.0f);
     for (int i=0;i<8;++i)
@@ -430,7 +430,7 @@ RandomClockModule::RandomClockModule()
         // gate len
         // >=0.0 && <=0.5 deterministic percentage 1% to 99% of clock interval
         // >0.5 && <=1.0 stochastic distribution favoring short and long values
-        configParam(i+9,0.0,1.0f,0.5f); 
+        configParam(i+9,0.0,1.0f,0.25f); 
     }
 }
 
@@ -455,10 +455,11 @@ void RandomClockModule::process(const ProcessArgs& args)
     {
         float multip = rescale(params[i+1].getValue(),0.0f,1.0f,0.1f,10.0f);
         m_clocks[i].setDensity(masterdensity*multip);
-        float glen = rescale(params[i+9].getValue(),0.0f,1.0f,0.01,0.99f);
+        float glen = params[i+9].getValue();
         m_clocks[i].setGateLen(glen);
         outputs[i].setVoltage(10.0f*m_clocks[i].process(args.sampleTime));    
     }
+    outputs[8].setVoltage(m_clocks[0].getCurrentGateLen()*5.0);
 }
 
 RandomClockWidget::RandomClockWidget(RandomClockModule* m)
@@ -475,7 +476,7 @@ RandomClockWidget::RandomClockWidget(RandomClockModule* m)
         addParam(createParam<RoundSmallBlackKnob>(Vec(65, 30+30*i), module, i+9)); 
     }
     addParam(createParam<RoundBlackKnob>(Vec(5, 30+30*8), module, 0));    
-
+    addOutput(createOutput<PJ301MPort>(Vec(45,30+30*8), module, 8));
 }
 
 void RandomClockWidget::draw(const DrawArgs &args)
