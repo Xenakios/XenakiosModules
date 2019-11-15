@@ -534,6 +534,14 @@ void ReducerModule::process(const ProcessArgs& args)
         r = reduce_min(inputs,0.0f,1.0f);
     else if (algo == ALGO_MAX)
         r = reduce_max(inputs,0.0f,1.0f);
+    else if (algo == ALGO_ROUNDROBIN)
+        r = m_rr.process(inputs);
+    else if (algo == ALGO_AND)
+        r = reduce_and(inputs,0.0f,0.0f);
+    else if (algo == ALGO_OR)
+        r = reduce_or(inputs,0.0f,0.0f);
+    else if (algo == ALGO_XOR)
+        r = reduce_xor(inputs,0.0f,0.0f);
     outputs[0].setVoltage(clamp(r,-10.0f,10.0f));
 }
 

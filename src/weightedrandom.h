@@ -287,6 +287,75 @@ inline float reduce_max(std::vector<Input>& in, float par_a, float par_b)
     return result;
 }
 
+inline float reduce_and(std::vector<Input>& in, float par_a, float par_b)
+{
+    //auto maxi = std::numeric_limits<unsigned int>::max();
+    unsigned int maxi = 65535;
+    unsigned int result = rescale(in[0].getVoltage(),-10.0f,10.0f,0.0,maxi);
+    for (size_t i=1;i<in.size();++i)
+    {
+        if (in[i].isConnected())
+        {
+            result &= (unsigned int)rescale(in[i].getVoltage(),-10.0f,10.0f,0.0,maxi);
+        }
+    }
+    return rescale(result,0,maxi,-10.0f,10.0f);
+}
+
+inline float reduce_or(std::vector<Input>& in, float par_a, float par_b)
+{
+    //auto maxi = std::numeric_limits<unsigned int>::max();
+    unsigned int maxi = 65535;
+    unsigned int result = rescale(in[0].getVoltage(),-10.0f,10.0f,0.0,maxi);
+    for (size_t i=1;i<in.size();++i)
+    {
+        if (in[i].isConnected())
+        {
+            result |= (unsigned int)rescale(in[i].getVoltage(),-10.0f,10.0f,0.0,maxi);
+        }
+    }
+    return rescale(result,0,maxi,-10.0f,10.0f);
+}
+
+inline float reduce_xor(std::vector<Input>& in, float par_a, float par_b)
+{
+    //auto maxi = std::numeric_limits<unsigned int>::max();
+    unsigned int maxi = 65535;
+    unsigned int result = rescale(in[0].getVoltage(),-10.0f,10.0f,0.0,maxi);
+    for (size_t i=1;i<in.size();++i)
+    {
+        if (in[i].isConnected())
+        {
+            result ^= (unsigned int)rescale(in[i].getVoltage(),-10.0f,10.0f,0.0,maxi);
+        }
+    }
+    return rescale(result,0,maxi,-10.0f,10.0f);
+}
+
+class RoundRobin
+{
+public:
+    RoundRobin() {}
+    inline float process(std::vector<Input>& in)
+    {
+        float r = 0.0f;
+        for (int i=0;i<in.size();++i)
+        {
+            int index = (m_curinput+i) % in.size();
+            if (in[index].isConnected())
+            {
+                r = in[index].getVoltage();
+                m_curinput = index+1;
+                break;
+            }
+        }
+        return r;
+    }
+    int m_counter = 0;
+    int m_curinput = 0;
+    float m_cur_output = 0.0f;
+};
+
 class ReducerModule : public rack::Module
 {
 public:
@@ -304,13 +373,17 @@ public:
         ALGO_MULT,
         ALGO_MIN,
         ALGO_MAX,
+        ALGO_AND,
+        ALGO_OR,
+        ALGO_XOR,
+        ALGO_ROUNDROBIN,
         ALGO_LAST
     };
     ReducerModule();
     void process(const ProcessArgs& args) override;
     
 private:
-    
+    RoundRobin m_rr;  
 };
 
 class ReducerWidget : public ModuleWidget
