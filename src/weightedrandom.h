@@ -195,7 +195,6 @@ private:
     float m_density = 1.0f;
     float m_gate_len_par = 0.25f;
     float m_cur_gate_len = 0.5f;
-    bool m_rand_gate_len = false;
 };
 
 class RandomClockModule : public rack::Module
@@ -215,5 +214,111 @@ public:
     void draw(const DrawArgs &args) override;
 private:
     RandomClockModule* m_mod = nullptr;
+};
+
+/*
+Reduce algorithms :
+-Add (mix)
+-Average
+-Multiply
+-Minimum
+-Maximum
+-...?
+*/
+
+inline float reduce_add(std::vector<Input>& in, float par_a, float par_b)
+{
+    float result = 0.0f;
+    for (size_t i=0;i<in.size();++i)
+    {
+        if (in[i].isConnected())
+            result+=in[i].getVoltage();
+    }
+    return result;
+}
+
+inline float reduce_mult(std::vector<Input>& in, float par_a, float par_b)
+{
+    float result = 1.0f;
+    for (size_t i=0;i<in.size();++i)
+    {
+        if (in[i].isConnected())
+            result*=in[i].getVoltage()*par_a;
+    }
+    return result;
+}
+
+inline float reduce_average(std::vector<Input>& in, float par_a, float par_b)
+{
+    float result = 0.0f;
+    int numconnected = 0;
+    for (size_t i=0;i<in.size();++i)
+    {
+        if (in[i].isConnected())
+        {
+            result+=in[i].getVoltage();
+            ++numconnected;
+        }
+    }
+    if (numconnected>0)
+        return result/numconnected;
+    return 0.0f;
+}
+
+inline float reduce_min(std::vector<Input>& in, float par_a, float par_b)
+{
+    float result = in[0].getVoltage();
+    for (size_t i=0;i<in.size();++i)
+    {
+        if (in[i].isConnected() && in[i].getVoltage()<result)
+            result = in[i].getVoltage();
+    }
+    return result;
+}
+
+inline float reduce_max(std::vector<Input>& in, float par_a, float par_b)
+{
+    float result = in[0].getVoltage();
+    for (size_t i=0;i<in.size();++i)
+    {
+        if (in[i].isConnected() && in[i].getVoltage()>result)
+            result = in[i].getVoltage();
+    }
+    return result;
+}
+
+class ReducerModule : public rack::Module
+{
+public:
+    enum PARS
+    {
+        PAR_ALGO,
+        PAR_A,
+        PAR_B,
+        PAR_LAST
+    };
+    enum ALGOS
+    {
+        ALGO_ADD,
+        ALGO_AVG,
+        ALGO_MULT,
+        ALGO_MIN,
+        ALGO_MAX,
+        ALGO_LAST
+    };
+    ReducerModule();
+    void process(const ProcessArgs& args) override;
+    
+private:
+    
+};
+
+class ReducerWidget : public ModuleWidget
+{
+public:
+    ReducerWidget(ReducerModule*);
+    void draw(const DrawArgs &args) override;
+private:
+    ReducerModule* m_mod = nullptr;
 };
 

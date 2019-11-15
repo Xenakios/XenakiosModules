@@ -51,6 +51,14 @@
       "tags": [
         "Random","Clock"
       ]
+    },
+    {
+      "slug": "Reduce",
+      "name": "Reduce",
+      "description": "Reduce up to 8 inputs to 1 output with a selectable algorithm",
+      "tags": [
+        "Utility","Distortion"
+      ]
     }
 
   ]

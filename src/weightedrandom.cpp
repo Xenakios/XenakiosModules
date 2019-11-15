@@ -453,11 +453,14 @@ void RandomClockModule::process(const ProcessArgs& args)
     
     for (int i=0;i<8;++i)
     {
-        float multip = rescale(params[i+1].getValue(),0.0f,1.0f,0.1f,10.0f);
-        m_clocks[i].setDensity(masterdensity*multip);
-        float glen = params[i+9].getValue();
-        m_clocks[i].setGateLen(glen);
-        outputs[i].setVoltage(10.0f*m_clocks[i].process(args.sampleTime));    
+        if (outputs[i].isConnected())
+        {
+            float multip = rescale(params[i+1].getValue(),0.0f,1.0f,0.1f,10.0f);
+            m_clocks[i].setDensity(masterdensity*multip);
+            float glen = params[i+9].getValue();
+            m_clocks[i].setGateLen(glen);
+            outputs[i].setVoltage(10.0f*m_clocks[i].process(args.sampleTime));    
+        }
     }
     outputs[8].setVoltage(m_clocks[0].getCurrentGateLen()*5.0);
 }
@@ -506,3 +509,69 @@ void RandomClockWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }
+
+ReducerModule::ReducerModule()
+{
+    config(3,8,1);
+    configParam(PAR_ALGO,0.0f,ALGO_LAST,0.0f);
+    configParam(PAR_A,0.0f,1.0f,0.0f);
+    configParam(PAR_B,0.0f,1.0f,0.0f);
+}
+
+void ReducerModule::process(const ProcessArgs& args)
+{
+    int algo = params[PAR_ALGO].getValue();
+    float p_a = params[PAR_A].getValue();
+    float p_b = params[PAR_B].getValue();
+    float r = 0.0f;
+    if (algo == ALGO_ADD)
+        r = reduce_add(inputs,0.0f,0.0f);
+    else if (algo == ALGO_AVG)
+        r = reduce_average(inputs,0.0f,0.0f);
+    else if (algo == ALGO_MULT)
+        r = reduce_mult(inputs,p_a,0.0f);
+    else if (algo == ALGO_MIN)
+        r = reduce_min(inputs,0.0f,1.0f);
+    else if (algo == ALGO_MAX)
+        r = reduce_max(inputs,0.0f,1.0f);
+    outputs[0].setVoltage(clamp(r,-10.0f,10.0f));
+}
+
+ReducerWidget::ReducerWidget(ReducerModule* m)
+{
+    if (!g_font)
+    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
+    setModule(m);
+    box.size.x = 100;
+    m_mod = m;
+    for (int i=0;i<8;++i)
+    {
+        addInput(createInput<PJ301MPort>(Vec(5,30+30*i), module, i));
+    }
+    addOutput(createOutput<PJ301MPort>(Vec(5,30+8*30), module, 0));
+    addParam(createParam<RoundBlackKnob>(Vec(5, 30+30*9), module, ReducerModule::PAR_ALGO));    
+    addParam(createParam<RoundBlackKnob>(Vec(35, 30+30*9), module, ReducerModule::PAR_A));    
+    addParam(createParam<RoundBlackKnob>(Vec(65, 30+30*9), module, ReducerModule::PAR_B));    
+}
+
+void ReducerWidget::draw(const DrawArgs &args)
+{
+    nvgSave(args.vg);
+    float w = box.size.x;
+    float h = box.size.y;
+    nvgBeginPath(args.vg);
+    nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+    nvgRect(args.vg,0.0f,0.0f,w,h);
+    nvgFill(args.vg);
+
+    nvgFontSize(args.vg, 15);
+    nvgFontFaceId(args.vg, g_font->handle);
+    nvgTextLetterSpacing(args.vg, -1);
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+    nvgText(args.vg, 3 , 10, "Reducer", NULL);
+    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+    nvgRestore(args.vg);
+    ModuleWidget::draw(args);
+}
+
+
