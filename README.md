@@ -1,6 +1,6 @@
 # XenakiosModules
 
-VCV Rack modules. To speed up development, minimal effort has been used on the GUIs.
+VCV Rack modules. To speed up development, minimal effort has been used on the GUIs. Work-in-progress : clone, build and use only at your own risk.
 
 ## WeightedRandom
 
