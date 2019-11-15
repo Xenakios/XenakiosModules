@@ -23,3 +23,14 @@ Can store up to 32 snapshots of its 8 knob positions and recalls and interpolate
 ## Random clock
 
 Produces 8 unquantized, randomly timed gate signals based on exponentially distributed time intervals.
+
+## Reduce
+
+Reduce 8 inputs to a single output with a selectable algorithm.
+
+- Add : Plain old mixing
+- Average : Add inputs and divide by number of active inputs
+- Multiply : Start with 1.0 and cumulatively multiply active inputs
+- Minimum : Minimum of active inputs
+- Maximum : Maximum of active inputs
+- Round robin : Step through inputs
