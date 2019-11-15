@@ -381,7 +381,12 @@ public:
     };
     ReducerModule();
     void process(const ProcessArgs& args) override;
-    
+    const char* getAlgoName()
+    {
+        int algo = params[PAR_ALGO].getValue();
+        static const char* algonames[]={"Add","Avg","Mult","Min","Max","And","Or","Xor","RR"};
+        return algonames[algo];
+    }
 private:
     RoundRobin m_rr;  
 };

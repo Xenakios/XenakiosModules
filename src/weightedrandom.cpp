@@ -513,7 +513,7 @@ void RandomClockWidget::draw(const DrawArgs &args)
 ReducerModule::ReducerModule()
 {
     config(3,8,1);
-    configParam(PAR_ALGO,0.0f,ALGO_LAST,0.0f);
+    configParam(PAR_ALGO,0.0f,ALGO_LAST-1,0.0f);
     configParam(PAR_A,0.0f,1.0f,0.0f);
     configParam(PAR_B,0.0f,1.0f,0.0f);
 }
@@ -550,7 +550,7 @@ ReducerWidget::ReducerWidget(ReducerModule* m)
     if (!g_font)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
-    box.size.x = 100;
+    box.size.x = 120;
     m_mod = m;
     for (int i=0;i<8;++i)
     {
@@ -558,12 +558,14 @@ ReducerWidget::ReducerWidget(ReducerModule* m)
     }
     addOutput(createOutput<PJ301MPort>(Vec(5,30+8*30), module, 0));
     addParam(createParam<RoundBlackKnob>(Vec(5, 30+30*9), module, ReducerModule::PAR_ALGO));    
-    addParam(createParam<RoundBlackKnob>(Vec(35, 30+30*9), module, ReducerModule::PAR_A));    
-    addParam(createParam<RoundBlackKnob>(Vec(65, 30+30*9), module, ReducerModule::PAR_B));    
+    addParam(createParam<RoundBlackKnob>(Vec(40, 30+30*9), module, ReducerModule::PAR_A));    
+    addParam(createParam<RoundBlackKnob>(Vec(75, 30+30*9), module, ReducerModule::PAR_B));    
 }
 
 void ReducerWidget::draw(const DrawArgs &args)
 {
+    if (m_mod == nullptr)
+        return;
     nvgSave(args.vg);
     float w = box.size.x;
     float h = box.size.y;
@@ -577,7 +579,9 @@ void ReducerWidget::draw(const DrawArgs &args)
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Reducer", NULL);
-    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+    char buf[100];
+    sprintf(buf,"Xenakios %s",m_mod->getAlgoName());
+    nvgText(args.vg, 3 , h-11, buf, NULL);
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }
