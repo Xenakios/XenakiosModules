@@ -33,4 +33,8 @@ Reduce 8 inputs to a single output with a selectable algorithm.
 - Multiply : Start with 1.0 and cumulatively multiply active inputs
 - Minimum : Minimum of active inputs
 - Maximum : Maximum of active inputs
+- And : Convert inputs to 16 bit integer and perform cumulative bitwise and
+- Or : Convert inputs to 16 bit integer and perform cumulative bitwise or
+- Xor : Convert inputs to 16 bit integer and perform cumulative bitwise xor
 - Round robin : Step through inputs
+
