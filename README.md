@@ -36,5 +36,6 @@ Reduce 8 inputs to a single output with a selectable algorithm.
 - And : Convert inputs to 16 bit integer and perform cumulative bitwise *and*
 - Or : Convert inputs to 16 bit integer and perform cumulative bitwise *or*
 - Xor : Convert inputs to 16 bit integer and perform cumulative bitwise *xor*
+- Difference : Cumulatively calculate absolute differences between the inputs and scale to -10.0 - 10.0 volts
 - Round robin : Step through inputs at audio rate
 
