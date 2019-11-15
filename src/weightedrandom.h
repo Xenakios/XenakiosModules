@@ -287,6 +287,17 @@ inline float reduce_max(std::vector<Input>& in, float par_a, float par_b)
     return result;
 }
 
+inline float reduce_difference(std::vector<Input>& in, float par_a, float par_b)
+{
+    float result = in[0].getVoltage();
+    for (size_t i=1;i<in.size();++i)
+    {
+        if (in[i].isConnected())
+            result = fabsf(result-in[i].getVoltage());
+    }
+    return rescale(result*par_a,0.0f,10.0f,-10.0f,10.0f);
+}
+
 inline float reduce_and(std::vector<Input>& in, float par_a, float par_b)
 {
     //auto maxi = std::numeric_limits<unsigned int>::max();
@@ -376,6 +387,7 @@ public:
         ALGO_AND,
         ALGO_OR,
         ALGO_XOR,
+        ALGO_DIFFERENCE,
         ALGO_ROUNDROBIN,
         ALGO_LAST
     };
@@ -384,7 +396,7 @@ public:
     const char* getAlgoName()
     {
         int algo = params[PAR_ALGO].getValue();
-        static const char* algonames[]={"Add","Avg","Mult","Min","Max","And","Or","Xor","RR"};
+        static const char* algonames[]={"Add","Avg","Mult","Min","Max","And","Or","Xor","Diff","RR"};
         return algonames[algo];
     }
 private:

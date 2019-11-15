@@ -30,11 +30,11 @@ Reduce 8 inputs to a single output with a selectable algorithm.
 
 - Add : Plain old mixing
 - Average : Add inputs and divide by number of active inputs
-- Multiply : Start with 1.0 and cumulatively multiply active inputs
+- Multiply : Cumulatively multiply active inputs (like ring modulation but with more than 2 inputs)
 - Minimum : Minimum of active inputs
 - Maximum : Maximum of active inputs
-- And : Convert inputs to 16 bit integer and perform cumulative bitwise and
-- Or : Convert inputs to 16 bit integer and perform cumulative bitwise or
-- Xor : Convert inputs to 16 bit integer and perform cumulative bitwise xor
-- Round robin : Step through inputs
+- And : Convert inputs to 16 bit integer and perform cumulative bitwise *and*
+- Or : Convert inputs to 16 bit integer and perform cumulative bitwise *or*
+- Xor : Convert inputs to 16 bit integer and perform cumulative bitwise *xor*
+- Round robin : Step through inputs at audio rate
 

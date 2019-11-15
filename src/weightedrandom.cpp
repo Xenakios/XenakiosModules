@@ -542,6 +542,8 @@ void ReducerModule::process(const ProcessArgs& args)
         r = reduce_or(inputs,0.0f,0.0f);
     else if (algo == ALGO_XOR)
         r = reduce_xor(inputs,0.0f,0.0f);
+    else if (algo == ALGO_DIFFERENCE)
+        r = reduce_difference(inputs,p_a,0.0f);
     outputs[0].setVoltage(clamp(r,-10.0f,10.0f));
 }
 
