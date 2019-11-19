@@ -91,13 +91,25 @@ public:
     };
     MatrixSwitchModule();
     void process(const ProcessArgs& args) override;
-    std::vector<connection> m_connections;
+    
     bool isConnected(int x, int y);
     void setConnected(int x, int y, bool connect);
     json_t* dataToJson() override;
     void dataFromJson(json_t* root) override;
+    std::vector<connection>& getConnections()
+    {
+        return m_connections[m_activeconnections];
+    }
 private:
-    std::atomic<bool> m_changing_state{false};
+    std::vector<connection>& getAuxCons()
+    {
+        return m_connections[(m_activeconnections+1) % 2];
+    }
+    std::atomic<int> m_state{0};
+    std::vector<connection> m_connections[2];
+    int m_activeconnections = 0;
+    int m_crossfadecounter = 0;
+    int m_crossfadelen = 44100;
 };
 
 class MatrixGridWidget : public TransparentWidget

@@ -207,7 +207,8 @@ void HistogramModuleWidget::draw(const DrawArgs &args)
 MatrixSwitchModule::MatrixSwitchModule()
 {
     config(0,18,16,0);
-    m_connections.reserve(128);
+    m_connections[0].reserve(128);
+    m_connections[1].reserve(128);
     /*
     m_connections.emplace_back(0,0);
     m_connections.emplace_back(0,5);
@@ -224,30 +225,33 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
         outputs[i].setVoltage(0.0f);
     }
     // this is very nasty, need to figure out some other way to deal with the thread safety
-    if (m_changing_state == true)
+    if (m_state == 1)
     {
         return;
     }
-    for (int i=0;i<(int)m_connections.size();++i)
+    auto renderfunc = [this](const std::vector<connection>& cons)
     {
-        int src = m_connections[i].m_src;
-        int dest = m_connections[i].m_dest;
-        float v = outputs[dest].getVoltage();
-        v += inputs[src].getVoltage();
-        outputs[dest].setVoltage(v);
-    }
-    
+        for (int i=0;i<(int)cons.size();++i)
+        {
+            int src = cons[i].m_src;
+            int dest = cons[i].m_dest;
+            float v = outputs[dest].getVoltage();
+            v += inputs[src].getVoltage();
+            outputs[dest].setVoltage(v);
+        }
+    };
+    renderfunc(m_connections[0]);
 }
 
 json_t* MatrixSwitchModule::dataToJson()
 {
     json_t* resultJ = json_object();
     json_t* arrayJ = json_array();
-    for (int i=0;i<(int)m_connections.size();++i)
+    for (int i=0;i<(int)m_connections[m_activeconnections].size();++i)
     {
         json_t* conJ = json_object();
-        json_object_set(conJ,"src",json_integer(m_connections[i].m_src));
-        json_object_set(conJ,"dest",json_integer(m_connections[i].m_dest));
+        json_object_set(conJ,"src",json_integer(m_connections[m_activeconnections][i].m_src));
+        json_object_set(conJ,"dest",json_integer(m_connections[m_activeconnections][i].m_dest));
         json_array_append(arrayJ,conJ);
     }
     json_object_set(resultJ,"connections",arrayJ);
@@ -262,16 +266,16 @@ void MatrixSwitchModule::dataFromJson(json_t* root)
     int numcons = json_array_size(arrayJ);
     if (numcons>0 && numcons<256)
     {
-        m_changing_state = true;
-        m_connections.clear();
+        m_state = 1;
+        m_connections[m_activeconnections].clear();
         for (int i=0;i<numcons;++i)
         {
             json_t* conJ = json_array_get(arrayJ,i);
             int src = json_integer_value(json_object_get(conJ,"src"));
             int dest = json_integer_value(json_object_get(conJ,"dest"));
-            m_connections.emplace_back(src,dest);
+            m_connections[m_activeconnections].emplace_back(src,dest);
         }
-        m_changing_state = false;
+        m_state = 0;
     }
 }
 
@@ -281,9 +285,9 @@ bool MatrixSwitchModule::isConnected(int x, int y)
         return false;
     if (y<0 || y>16)
         return false;
-    for (int i=0;i<(int)m_connections.size();++i)
+    for (int i=0;i<(int)m_connections[m_activeconnections].size();++i)
     {
-        if (m_connections[i].m_src == x && m_connections[i].m_dest == y)
+        if (m_connections[m_activeconnections][i].m_src == x && m_connections[m_activeconnections][i].m_dest == y)
         {
             return true;
         }
@@ -301,19 +305,19 @@ void MatrixSwitchModule::setConnected(int x, int y, bool c)
         return;
     if (c == true)
     {
-        m_changing_state = true;
-        m_connections.emplace_back(x,y);
-        m_changing_state = false;
+        m_state = 1;
+        m_connections[m_activeconnections].emplace_back(x,y);
+        m_state = 0;
     }
     if (c == false)
     {
-        for (int i=0;i<(int)m_connections.size();++i)
+        for (int i=0;i<(int)m_connections[m_activeconnections].size();++i)
         {
-            if (m_connections[i].m_src == x && m_connections[i].m_dest == y)
+            if (m_connections[m_activeconnections][i].m_src == x && m_connections[m_activeconnections][i].m_dest == y)
             {
-                m_changing_state = true;
-                m_connections.erase(m_connections.begin()+i);
-                m_changing_state = false;
+                m_state = 1;
+                m_connections[m_activeconnections].erase(m_connections[m_activeconnections].begin()+i);
+                m_state = 0;
                 return;
             }
         }
@@ -407,7 +411,7 @@ void MatrixGridWidget::draw(const DrawArgs &args)
         }
     }
     nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
-    auto& cons = m_mod->m_connections;
+    auto& cons = m_mod->getConnections();
     for (auto& con : cons)
     {
         float xcor = w/16*con.m_src;
