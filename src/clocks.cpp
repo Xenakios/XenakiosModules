@@ -93,3 +93,40 @@ void RandomClockWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }
+
+DividerClockWidget::DividerClockWidget(DivisionClockModule* m)
+{
+    if (!g_font)
+    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
+    setModule(m);
+    box.size.x = 110;
+    for (int i=0;i<8;++i)
+    {
+        addParam(createParam<RoundSmallBlackKnob>(Vec(3, 30+30*i), module, i)); 
+        addParam(createParam<RoundSmallBlackKnob>(Vec(35, 30+30*i), module, i+8)); 
+        addOutput(createOutput<PJ301MPort>(Vec(70,30+30*i), module, i));
+    }
+    
+}
+
+void DividerClockWidget::draw(const DrawArgs &args)
+{
+    nvgSave(args.vg);
+    float w = box.size.x;
+    float h = box.size.y;
+    nvgBeginPath(args.vg);
+    nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+    nvgRect(args.vg,0.0f,0.0f,w,h);
+    nvgFill(args.vg);
+
+    nvgFontSize(args.vg, 15);
+    nvgFontFaceId(args.vg, g_font->handle);
+    nvgTextLetterSpacing(args.vg, -1);
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+    nvgText(args.vg, 3 , 10, "Divider clock", NULL);
+    
+    
+    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+    nvgRestore(args.vg);
+    ModuleWidget::draw(args);
+}

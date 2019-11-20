@@ -281,5 +281,6 @@ void init(Plugin *p) {
 	p->addModel(createModel<MatrixSwitchModule,MatrixSwitchWidget>("MatrixSwitcher"));
 	p->addModel(createModel<KeyFramerModule,KeyFramerWidget>("XKeyFramer"));
 	p->addModel(createModel<RandomClockModule,RandomClockWidget>("RandomClock"));
+	p->addModel(createModel<DivisionClockModule,DividerClockWidget>("DividerClock"));
 	p->addModel(createModel<ReducerModule,ReducerWidget>("Reduce"));
 }

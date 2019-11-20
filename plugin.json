@@ -53,6 +53,14 @@
       ]
     },
     {
+      "slug": "DividerClock",
+      "name": "Divider Clock",
+      "description": "Divider Clock",
+      "tags": [
+        "Clock"
+      ]
+    },
+    {
       "slug": "Reduce",
       "name": "Reduce",
       "description": "Reduce up to 8 inputs to 1 output with a selectable algorithm",
