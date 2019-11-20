@@ -1,6 +1,7 @@
 #include "plugin.hpp"
 #include "weightedrandom.h"
 #include "keyframer.h"
+#include "clocks.h"
 #include <array>
 
 Plugin *pluginInstance;
