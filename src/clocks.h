@@ -134,7 +134,7 @@ public:
             ++m_div_counter;
             m_div_next=m_div_counter*divlen;
         }
-        else if (m_main_phase>=m_div_next-divlen*m_gate_len)
+        else if (m_main_phase>=m_div_next-divlen*(1.0-m_gate_len))
         {
             m_clock_high = false;
         }
@@ -155,6 +155,18 @@ public:
         if (div!=m_division)
             m_set_next_division = div;
     }
+    void setGateLen(float gl)
+    {
+        m_gate_len = clamp(gl,0.01f,0.99f);
+    }
+    void reset()
+    {
+        float divlen = m_main_len/m_division;
+        m_main_phase = 0.0f;
+        m_div_counter = 0;
+        m_div_next = divlen;
+        m_clock_high = true;
+    }
 private:
     float m_main_len = 1.0f;
     int m_division = 1;
@@ -173,25 +185,36 @@ class DivisionClockModule : public rack::Module
 public:
     DivisionClockModule()
     {
-        config(16,0,8);
+        config(24,1,8);
         for (int i=0;i<8;++i)
             configParam(i,1.0f,32.0f,4.0f,"Main div");
         for (int i=0;i<8;++i)
             configParam(8+i,1.0f,32.0f,1.0f,"Sub div");
+        for (int i=0;i<8;++i)
+            configParam(16+i,0.01f,0.99f,0.5f,"Gate len");
     }
     void process(const ProcessArgs& args) override
     {
-        const float bpm = 120.0f;
+        if (m_reset_trig.process(inputs[0].getVoltage()))
+        {
+            for (int i=0;i<8;++i)
+            {
+                m_clocks[i].reset();
+            }
+        }
+        const float bpm = 60.0f;
         for (int i=0;i<8;++i)
         {
             float len = 60.0f/bpm/4.0f*(int)params[i].getValue();
             int div = params[i+8].getValue();
             m_clocks[i].setParams(len,div,false);
+            m_clocks[i].setGateLen(params[i+16].getValue());
             outputs[i].setVoltage(m_clocks[i].process(args.sampleTime)*10.0f);
         }
     }
 private:
     DividerClock m_clocks[8];
+    dsp::SchmittTrigger m_reset_trig;
 };
 
 class DividerClockWidget : public ModuleWidget
