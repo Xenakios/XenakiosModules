@@ -24,6 +24,10 @@ Can store up to 32 snapshots of its 8 knob positions and recalls and interpolate
 
 Produces 8 unquantized, randomly timed gate signals based on exponentially distributed time intervals.
 
+## Poly clock
+
+Produces up to 8 gate signals based on dividing N sixteenth notes by M divisions.  
+
 ## Reduce
 
 Reduce 8 inputs to a single output with a selectable algorithm.
