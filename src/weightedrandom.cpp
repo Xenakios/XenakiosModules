@@ -206,6 +206,8 @@ void HistogramModuleWidget::draw(const DrawArgs &args)
 
 MatrixSwitchModule::MatrixSwitchModule()
 {
+    m_curoutputs.resize(32);
+    m_cd.setDivision(256);
     config(0,18,16,0);
     m_connections[0].reserve(128);
     m_connections[1].reserve(128);
@@ -222,25 +224,44 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
 {
     for (int i=0;i<(int)outputs.size();++i)
     {
-        outputs[i].setVoltage(0.0f);
+        //outputs[i].setVoltage(0.0f);
+        m_curoutputs[i]=0.0f;
     }
     // this is very nasty, need to figure out some other way to deal with the thread safety
     if (m_state == 1)
     {
-        return;
+        //return;
     }
-    auto renderfunc = [this](const std::vector<connection>& cons)
+    auto renderfunc = [this](const std::vector<connection>& cons, int xfade=0)
     {
+        float xfadegain = 1.0f;
+        if (xfade == 1)
+            xfadegain = 1.0f-1.0f/m_crossfadelen*m_crossfadecounter;
+        else if (xfade == 2)
+            xfadegain = 1.0f/m_crossfadelen*m_crossfadecounter;
         for (int i=0;i<(int)cons.size();++i)
         {
             int src = cons[i].m_src;
             int dest = cons[i].m_dest;
-            float v = outputs[dest].getVoltage();
+            float v = m_curoutputs[dest];
             v += inputs[src].getVoltage();
-            outputs[dest].setVoltage(v);
+            m_curoutputs[dest]=v;
         }
     };
-    renderfunc(m_connections[0]);
+    if (m_state < 2)
+    {
+        renderfunc(m_connections[0],0);
+    }
+    if (m_state == 2)
+    {
+        
+        ++m_crossfadecounter;
+        if (m_crossfadecounter==m_crossfadelen)
+        {
+            m_crossfadecounter = 0;
+            m_state = 0;
+        }
+    }
 }
 
 json_t* MatrixSwitchModule::dataToJson()
@@ -306,8 +327,9 @@ void MatrixSwitchModule::setConnected(int x, int y, bool c)
     if (c == true)
     {
         m_state = 1;
-        m_connections[m_activeconnections].emplace_back(x,y);
-        m_state = 0;
+        m_connections[1]=m_connections[0];
+        m_connections[1].emplace_back(x,y);
+        m_state = 2; 
     }
     if (c == false)
     {
@@ -316,8 +338,9 @@ void MatrixSwitchModule::setConnected(int x, int y, bool c)
             if (m_connections[m_activeconnections][i].m_src == x && m_connections[m_activeconnections][i].m_dest == y)
             {
                 m_state = 1;
-                m_connections[m_activeconnections].erase(m_connections[m_activeconnections].begin()+i);
-                m_state = 0;
+                m_connections[1]=m_connections[0];
+                m_connections[1].erase(m_connections[1].begin()+i);
+                m_state = 2;
                 return;
             }
         }
@@ -488,6 +511,7 @@ RandomClockWidget::RandomClockWidget(RandomClockModule* m)
 
 void RandomClockWidget::draw(const DrawArgs &args)
 {
+    
     nvgSave(args.vg);
     float w = box.size.x;
     float h = box.size.y;

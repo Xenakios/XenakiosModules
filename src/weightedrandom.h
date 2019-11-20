@@ -105,11 +105,13 @@ private:
     {
         return m_connections[(m_activeconnections+1) % 2];
     }
-    std::atomic<int> m_state{0};
+    std::atomic<int> m_state{0}; // 0 idle, 1 set up new connections, 2 crossfade
     std::vector<connection> m_connections[2];
     int m_activeconnections = 0;
     int m_crossfadecounter = 0;
     int m_crossfadelen = 44100;
+    dsp::ClockDivider m_cd;
+    std::vector<float> m_curoutputs;
 };
 
 class MatrixGridWidget : public TransparentWidget
