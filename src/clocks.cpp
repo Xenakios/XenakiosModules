@@ -99,13 +99,14 @@ DividerClockWidget::DividerClockWidget(DivisionClockModule* m)
     if (!g_font)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
-    box.size.x = 140;
+    box.size.x = 170;
     for (int i=0;i<8;++i)
     {
         addParam(createParam<RoundSmallBlackKnob>(Vec(5, 30+30*i), module, i)); 
         addParam(createParam<RoundSmallBlackKnob>(Vec(35, 30+30*i), module, i+8)); 
         addParam(createParam<RoundSmallBlackKnob>(Vec(65, 30+30*i), module, i+16)); 
         addOutput(createOutput<PJ301MPort>(Vec(100,30+30*i), module, i));
+        addOutput(createOutput<PJ301MPort>(Vec(130,30+30*i), module, i+8));
     }
     addInput(createInput<PJ301MPort>(Vec(5,30+30*8), module, 0));
 }

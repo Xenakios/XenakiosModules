@@ -167,6 +167,12 @@ public:
         m_div_next = divlen;
         m_clock_high = true;
     }
+    float mainClockHigh()
+    {
+        if (m_main_phase>=0.0f && m_main_phase<0.01)
+            return 1.0f;
+        return 0.0f;
+    }
 private:
     float m_main_len = 1.0f;
     int m_division = 1;
@@ -185,7 +191,7 @@ class DivisionClockModule : public rack::Module
 public:
     DivisionClockModule()
     {
-        config(24,1,8);
+        config(24,1,16);
         for (int i=0;i<8;++i)
             configParam(i,1.0f,32.0f,4.0f,"Main div");
         for (int i=0;i<8;++i)
@@ -210,6 +216,7 @@ public:
             m_clocks[i].setParams(len,div,false);
             m_clocks[i].setGateLen(params[i+16].getValue());
             outputs[i].setVoltage(m_clocks[i].process(args.sampleTime)*10.0f);
+            outputs[i+8].setVoltage(m_clocks[i].mainClockHigh()*10.0f);
         }
     }
 private:
