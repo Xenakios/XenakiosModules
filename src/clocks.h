@@ -117,11 +117,13 @@ public:
             {
                 m_division = m_set_next_division;
                 m_set_next_division = -1;
+                divlen = m_main_len/m_division;
             }
             if (m_set_next_main_len>0.0f)
             {
                 m_main_len = m_set_next_main_len;
                 m_set_next_main_len = -1.0f;
+                divlen = m_main_len/m_division;
             }
             m_main_phase = 0.0f;
             m_div_counter = 0;
@@ -189,15 +191,17 @@ private:
 class DivisionClockModule : public rack::Module
 {
 public:
+    
     DivisionClockModule()
     {
-        config(24,1,16);
+        config(25,25,16);
         for (int i=0;i<8;++i)
             configParam(i,1.0f,32.0f,4.0f,"Main div");
         for (int i=0;i<8;++i)
             configParam(8+i,1.0f,32.0f,1.0f,"Sub div");
         for (int i=0;i<8;++i)
             configParam(16+i,0.01f,0.99f,0.5f,"Gate len");
+        configParam(24,30.0f,240.0f,60.0f,"BPM");
     }
     void process(const ProcessArgs& args) override
     {
@@ -208,13 +212,18 @@ public:
                 m_clocks[i].reset();
             }
         }
-        const float bpm = 60.0f;
+        const float bpm = params[24].getValue();
         for (int i=0;i<8;++i)
         {
-            float len = 60.0f/bpm/4.0f*(int)params[i].getValue();
-            int div = params[i+8].getValue();
+            float v = params[i].getValue()+rescale(inputs[i+1].getVoltage(),0.0,10.0f,0.0,31.0f);
+            v = clamp(v,1.0,32.0);
+            float len = 60.0f/bpm/4.0f*(int)v;
+            v = params[i+8].getValue()+rescale(inputs[i+9].getVoltage(),0.0,10.0f,0.0,31.0f);
+            v = clamp(v,1.0,32.0);
+            int div = v;
             m_clocks[i].setParams(len,div,false);
-            m_clocks[i].setGateLen(params[i+16].getValue());
+            v = params[i+16].getValue()+rescale(inputs[i+17].getVoltage(),0.0,10.0f,0.0,0.99f);
+            m_clocks[i].setGateLen(v); // clamped in the clock method
             outputs[i].setVoltage(m_clocks[i].process(args.sampleTime)*10.0f);
             outputs[i+8].setVoltage(m_clocks[i].mainClockHigh()*10.0f);
         }
