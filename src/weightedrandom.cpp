@@ -512,8 +512,6 @@ ReducerWidget::ReducerWidget(ReducerModule* m)
 
 void ReducerWidget::draw(const DrawArgs &args)
 {
-    if (m_mod == nullptr)
-        return;
     nvgSave(args.vg);
     float w = box.size.x;
     float h = box.size.y;
@@ -528,7 +526,9 @@ void ReducerWidget::draw(const DrawArgs &args)
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Reducer", NULL);
     char buf[100];
-    sprintf(buf,"Xenakios %s",m_mod->getAlgoName());
+    if (m_mod)
+        sprintf(buf,"Xenakios %s",m_mod->getAlgoName());
+    else sprintf(buf,"Xenakios");
     nvgText(args.vg, 3 , h-11, buf, NULL);
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
