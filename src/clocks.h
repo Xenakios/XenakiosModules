@@ -177,7 +177,7 @@ public:
         return m_cur_output;
     }
 #endif
-    void setParams(float mainlen, int div, float offset,bool immediate)
+    void setParams(float mainlen, float div, float offset,bool immediate)
     {
         //if (immediate)
         {
@@ -213,7 +213,7 @@ public:
     }
 private:
     float m_main_len = 1.0f;
-    int m_division = 1;
+    float m_division = 1.0f;
     float m_main_phase = 0.0f;
     float m_phase_offset = 0.0f;
     float m_div_next = 0.0f;
@@ -269,7 +269,7 @@ public:
                     float len = 60.0f/bpm/4.0f*(int)v;
                     v = params[i+8].getValue()+rescale(inputs[i+9].getVoltage(),0.0,10.0f,0.0,31.0f);
                     v = clamp(v,1.0,32.0);
-                    int div = v;
+                    float div = v;
                     float offs = params[i+24].getValue();
                     m_clocks[i].setParams(len,div,offs,false);
                     v = params[i+16].getValue()+rescale(inputs[i+17].getVoltage(),0.0,10.0f,0.0,0.99f);
