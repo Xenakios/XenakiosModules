@@ -446,12 +446,22 @@ void MatrixGridWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
 }
 
+class MyParam : public ParamQuantity
+{
+public:
+    MyParam() : ParamQuantity() {}
+    float getDisplayValue() override
+    {
+        return getValue();
+    }
+};
+
 ReducerModule::ReducerModule()
 {
     config(3,8,1);
     configParam(PAR_ALGO,0.0f,ALGO_LAST-1,0.0f);
     configParam(PAR_A,0.0f,1.0f,0.0f);
-    configParam(PAR_B,0.0f,1.0f,0.0f);
+    configParam<MyParam>(PAR_B,0.0f,1.0f,0.0f);
 }
 
 void ReducerModule::process(const ProcessArgs& args)
