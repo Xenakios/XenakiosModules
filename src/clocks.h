@@ -172,7 +172,7 @@ public:
         //if (m_cd.process())
         {
             float divhz = 1.0f/(m_main_len/m_division);
-            m_cur_output = pulse_wave(divhz,m_gate_len,m_main_phase+m_phase_offset);
+            m_cur_output = pulse_wave(divhz,m_gate_len,m_main_phase+m_phase_offset*m_main_len);
         }
         return m_cur_output;
     }
@@ -266,7 +266,7 @@ public:
                 {
                     float v = params[i].getValue()+rescale(inputs[i+1].getVoltage(),0.0,10.0f,0.0,31.0f);
                     v = clamp(v,1.0,32.0);
-                    float len = 60.0f/bpm/4.0f*(int)v;
+                    float len = 60.0f/bpm/4.0f*v;
                     v = params[i+8].getValue()+rescale(inputs[i+9].getVoltage(),0.0,10.0f,0.0,31.0f);
                     v = clamp(v,1.0,32.0);
                     float div = v;
