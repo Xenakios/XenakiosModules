@@ -103,10 +103,22 @@ private:
     RandomClockModule* m_mod = nullptr;
 };
 
+inline float pulse_wave(float frequency, float duty, float phase)
+{
+    phase = std::fmod(phase*frequency,1.0f);
+    if (phase<duty)
+        return 1.0f;
+    return 0.0f;
+}
+
 class DividerClock
 {
 public:
-    DividerClock() {}
+    DividerClock() 
+    {
+        m_cd.setDivision(32);
+    }
+#ifdef XOLD_CLOCK_CODE
     float process(float timedelta)
     {
         float divlen = m_main_len/m_division;
@@ -124,6 +136,11 @@ public:
                 m_main_len = m_set_next_main_len;
                 m_set_next_main_len = -1.0f;
                 divlen = m_main_len/m_division;
+            }
+            if (m_set_next_offset>=0.0f)
+            {
+                m_phase_offset = m_set_next_offset;
+                m_set_next_offset = -1.0f;
             }
             m_main_phase = 0.0f;
             m_div_counter = 0;
@@ -144,18 +161,37 @@ public:
             return 1.0f;
         return 0.0f;
     }
-    void setParams(float mainlen, int div, bool immediate)
+#else
+    float process(float timedelta)
     {
-        if (immediate)
+        m_main_phase+=timedelta;
+        if (m_main_phase>=m_main_len)
+        {
+            m_main_phase = 0.0f;
+        }
+        //if (m_cd.process())
+        {
+            float divhz = 1.0f/(m_main_len/m_division);
+            m_cur_output = pulse_wave(divhz,m_gate_len,m_main_phase+m_phase_offset);
+        }
+        return m_cur_output;
+    }
+#endif
+    void setParams(float mainlen, int div, float offset,bool immediate)
+    {
+        //if (immediate)
         {
             m_main_len = mainlen;
             m_division = div;
+            m_phase_offset = rescale(offset,0.0f,1.0f,0.0f,m_main_len);
             return;
         }
         if (mainlen!=m_main_len)
             m_set_next_main_len = mainlen;
         if (div!=m_division)
             m_set_next_division = div;
+        if (offset!=m_set_next_offset)
+            m_set_next_offset = clamp(offset,0.0f,0.99f);
     }
     void setGateLen(float gl)
     {
@@ -179,6 +215,7 @@ private:
     float m_main_len = 1.0f;
     int m_division = 1;
     float m_main_phase = 0.0f;
+    float m_phase_offset = 0.0f;
     float m_div_next = 0.0f;
     int m_div_counter = 0;
     
@@ -186,6 +223,9 @@ private:
     bool m_clock_high = true;
     float m_set_next_main_len = -1.0f;
     int m_set_next_division = -1;
+    float m_set_next_offset = -1.0f;
+    dsp::ClockDivider m_cd;
+    float m_cur_output = 0.0f;
 };
 
 class DivisionClockModule : public rack::Module
@@ -194,17 +234,21 @@ public:
     
     DivisionClockModule()
     {
-        config(25,25,16);
+        m_cd.setDivision(128);
+        config(33,25,16);
         for (int i=0;i<8;++i)
             configParam(i,1.0f,32.0f,4.0f,"Main div");
         for (int i=0;i<8;++i)
             configParam(8+i,1.0f,32.0f,1.0f,"Sub div");
         for (int i=0;i<8;++i)
             configParam(16+i,0.01f,0.99f,0.5f,"Gate len");
-        configParam(24,30.0f,240.0f,60.0f,"BPM");
+        for (int i=0;i<8;++i)
+            configParam(24+i,0.0f,1.0f,0.0f,"Phase offset");
+        configParam(32,30.0f,240.0f,60.0f,"BPM");
     }
     void process(const ProcessArgs& args) override
     {
+        
         if (m_reset_trig.process(inputs[0].getVoltage()))
         {
             for (int i=0;i<8;++i)
@@ -212,25 +256,35 @@ public:
                 m_clocks[i].reset();
             }
         }
-        const float bpm = params[24].getValue();
+        const float bpm = params[32].getValue();
+        bool updateparams = m_cd.process();
         for (int i=0;i<8;++i)
         {
-            float v = params[i].getValue()+rescale(inputs[i+1].getVoltage(),0.0,10.0f,0.0,31.0f);
-            v = clamp(v,1.0,32.0);
-            float len = 60.0f/bpm/4.0f*(int)v;
-            v = params[i+8].getValue()+rescale(inputs[i+9].getVoltage(),0.0,10.0f,0.0,31.0f);
-            v = clamp(v,1.0,32.0);
-            int div = v;
-            m_clocks[i].setParams(len,div,false);
-            v = params[i+16].getValue()+rescale(inputs[i+17].getVoltage(),0.0,10.0f,0.0,0.99f);
-            m_clocks[i].setGateLen(v); // clamped in the clock method
-            outputs[i].setVoltage(m_clocks[i].process(args.sampleTime)*10.0f);
-            outputs[i+8].setVoltage(m_clocks[i].mainClockHigh()*10.0f);
+            //if (outputs[i].isConnected() || outputs[i+8].isConnected())
+            {
+                if (updateparams)
+                {
+                    float v = params[i].getValue()+rescale(inputs[i+1].getVoltage(),0.0,10.0f,0.0,31.0f);
+                    v = clamp(v,1.0,32.0);
+                    float len = 60.0f/bpm/4.0f*(int)v;
+                    v = params[i+8].getValue()+rescale(inputs[i+9].getVoltage(),0.0,10.0f,0.0,31.0f);
+                    v = clamp(v,1.0,32.0);
+                    int div = v;
+                    float offs = params[i+24].getValue();
+                    m_clocks[i].setParams(len,div,offs,false);
+                    v = params[i+16].getValue()+rescale(inputs[i+17].getVoltage(),0.0,10.0f,0.0,0.99f);
+                    m_clocks[i].setGateLen(v); // clamped in the clock method
+                }
+                outputs[i].setVoltage(m_clocks[i].process(args.sampleTime)*10.0f);
+                outputs[i+8].setVoltage(m_clocks[i].mainClockHigh()*10.0f);
+            }
         }
+        
     }
 private:
     DividerClock m_clocks[8];
     dsp::SchmittTrigger m_reset_trig;
+    dsp::ClockDivider m_cd;
 };
 
 class DividerClockWidget : public ModuleWidget

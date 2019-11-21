@@ -99,7 +99,7 @@ DividerClockWidget::DividerClockWidget(DivisionClockModule* m)
     if (!g_font)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
-    box.size.x = 250;
+    box.size.x = 290;
     for (int i=0;i<8;++i)
     {
         addParam(createParam<RoundSmallBlackKnob>(Vec(5, 30+30*i), module, i)); 
@@ -108,11 +108,12 @@ DividerClockWidget::DividerClockWidget(DivisionClockModule* m)
         addInput(createInput<PJ301MPort>(Vec(95,30+30*i), module, i+9));
         addParam(createParam<RoundSmallBlackKnob>(Vec(125, 30+30*i), module, i+16)); 
         addInput(createInput<PJ301MPort>(Vec(155,30+30*i), module, i+17));
-        addOutput(createOutput<PJ301MPort>(Vec(185,30+30*i), module, i));
-        addOutput(createOutput<PJ301MPort>(Vec(215,30+30*i), module, i+8));
+        addParam(createParam<RoundSmallBlackKnob>(Vec(185, 30+30*i), module, i+24)); 
+        addOutput(createOutput<PJ301MPort>(Vec(225,30+30*i), module, i));
+        addOutput(createOutput<PJ301MPort>(Vec(255,30+30*i), module, i+8));
     }
     addInput(createInput<PJ301MPort>(Vec(5,30+30*8), module, 0));
-    addParam(createParam<RoundLargeBlackKnob>(Vec(65, 30+30*8), module, 24)); 
+    addParam(createParam<RoundLargeBlackKnob>(Vec(65, 30+30*8), module, 32)); 
 }
 
 void DividerClockWidget::draw(const DrawArgs &args)
@@ -122,7 +123,7 @@ void DividerClockWidget::draw(const DrawArgs &args)
     float h = box.size.y;
     nvgBeginPath(args.vg);
     nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
-    nvgRoundedRect (args.vg,0.0f,0.0f,w,h,10.0f);
+    nvgRect (args.vg,0.0f,0.0f,w,h);
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
