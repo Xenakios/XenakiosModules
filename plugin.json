@@ -67,6 +67,14 @@
       "tags": [
         "Utility","Distortion"
       ]
+    },
+    {
+      "slug": "DecahexCVTransformer",
+      "name": "DecahexCVTransformer",
+      "description": "Transforms up to 16 input voltages",
+      "tags": [
+        "Utility"
+      ]
     }
 
   ]

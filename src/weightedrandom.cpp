@@ -234,11 +234,13 @@ void MatrixSwitchModule::process(const ProcessArgs& args)
     }
     auto renderfunc = [this](const std::vector<connection>& cons, int xfade=0)
     {
+        /*
         float xfadegain = 1.0f;
         if (xfade == 1)
             xfadegain = 1.0f-1.0f/m_crossfadelen*m_crossfadecounter;
         else if (xfade == 2)
             xfadegain = 1.0f/m_crossfadelen*m_crossfadecounter;
+        */
         for (int i=0;i<(int)cons.size();++i)
         {
             int src = cons[i].m_src;
@@ -468,7 +470,7 @@ void ReducerModule::process(const ProcessArgs& args)
 {
     int algo = params[PAR_ALGO].getValue();
     float p_a = params[PAR_A].getValue();
-    float p_b = params[PAR_B].getValue();
+    //float p_b = params[PAR_B].getValue();
     float r = 0.0f;
     if (algo == ALGO_ADD)
         r = reduce_add(inputs,0.0f,0.0f);
