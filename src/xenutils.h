@@ -8,6 +8,11 @@
 class DecahexCVTransformer : public rack::Module
 {
 public:
+    enum TransformTypes
+    {
+        Linear,
+        Steps
+    };
     enum Pars
     {
         ENUMS(INLOW,16),
@@ -49,6 +54,14 @@ public:
                 float v = rescale(inputs[i].getVoltage(),
                     params[INLOW+i].getValue(),params[INHIGH+i].getValue(),
                     0.0f,1.0f);
+                float par_a = params[TRANSFORMPARA+i].getValue();
+                float par_b = params[TRANSFORMPARB+i].getValue();
+                int ttype = params[TRANSFORMTYPE+i].getValue();
+                if (ttype==Steps)
+                {
+                    int numsteps = 1+par_a*99;
+                    v = round(v*(int)numsteps)/(int)numsteps;
+                }
                 v = (v-0.5f)*2.0f*params[OUTGAIN+i].getValue()*10.0f;
                 v += params[OUTOFFSET+i].getValue();
                 v = clamp(v,-10.0f,10.0f);
