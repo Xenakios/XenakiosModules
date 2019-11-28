@@ -285,4 +285,5 @@ void init(Plugin *p) {
 	p->addModel(createModel<DivisionClockModule,DividerClockWidget>("DividerClock"));
 	p->addModel(createModel<ReducerModule,ReducerWidget>("Reduce"));
 	p->addModel(createModel<DecahexCVTransformer,DecahexCVTransformerWidget>("DecahexCVTransformer"));
+	
 }
