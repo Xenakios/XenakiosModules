@@ -4,7 +4,7 @@ extern std::shared_ptr<Font> g_font;
 
 RandomClockModule::RandomClockModule()
 {
-    config(17,1,9);
+    config(17,1,16);
     configParam(0,0.0f,1.0f,0.1); // master clock density
     float defmult = rescale(1.0f,0.1f,10.0f,0.0f,1.0f);
     for (int i=0;i<8;++i)
@@ -44,8 +44,12 @@ void RandomClockModule::process(const ProcessArgs& args)
             m_clocks[i].setGateLen(glen);
             outputs[i].setVoltage(10.0f*m_clocks[i].process(args.sampleTime));    
         }
+        if (outputs[i+8].isConnected())
+        {
+            outputs[i+8].setVoltage(m_clocks[i].getCurrentInterval());
+        }
     }
-    outputs[8].setVoltage(m_clocks[0].getCurrentGateLen()*5.0);
+    
 }
 
 RandomClockWidget::RandomClockWidget(RandomClockModule* m)
@@ -53,16 +57,17 @@ RandomClockWidget::RandomClockWidget(RandomClockModule* m)
     if (!g_font)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
-    box.size.x = 100;
+    box.size.x = 130;
     m_mod = m;
     for (int i=0;i<8;++i)
     {
         addOutput(createOutput<PJ301MPort>(Vec(5,30+30*i), module, i));
         addParam(createParam<RoundSmallBlackKnob>(Vec(35, 30+30*i), module, i+1)); 
         addParam(createParam<RoundSmallBlackKnob>(Vec(65, 30+30*i), module, i+9)); 
+        addOutput(createOutput<PJ301MPort>(Vec(95,30+30*i), module, i+8));
     }
     addParam(createParam<RoundBlackKnob>(Vec(5, 30+30*8), module, 0));    
-    addOutput(createOutput<PJ301MPort>(Vec(45,30+30*8), module, 8));
+    
 }
 
 void RandomClockWidget::draw(const DrawArgs &args)

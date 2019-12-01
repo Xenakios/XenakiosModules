@@ -75,6 +75,10 @@ public:
         return result;
     }
     float getCurrentGateLen() { return m_cur_gate_len; }
+    float getCurrentInterval() 
+    { 
+        return clamp(m_cur_interval,0.0f,10.0f);
+    } 
 private:
     bool m_clock_high = true;
     float m_phase = 0.0f;
