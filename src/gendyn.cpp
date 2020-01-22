@@ -5,14 +5,14 @@ extern std::shared_ptr<Font> g_font;
 GendynModule::GendynModule()
 {
     config(PARAMS::LASTPAR,0,1);
-    configParam(PAR_NumSegments,2.0,64.0,10.0);
+    configParam(PAR_NumSegments,3.0,64.0,10.0);
     configParam(PAR_TimeDeviation,0.0,5.0,0.1);
 }
     
 void GendynModule::process(const ProcessArgs& args)
 {
     float outsample = 0.0f;
-    m_osc.m_num_segs = params[PAR_NumSegments].getValue();
+    m_osc.setNumSegments(params[PAR_NumSegments].getValue());
     m_osc.m_time_dev = params[PAR_TimeDeviation].getValue();
     m_osc.process(&outsample,1);
     outputs[0].setVoltage(outsample*10.0f);

@@ -143,6 +143,15 @@ public:
 	float m_amp_secondary_high_barrier = 0.2;
 	float m_amp_mean = 0.0f;
 	float m_amp_dev = 0.01;
+    void setNumSegments(int n)
+    {
+        if (n!=m_num_segs)
+        {
+            m_num_segs = clamp(n,3,64);
+            m_cur_node = 0;
+            m_phase = 0.0;
+        }
+    }
 private:
 	int m_cur_node = 0;
 	double m_phase = 0.0;
