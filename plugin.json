@@ -75,6 +75,14 @@
       "tags": [
         "Utility"
       ]
+    },
+    {
+      "slug": "GendynOsc",
+      "name": "GendynOsc",
+      "description": "Iannis Xenakis stochastic synthesis",
+      "tags": [
+        "Oscillator"
+      ]
     }
 
 

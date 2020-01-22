@@ -3,6 +3,7 @@
 #include "keyframer.h"
 #include "clocks.h"
 #include "xenutils.h"
+#include "gendyn.h"
 #include <array>
 
 Plugin *pluginInstance;
@@ -285,5 +286,6 @@ void init(Plugin *p) {
 	p->addModel(createModel<DivisionClockModule,DividerClockWidget>("DividerClock"));
 	p->addModel(createModel<ReducerModule,ReducerWidget>("Reduce"));
 	p->addModel(createModel<DecahexCVTransformer,DecahexCVTransformerWidget>("DecahexCVTransformer"));
+	p->addModel(createModel<GendynModule,GendynWidget>("GendynOsc"));
 	
 }
