@@ -151,8 +151,11 @@ public:
         if (n!=m_num_segs)
         {
             m_num_segs = clamp(n,3,64);
-            m_cur_node = 0;
-            m_phase = 0.0;
+            if (m_num_segs>=m_cur_node)
+			{
+				m_cur_node = 0;
+            	m_phase = 0.0;
+			}
         }
     }
 	float m_sampleRate = 44100.0f;

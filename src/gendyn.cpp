@@ -69,9 +69,12 @@ void GendynWidget::draw(const DrawArgs &args)
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "GenDyn", NULL);
     nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
-    for (int i=0;i<module->paramQuantities.size();++i)
+    if (module)
     {
-        nvgText(args.vg, 70 , 50+i*30, module->paramQuantities[i]->getLabel().c_str(), NULL);
+        for (int i=0;i<module->paramQuantities.size();++i)
+        {
+            nvgText(args.vg, 70 , 50+i*30, module->paramQuantities[i]->getLabel().c_str(), NULL);
+        }
     }
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
