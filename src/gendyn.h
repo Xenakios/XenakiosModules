@@ -110,6 +110,7 @@ public:
 	{
 		std::normal_distribution<float> timedist(m_time_mean, m_time_dev);
 		std::normal_distribution<float> ampdist(m_amp_mean, m_amp_dev);
+		float segAcc = 0.0f;
 		for (int i = 0; i < m_num_segs; ++i)
 		{
 			float x_p = m_nodes[i].m_x_prim;
@@ -120,6 +121,7 @@ public:
 			x_s = reflect_value(m_time_secondary_low_barrier, x_s, m_time_secondary_high_barrier);
 			m_nodes[i].m_x_prim = x_p;
 			m_nodes[i].m_x_sec = x_s;
+			segAcc+=m_nodes[i].m_x_sec;
 			float y_p = m_nodes[i].m_y_prim;
 			y_p += ampdist(m_rand);
 			y_p = clamp(y_p,m_amp_primary_low_barrier, m_amp_primary_high_barrier);
@@ -129,6 +131,7 @@ public:
 			m_nodes[i].m_y_prim = y_p;
 			m_nodes[i].m_y_sec = y_s;
 		}
+		m_curFrequency = m_sampleRate/segAcc;
 	}
 	int m_num_segs = 11;
 	float m_time_primary_low_barrier = -1.0;
@@ -152,6 +155,8 @@ public:
             m_phase = 0.0;
         }
     }
+	float m_sampleRate = 44100.0f;
+	float m_curFrequency = 1.0f;
 private:
 	int m_cur_node = 0;
 	double m_phase = 0.0;
