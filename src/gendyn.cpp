@@ -33,8 +33,8 @@ void GendynModule::process(const ProcessArgs& args)
     m_osc.process(&outsample,1);
     outputs[0].setVoltage(outsample*10.0f);
     float estimFreq = m_osc.m_curFrequency;
-    float cents = 1200.0*3.322038403*custom_log(estimFreq/256.0,10.0);
-    float volts = rescale(cents,-4800.0,4800.0,-5.0,5.0);
+    float cents = 1200.0*3.322038403*custom_log(estimFreq/rack::dsp::FREQ_C4,10.0);
+    float volts = rescale(cents,-6000.0,6000.0,-5.0,5.0);
     volts = clamp(volts,-5.0,5.0);
     outputs[1].setVoltage(volts);
 }
