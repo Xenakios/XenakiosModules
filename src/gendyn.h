@@ -6,6 +6,12 @@
 #include <atomic>
 #include <random>
 
+inline double custom_log(double value, double base)
+{
+    return std::log(value)/std::log(base);
+}
+
+
 enum Distributions
 	{
 		DIST_Uniform,
@@ -183,7 +189,10 @@ public:
 			m_nodes[i].m_y_prim = y_p;
 			m_nodes[i].m_y_sec = y_s;
 		}
-		m_curFrequency = m_sampleRate/segAcc;
+		float freq = m_sampleRate/segAcc;
+		float volts = custom_log(freq/rack::dsp::FREQ_C4,2.0f);
+        m_curFrequencyVolts = clamp(volts,-5.0,5.0);
+		
 	}
 	int m_num_segs = 11;
 	float m_time_primary_low_barrier = -1.0;
@@ -200,6 +209,7 @@ public:
 	float m_amp_dev = 0.01;
 	int m_timeResetMode = RM_Avg;
 	int m_ampResetMode = RM_Zeros;
+	float m_curFrequencyVolts = 0.0f;
     void setNumSegments(int n)
     {
         if (n!=m_num_segs)
@@ -216,7 +226,7 @@ public:
         }
     }
 	float m_sampleRate = 44100.0f;
-	float m_curFrequency = 1.0f;
+	
 private:
 	int m_cur_node = 0;
 	double m_phase = 0.0;

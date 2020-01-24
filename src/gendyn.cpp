@@ -2,11 +2,6 @@
 
 extern std::shared_ptr<Font> g_font;
 
-inline double custom_log(double value, double base)
-{
-    return std::log(value)/std::log(base);
-}
-
 GendynModule::GendynModule()
 {
     for (int i=0;i<16;++i)
@@ -58,9 +53,8 @@ void GendynModule::process(const ProcessArgs& args)
         m_oscs[i].m_time_primary_low_barrier = bar0;
         m_oscs[i].m_time_primary_high_barrier = bar1;
         m_oscs[i].process(&outsample,1);
-        float volts = custom_log(m_oscs[i].m_curFrequency/rack::dsp::FREQ_C4,2.0f);
-        volts = clamp(volts,-5.0,5.0);
-        outputs[1].setVoltage(volts,i);
+        
+        outputs[1].setVoltage(m_oscs[i].m_curFrequencyVolts,i);
         outputs[0].setVoltage(outsample*10.0f,i);
     }
     
