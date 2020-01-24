@@ -32,9 +32,10 @@ void GendynModule::process(const ProcessArgs& args)
     m_osc.m_time_secondary_high_barrier = bar1;
     m_osc.process(&outsample,1);
     outputs[0].setVoltage(outsample*10.0f);
-    float estimFreq = m_osc.m_curFrequency;
-    float cents = 1200.0*3.322038403*custom_log(estimFreq/rack::dsp::FREQ_C4,10.0);
-    float volts = rescale(cents,-6000.0,6000.0,-5.0,5.0);
+    //float estimFreq = m_osc.m_curFrequency;
+    //float cents = 1200.0*3.322038403*custom_log(estimFreq/rack::dsp::FREQ_C4,10.0);
+    //float volts = rescale(cents,-6000.0,6000.0,-5.0,5.0);
+    float volts = custom_log(m_osc.m_curFrequency/rack::dsp::FREQ_C4,2.0f);
     volts = clamp(volts,-5.0,5.0);
     outputs[1].setVoltage(volts);
 }
