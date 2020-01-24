@@ -42,6 +42,13 @@ void GendynModule::process(const ProcessArgs& args)
     float timedev = params[PAR_TimeDeviation].getValue();
     timedev+=rescale(inputs[1+PAR_TimeDeviation].getVoltage(),0.0f,10.0f,0.0f,5.0f);
     timedev=clamp(timedev,0.0f,5.0f);
+    float sectimebarlow = params[PAR_TimeSecondaryBarrierLow].getValue();
+    sectimebarlow+=rescale(inputs[1+PAR_TimeSecondaryBarrierLow].getVoltage(),0.0f,10.0f,1.0,64.0);
+    sectimebarlow=clamp(sectimebarlow,1.0,64.0);
+    float sectimebarhigh = params[PAR_TimeSecondaryBarrierHigh].getValue();
+    sectimebarhigh+=rescale(inputs[1+PAR_TimeSecondaryBarrierHigh].getVoltage(),0.0f,10.0f,1.0,64.0);
+    sectimebarhigh=clamp(sectimebarhigh,1.0,64.0);
+    sanitizeRange(sectimebarlow,sectimebarhigh,1.0f);
     for (int i=0;i<numvoices;++i)
     {
         m_oscs[i].m_sampleRate = args.sampleRate;
@@ -49,14 +56,10 @@ void GendynModule::process(const ProcessArgs& args)
         m_oscs[i].setNumSegments(numsegs);
         m_oscs[i].m_time_dev = timedev;
         m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
-        float bar0 = params[PAR_TimeSecondaryBarrierLow].getValue();
-        float bar1 = params[PAR_TimeSecondaryBarrierHigh].getValue();
-        if (bar1<=bar0)
-            bar1=bar0+1.0;
-        m_oscs[i].m_time_secondary_low_barrier = bar0;
-        m_oscs[i].m_time_secondary_high_barrier = bar1;
-        bar0 = params[PAR_TimePrimaryBarrierLow].getValue();
-        bar1 = params[PAR_TimePrimaryBarrierHigh].getValue();
+        m_oscs[i].m_time_secondary_low_barrier = sectimebarlow;
+        m_oscs[i].m_time_secondary_high_barrier = sectimebarhigh;
+        float bar0 = params[PAR_TimePrimaryBarrierLow].getValue();
+        float bar1 = params[PAR_TimePrimaryBarrierHigh].getValue();
         if (bar1<=bar0)
             bar1=bar0+0.01;
         m_oscs[i].m_time_primary_low_barrier = bar0;
@@ -85,13 +88,14 @@ GendynWidget::GendynWidget(GendynModule* m)
         int ypos = i % 11;
         addParam(createParam<BefacoTinyKnob>(Vec(220+250*xpos, 30+ypos*30), module, i)); 
         addInput(createInput<PJ301MPort>(Vec(250+250*xpos, 30+ypos*30), module, 1+i));
-        BefacoTinyKnob* atveknob = new BefacoTinyKnob;
+        auto* atveknob = new Trimpot;
         atveknob->box.pos.x = 280+250*xpos;
-        atveknob->box.pos.y = 30+ypos*30;
-        atveknob->box.size.x = 15;
-        atveknob->box.size.y = 15;
+        atveknob->box.pos.y = 33+ypos*30;
+        //atveknob->box.size.x = 15;
+        //atveknob->box.size.y = 15;
         addParam(atveknob);
     }
+    
 }
 
 void GendynWidget::draw(const DrawArgs &args)

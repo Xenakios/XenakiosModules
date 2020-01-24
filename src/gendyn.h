@@ -11,6 +11,13 @@ inline double custom_log(double value, double base)
     return std::log(value)/std::log(base);
 }
 
+inline void sanitizeRange(float& a, float& b, float mindiff)
+{
+	if (b<a)
+		std::swap(a,b);
+	if (b-a<mindiff)
+		b+=mindiff;
+}
 
 enum Distributions
 	{
