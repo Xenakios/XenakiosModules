@@ -6,7 +6,7 @@ GendynModule::GendynModule()
 {
     for (int i=0;i<16;++i)
         m_oscs[i].setRandomSeed(i);
-    config(PARAMS::LASTPAR,1,2);
+    config(PARAMS::LASTPAR,PARAMS::LASTPAR+1,2);
     configParam(PAR_NumSegments,3.0,64.0,10.0,"Num segments");
     configParam(PAR_TimeDistribution,0.0,LASTDIST-1,1.0,"Time distribution");
     configParam(PAR_TimeMean,-5.0,5.0,0.0,"Time mean");
@@ -36,12 +36,18 @@ void GendynModule::process(const ProcessArgs& args)
     }
     outputs[0].setChannels(numvoices);
     outputs[1].setChannels(numvoices);
+    float numsegs = params[PAR_NumSegments].getValue();
+    numsegs+=rescale(inputs[1+PAR_NumSegments].getVoltage(),0.0f,10.0f,0,61);
+    numsegs=clamp(numsegs,3.0,64.0);
+    float timedev = params[PAR_TimeDeviation].getValue();
+    timedev+=rescale(inputs[1+PAR_TimeDeviation].getVoltage(),0.0f,10.0f,0.0f,5.0f);
+    timedev=clamp(timedev,0.0f,5.0f);
     for (int i=0;i<numvoices;++i)
     {
         m_oscs[i].m_sampleRate = args.sampleRate;
         float outsample = 0.0f;
-        m_oscs[i].setNumSegments(params[PAR_NumSegments].getValue());
-        m_oscs[i].m_time_dev = params[PAR_TimeDeviation].getValue();
+        m_oscs[i].setNumSegments(numsegs);
+        m_oscs[i].m_time_dev = timedev;
         m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
         float bar0 = params[PAR_TimeSecondaryBarrierLow].getValue();
         float bar1 = params[PAR_TimeSecondaryBarrierHigh].getValue();
@@ -75,9 +81,16 @@ GendynWidget::GendynWidget(GendynModule* m)
     addInput(createInput<PJ301MPort>(Vec(30, 90), module, 0));
     for (int i=0;i<GendynModule::LASTPAR;++i)
     {
-        int xpos = i / 9;
-        int ypos = i % 9;
-        addParam(createParam<BefacoTinyKnob>(Vec(220+250*xpos, 30+ypos*30), module, i));    
+        int xpos = i / 11;
+        int ypos = i % 11;
+        addParam(createParam<BefacoTinyKnob>(Vec(220+250*xpos, 30+ypos*30), module, i)); 
+        addInput(createInput<PJ301MPort>(Vec(250+250*xpos, 30+ypos*30), module, 1+i));
+        BefacoTinyKnob* atveknob = new BefacoTinyKnob;
+        atveknob->box.pos.x = 280+250*xpos;
+        atveknob->box.pos.y = 30+ypos*30;
+        atveknob->box.size.x = 15;
+        atveknob->box.size.y = 15;
+        addParam(atveknob);
     }
 }
 
@@ -101,8 +114,8 @@ void GendynWidget::draw(const DrawArgs &args)
     {
         for (int i=0;i<module->paramQuantities.size();++i)
         {
-            int xpos = i / 9;
-            int ypos = i % 9;
+            int xpos = i / 11;
+            int ypos = i % 11;
             nvgText(args.vg, 70+250*xpos , 50+ypos*30, module->paramQuantities[i]->getLabel().c_str(), NULL);
         }
     }
