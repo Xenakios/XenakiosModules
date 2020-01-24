@@ -9,16 +9,27 @@ inline double custom_log(double value, double base)
 
 GendynModule::GendynModule()
 {
-    config(PARAMS::LASTPAR,0,2);
+    config(PARAMS::LASTPAR,1,2);
     configParam(PAR_NumSegments,3.0,64.0,10.0,"Num segments");
+    configParam(PAR_TimeDistribution,0.0,LASTDIST-1,1.0,"Time distribution");
     configParam(PAR_TimeMean,-5.0,5.0,0.0,"Time mean");
+    configParam(PAR_TimeResetMode,0.0,LASTRM,RM_Avg,"Time reset mode");
     configParam(PAR_TimeDeviation,0.0,5.0,0.1,"Time deviation");
+    configParam(PAR_TimePrimaryBarrierLow,-5.0,5.0,-1.0,"Time primary low barrier");
+    configParam(PAR_TimePrimaryBarrierHigh,-5.0,5.0,1.0,"Time primary high barrier");
     configParam(PAR_TimeSecondaryBarrierLow,1.0,64.0,5.0,"Time sec low barrier");
     configParam(PAR_TimeSecondaryBarrierHigh,2.0,64.0,20.0,"Time sec high barrier");
+    configParam(PAR_AmpResetMode,0.0,LASTRM,RM_UniformRandom,"Amp reset mode");
 }
     
 void GendynModule::process(const ProcessArgs& args)
 {
+    if (m_reset_trigger.process(inputs[0].getVoltage()))
+    {
+        m_osc.m_ampResetMode = params[PAR_AmpResetMode].getValue();
+        m_osc.m_timeResetMode = params[PAR_TimeResetMode].getValue();
+        m_osc.resetTable();
+    }
     m_osc.m_sampleRate = args.sampleRate;
     float outsample = 0.0f;
     m_osc.setNumSegments(params[PAR_NumSegments].getValue());
@@ -30,11 +41,14 @@ void GendynModule::process(const ProcessArgs& args)
         bar1=bar0+1.0;
     m_osc.m_time_secondary_low_barrier = bar0;
     m_osc.m_time_secondary_high_barrier = bar1;
+    bar0 = params[PAR_TimePrimaryBarrierLow].getValue();
+    bar1 = params[PAR_TimePrimaryBarrierHigh].getValue();
+    if (bar1<=bar0)
+        bar1=bar0+0.01;
+    m_osc.m_time_primary_low_barrier = bar0;
+    m_osc.m_time_primary_high_barrier = bar1;
     m_osc.process(&outsample,1);
     outputs[0].setVoltage(outsample*10.0f);
-    //float estimFreq = m_osc.m_curFrequency;
-    //float cents = 1200.0*3.322038403*custom_log(estimFreq/rack::dsp::FREQ_C4,10.0);
-    //float volts = rescale(cents,-6000.0,6000.0,-5.0,5.0);
     float volts = custom_log(m_osc.m_curFrequency/rack::dsp::FREQ_C4,2.0f);
     volts = clamp(volts,-5.0,5.0);
     outputs[1].setVoltage(volts);
@@ -45,12 +59,15 @@ GendynWidget::GendynWidget(GendynModule* m)
     if (!g_font)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
-    box.size.x = 255;
+    box.size.x = 600;
     addOutput(createOutput<PJ301MPort>(Vec(30, 30), module, 0));
     addOutput(createOutput<PJ301MPort>(Vec(30, 60), module, 1));
+    addInput(createInput<PJ301MPort>(Vec(30, 90), module, 0));
     for (int i=0;i<GendynModule::LASTPAR;++i)
     {
-        addParam(createParam<BefacoTinyKnob>(Vec(200, 30+i*30), module, i));    
+        int xpos = i / 9;
+        int ypos = i % 9;
+        addParam(createParam<BefacoTinyKnob>(Vec(220+250*xpos, 30+ypos*30), module, i));    
     }
 }
 
@@ -74,7 +91,9 @@ void GendynWidget::draw(const DrawArgs &args)
     {
         for (int i=0;i<module->paramQuantities.size();++i)
         {
-            nvgText(args.vg, 70 , 50+i*30, module->paramQuantities[i]->getLabel().c_str(), NULL);
+            int xpos = i / 9;
+            int ypos = i % 9;
+            nvgText(args.vg, 70+250*xpos , 50+ypos*30, module->paramQuantities[i]->getLabel().c_str(), NULL);
         }
     }
     nvgRestore(args.vg);

@@ -6,6 +6,24 @@
 #include <atomic>
 #include <random>
 
+enum Distributions
+	{
+		DIST_Uniform,
+		DIST_Gauss,
+		DIST_Cauchy,
+		LASTDIST
+	};
+enum ResetModes
+{
+	RM_Zeros,
+	RM_Avg,
+	RM_Min,
+	RM_Max,
+	RM_UniformRandom,
+	RM_BinaryRandom,
+	LASTRM
+};
+
 template<typename T>
 inline T wrap_value(const T& minval, const T& val, const T& maxval)
 {
@@ -106,6 +124,36 @@ public:
 			}
 		}
 	}
+	void resetTable()
+	{
+		std::uniform_real_distribution<float> ampdist{m_amp_secondary_low_barrier,m_amp_secondary_high_barrier};
+		std::uniform_real_distribution<float> timedist{m_time_secondary_low_barrier,m_time_secondary_high_barrier};
+		std::uniform_real_distribution<float> unidist(0.0,1.0);
+		for (int i = 0; i < m_num_segs; ++i)
+		{
+			m_nodes[i].m_x_prim = avg(m_time_primary_low_barrier,m_time_primary_high_barrier);
+			if (m_timeResetMode == RM_Avg)
+				m_nodes[i].m_x_sec = avg(m_time_secondary_low_barrier,m_time_secondary_high_barrier);
+			else if (m_timeResetMode == RM_BinaryRandom)
+			{
+				if (unidist(m_rand)<0.5)
+					m_nodes[i].m_x_sec = m_time_secondary_low_barrier;
+				else m_nodes[i].m_x_sec = m_time_secondary_high_barrier;
+			}
+			m_nodes[i].m_y_prim = 0.0f;
+			if (m_ampResetMode == RM_Zeros)
+				m_nodes[i].m_y_sec = 0.0f;
+			else if (m_ampResetMode == RM_UniformRandom)
+				m_nodes[i].m_y_sec = ampdist(m_rand);
+			else
+				m_nodes[i].m_y_sec = 0.0f;
+		}
+		m_cur_node = 0;
+        m_phase = 0.0;
+		m_cur_dur = m_nodes[m_cur_node].m_x_sec;
+		m_cur_y0 = m_nodes[m_cur_node].m_y_sec;
+		m_cur_y1 = m_nodes[m_cur_node + 1].m_y_sec;
+	}
 	void updateTable()
 	{
 		std::normal_distribution<float> timedist(m_time_mean, m_time_dev);
@@ -146,15 +194,20 @@ public:
 	float m_amp_secondary_high_barrier = 0.2;
 	float m_amp_mean = 0.0f;
 	float m_amp_dev = 0.01;
+	int m_timeResetMode = RM_Avg;
+	int m_ampResetMode = RM_Zeros;
     void setNumSegments(int n)
     {
         if (n!=m_num_segs)
         {
             m_num_segs = clamp(n,3,64);
-            if (m_num_segs>=m_cur_node)
+            //if (m_num_segs>=m_cur_node)
 			{
 				m_cur_node = 0;
             	m_phase = 0.0;
+				m_cur_dur = m_nodes[m_cur_node].m_x_sec;
+				m_cur_y0 = m_nodes[m_cur_node].m_y_sec;
+				m_cur_y1 = m_nodes[m_cur_node + 1].m_y_sec;
 			}
         }
     }
@@ -176,13 +229,17 @@ public:
     enum PARAMS
     {
         PAR_NumSegments,
+		PAR_TimeDistribution,
+		PAR_TimeResetMode,
         PAR_TimePrimaryBarrierLow,
         PAR_TimePrimaryBarrierHigh,
         PAR_TimeSecondaryBarrierLow,
         PAR_TimeSecondaryBarrierHigh,
         PAR_TimeMean,
         PAR_TimeDeviation,
-        PAR_AmpPrimaryBarrierLow,
+        PAR_AmpDistribution,
+		PAR_AmpResetMode,
+		PAR_AmpPrimaryBarrierLow,
         PAR_AmpPrimaryBarrierHigh,
         PAR_AmpSecondaryBarrierLow,
         PAR_AmpSecondaryBarrierHigh,
@@ -190,11 +247,13 @@ public:
         PAR_AmpDeviation,
         LASTPAR
     };
+	
     GendynModule();
     
     void process(const ProcessArgs& args) override;
 private:
     GendynOsc m_osc{0};
+	dsp::SchmittTrigger m_reset_trigger;
 };
 
 class GendynWidget : public ModuleWidget
