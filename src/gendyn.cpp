@@ -9,6 +9,8 @@ inline double custom_log(double value, double base)
 
 GendynModule::GendynModule()
 {
+    for (int i=0;i<16;++i)
+        m_oscs[i].setRandomSeed(i);
     config(PARAMS::LASTPAR,1,2);
     configParam(PAR_NumSegments,3.0,64.0,10.0,"Num segments");
     configParam(PAR_TimeDistribution,0.0,LASTDIST-1,1.0,"Time distribution");
@@ -26,32 +28,43 @@ void GendynModule::process(const ProcessArgs& args)
 {
     if (m_reset_trigger.process(inputs[0].getVoltage()))
     {
-        m_osc.m_ampResetMode = params[PAR_AmpResetMode].getValue();
-        m_osc.m_timeResetMode = params[PAR_TimeResetMode].getValue();
-        m_osc.resetTable();
+        for (int i=0;i<16;++i)
+        {
+            m_oscs[i].m_ampResetMode = params[PAR_AmpResetMode].getValue();
+            m_oscs[i].m_timeResetMode = params[PAR_TimeResetMode].getValue();
+            m_oscs[i].resetTable();
+        }
+        
     }
-    m_osc.m_sampleRate = args.sampleRate;
-    float outsample = 0.0f;
-    m_osc.setNumSegments(params[PAR_NumSegments].getValue());
-    m_osc.m_time_dev = params[PAR_TimeDeviation].getValue();
-    m_osc.m_time_mean = params[PAR_TimeMean].getValue();
-    float bar0 = params[PAR_TimeSecondaryBarrierLow].getValue();
-    float bar1 = params[PAR_TimeSecondaryBarrierHigh].getValue();
-    if (bar1<=bar0)
-        bar1=bar0+1.0;
-    m_osc.m_time_secondary_low_barrier = bar0;
-    m_osc.m_time_secondary_high_barrier = bar1;
-    bar0 = params[PAR_TimePrimaryBarrierLow].getValue();
-    bar1 = params[PAR_TimePrimaryBarrierHigh].getValue();
-    if (bar1<=bar0)
-        bar1=bar0+0.01;
-    m_osc.m_time_primary_low_barrier = bar0;
-    m_osc.m_time_primary_high_barrier = bar1;
-    m_osc.process(&outsample,1);
-    outputs[0].setVoltage(outsample*10.0f);
-    float volts = custom_log(m_osc.m_curFrequency/rack::dsp::FREQ_C4,2.0f);
-    volts = clamp(volts,-5.0,5.0);
-    outputs[1].setVoltage(volts);
+    outputs[0].setChannels(4);
+    outputs[1].setChannels(4);
+    for (int i=0;i<4;++i)
+    {
+        m_oscs[i].m_sampleRate = args.sampleRate;
+        float outsample = 0.0f;
+        m_oscs[i].setNumSegments(params[PAR_NumSegments].getValue());
+        m_oscs[i].m_time_dev = params[PAR_TimeDeviation].getValue();
+        m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
+        float bar0 = params[PAR_TimeSecondaryBarrierLow].getValue();
+        float bar1 = params[PAR_TimeSecondaryBarrierHigh].getValue();
+        if (bar1<=bar0)
+            bar1=bar0+1.0;
+        m_oscs[i].m_time_secondary_low_barrier = bar0;
+        m_oscs[i].m_time_secondary_high_barrier = bar1;
+        bar0 = params[PAR_TimePrimaryBarrierLow].getValue();
+        bar1 = params[PAR_TimePrimaryBarrierHigh].getValue();
+        if (bar1<=bar0)
+            bar1=bar0+0.01;
+        m_oscs[i].m_time_primary_low_barrier = bar0;
+        m_oscs[i].m_time_primary_high_barrier = bar1;
+        m_oscs[i].process(&outsample,1);
+        float volts = custom_log(m_oscs[i].m_curFrequency/rack::dsp::FREQ_C4,2.0f);
+        volts = clamp(volts,-5.0,5.0);
+        outputs[1].setVoltage(volts,i);
+        outputs[0].setVoltage(outsample*10.0f,i);
+    }
+    
+    
 }
 
 GendynWidget::GendynWidget(GendynModule* m)

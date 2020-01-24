@@ -71,7 +71,7 @@ public:
 class GendynOsc
 {
 public:
-	GendynOsc(int seed) : m_rand(seed)
+	GendynOsc()
 	{
 		m_nodes.resize(128);
 		for (int i = 0; i < 128; ++i)
@@ -83,6 +83,10 @@ public:
 		m_cur_dur = m_nodes.front().m_x_sec;
 		m_cur_y0 = m_nodes.front().m_y_sec;
 		m_cur_y1 = m_nodes[1].m_y_sec;
+	}
+	void setRandomSeed(int s)
+	{
+		m_rand = std::mt19937(s);
 	}
 	void process(float* buf, int nframes)
 	{
@@ -252,7 +256,7 @@ public:
     
     void process(const ProcessArgs& args) override;
 private:
-    GendynOsc m_osc{0};
+    GendynOsc m_oscs[16];
 	dsp::SchmittTrigger m_reset_trigger;
 };
 
