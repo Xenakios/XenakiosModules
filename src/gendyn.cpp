@@ -17,13 +17,16 @@ GendynModule::GendynModule()
     configParam(PAR_TimeSecondaryBarrierLow,1.0,64.0,5.0,"Time sec low barrier");
     configParam(PAR_TimeSecondaryBarrierHigh,2.0,64.0,20.0,"Time sec high barrier");
     configParam(PAR_AmpResetMode,0.0,LASTRM,RM_UniformRandom,"Amp reset mode");
+    configParam(PAR_PolyphonyVoices,1.0,16.0,1,"Polyphony voices");
 }
     
 void GendynModule::process(const ProcessArgs& args)
 {
+    int numvoices = params[PAR_PolyphonyVoices].getValue();
+    numvoices = clamp(numvoices,1,16);
     if (m_reset_trigger.process(inputs[0].getVoltage()))
     {
-        for (int i=0;i<16;++i)
+        for (int i=0;i<numvoices;++i)
         {
             m_oscs[i].m_ampResetMode = params[PAR_AmpResetMode].getValue();
             m_oscs[i].m_timeResetMode = params[PAR_TimeResetMode].getValue();
@@ -31,9 +34,9 @@ void GendynModule::process(const ProcessArgs& args)
         }
         
     }
-    outputs[0].setChannels(4);
-    outputs[1].setChannels(4);
-    for (int i=0;i<4;++i)
+    outputs[0].setChannels(numvoices);
+    outputs[1].setChannels(numvoices);
+    for (int i=0;i<numvoices;++i)
     {
         m_oscs[i].m_sampleRate = args.sampleRate;
         float outsample = 0.0f;
@@ -55,7 +58,7 @@ void GendynModule::process(const ProcessArgs& args)
         m_oscs[i].process(&outsample,1);
         
         outputs[1].setVoltage(m_oscs[i].m_curFrequencyVolts,i);
-        outputs[0].setVoltage(outsample*10.0f,i);
+        outputs[0].setVoltage(outsample*5.0f,i);
     }
     
     

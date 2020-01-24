@@ -259,6 +259,7 @@ public:
         PAR_AmpSecondaryBarrierHigh,
         PAR_AmpMean,
         PAR_AmpDeviation,
+		PAR_PolyphonyVoices,
         LASTPAR
     };
 	
