@@ -179,9 +179,11 @@ public:
 	{
 		m_center_frequency = center;
 		float hz = center*pow(2.0,(1.0/12.0*a));
-		m_time_secondary_low_barrier = clamp(m_sampleRate/hz/m_num_segs,1.0f,128.0f);
+		m_low_frequency = hz;
+		m_time_secondary_high_barrier = clamp(m_sampleRate/hz/m_num_segs,1.0f,128.0f);
 		hz = center*pow(2.0,(1.0/12.0*b));
-		m_time_secondary_high_barrier = clamp(m_sampleRate/hz/m_num_segs,1.0,128.0f);
+		m_high_frequency = hz;
+		m_time_secondary_low_barrier = clamp(m_sampleRate/hz/m_num_segs,1.0,128.0f);
 		sanitizeRange(m_time_secondary_low_barrier,m_time_secondary_high_barrier,1.0f);
 	}
 	void updateTable()
@@ -196,7 +198,10 @@ public:
 			x_p = reflect_value(m_time_primary_low_barrier, x_p,m_time_primary_high_barrier);
 			float x_s = m_nodes[i].m_x_sec;
 			x_s += x_p;
-			x_s = reflect_value(m_time_secondary_low_barrier, x_s, m_time_secondary_high_barrier);
+			float secbar0 = m_time_secondary_low_barrier;
+			float secbar1 = m_time_secondary_high_barrier;
+			sanitizeRange(secbar0,secbar1,1.0f);
+			x_s = reflect_value(secbar0, x_s, secbar1);
 			m_nodes[i].m_x_prim = x_p;
 			m_nodes[i].m_x_sec = x_s;
 			segAcc+=m_nodes[i].m_x_sec;
@@ -230,6 +235,8 @@ public:
 	int m_timeResetMode = RM_Avg;
 	int m_ampResetMode = RM_Zeros;
 	float m_center_frequency = 440.0f;
+	float m_low_frequency = 440.0f;
+	float m_high_frequency = 440.0f;
 	float m_curFrequencyVolts = 0.0f;
     void setNumSegments(int n)
     {
@@ -286,7 +293,7 @@ public:
     };
 	
     GendynModule();
-    
+    std::string getDebugMessage();
     void process(const ProcessArgs& args) override;
 private:
     GendynOsc m_oscs[16];

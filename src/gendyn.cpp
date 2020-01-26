@@ -22,7 +22,17 @@ GendynModule::GendynModule()
     // configParam(FREQ_PARAM, -54.f, 54.f, 0.f, "Frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
     m_divider.setDivision(32);
 }
+
+std::string GendynModule::getDebugMessage()
+{
+    std::stringstream ss;
+    ss << m_oscs[0].m_low_frequency << " " << m_oscs[0].m_center_frequency << " ";
+    ss << m_oscs[0].m_high_frequency << " " << m_oscs[0].m_time_secondary_low_barrier << " ";
+    ss << m_oscs[0].m_time_secondary_high_barrier;
+    return ss.str();
     
+}
+
 void GendynModule::process(const ProcessArgs& args)
 {
     int numvoices = params[PAR_PolyphonyVoices].getValue();
@@ -138,6 +148,8 @@ void GendynWidget::draw(const DrawArgs &args)
             int ypos = i % 11;
             nvgText(args.vg, 70+250*xpos , 50+ypos*30, module->paramQuantities[i]->getLabel().c_str(), NULL);
         }
+        GendynModule* mod = dynamic_cast<GendynModule*>(module);
+        nvgText(args.vg, 1 , 20, mod->getDebugMessage().c_str(), NULL);
     }
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
