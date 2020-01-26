@@ -78,3 +78,32 @@ public:
     DecahexCVTransformerWidget(DecahexCVTransformer*);
     void draw(const DrawArgs &args) override;  
 };
+
+class Delay
+{
+public:
+    Delay(int delayTime_) : delayTime(delayTime_)
+    {
+        delayBuffer.resize(65536); // 65536 is the maximum delay size
+        writeIndex = delayTime;
+    }
+    void reset(int newDelayTime) 
+    { 
+        std::fill(delayBuffer.begin(),delayBuffer.end(),0.0f); 
+        writeIndex = newDelayTime;
+        readIndex = 0;
+    }
+    float process(float insample)
+    {
+        float out = delayBuffer[readIndex];
+        readIndex = (readIndex+1) % delayBuffer.size();
+        delayBuffer[writeIndex]=insample;
+        writeIndex = (writeIndex+1) % delayBuffer.size();
+        return out;
+    }
+private:
+    std::vector<float> delayBuffer;
+    int readIndex = 0;
+    int writeIndex = 0;
+    int delayTime = 0;
+};
