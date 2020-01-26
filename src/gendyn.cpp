@@ -14,10 +14,13 @@ GendynModule::GendynModule()
     configParam(PAR_TimeDeviation,0.0,5.0,0.1,"Time deviation");
     configParam(PAR_TimePrimaryBarrierLow,-5.0,5.0,-1.0,"Time primary low barrier");
     configParam(PAR_TimePrimaryBarrierHigh,-5.0,5.0,1.0,"Time primary high barrier");
-    configParam(PAR_TimeSecondaryBarrierLow,1.0,64.0,5.0,"Time sec low barrier");
-    configParam(PAR_TimeSecondaryBarrierHigh,2.0,64.0,20.0,"Time sec high barrier");
+    configParam(PAR_TimeSecondaryBarrierLow,-60.0,60.0,-1.0,"Time sec low barrier");
+    configParam(PAR_TimeSecondaryBarrierHigh,-60.0,60.0,1.0,"Time sec high barrier");
     configParam(PAR_AmpResetMode,0.0,LASTRM,RM_UniformRandom,"Amp reset mode");
     configParam(PAR_PolyphonyVoices,1.0,16.0,1,"Polyphony voices");
+    configParam(PAR_CenterFrequency,-54.f, 54.f, 0.f, "Center frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
+    // configParam(FREQ_PARAM, -54.f, 54.f, 0.f, "Frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
+    m_divider.setDivision(32);
 }
     
 void GendynModule::process(const ProcessArgs& args)
@@ -49,21 +52,34 @@ void GendynModule::process(const ProcessArgs& args)
     sectimebarhigh+=rescale(inputs[1+PAR_TimeSecondaryBarrierHigh].getVoltage(),0.0f,10.0f,1.0,64.0);
     sectimebarhigh=clamp(sectimebarhigh,1.0,64.0);
     sanitizeRange(sectimebarlow,sectimebarhigh,1.0f);
+    if (m_divider.process())
+    {
+        for (int i=0;i<numvoices;++i)
+        {
+            m_oscs[i].m_sampleRate = args.sampleRate;
+            
+            m_oscs[i].setNumSegments(numsegs);
+            m_oscs[i].m_time_dev = timedev;
+            m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
+            float pitch = params[PAR_CenterFrequency].getValue();
+            pitch+=rescale(inputs[1+PAR_CenterFrequency].getVoltage(i),-5.0f,5.0f,-60.0f,60.0f);
+            pitch = clamp(pitch,-60.0f,60.0f);
+            float centerfreq = dsp::FREQ_C4*pow(2.0f,1.0f/12.0f*pitch);
+            m_oscs[i].setFrequencies(centerfreq,params[PAR_TimeSecondaryBarrierLow].getValue(),
+                params[PAR_TimeSecondaryBarrierHigh].getValue());
+            //m_oscs[i].m_time_secondary_low_barrier = sectimebarlow;
+            //m_oscs[i].m_time_secondary_high_barrier = sectimebarhigh;
+            float bar0 = params[PAR_TimePrimaryBarrierLow].getValue();
+            float bar1 = params[PAR_TimePrimaryBarrierHigh].getValue();
+            if (bar1<=bar0)
+                bar1=bar0+0.01;
+            m_oscs[i].m_time_primary_low_barrier = bar0;
+            m_oscs[i].m_time_primary_high_barrier = bar1;
+        }
+    }
     for (int i=0;i<numvoices;++i)
     {
-        m_oscs[i].m_sampleRate = args.sampleRate;
         float outsample = 0.0f;
-        m_oscs[i].setNumSegments(numsegs);
-        m_oscs[i].m_time_dev = timedev;
-        m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
-        m_oscs[i].m_time_secondary_low_barrier = sectimebarlow;
-        m_oscs[i].m_time_secondary_high_barrier = sectimebarhigh;
-        float bar0 = params[PAR_TimePrimaryBarrierLow].getValue();
-        float bar1 = params[PAR_TimePrimaryBarrierHigh].getValue();
-        if (bar1<=bar0)
-            bar1=bar0+0.01;
-        m_oscs[i].m_time_primary_low_barrier = bar0;
-        m_oscs[i].m_time_primary_high_barrier = bar1;
         m_oscs[i].process(&outsample,1);
         
         outputs[1].setVoltage(m_oscs[i].m_curFrequencyVolts,i);

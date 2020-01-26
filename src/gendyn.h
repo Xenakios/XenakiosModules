@@ -157,6 +157,10 @@ public:
 					m_nodes[i].m_x_sec = m_time_secondary_low_barrier;
 				else m_nodes[i].m_x_sec = m_time_secondary_high_barrier;
 			}
+			else
+			{
+				m_nodes[i].m_x_sec = m_sampleRate/m_center_frequency/m_num_segs;
+			}
 			m_nodes[i].m_y_prim = 0.0f;
 			if (m_ampResetMode == RM_Zeros)
 				m_nodes[i].m_y_sec = 0.0f;
@@ -170,6 +174,15 @@ public:
 		m_cur_dur = m_nodes[m_cur_node].m_x_sec;
 		m_cur_y0 = m_nodes[m_cur_node].m_y_sec;
 		m_cur_y1 = m_nodes[m_cur_node + 1].m_y_sec;
+	}
+	void setFrequencies(float center, float a, float b)
+	{
+		m_center_frequency = center;
+		float hz = center*pow(2.0,(1.0/12.0*a));
+		m_time_secondary_low_barrier = clamp(m_sampleRate/hz/m_num_segs,1.0f,128.0f);
+		hz = center*pow(2.0,(1.0/12.0*b));
+		m_time_secondary_high_barrier = clamp(m_sampleRate/hz/m_num_segs,1.0,128.0f);
+		sanitizeRange(m_time_secondary_low_barrier,m_time_secondary_high_barrier,1.0f);
 	}
 	void updateTable()
 	{
@@ -216,6 +229,7 @@ public:
 	float m_amp_dev = 0.01;
 	int m_timeResetMode = RM_Avg;
 	int m_ampResetMode = RM_Zeros;
+	float m_center_frequency = 440.0f;
 	float m_curFrequencyVolts = 0.0f;
     void setNumSegments(int n)
     {
@@ -267,6 +281,7 @@ public:
         PAR_AmpMean,
         PAR_AmpDeviation,
 		PAR_PolyphonyVoices,
+		PAR_CenterFrequency,
         LASTPAR
     };
 	
@@ -276,6 +291,7 @@ public:
 private:
     GendynOsc m_oscs[16];
 	dsp::SchmittTrigger m_reset_trigger;
+	dsp::ClockDivider m_divider;
 };
 
 class GendynWidget : public ModuleWidget
