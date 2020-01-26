@@ -96,6 +96,7 @@ public:
 		m_cur_dur = m_nodes.front().m_x_sec;
 		m_cur_y0 = m_nodes.front().m_y_sec;
 		m_cur_y1 = m_nodes[1].m_y_sec;
+		m_next_segment_time = m_nodes[0].m_x_sec;
 	}
 	void setRandomSeed(int s)
 	{
@@ -109,10 +110,11 @@ public:
 			
 			float y0 = m_cur_y0;
 			float y1 = m_cur_y1;
-			float s = y0 + (y1 - y0) / t1 * m_phase;
+			float s = y0 + (y1 - y0) / t1 * m_segment_phase;
 			buf[i] = s;
 			m_phase += 1.0;
-			if (m_phase >= t1)
+			m_segment_phase += 1.0;
+			if (m_phase >= m_next_segment_time)
 			{
 				++m_cur_node;
 				
@@ -121,11 +123,13 @@ public:
 					m_cur_dur = m_nodes[m_cur_node].m_x_sec;
 					m_cur_y0 = m_nodes[m_cur_node].m_y_sec;
 					m_cur_y1 = m_nodes[m_cur_node + 1].m_y_sec;
+					m_next_segment_time += m_cur_dur;
 				}
 				if (m_cur_node == m_num_segs - 1)
 				{
 					m_cur_dur = m_nodes[m_cur_node].m_x_sec;
 					m_cur_y0 = m_nodes[m_cur_node].m_y_sec;
+					m_next_segment_time += m_cur_dur;
 					updateTable();
 					m_cur_y1 = m_nodes.front().m_y_sec;
 				}
@@ -136,8 +140,10 @@ public:
 					m_cur_dur = m_nodes[m_cur_node].m_x_sec;
 					m_cur_y0 = m_nodes[m_cur_node].m_y_sec;
 					m_cur_y1 = m_nodes[m_cur_node + 1].m_y_sec;
+					m_next_segment_time += m_cur_dur;
+					m_phase = 0.0;
 				}
-				m_phase = 0.0;
+				m_segment_phase = 0.0;
 			}
 		}
 	}
@@ -171,6 +177,8 @@ public:
 		}
 		m_cur_node = 0;
         m_phase = 0.0;
+		m_next_segment_time = m_nodes[0].m_x_sec;
+		m_segment_phase = 0.0;
 		m_cur_dur = m_nodes[m_cur_node].m_x_sec;
 		m_cur_y0 = m_nodes[m_cur_node].m_y_sec;
 		m_cur_y1 = m_nodes[m_cur_node + 1].m_y_sec;
@@ -217,7 +225,7 @@ public:
 		float freq = m_sampleRate/segAcc;
 		float volts = custom_log(freq/rack::dsp::FREQ_C4,2.0f);
         m_curFrequencyVolts = clamp(volts,-5.0,5.0);
-		
+		m_next_segment_time = m_nodes[0].m_x_sec;
 	}
 	int m_num_segs = 11;
 	float m_time_primary_low_barrier = -1.0;
@@ -258,6 +266,8 @@ public:
 private:
 	int m_cur_node = 0;
 	double m_phase = 0.0;
+	double m_segment_phase = 0.0;
+	double m_next_segment_time = 0.0;
 	std::vector<GendynNode> m_nodes;
 	std::mt19937 m_rand;
 	float m_cur_dur = 0.0;
