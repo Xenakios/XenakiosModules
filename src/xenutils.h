@@ -10,15 +10,17 @@ class DerivatorModule : public rack::Module
 public:
     DerivatorModule()
     {
-        config(1,1,2);
+        config(2,1,2);
         configParam(0,0.0,1.0,0.5,"Scaler");
+        configParam(1,0.00001,1.0,1.0,"Delta");
     }
     void process(const ProcessArgs& args) override
     {
         float involt = inputs[0].getVoltage();
-        float interp = m_history[1]+(involt-m_history[1])*(1.0-m_delta);
+        float delta = params[1].getValue();
+        float interp = m_history[1]+(involt-m_history[1])*(1.0-delta);
         //float deriv1 = involt-m_history[1];
-        float deriv1 = (involt-interp)/(m_delta);
+        float deriv1 = (involt-interp)/(delta);
         float deriv2 = involt-2.0f*m_history[1]+m_history[0];
         float scaled = deriv1*(std::pow(2.0,rescale(params[0].getValue(),0.0f,1.0f,0.0,12.0))-1.0f);
         scaled = clamp(scaled,-10.0f,10.0f);
@@ -29,7 +31,7 @@ public:
     }
 private:
     float m_history[2] = {0.0f,0.0f};
-    const float m_delta = 1.0f;
+    
 };
 
 class DerivatorWidget : public ModuleWidget

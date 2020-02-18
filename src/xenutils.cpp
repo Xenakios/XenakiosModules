@@ -65,6 +65,7 @@ DerivatorWidget::DerivatorWidget(DerivatorModule* m)
     addOutput(createOutput<PJ301MPort>(Vec(5,60), m, 0));
     addOutput(createOutput<PJ301MPort>(Vec(5,90), m, 1));
     addParam(createParam<RoundSmallBlackKnob>(Vec(5, 120), module, 0)); 
+    addParam(createParam<RoundSmallBlackKnob>(Vec(5, 150), module, 1)); 
 }
 
 void DerivatorWidget::draw(const DrawArgs &args)
