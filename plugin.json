@@ -83,6 +83,14 @@
       "tags": [
         "Oscillator"
       ]
+    },
+    {
+      "slug": "Derivator",
+      "name": "Derivator",
+      "description": "Calculate 1st and 2nd derivate from input",
+      "tags": [
+        "Math"
+      ]
     }
 
 

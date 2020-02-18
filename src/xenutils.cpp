@@ -54,3 +54,37 @@ void DecahexCVTransformerWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }
+
+DerivatorWidget::DerivatorWidget(DerivatorModule* m)
+{
+    if (!g_font)
+    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
+    setModule(m);
+    box.size.x = 60;
+    addInput(createInput<PJ301MPort>(Vec(5,30), m, 0));
+    addOutput(createOutput<PJ301MPort>(Vec(5,60), m, 0));
+    addOutput(createOutput<PJ301MPort>(Vec(5,90), m, 1));
+    addParam(createParam<RoundSmallBlackKnob>(Vec(5, 120), module, 0)); 
+}
+
+void DerivatorWidget::draw(const DrawArgs &args)
+{
+    nvgSave(args.vg);
+    float w = box.size.x;
+    float h = box.size.y;
+    nvgBeginPath(args.vg);
+    nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+    nvgRect(args.vg,0.0f,0.0f,w,h);
+    nvgFill(args.vg);
+
+    nvgFontSize(args.vg, 15);
+    nvgFontFaceId(args.vg, g_font->handle);
+    nvgTextLetterSpacing(args.vg, -1);
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+    nvgText(args.vg, 3 , 10, "Derivator", NULL);
+    
+    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+    
+    nvgRestore(args.vg);
+    ModuleWidget::draw(args);
+}

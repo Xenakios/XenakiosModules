@@ -5,6 +5,40 @@
 #include <functional>
 #include <atomic>
 
+class DerivatorModule : public rack::Module
+{
+public:
+    DerivatorModule()
+    {
+        config(1,1,2);
+        configParam(0,0.0,1.0,0.5,"Scaler");
+    }
+    void process(const ProcessArgs& args) override
+    {
+        float involt = inputs[0].getVoltage();
+        float interp = m_history[1]+(involt-m_history[1])*(1.0-m_delta);
+        //float deriv1 = involt-m_history[1];
+        float deriv1 = (involt-interp)/(m_delta);
+        float deriv2 = involt-2.0f*m_history[1]+m_history[0];
+        float scaled = deriv1*(std::pow(2.0,rescale(params[0].getValue(),0.0f,1.0f,0.0,12.0))-1.0f);
+        scaled = clamp(scaled,-10.0f,10.0f);
+        outputs[0].setVoltage(scaled);
+        outputs[1].setVoltage(deriv2);
+        m_history[0] = m_history[1];
+        m_history[1] = involt;
+    }
+private:
+    float m_history[2] = {0.0f,0.0f};
+    const float m_delta = 1.0f;
+};
+
+class DerivatorWidget : public ModuleWidget
+{
+public:
+    DerivatorWidget(DerivatorModule*);
+    void draw(const DrawArgs &args) override;  
+};
+
 class DecahexCVTransformer : public rack::Module
 {
 public:

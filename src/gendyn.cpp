@@ -107,7 +107,7 @@ void GendynModule::process(const ProcessArgs& args)
         outputs[1].setVoltage(m_oscs[i].m_curFrequencyVolts,i);
         outputs[0].setVoltage(outsample*5.0f,i);
     }
-    
+    dsp::SampleRateConverter<8> rs;
     
 }
 
