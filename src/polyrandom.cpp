@@ -116,7 +116,10 @@ struct Random : Module {
 			}
 			}
 		}
-
+		outputs[LINEAR_OUTPUT].setChannels(numpolychans);
+		outputs[STEPPED_OUTPUT].setChannels(numpolychans);
+		outputs[SMOOTH_OUTPUT].setChannels(numpolychans);
+		outputs[EXPONENTIAL_OUTPUT].setChannels(numpolychans);
 		for (int polychan = 0 ; polychan < numpolychans ; ++polychan)
 		{
 		// Shape
@@ -129,7 +132,7 @@ struct Random : Module {
 			float steps = std::ceil(std::pow(shape, 2) * 15 + 1);
 			float v = std::ceil(clockPhases[polychan] * steps) / steps;
 			v = rescale(v, 0.f, 1.f, lastValues[polychan], values[polychan]);
-			outputs[STEPPED_OUTPUT].setVoltage(v * 10.f);
+			outputs[STEPPED_OUTPUT].setVoltage(v * 10.f,polychan);
 		}
 
 		// Linear
@@ -143,7 +146,8 @@ struct Random : Module {
 				v = 1.f;
 			}
 			v = rescale(v, 0.f, 1.f, lastValues[polychan], values[polychan]);
-			outputs[LINEAR_OUTPUT].setVoltage(v * 10.f);
+			
+			outputs[LINEAR_OUTPUT].setVoltage(v * 10.f,polychan);
 		}
 
 		// Smooth
@@ -158,7 +162,7 @@ struct Random : Module {
 				v = -1.f;
 			}
 			v = rescale(v, 1.f, -1.f, lastValues[polychan], values[polychan]);
-			outputs[SMOOTH_OUTPUT].setVoltage(v * 10.f);
+			outputs[SMOOTH_OUTPUT].setVoltage(v * 10.f,polychan);
 		}
 
 		// Exp
@@ -175,7 +179,7 @@ struct Random : Module {
 				v = 1.f;
 			}
 			v = rescale(v, 0.f, 1.f, lastValues[polychan], values[polychan]);
-			outputs[EXPONENTIAL_OUTPUT].setVoltage(v * 10.f);
+			outputs[EXPONENTIAL_OUTPUT].setVoltage(v * 10.f,polychan);
 		}
 			// Lights
 		lights[RATE_LIGHT].setSmoothBrightness(0.f, args.sampleTime);
