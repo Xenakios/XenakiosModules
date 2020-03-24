@@ -91,6 +91,15 @@
       "tags": [
         "Math"
       ]
+    },
+    {
+      "slug": "XPolyRandom",
+      "name": "PolyRandom",
+      "description": "Polyphonic random based on VCV Fundamental Random",
+      "tags": [
+        "Random",
+        "Polyphonic"
+      ]
     }
 
 

@@ -288,5 +288,5 @@ void init(Plugin *p) {
 	p->addModel(createModel<DecahexCVTransformer,DecahexCVTransformerWidget>("DecahexCVTransformer"));
 	p->addModel(createModel<GendynModule,GendynWidget>("GendynOsc"));
 	p->addModel(createModel<DerivatorModule,DerivatorWidget>("Derivator"));
-	
+	p->addModel(modelRandom);
 }

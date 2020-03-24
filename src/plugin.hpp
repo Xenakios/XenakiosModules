@@ -7,4 +7,11 @@ using namespace rack;
 extern Plugin *pluginInstance;
 
 // Declare each Model, defined in each module source file
-//extern Model *modelPlaits;
+extern Model *modelRandom;
+
+template <typename TLightBase = RedLight>
+struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
+	LEDLightSliderFixed() {
+		this->setHandleSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/LEDSliderHandle.svg")));
+	}
+};
