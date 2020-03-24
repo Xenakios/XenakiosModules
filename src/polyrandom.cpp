@@ -1,5 +1,5 @@
 #include "plugin.hpp"
-
+#include <array>
 
 struct Random : Module {
 	enum ParamIds {
@@ -29,12 +29,12 @@ struct Random : Module {
 		NUM_LIGHTS
 	};
 
-	dsp::SchmittTrigger trigTrigger;
-	float lastValue = 0.f;
-	float value = 0.f;
-	float clockPhase = 0.f;
-	int trigFrame = 0;
-	int lastTrigFrames = INT_MAX;
+	std::array<dsp::SchmittTrigger,16> trigTriggers;
+	std::array<float,16> lastValues{};
+	std::array<float,16> values{};
+	std::array<float,16> clockPhases{};
+	std::array<int,16> trigFrame{};
+	std::array<int,16> lastTrigFrames{INT_MAX};
 
 	Random() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -44,70 +44,81 @@ struct Random : Module {
 		configParam(MODE_PARAM, 0.f, 1.f, 1.f, "Relative/absolute randomness");
 	}
 
-	void trigger() {
-		lastValue = value;
+	void trigger(int numchans) {
+		lastValues = values;
+		for (int polychan = 0 ; polychan < numchans; ++polychan)
+		{
 		if (inputs[EXTERNAL_INPUT].isConnected()) {
-			value = inputs[EXTERNAL_INPUT].getVoltage() / 10.f;
+			values[polychan] = inputs[EXTERNAL_INPUT].getVoltage() / 10.f;
 		}
 		else {
 			// Choose a new random value
 			bool absolute = params[MODE_PARAM].getValue() > 0.f;
 			bool uni = params[OFFSET_PARAM].getValue() > 0.f;
 			if (absolute) {
-				value = random::uniform();
+				values[polychan] = random::uniform();
 				if (!uni)
-					value -= 0.5f;
+					values[polychan] -= 0.5f;
 			}
 			else {
 				// Switch to uni if bi
 				if (!uni)
-					value += 0.5f;
+					values[polychan] += 0.5f;
 				float deltaValue = random::normal();
 				// Bias based on value
-				deltaValue -= (value - 0.5f) * 2.f;
+				deltaValue -= (values[polychan] - 0.5f) * 2.f;
 				// Scale delta and accumulate value
 				const float stdDev = 1 / 10.f;
 				deltaValue *= stdDev;
-				value += deltaValue;
-				value = clamp(value, 0.f, 1.f);
+				values[polychan] += deltaValue;
+				values[polychan] = clamp(values[polychan], 0.f, 1.f);
 				// Switch back to bi
 				if (!uni)
-					value -= 0.5f;
+					values[polychan] -= 0.5f;
 			}
+		}
 		}
 		lights[RATE_LIGHT].setBrightness(3.f);
 	}
 
 	void process(const ProcessArgs& args) override {
+		int numpolychans = 2;
 		if (inputs[TRIGGER_INPUT].isConnected()) {
+			for (int polychan = 0 ; polychan < numpolychans; ++polychan)
+			{
 			// Advance clock phase based on tempo estimate
-			trigFrame++;
-			float deltaPhase = 1.f / lastTrigFrames;
-			clockPhase += deltaPhase;
-			clockPhase = std::min(clockPhase, 1.f);
+			trigFrame[polychan]++;
+			float deltaPhase = 1.f / lastTrigFrames[polychan];
+			clockPhases[polychan] += deltaPhase;
+			clockPhases[polychan] = std::min(clockPhases[polychan], 1.f);
 			// Trigger
-			if (trigTrigger.process(rescale(inputs[TRIGGER_INPUT].getVoltage(), 0.1f, 2.f, 0.f, 1.f))) {
-				clockPhase = 0.f;
-				lastTrigFrames = trigFrame;
-				trigFrame = 0;
-				trigger();
+			if (trigTriggers[polychan].process(rescale(inputs[TRIGGER_INPUT].getVoltage(), 0.1f, 2.f, 0.f, 1.f))) {
+				clockPhases[polychan] = 0.f;
+				lastTrigFrames[polychan] = trigFrame[polychan];
+				trigFrame[polychan] = 0;
+				trigger(numpolychans);
+			}
 			}
 		}
 		else {
 			// Advance clock phase by rate
+			for (int polychan = 0 ; polychan < numpolychans ; ++polychan)
+			{
 			float rate = params[RATE_PARAM].getValue();
 			rate += inputs[RATE_PARAM].getVoltage();
 			float clockFreq = std::pow(2.f, rate);
 			float deltaPhase = std::fmin(clockFreq * args.sampleTime, 0.5f);
-			clockPhase += deltaPhase;
+			clockPhases[polychan] += deltaPhase;
 			// Trigger
-			if (clockPhase >= 1.f) {
-				clockPhase -= 1.f;
-				trigger();
+			if (clockPhases[polychan] >= 1.f) {
+				clockPhases[polychan] -= 1.f;
+				trigger(numpolychans);
+			}
 			}
 		}
 
-
+		for (int polychan = 0 ; polychan < numpolychans ; ++polychan)
+		{
 		// Shape
 		float shape = params[SHAPE_PARAM].getValue();
 		shape += inputs[SHAPE_INPUT].getVoltage() / 10.f;
@@ -116,8 +127,8 @@ struct Random : Module {
 		// Stepped
 		if (outputs[STEPPED_OUTPUT].isConnected()) {
 			float steps = std::ceil(std::pow(shape, 2) * 15 + 1);
-			float v = std::ceil(clockPhase * steps) / steps;
-			v = rescale(v, 0.f, 1.f, lastValue, value);
+			float v = std::ceil(clockPhases[polychan] * steps) / steps;
+			v = rescale(v, 0.f, 1.f, lastValues[polychan], values[polychan]);
 			outputs[STEPPED_OUTPUT].setVoltage(v * 10.f);
 		}
 
@@ -126,12 +137,12 @@ struct Random : Module {
 			float slope = 1 / shape;
 			float v;
 			if (slope < 1e6f) {
-				v = std::fmin(clockPhase * slope, 1.f);
+				v = std::fmin(clockPhases[polychan] * slope, 1.f);
 			}
 			else {
 				v = 1.f;
 			}
-			v = rescale(v, 0.f, 1.f, lastValue, value);
+			v = rescale(v, 0.f, 1.f, lastValues[polychan], values[polychan]);
 			outputs[LINEAR_OUTPUT].setVoltage(v * 10.f);
 		}
 
@@ -140,13 +151,13 @@ struct Random : Module {
 			float p = 1 / shape;
 			float v;
 			if (p < 1e6f) {
-				v = std::fmin(clockPhase * p, 1.f);
+				v = std::fmin(clockPhases[polychan] * p, 1.f);
 				v = std::cos(M_PI * v);
 			}
 			else {
 				v = -1.f;
 			}
-			v = rescale(v, 1.f, -1.f, lastValue, value);
+			v = rescale(v, 1.f, -1.f, lastValues[polychan], values[polychan]);
 			outputs[SMOOTH_OUTPUT].setVoltage(v * 10.f);
 		}
 
@@ -155,21 +166,22 @@ struct Random : Module {
 			float b = std::pow(shape, 4);
 			float v;
 			if (0.999f < b) {
-				v = clockPhase;
+				v = clockPhases[polychan];
 			}
 			else if (1e-20f < b) {
-				v = (std::pow(b, clockPhase) - 1.f) / (b - 1.f);
+				v = (std::pow(b, clockPhases[polychan]) - 1.f) / (b - 1.f);
 			}
 			else {
 				v = 1.f;
 			}
-			v = rescale(v, 0.f, 1.f, lastValue, value);
+			v = rescale(v, 0.f, 1.f, lastValues[polychan], values[polychan]);
 			outputs[EXPONENTIAL_OUTPUT].setVoltage(v * 10.f);
 		}
-
-		// Lights
+			// Lights
 		lights[RATE_LIGHT].setSmoothBrightness(0.f, args.sampleTime);
 		lights[SHAPE_LIGHT].setBrightness(shape);
+		}
+		
 	}
 };
 
