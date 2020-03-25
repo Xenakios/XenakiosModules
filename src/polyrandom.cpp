@@ -7,6 +7,7 @@ struct Random : Module {
 		SHAPE_PARAM,
 		OFFSET_PARAM,
 		MODE_PARAM,
+		NUMVOICES_PARAM,
 		NUM_PARAMS
 	};
 	enum InputIds {
@@ -42,39 +43,40 @@ struct Random : Module {
 		configParam(SHAPE_PARAM, 0.f, 1.f, 0.5f, "Shape", "%", 0, 100);
 		configParam(OFFSET_PARAM, 0.f, 1.f, 1.f, "Bipolar/unipolar");
 		configParam(MODE_PARAM, 0.f, 1.f, 1.f, "Relative/absolute randomness");
+		configParam(NUMVOICES_PARAM, 1.f, 16.f, 1.f, "Num poly voices");
 	}
 
-	void trigger(int numchans) {
-		lastValues = values;
-		for (int polychan = 0 ; polychan < numchans; ++polychan)
+	void trigger(int numchan) {
+		lastValues[numchan] = values[numchan];
+		//for (int polychan = 0 ; polychan < numchans; ++polychan)
 		{
 		if (inputs[EXTERNAL_INPUT].isConnected()) {
-			values[polychan] = inputs[EXTERNAL_INPUT].getVoltage() / 10.f;
+			values[numchan] = inputs[EXTERNAL_INPUT].getVoltage() / 10.f;
 		}
 		else {
 			// Choose a new random value
 			bool absolute = params[MODE_PARAM].getValue() > 0.f;
 			bool uni = params[OFFSET_PARAM].getValue() > 0.f;
 			if (absolute) {
-				values[polychan] = random::uniform();
+				values[numchan] = random::uniform();
 				if (!uni)
-					values[polychan] -= 0.5f;
+					values[numchan] -= 0.5f;
 			}
 			else {
 				// Switch to uni if bi
 				if (!uni)
-					values[polychan] += 0.5f;
+					values[numchan] += 0.5f;
 				float deltaValue = random::normal();
 				// Bias based on value
-				deltaValue -= (values[polychan] - 0.5f) * 2.f;
+				deltaValue -= (values[numchan] - 0.5f) * 2.f;
 				// Scale delta and accumulate value
 				const float stdDev = 1 / 10.f;
 				deltaValue *= stdDev;
-				values[polychan] += deltaValue;
-				values[polychan] = clamp(values[polychan], 0.f, 1.f);
+				values[numchan] += deltaValue;
+				values[numchan] = clamp(values[numchan], 0.f, 1.f);
 				// Switch back to bi
 				if (!uni)
-					values[polychan] -= 0.5f;
+					values[numchan] -= 0.5f;
 			}
 		}
 		}
@@ -82,7 +84,7 @@ struct Random : Module {
 	}
 
 	void process(const ProcessArgs& args) override {
-		int numpolychans = 2;
+		int numpolychans = params[NUMVOICES_PARAM].getValue();
 		if (inputs[TRIGGER_INPUT].isConnected()) {
 			for (int polychan = 0 ; polychan < numpolychans; ++polychan)
 			{
@@ -96,7 +98,7 @@ struct Random : Module {
 				clockPhases[polychan] = 0.f;
 				lastTrigFrames[polychan] = trigFrame[polychan];
 				trigFrame[polychan] = 0;
-				trigger(numpolychans);
+				trigger(polychan);
 			}
 			}
 		}
@@ -112,7 +114,7 @@ struct Random : Module {
 			// Trigger
 			if (clockPhases[polychan] >= 1.f) {
 				clockPhases[polychan] -= 1.f;
-				trigger(numpolychans);
+				trigger(polychan);
 			}
 			}
 		}
@@ -204,6 +206,8 @@ struct RandomWidget : ModuleWidget {
 		addParam(createLightParamCentered<LEDLightSliderFixed<GreenLight>>(mm2px(Vec(18.214, 30.858)), module, Random::SHAPE_PARAM, Random::SHAPE_LIGHT));
 		addParam(createParamCentered<CKSS>(mm2px(Vec(7.214, 78.259)), module, Random::OFFSET_PARAM));
 		addParam(createParamCentered<CKSS>(mm2px(Vec(18.214, 78.259)), module, Random::MODE_PARAM));
+
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(5.0, 122.0)), module, Random::NUMVOICES_PARAM));
 
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.214, 50.726)), module, Random::RATE_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(18.214, 50.726)), module, Random::SHAPE_INPUT));
