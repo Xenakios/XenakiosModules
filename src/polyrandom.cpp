@@ -86,6 +86,9 @@ struct Random : Module {
 	void process(const ProcessArgs& args) override {
 		int numpolychans = params[NUMVOICES_PARAM].getValue();
 		if (inputs[TRIGGER_INPUT].isConnected()) {
+			int trigchans = inputs[TRIGGER_INPUT].getChannels();
+			if (trigchans>1)
+				numpolychans = trigchans;
 			for (int polychan = 0 ; polychan < numpolychans; ++polychan)
 			{
 			// Advance clock phase based on tempo estimate
@@ -94,7 +97,8 @@ struct Random : Module {
 			clockPhases[polychan] += deltaPhase;
 			clockPhases[polychan] = std::min(clockPhases[polychan], 1.f);
 			// Trigger
-			if (trigTriggers[polychan].process(rescale(inputs[TRIGGER_INPUT].getVoltage(), 0.1f, 2.f, 0.f, 1.f))) {
+			if (trigTriggers[polychan].process(
+					rescale(inputs[TRIGGER_INPUT].getVoltage(polychan), 0.1f, 2.f, 0.f, 1.f))) {
 				clockPhases[polychan] = 0.f;
 				lastTrigFrames[polychan] = trigFrame[polychan];
 				trigFrame[polychan] = 0;
