@@ -37,6 +37,8 @@ struct Random : Module {
 	std::array<int,16> trigFrame{};
 	std::array<int,16> lastTrigFrames{INT_MAX};
 
+	int curnumoutchans = 0;
+
 	Random() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(RATE_PARAM, std::log2(0.002f), std::log2(2000.f), std::log2(2.f), "Rate", " Hz", 2);
@@ -122,10 +124,15 @@ struct Random : Module {
 			}
 			}
 		}
-		outputs[LINEAR_OUTPUT].setChannels(numpolychans);
-		outputs[STEPPED_OUTPUT].setChannels(numpolychans);
-		outputs[SMOOTH_OUTPUT].setChannels(numpolychans);
-		outputs[EXPONENTIAL_OUTPUT].setChannels(numpolychans);
+		if (curnumoutchans!=numpolychans)
+		{
+			outputs[LINEAR_OUTPUT].setChannels(numpolychans);
+			outputs[STEPPED_OUTPUT].setChannels(numpolychans);
+			outputs[SMOOTH_OUTPUT].setChannels(numpolychans);
+			outputs[EXPONENTIAL_OUTPUT].setChannels(numpolychans);
+			curnumoutchans = numpolychans;
+		}
+		
 		for (int polychan = 0 ; polychan < numpolychans ; ++polychan)
 		{
 		// Shape
@@ -211,7 +218,7 @@ struct RandomWidget : ModuleWidget {
 		addParam(createParamCentered<CKSS>(mm2px(Vec(7.214, 78.259)), module, Random::OFFSET_PARAM));
 		addParam(createParamCentered<CKSS>(mm2px(Vec(18.214, 78.259)), module, Random::MODE_PARAM));
 
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(5.0, 122.0)), module, Random::NUMVOICES_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(5.0, 121.0)), module, Random::NUMVOICES_PARAM));
 
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.214, 50.726)), module, Random::RATE_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(18.214, 50.726)), module, Random::SHAPE_INPUT));
