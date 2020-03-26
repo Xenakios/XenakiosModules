@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include <array>
+#include <random>
 
 struct Random : Module {
 	enum ParamIds {
@@ -39,6 +40,9 @@ struct Random : Module {
 
 	int curnumoutchans = 0;
 
+	dsp::ClockDivider chancountdiv;
+	std::minstd_rand randgen;
+	std::uniform_real_distribution<float> randdist{0.0f,1.0f};
 	Random() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(RATE_PARAM, std::log2(0.002f), std::log2(2000.f), std::log2(2.f), "Rate", " Hz", 2);
@@ -46,12 +50,11 @@ struct Random : Module {
 		configParam(OFFSET_PARAM, 0.f, 1.f, 1.f, "Bipolar/unipolar");
 		configParam(MODE_PARAM, 0.f, 1.f, 1.f, "Relative/absolute randomness");
 		configParam(NUMVOICES_PARAM, 1.f, 16.f, 1.f, "Num poly voices");
+		chancountdiv.setDivision(512);
 	}
 
 	void trigger(int numchan) {
 		lastValues[numchan] = values[numchan];
-		//for (int polychan = 0 ; polychan < numchans; ++polychan)
-		{
 		if (inputs[EXTERNAL_INPUT].isConnected()) {
 			values[numchan] = inputs[EXTERNAL_INPUT].getVoltage() / 10.f;
 		}
@@ -60,7 +63,8 @@ struct Random : Module {
 			bool absolute = params[MODE_PARAM].getValue() > 0.f;
 			bool uni = params[OFFSET_PARAM].getValue() > 0.f;
 			if (absolute) {
-				values[numchan] = random::uniform();
+				//values[numchan] = random::uniform();
+				values[numchan] = randdist(randgen);
 				if (!uni)
 					values[numchan] -= 0.5f;
 			}
@@ -81,8 +85,8 @@ struct Random : Module {
 					values[numchan] -= 0.5f;
 			}
 		}
-		}
-		lights[RATE_LIGHT].setBrightness(3.f);
+		if (numchan == 0)
+			lights[RATE_LIGHT].setBrightness(3.f);
 	}
 
 	void process(const ProcessArgs& args) override {
@@ -112,19 +116,19 @@ struct Random : Module {
 			// Advance clock phase by rate
 			for (int polychan = 0 ; polychan < numpolychans ; ++polychan)
 			{
-			float rate = params[RATE_PARAM].getValue();
-			rate += inputs[RATE_PARAM].getVoltage();
-			float clockFreq = std::pow(2.f, rate);
-			float deltaPhase = std::fmin(clockFreq * args.sampleTime, 0.5f);
-			clockPhases[polychan] += deltaPhase;
-			// Trigger
-			if (clockPhases[polychan] >= 1.f) {
-				clockPhases[polychan] -= 1.f;
-				trigger(polychan);
-			}
+				float rate = params[RATE_PARAM].getValue();
+				rate += inputs[RATE_PARAM].getVoltage();
+				float clockFreq = std::pow(2.f, rate);
+				float deltaPhase = std::fmin(clockFreq * args.sampleTime, 0.5f);
+				clockPhases[polychan] += deltaPhase;
+				// Trigger
+				if (clockPhases[polychan] >= 1.f) {
+					clockPhases[polychan] -= 1.f;
+					trigger(polychan);
+				}
 			}
 		}
-		if (curnumoutchans!=numpolychans)
+		if (chancountdiv.process())
 		{
 			outputs[LINEAR_OUTPUT].setChannels(numpolychans);
 			outputs[STEPPED_OUTPUT].setChannels(numpolychans);
@@ -132,13 +136,14 @@ struct Random : Module {
 			outputs[EXPONENTIAL_OUTPUT].setChannels(numpolychans);
 			curnumoutchans = numpolychans;
 		}
-		
-		for (int polychan = 0 ; polychan < numpolychans ; ++polychan)
-		{
+		float shape = 0.0f;
 		// Shape
-		float shape = params[SHAPE_PARAM].getValue();
+		shape = params[SHAPE_PARAM].getValue();
 		shape += inputs[SHAPE_INPUT].getVoltage() / 10.f;
 		shape = clamp(shape, 0.f, 1.f);
+		for (int polychan = 0 ; polychan < numpolychans ; ++polychan)
+		{
+		
 
 		// Stepped
 		if (outputs[STEPPED_OUTPUT].isConnected()) {
@@ -194,11 +199,11 @@ struct Random : Module {
 			v = rescale(v, 0.f, 1.f, lastValues[polychan], values[polychan]);
 			outputs[EXPONENTIAL_OUTPUT].setVoltage(v * 10.f,polychan);
 		}
-			// Lights
+			
+		}
+		// Lights
 		lights[RATE_LIGHT].setSmoothBrightness(0.f, args.sampleTime);
 		lights[SHAPE_LIGHT].setBrightness(shape);
-		}
-		
 	}
 };
 
