@@ -151,6 +151,25 @@ private:
     std::string m_last_action;
 };
 
+class MyRoundHugeBlackKnob : public RoundHugeBlackKnob
+{
+public:
+    MyRoundHugeBlackKnob()
+    {
+
+    }
+    void draw(const DrawArgs& args) override
+    {
+        RoundHugeBlackKnob::draw(args);
+        nvgSave(args.vg);
+        nvgBeginPath(args.vg);
+        nvgCircle(args.vg,10.0f,10.0f,10.0f);
+        nvgFillColor(args.vg, nvgRGBA(0x00, 0xee, 0x00, 0xff));
+        nvgFill(args.vg);
+        nvgRestore(args.vg);
+    }
+};
+
 KeyFramerWidget::KeyFramerWidget(KeyFramerModule* m)
 {
     if (!g_font)
@@ -158,7 +177,7 @@ KeyFramerWidget::KeyFramerWidget(KeyFramerModule* m)
     setModule(m);
     box.size.x = 255;
     addInput(createInput<PJ301MPort>(Vec(70, 35), module, 0));
-    auto bigknob = createParam<RoundHugeBlackKnob>(Vec(5, 30), module, 0);
+    auto bigknob = createParam<MyRoundHugeBlackKnob>(Vec(5, 30), module, 0);
     addParam(bigknob);
     addParam(createParam<RoundHugeBlackKnob>(Vec(95, 30), module, 9));
     for (int i=0;i<8;++i)

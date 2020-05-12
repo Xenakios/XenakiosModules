@@ -4,6 +4,7 @@
 #include "clocks.h"
 #include "xenutils.h"
 #include "gendyn.h"
+#include "audiostretcher.h"
 #include <array>
 
 Plugin *pluginInstance;
@@ -288,5 +289,6 @@ void init(Plugin *p) {
 	p->addModel(createModel<DecahexCVTransformer,DecahexCVTransformerWidget>("DecahexCVTransformer"));
 	p->addModel(createModel<GendynModule,GendynWidget>("GendynOsc"));
 	p->addModel(createModel<DerivatorModule,DerivatorWidget>("Derivator"));
+	p->addModel(createModel<AudioStretchModule,AudioStretchWidget>("XAudioStretch"));
 	p->addModel(modelRandom);
 }

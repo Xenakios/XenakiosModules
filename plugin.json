@@ -100,6 +100,16 @@
         "Random",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "XAudioStretch",
+      "name": "AudioStretcher",
+      "description": "Audio time stretching and pitch shifting",
+      "tags": [
+        "Time",
+        "Pitch",
+        "Polyphonic"
+      ]
     }
 
 
