@@ -6,7 +6,8 @@ AudioStretchModule::AudioStretchModule()
 {
     config(PAR_LAST,INPUT_LAST,OUTPUT_LAST);
     configParam(PAR_PITCH_SHIFT,-12.0f,12.0f,0.0f);
-    m_paramdiv.setDivision(512);
+    m_paramdiv.setDivision(128);
+    m_lastnumchans = 0;
     for (int i=0;i<16;++i)
     {
         m_st[i].reset(
@@ -29,15 +30,16 @@ void AudioStretchModule::process(const ProcessArgs& args)
         if (m_lastnumchans!=numpolychans)
         {
             m_lastnumchans = numpolychans;
-            for (int i=0;i<numpolychans;++i)
+            for (int i=0;i<16;++i)
             {
-                //m_st[i]->reset();
+                m_st[i]->reset();
             }
         }
         float semitones = params[PAR_PITCH_SHIFT].getValue();
         for (int i=0;i<numpolychans;++i)
         {
             semitones+=rescale(inputs[INPUT_PITCH_IN].getVoltage(i),-5.0f,5.0f,-12.0f,12.0f);
+            semitones = clamp(semitones,-24.0f,24.0f);
             m_st[i]->setPitchScale(pow(2.0,semitones/12.0));
         }
         outputs[OUTPUT_AUDIO_OUT].setChannels(numpolychans);
