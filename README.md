@@ -4,7 +4,7 @@ VCV Rack modules. To speed up development, minimal effort has been used on the G
 
 ## WeightedRandom
 
-Distributes incoming gate signals up to 8 outputs with weighted random probabilities. Similar to a Bernouilli gate but has 8 outputs
+Distributes incoming gate signals up to 8 outputs with weighted random probabilities. Similar to a Bernoulli gate but has 8 outputs
 instead of 2.
 
 ## Histogram
