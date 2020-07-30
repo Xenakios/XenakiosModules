@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include <random>
+#include <atomic>
 
 extern std::shared_ptr<Font> g_font;
 
@@ -59,7 +60,7 @@ public:
         //for (int i=0;i<7;++i)
         //    voltages.push_back(dist(gen));
         //std::sort(voltages.begin(),voltages.end());
-        voltages = {-7.1f,-5.0f,-2.5f,0.0f,2.5f,5.0f,6.66f,8.25f};
+        voltages = {-5.0f,5.0f};
     }
     float process(float x, float strength)
     {
@@ -99,6 +100,9 @@ public:
         LASTOUTPUT = FIRSTOUTPUT+7
     };
     std::vector<float> heldOutputs;
+    std::atomic<bool> shouldUpdate{false};
+    std::vector<float> swapVector;
+    int whichQToUpdate = -1;
     dsp::ClockDivider divider;
     XQuantModule()
     {
@@ -107,10 +111,23 @@ public:
         config(1,8,8,0);
         configParam(0,0.0f,1.0f,0.05f,"Foopar");
     }
+    void updateQuantizerValues(int index, std::vector<float> values)
+    {
+        std::sort(values.begin(),values.end());
+        swapVector = values;
+        whichQToUpdate = index;
+        shouldUpdate = true;
+    }
     void process(const ProcessArgs& args) override
     {
         if (divider.process())
         {
+            if (shouldUpdate)
+            {
+                shouldUpdate = false;
+                std::swap(quantizers[whichQToUpdate].voltages,swapVector);
+                whichQToUpdate = -1;
+            }
             float strength = params[0].getValue();
             for (int i=0;i<8;++i)
             {
@@ -131,8 +148,21 @@ class QuantizeValuesWidget : public TransparentWidget
 {
 public:
     XQuantModule* qmod = nullptr;
-    QuantizeValuesWidget(XQuantModule* m) : qmod(m)
-    {}
+    int which_ = 0;
+    bool& dirty;
+    QuantizeValuesWidget(XQuantModule* m,int which, bool& dir) 
+        : qmod(m), which_(which),dirty(dir)
+    {
+        dirty = true;
+    }
+    void onButton(const event::Button& e) override
+    {
+        float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
+        auto v = qmod->quantizers[which_].voltages;
+        v.push_back(newv);
+        qmod->updateQuantizerValues(which_,v);
+        dirty = true;
+    }
     void draw(const DrawArgs &args) override
     {
         if (!qmod)
@@ -143,7 +173,7 @@ public:
         nvgRect(args.vg,0,0,box.size.x,box.size.y);
         nvgFill(args.vg);
         nvgStrokeColor(args.vg,nvgRGB(255,255,255));
-        auto& qvals = qmod->quantizers[0].voltages;
+        auto& qvals = qmod->quantizers[which_].voltages;
         int numqvals = qvals.size();
         for (int i=0;i<numqvals;++i)
         {
@@ -169,10 +199,15 @@ public:
         for (int i=0;i<8;++i)
         {
             addInput(createInputCentered<PJ301MPort>(Vec(30, 30+i*30), m, XQuantModule::FIRSTINPUT+i));
-            QuantizeValuesWidget* qw = new QuantizeValuesWidget(m);
-            qw->box.pos = Vec(50.0f,15.0+30.0f*i);
+            auto fbWidget = new FramebufferWidget;
+		    fbWidget->box.pos = Vec(50.0f,15.0+30.0f*i);
+            fbWidget->box.size = Vec(300.0,25);
+		    addChild(fbWidget);
+            QuantizeValuesWidget* qw = 
+                new QuantizeValuesWidget(m,i,fbWidget->dirty);
+            //qw->box.pos = Vec(50.0f,15.0+30.0f*i);
             qw->box.size = Vec(300.0,25);
-            addChild(qw);
+            fbWidget->addChild(qw);
             addOutput(createOutputCentered<PJ301MPort>(Vec(370, 30+i*30), m, XQuantModule::FIRSTOUTPUT+i));
         }
         addParam(createParam<RoundLargeBlackKnob>(Vec(38, 270), module, 0));
