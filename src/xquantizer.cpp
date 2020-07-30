@@ -80,8 +80,9 @@ public:
             return q0;
         return q1;
     }
-private:
     std::vector<float> voltages;
+private:
+    
 };
 
 class XQuantModule : public rack::Module
@@ -126,6 +127,36 @@ public:
     Quantizer quantizers[8];
 };
 
+class QuantizeValuesWidget : public TransparentWidget
+{
+public:
+    XQuantModule* qmod = nullptr;
+    QuantizeValuesWidget(XQuantModule* m) : qmod(m)
+    {}
+    void draw(const DrawArgs &args) override
+    {
+        if (!qmod)
+            return;
+        nvgSave(args.vg);
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg, nvgRGB(0,128,0));
+        nvgRect(args.vg,0,0,box.size.x,box.size.y);
+        nvgFill(args.vg);
+        nvgStrokeColor(args.vg,nvgRGB(255,255,255));
+        auto& qvals = qmod->quantizers[0].voltages;
+        int numqvals = qvals.size();
+        for (int i=0;i<numqvals;++i)
+        {
+            float xcor = rescale(qvals[i],-10.0f,10.0f,0.0,box.size.x);
+            nvgBeginPath(args.vg);
+            nvgMoveTo(args.vg,xcor,0);
+            nvgLineTo(args.vg,xcor,box.size.y);
+            nvgStroke(args.vg);
+        }
+        nvgRestore(args.vg);
+    }
+};
+
 class XQuantWidget : public ModuleWidget
 {
 public:
@@ -138,9 +169,13 @@ public:
         for (int i=0;i<8;++i)
         {
             addInput(createInputCentered<PJ301MPort>(Vec(30, 30+i*30), m, XQuantModule::FIRSTINPUT+i));
+            QuantizeValuesWidget* qw = new QuantizeValuesWidget(m);
+            qw->box.pos = Vec(50.0f,15.0+30.0f*i);
+            qw->box.size = Vec(300.0,25);
+            addChild(qw);
             addOutput(createOutputCentered<PJ301MPort>(Vec(370, 30+i*30), m, XQuantModule::FIRSTOUTPUT+i));
         }
-        addParam(createParam<RoundLargeBlackKnob>(Vec(38, 250), module, 0));
+        addParam(createParam<RoundLargeBlackKnob>(Vec(38, 270), module, 0));
     }
     void draw(const DrawArgs &args)
     {
