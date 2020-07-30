@@ -150,6 +150,8 @@ public:
     XQuantModule* qmod = nullptr;
     int which_ = 0;
     bool& dirty;
+    int draggedValue_ = -1;
+    float startXcor = 0.0f;
     QuantizeValuesWidget(XQuantModule* m,int which, bool& dir) 
         : qmod(m), which_(which),dirty(dir)
     {
@@ -160,7 +162,7 @@ public:
         auto& v = qmod->quantizers[which_].voltages;
         for (int i=0;i<v.size();++i)
         {
-            Rect r(rescale(v[i],-10.0f,10.0f,0.0,box.size.y)-5.0f,0,10.0f,
+            Rect r(rescale(v[i],-10.0f,10.0f,0.0,box.size.x)-10.0f,0,20.0f,
                 box.size.y);
             if (r.contains({xcor,ycor}))
             {
@@ -169,18 +171,48 @@ public:
         }
         return -1;
     }
-    void onButton(const event::Button& e) override
+    void onDragMove(const event::DragMove& e) override
     {
         auto v = qmod->quantizers[which_].voltages;
-        if (e.mods == 0)
+        e.stopPropagating();
+        
+        float delta = e.mouseDelta.x*0.1;
+        float newXcor = startXcor+e.mouseDelta.x;
+        startXcor = newXcor;
+        float val = rescale(newXcor,0.0,box.size.x,-10.0f,10.0f);
+        val = clamp(val,-10.0f,10.0f);
+        v[draggedValue_]=val;
+        
+        dirty = true;
+        qmod->updateQuantizerValues(which_,v);
+        //float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
+    }
+    void onButton(const event::Button& e) override
+    {
+        if (e.action == GLFW_RELEASE)
+        {
+            draggedValue_ = -1;
+            dirty = true;
+            return;
+        }
+        int index = findQuantizeIndex(e.pos.x,e.pos.y);
+        auto v = qmod->quantizers[which_].voltages;
+        if (index>=0 && e.mods == 0)
+        {
+            e.consume(this);
+            draggedValue_ = index;
+            startXcor = e.pos.x;
+            return;
+        }
+        if (index == -1 && e.mods == 0)
         {
             float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
             v.push_back(newv);
         }
         if (e.mods == GLFW_MOD_SHIFT)
         {
-            int index = findQuantizeIndex(e.pos.x,e.pos.y);
-            if (index>=0)
+            
+            if (index>=0 && v.size()>1)
             {
                 v.erase(v.begin()+index);
             }
@@ -225,7 +257,7 @@ public:
         {
             addInput(createInputCentered<PJ301MPort>(Vec(30, 30+i*30), m, XQuantModule::FIRSTINPUT+i));
             auto fbWidget = new FramebufferWidget;
-		    fbWidget->box.pos = Vec(50.0f,15.0+30.0f*i);
+		    fbWidget->box.pos = Vec(50.0f,17.5+30.0f*i);
             fbWidget->box.size = Vec(300.0,25);
 		    addChild(fbWidget);
             QuantizeValuesWidget* qw = 
@@ -251,7 +283,7 @@ public:
         nvgFontFaceId(args.vg, g_font->handle);
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-        nvgText(args.vg, 3 , 10, "XQuantizerA", NULL);
+        nvgText(args.vg, 3 , 10, "XQuantizer", NULL);
         nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
