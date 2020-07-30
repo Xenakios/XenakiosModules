@@ -155,11 +155,36 @@ public:
     {
         dirty = true;
     }
+    int findQuantizeIndex(float xcor, float ycor)
+    {
+        auto& v = qmod->quantizers[which_].voltages;
+        for (int i=0;i<v.size();++i)
+        {
+            Rect r(rescale(v[i],-10.0f,10.0f,0.0,box.size.y)-5.0f,0,10.0f,
+                box.size.y);
+            if (r.contains({xcor,ycor}))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
     void onButton(const event::Button& e) override
     {
-        float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
         auto v = qmod->quantizers[which_].voltages;
-        v.push_back(newv);
+        if (e.mods == 0)
+        {
+            float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
+            v.push_back(newv);
+        }
+        if (e.mods == GLFW_MOD_SHIFT)
+        {
+            int index = findQuantizeIndex(e.pos.x,e.pos.y);
+            if (index>=0)
+            {
+                v.erase(v.begin()+index);
+            }
+        }
         qmod->updateQuantizerValues(which_,v);
         dirty = true;
     }
