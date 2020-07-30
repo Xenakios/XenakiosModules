@@ -291,4 +291,5 @@ void init(Plugin *p) {
 	p->addModel(createModel<DerivatorModule,DerivatorWidget>("Derivator"));
 	p->addModel(createModel<AudioStretchModule,AudioStretchWidget>("XAudioStretch"));
 	p->addModel(modelRandom);
+	p->addModel(modelCOsc);
 }

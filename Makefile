@@ -1,8 +1,8 @@
 # If RACK_DIR is not defined when calling the Makefile, default to two directories above
 RACK_DIR ?= ../../Rack-SDK
 
-CC:= clang
-CXX:= clang++
+# CC:= clang
+# CXX:= clang++
 
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS += -Idep
@@ -25,7 +25,7 @@ SOURCES += $(wildcard dep/rubberband/src/dsp/*.cpp)
 SOURCES += $(wildcard dep/rubberband/src/kissfft/*.c)
 SOURCES += $(wildcard dep/rubberband/src/speex/*.c)
 SOURCES += $(wildcard dep/rubberband/src/system/*.cpp)
-
+SOURCES += $(wildcard dep/claudio/*.cpp)
 # Add files to the ZIP package when running `make dist`
 # The compiled plugin and "plugin.json" are automatically added.
 DISTRIBUTABLES += res

@@ -94,6 +94,7 @@
     },
     {
       "slug": "XPolyRandom",
+      "disabled": true,
       "name": "PolyRandom",
       "description": "Polyphonic random based on VCV Fundamental Random",
       "tags": [
@@ -108,6 +109,14 @@
       "tags": [
         "Time",
         "Pitch",
+        "Polyphonic"
+      ]
+    },
+    {
+      "slug": "XCOscTest",
+      "name": "OscillatorTest",
+      "description": "Claudio Oscillator Test",
+      "tags": [
         "Polyphonic"
       ]
     }

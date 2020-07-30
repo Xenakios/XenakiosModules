@@ -8,6 +8,7 @@ extern Plugin *pluginInstance;
 
 // Declare each Model, defined in each module source file
 extern Model *modelRandom;
+extern Model *modelCOsc;
 
 template <typename TLightBase = RedLight>
 struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
