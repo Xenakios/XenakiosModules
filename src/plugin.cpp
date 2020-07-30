@@ -289,7 +289,11 @@ void init(Plugin *p) {
 	p->addModel(createModel<DecahexCVTransformer,DecahexCVTransformerWidget>("DecahexCVTransformer"));
 	p->addModel(createModel<GendynModule,GendynWidget>("GendynOsc"));
 	p->addModel(createModel<DerivatorModule,DerivatorWidget>("Derivator"));
+#ifdef RBMODULE
 	p->addModel(createModel<AudioStretchModule,AudioStretchWidget>("XAudioStretch"));
+#endif
+	p->addModel(modelXQuantizer);
 	p->addModel(modelRandom);
-	p->addModel(modelCOsc);
+	
+	
 }

@@ -1,6 +1,8 @@
 #include "audiostretcher.h"
 #include <fstream>
 
+#ifdef RBMODULE
+
 extern std::shared_ptr<Font> g_font;
 
 AudioStretchModule::AudioStretchModule()
@@ -113,3 +115,4 @@ void AudioStretchWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }
+#endif

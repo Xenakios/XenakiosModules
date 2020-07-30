@@ -103,6 +103,7 @@
       ]
     },
     {
+      "disabled": true,
       "slug": "XAudioStretch",
       "name": "AudioStretcher",
       "description": "Audio time stretching and pitch shifting",
@@ -113,14 +114,14 @@
       ]
     },
     {
-      "slug": "XCOscTest",
-      "name": "OscillatorTest",
-      "description": "Claudio Oscillator Test",
+      "slug": "XQuantizer",
+      "name": "XQuantizer",
+      "description": "Freely adjustable quantizer",
       "tags": [
-        "Polyphonic"
+        "Quantizer"
       ]
     }
-
+    
 
   ]
 }

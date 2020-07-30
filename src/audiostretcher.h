@@ -3,7 +3,7 @@
 #include <rack.hpp>
 #include "plugin.hpp"
 #include "RubberBandStretcher.h"
-
+#ifdef RBMODULE
 template<typename T>
 class QeueuBuf
 {
@@ -92,3 +92,4 @@ public:
     void draw(const DrawArgs &args) override;
     
 };
+#endif

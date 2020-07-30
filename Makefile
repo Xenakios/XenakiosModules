@@ -18,14 +18,15 @@ LDFLAGS +=
 
 # Add .cpp files to the build
 SOURCES += $(wildcard src/*.cpp)
-SOURCES += $(wildcard dep/rubberband/src/*.cpp)
-SOURCES += $(wildcard dep/rubberband/src/audiocurves/*.cpp)
-SOURCES += $(wildcard dep/rubberband/src/base/*.cpp)
-SOURCES += $(wildcard dep/rubberband/src/dsp/*.cpp)
-SOURCES += $(wildcard dep/rubberband/src/kissfft/*.c)
-SOURCES += $(wildcard dep/rubberband/src/speex/*.c)
-SOURCES += $(wildcard dep/rubberband/src/system/*.cpp)
-SOURCES += $(wildcard dep/claudio/*.cpp)
+
+# SOURCES += $(wildcard dep/rubberband/src/*.cpp)
+# SOURCES += $(wildcard dep/rubberband/src/audiocurves/*.cpp)
+# SOURCES += $(wildcard dep/rubberband/src/base/*.cpp)
+# SOURCES += $(wildcard dep/rubberband/src/dsp/*.cpp)
+# SOURCES += $(wildcard dep/rubberband/src/kissfft/*.c)
+# SOURCES += $(wildcard dep/rubberband/src/speex/*.c)
+# SOURCES += $(wildcard dep/rubberband/src/system/*.cpp)
+# SOURCES += $(wildcard dep/claudio/*.cpp)
 # Add files to the ZIP package when running `make dist`
 # The compiled plugin and "plugin.json" are automatically added.
 DISTRIBUTABLES += res
