@@ -6,11 +6,11 @@ RACK_DIR ?= ../../Rack-SDK
 
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS += -Idep
-FLAGS += -Idep/rubberband
-FLAGS += -Idep/rubberband/src
+# FLAGS += -Idep/rubberband
+# FLAGS += -Idep/rubberband/src
 CFLAGS +=
-CXXFLAGS += -DUSE_KISSFFT
-CXXFLAGS += -DUSE_SPEEX
+# CXXFLAGS += -DUSE_KISSFFT
+# CXXFLAGS += -DUSE_SPEEX
 
 # Careful about linking to shared libraries, since you can't assume much about the user's environment and library search path.
 # Static libraries are fine, but they should be added to this plugin's build system.

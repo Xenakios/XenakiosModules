@@ -1,9 +1,11 @@
 #pragma once
 
+#ifdef RBMODULE
+
 #include <rack.hpp>
 #include "plugin.hpp"
 #include "RubberBandStretcher.h"
-#ifdef RBMODULE
+
 template<typename T>
 class QeueuBuf
 {
