@@ -211,10 +211,6 @@ public:
             startDragVal = v[index];
             return;
         }
-<<<<<<< HEAD
-=======
-        ++buttonCounter;
->>>>>>> 46073f4ba61c5ceff3598082061d5b51de964c32
         if (index == -1)
         {
             
