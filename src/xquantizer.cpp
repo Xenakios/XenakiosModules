@@ -151,7 +151,8 @@ public:
     int which_ = 0;
     bool& dirty;
     int draggedValue_ = -1;
-    float startXcor = 0.0f;
+    int startXcor = 0;
+    float startDragVal = 0.0;
     QuantizeValuesWidget(XQuantModule* m,int which, bool& dir) 
         : qmod(m), which_(which),dirty(dir)
     {
@@ -177,12 +178,14 @@ public:
         e.stopPropagating();
         
         float delta = e.mouseDelta.x*0.1;
-        float newXcor = startXcor+e.mouseDelta.x;
+        
+        int newXcor = startXcor+e.mouseDelta.x;
         startXcor = newXcor;
         float val = rescale(newXcor,0.0,box.size.x,-5.0f,5.0f);
+        val = startDragVal+e.mouseDelta.x*(10.0/box.size.x);
         val = clamp(val,-5.0f,5.0f);
         v[draggedValue_]=val;
-        
+        startDragVal = val;
         dirty = true;
         qmod->updateQuantizerValues(which_,v);
         //float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
@@ -197,14 +200,15 @@ public:
         }
         int index = findQuantizeIndex(e.pos.x,e.pos.y);
         auto v = qmod->quantizers[which_].voltages;
-        if (index>=0 && e.mods == 0)
+        if (index>=0)
         {
             e.consume(this);
             draggedValue_ = index;
             startXcor = e.pos.x;
+            startDragVal = v[index];
             return;
         }
-        if (index == -1 && e.mods == 0)
+        if (index == -1)
         {
             float newv = rescale(e.pos.x,0,box.size.x,-5.0f,5.0f);
             v.push_back(newv);
