@@ -162,7 +162,7 @@ public:
         auto& v = qmod->quantizers[which_].voltages;
         for (int i=0;i<v.size();++i)
         {
-            Rect r(rescale(v[i],-10.0f,10.0f,0.0,box.size.x)-10.0f,0,20.0f,
+            Rect r(rescale(v[i],-5.0f,5.0f,0.0,box.size.x)-10.0f,0,20.0f,
                 box.size.y);
             if (r.contains({xcor,ycor}))
             {
@@ -179,8 +179,8 @@ public:
         float delta = e.mouseDelta.x*0.1;
         float newXcor = startXcor+e.mouseDelta.x;
         startXcor = newXcor;
-        float val = rescale(newXcor,0.0,box.size.x,-10.0f,10.0f);
-        val = clamp(val,-10.0f,10.0f);
+        float val = rescale(newXcor,0.0,box.size.x,-5.0f,5.0f);
+        val = clamp(val,-5.0f,5.0f);
         v[draggedValue_]=val;
         
         dirty = true;
@@ -206,7 +206,7 @@ public:
         }
         if (index == -1 && e.mods == 0)
         {
-            float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
+            float newv = rescale(e.pos.x,0,box.size.x,-5.0f,5.0f);
             v.push_back(newv);
         }
         if (e.mods == GLFW_MOD_SHIFT)
@@ -234,7 +234,7 @@ public:
         int numqvals = qvals.size();
         for (int i=0;i<numqvals;++i)
         {
-            float xcor = rescale(qvals[i],-10.0f,10.0f,0.0,box.size.x);
+            float xcor = rescale(qvals[i],-5.0f,5.0f,0.0,box.size.x);
             nvgBeginPath(args.vg);
             nvgMoveTo(args.vg,xcor,0);
             nvgLineTo(args.vg,xcor,box.size.y);
