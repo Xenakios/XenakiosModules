@@ -189,23 +189,28 @@ public:
     }
     void onButton(const event::Button& e) override
     {
+        
         if (e.action == GLFW_RELEASE)
         {
             draggedValue_ = -1;
             dirty = true;
             return;
         }
+        
         int index = findQuantizeIndex(e.pos.x,e.pos.y);
         auto v = qmod->quantizers[which_].voltages;
-        if (index>=0 && e.mods == 0)
+        if (index>=0)
         {
+            
             e.consume(this);
             draggedValue_ = index;
             startXcor = e.pos.x;
             return;
         }
-        if (index == -1 && e.mods == 0)
+        ++buttonCounter;
+        if (index == -1)
         {
+            
             float newv = rescale(e.pos.x,0,box.size.x,-5.0f,5.0f);
             v.push_back(newv);
         }
@@ -220,6 +225,7 @@ public:
         qmod->updateQuantizerValues(which_,v);
         dirty = true;
     }
+    int buttonCounter = 0;
     void draw(const DrawArgs &args) override
     {
         if (!qmod)
@@ -240,6 +246,13 @@ public:
             nvgLineTo(args.vg,xcor,box.size.y);
             nvgStroke(args.vg);
         }
+        nvgFontSize(args.vg, 15);
+        nvgFontFaceId(args.vg, g_font->handle);
+        nvgTextLetterSpacing(args.vg, -1);
+        nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+        char txt[100];
+        sprintf(txt,"click %d",buttonCounter);
+        nvgText(args.vg, 3 , 10, txt, NULL);
         nvgRestore(args.vg);
     }
 };
@@ -247,6 +260,7 @@ public:
 class XQuantWidget : public ModuleWidget
 {
 public:
+    bool dummy = false;
     XQuantWidget(XQuantModule* m)
     {
         if (!g_font)
@@ -256,6 +270,7 @@ public:
         for (int i=0;i<8;++i)
         {
             addInput(createInputCentered<PJ301MPort>(Vec(30, 30+i*30), m, XQuantModule::FIRSTINPUT+i));
+#ifdef USEFBFORQW
             auto fbWidget = new FramebufferWidget;
 		    fbWidget->box.pos = Vec(50.0f,17.5+30.0f*i);
             fbWidget->box.size = Vec(300.0,25);
@@ -265,6 +280,13 @@ public:
             //qw->box.pos = Vec(50.0f,15.0+30.0f*i);
             qw->box.size = Vec(300.0,25);
             fbWidget->addChild(qw);
+#else
+            QuantizeValuesWidget* qw = 
+                new QuantizeValuesWidget(m,i,dummy);
+            qw->box.pos = Vec(50.0f,15.0+30.0f*i);
+            qw->box.size = Vec(300.0,25);
+            addChild(qw);
+#endif
             addOutput(createOutputCentered<PJ301MPort>(Vec(370, 30+i*30), m, XQuantModule::FIRSTOUTPUT+i));
         }
         addParam(createParam<RoundLargeBlackKnob>(Vec(38, 270), module, 0));
