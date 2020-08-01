@@ -382,6 +382,8 @@ public:
         nvgMoveTo(args.vg,xcor,0);
         nvgLineTo(args.vg,xcor,box.size.y);
         nvgStroke(args.vg);
+#define DEBUG_MESSAGES_QUANTIZER 0
+#if DEBUG_MESSAGES_QUANTIZER
         nvgFontSize(args.vg, 15);
         nvgFontFaceId(args.vg, g_font->handle);
         nvgTextLetterSpacing(args.vg, -1);
@@ -389,7 +391,7 @@ public:
         char buf[100];
         sprintf(buf,"mods %d",mousemod);
         nvgText(args.vg, 3 , 10, buf, NULL);
-        
+#endif
         nvgRestore(args.vg);
     }
 };
