@@ -146,7 +146,7 @@ public:
                 {
                     float quanval = quantizers[i].process(inputs[i].getVoltage(),strength);
                     bool outchanged = false;
-                    if (fabs(heldOutputs[i]-quanval)>0.01)
+                    if (fabs(heldOutputs[i]-quanval)>0.04666)
                         outchanged = true;
                     heldOutputs[i] = quanval;
                     if (outputs[FIRSTGATEOUTPUT+i].isConnected() && outchanged)
@@ -276,7 +276,47 @@ public:
     
     void onButton(const event::Button& e) override
     {
+        struct ResetMenuItem : MenuItem
+		{
+			QuantizeValuesWidget* w = nullptr;
+            void onAction(const event::Action &e) override
+			{
+				std::vector<float> v{-5.0f,0.0f,5.0f};
+                w->qmod->updateQuantizerValues(w->which_,v,false);
+			}
+		};
+        
+        struct OctavesMenuItem : MenuItem
+		{
+			QuantizeValuesWidget* w = nullptr;
+            void onAction(const event::Action &e) override
+			{
+				std::vector<float> v;
+                for (int i=0;i<11;++i)
+                    v.push_back(-5.0+i*1.0f);
+                w->qmod->updateQuantizerValues(w->which_,v,false);
+			}
+		};
+
         mousemod = e.mods;
+        if (e.button == GLFW_MOUSE_BUTTON_RIGHT && e.action == GLFW_PRESS)
+        {
+            ui::Menu *menu = createMenu();
+            MenuLabel *mastSetLabel = new MenuLabel();
+			mastSetLabel->text = "Quantizer right click menu";
+			menu->addChild(mastSetLabel);
+            
+            ResetMenuItem *resetItem = createMenuItem<ResetMenuItem>("Reset");
+			resetItem->w = this;
+			menu->addChild(resetItem);
+            
+            OctavesMenuItem* octaveItem = createMenuItem<OctavesMenuItem>("Set to octaves");
+			octaveItem->w = this;
+			menu->addChild(octaveItem);
+
+            e.consume(this);
+            return;
+        }
         if (e.action == GLFW_RELEASE)
         {
             draggedValue_ = -1;
