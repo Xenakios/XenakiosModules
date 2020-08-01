@@ -146,7 +146,7 @@ public:
                 {
                     float quanval = quantizers[i].process(inputs[i].getVoltage(),strength);
                     bool outchanged = false;
-                    if (fabs(heldOutputs[i]-quanval)>0.001)
+                    if (fabs(heldOutputs[i]-quanval)>0.01)
                         outchanged = true;
                     heldOutputs[i] = quanval;
                     if (outputs[FIRSTGATEOUTPUT+i].isConnected() && outchanged)

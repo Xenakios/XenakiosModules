@@ -5,8 +5,8 @@ extern std::shared_ptr<Font> g_font;
 KeyFramerModule::KeyFramerModule()
 {
     config(10,1,8);
-    configParam(0,0.0f,1.0f,0.0f);
-    configParam(9,2.0f,32.0f,32.0f);
+    configParam(0,0.0f,1.0f,0.0f,"Frame");
+    configParam(9,2.0f,32.0f,32.0f,"Num active frames");
     for (int i=0;i<8;++i)
     {
         configParam(i+1,0.0f,10.0f,0.0f);
@@ -119,7 +119,7 @@ public:
             sprintf(buf,"%d",i+1);
             nvgText(args.vg, xcor+8.0f , ycor+13.0f, buf, NULL);
         }
-        nvgText(args.vg, 5.0f , 80.0f, m_last_action.c_str(), NULL);
+        nvgText(args.vg, 5.0f ,140.0f, m_last_action.c_str(), NULL);
         nvgRestore(args.vg);
     }
     void onButton(const event::Button& e) override
@@ -131,7 +131,7 @@ public:
             int x = (e.pos.x/boxsize);
             int y = (e.pos.y/boxsize);
             int index = x+y*8;
-            if (e.mods==GLFW_MOD_SHIFT)
+            if (e.mods & GLFW_MOD_SHIFT)
             {
                 m_mod->updateSnapshot(index);
                 m_last_action = "update "+std::to_string(index);
