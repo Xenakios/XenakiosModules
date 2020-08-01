@@ -229,11 +229,13 @@ struct RotateSlider : ui::Slider {
                         XQuantModule* module = nullptr;
                         int whichquant = 0;
                         float slidValue = 0.0f;
+                        std::vector<float> originalValues;
 						void setValue(float value) override {
-							auto v = module->quantizers[whichquant].voltages;
+							value = clamp(value,-5.0f,5.0f);
+                            auto v = module->quantizers[whichquant].voltages;
                             for (int i=0;i<v.size();++i)
                             {
-                                v[i] = wrap_value(-5.0f,v[i]+value,5.0f);
+                                v[i] = wrap_value(-5.0f,originalValues[i]+value,5.0f);
                             }
                             module->updateQuantizerValues(whichquant,v,true);
                             slidValue = value;
@@ -272,6 +274,7 @@ struct RotateSlider : ui::Slider {
 						box.size.x = 180.0f;
 						RotateQuantity* q = new RotateQuantity;
                         q->module = mod;
+                        q->originalValues = mod->quantizers[which].voltages;
                         q->whichquant = which;
                         quantity = q;
 					}
