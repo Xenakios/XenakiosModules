@@ -290,6 +290,7 @@ public:
     int which_ = 0;
     bool& dirty;
     int draggedValue_ = -1;
+    bool quantizeDrag = false;
     float initX = 0.0f;
     float dragX = 0.0f;
     QuantizeValuesWidget(XQuantModule* m,int which, bool& dir) 
@@ -339,7 +340,11 @@ public:
         float newDragX = APP->scene->rack->mousePos.x;
         float newPos = initX+(newDragX-dragX);
         float val = rescale(newPos,0.0f,box.size.x,-5.0,5.0);
-        
+        if (quantizeDrag)
+        {
+            int temp = val * 6.0f;
+            val = temp / 6.0f;
+        }
         val = clampValue(v,draggedValue_,val,-5.0f,5.0f);
         qmod->updateSingleQuantizerValue(which_,draggedValue_,val);
         dirty = true;
@@ -405,6 +410,9 @@ public:
         {
             e.consume(this);
             draggedValue_ = index;
+            if (e.mods & GLFW_MOD_ALT)
+                quantizeDrag = true;
+            else quantizeDrag = false;
             initX = e.pos.x;
             return;
         }
