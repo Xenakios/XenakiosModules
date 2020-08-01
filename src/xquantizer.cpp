@@ -111,9 +111,10 @@ public:
         config(1,8,8,0);
         configParam(0,0.0f,1.0f,0.05f,"Foopar");
     }
-    void updateQuantizerValues(int index, std::vector<float> values)
+    void updateQuantizerValues(int index, std::vector<float> values, bool dosort)
     {
-        std::sort(values.begin(),values.end());
+        if (dosort)
+            std::sort(values.begin(),values.end());
         swapVector = values;
         whichQToUpdate = index;
         shouldUpdate = true;
@@ -151,8 +152,8 @@ public:
     int which_ = 0;
     bool& dirty;
     int draggedValue_ = -1;
-    int startXcor = 0;
-    float startDragVal = 0.0;
+    float initX = 0.0f;
+    float dragX = 0.0f;
     QuantizeValuesWidget(XQuantModule* m,int which, bool& dir) 
         : qmod(m), which_(which),dirty(dir)
     {
@@ -172,22 +173,25 @@ public:
         }
         return -1;
     }
+    void onDragStart(const event::DragStart& e) override
+    {
+        dragX = APP->scene->rack->mousePos.x;
+    }
+    void onDragEnd(const event::DragEnd &e) override
+    {
+
+    }
     void onDragMove(const event::DragMove& e) override
     {
         auto v = qmod->quantizers[which_].voltages;
-        e.stopPropagating();
-        
-        float delta = e.mouseDelta.x*0.1;
-        
-        int newXcor = startXcor+e.mouseDelta.x;
-        startXcor = newXcor;
-        float val = rescale(newXcor,0.0,box.size.x,-5.0f,5.0f);
-        val = startDragVal+e.mouseDelta.x*(10.0/box.size.x);
-        val = clamp(val,-5.0f,5.0f);
+        float newDragX = APP->scene->rack->mousePos.x;
+        float newPos = initX+(newDragX-dragX);
+        float val = rescale(newPos,0.0f,box.size.x,-5.0,5.0);
+        val = clamp(val,-5.0,5.0);
         v[draggedValue_]=val;
-        startDragVal = val;
+        
         dirty = true;
-        qmod->updateQuantizerValues(which_,v);
+        qmod->updateQuantizerValues(which_,v,false);
         //float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
     }
     void onButton(const event::Button& e) override
@@ -204,16 +208,15 @@ public:
         auto v = qmod->quantizers[which_].voltages;
         if (index>=0)
         {
-            
             e.consume(this);
             draggedValue_ = index;
-            startXcor = e.pos.x;
-            startDragVal = v[index];
+            initX = e.pos.x;
             return;
         }
+        bool wasChanged = false;
         if (index == -1)
         {
-            
+            wasChanged = true;
             float newv = rescale(e.pos.x,0,box.size.x,-5.0f,5.0f);
             v.push_back(newv);
         }
@@ -222,13 +225,15 @@ public:
             
             if (index>=0 && v.size()>1)
             {
+                wasChanged = true;
                 v.erase(v.begin()+index);
             }
         }
-        qmod->updateQuantizerValues(which_,v);
+        if (wasChanged)
+            qmod->updateQuantizerValues(which_,v, true);
         dirty = true;
     }
-    int buttonCounter = 0;
+    
     void draw(const DrawArgs &args) override
     {
         if (!qmod)
@@ -249,13 +254,7 @@ public:
             nvgLineTo(args.vg,xcor,box.size.y);
             nvgStroke(args.vg);
         }
-        nvgFontSize(args.vg, 15);
-        nvgFontFaceId(args.vg, g_font->handle);
-        nvgTextLetterSpacing(args.vg, -1);
-        nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-        char txt[100];
-        sprintf(txt,"click %d",buttonCounter);
-        nvgText(args.vg, 3 , 10, txt, NULL);
+        
         nvgRestore(args.vg);
     }
 };
