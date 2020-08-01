@@ -181,13 +181,25 @@ public:
     {
 
     }
+    float clampValue(std::vector<float>& vec, int index, float input, float minval, float maxval)
+    {
+        if (index == 0)
+            return clamp(input,minval,vec[1]-0.01);
+        if (index == vec.size()-1)
+            return clamp(input,vec[index-1]+0.01,maxval);
+        int leftIndex = index - 1;
+        int rightIndex = index + 1;
+        return clamp(input,vec[leftIndex]+0.01,vec[rightIndex]-0.01);
+        
+    }
     void onDragMove(const event::DragMove& e) override
     {
         auto v = qmod->quantizers[which_].voltages;
         float newDragX = APP->scene->rack->mousePos.x;
         float newPos = initX+(newDragX-dragX);
         float val = rescale(newPos,0.0f,box.size.x,-5.0,5.0);
-        val = clamp(val,-5.0,5.0);
+        
+        val = clampValue(v,draggedValue_,val,-5.0f,5.0f);
         v[draggedValue_]=val;
         
         dirty = true;
@@ -206,7 +218,7 @@ public:
         
         int index = findQuantizeIndex(e.pos.x,e.pos.y);
         auto v = qmod->quantizers[which_].voltages;
-        if (index>=0)
+        if (index>=0 && e.mods != GLFW_MOD_SHIFT)
         {
             e.consume(this);
             draggedValue_ = index;
