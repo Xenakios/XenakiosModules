@@ -97,20 +97,24 @@ public:
     };
     enum OutputPorts
     {
-        FIRSTOUTPUT = 0,
-        NUMOUTPUTS = 8
+        FIRSTQUANOUTPUT = 0,
+        FIRSTGATEOUTPUT = 8,
+        NUMOUTPUTS = 16
     };
     std::vector<float> heldOutputs;
+    std::vector<float> triggerOutputs;
     std::atomic<bool> shouldUpdate{false};
     std::vector<float> swapVector;
     int whichQToUpdate = -1;
     Quantizer quantizers[NUM_QUANTIZERS];
     dsp::ClockDivider divider;
+    dsp::PulseGenerator triggerPulses[8];
     XQuantModule()
     {
-        divider.setDivision(16);
+        divider.setDivision(128);
         heldOutputs.resize(NUM_QUANTIZERS);
-        config(1,8,8,0);
+        triggerOutputs.resize(NUM_QUANTIZERS,0.0f);
+        config(1,8,NUMOUTPUTS);
         configParam(0,0.0f,1.0f,0.05f,"Foopar");
     }
     void updateQuantizerValues(int index, std::vector<float> values, bool dosort)
@@ -139,12 +143,30 @@ public:
             for (int i=0;i<8;++i)
             {
                 if (outputs[i].isConnected())
-                    heldOutputs[i] = quantizers[i].process(inputs[i].getVoltage(),strength);
+                {
+                    float quanval = quantizers[i].process(inputs[i].getVoltage(),strength);
+                    bool outchanged = false;
+                    if (fabs(heldOutputs[i]-quanval)>0.001)
+                        outchanged = true;
+                    heldOutputs[i] = quanval;
+                    if (outputs[FIRSTGATEOUTPUT+i].isConnected() && outchanged)
+                    {
+                        if (triggerPulses[i].remaining>0.0)
+                            triggerPulses[i].reset();
+                        triggerPulses[i].trigger(0.002);
+                    }
+                }
             }
         }
         for (int i=0;i<8;++i)
         {
-            outputs[i].setVoltage(heldOutputs[i]);
+            if (outputs[i].isConnected())
+            {
+                outputs[i].setVoltage(heldOutputs[i]);
+                float triggerOut = triggerPulses[i].process(args.sampleTime);
+                outputs[FIRSTGATEOUTPUT+i].setVoltage(triggerOut*5.0f);
+            }
+            
         }
         
     }
@@ -301,17 +323,25 @@ public:
         nvgFillColor(args.vg, nvgRGB(0,128,0));
         nvgRect(args.vg,0,0,box.size.x,box.size.y);
         nvgFill(args.vg);
-        nvgStrokeColor(args.vg,nvgRGB(255,255,255));
+        
         auto& qvals = qmod->quantizers[which_].voltages;
         int numqvals = qvals.size();
         for (int i=0;i<numqvals;++i)
         {
             float xcor = rescale(qvals[i],-5.0f,5.0f,0.0,box.size.x);
+            nvgStrokeColor(args.vg,nvgRGB(255,255,255));
             nvgBeginPath(args.vg);
             nvgMoveTo(args.vg,xcor,0);
             nvgLineTo(args.vg,xcor,box.size.y);
             nvgStroke(args.vg);
+            
         }
+        float xcor = rescale(qmod->heldOutputs[which_],-5.0f,5.0f,0.0,box.size.x);
+        nvgStrokeColor(args.vg,nvgRGB(255,0,0));
+        nvgBeginPath(args.vg);
+        nvgMoveTo(args.vg,xcor,0);
+        nvgLineTo(args.vg,xcor,box.size.y);
+        nvgStroke(args.vg);
         nvgFontSize(args.vg, 15);
         nvgFontFaceId(args.vg, g_font->handle);
         nvgTextLetterSpacing(args.vg, -1);
@@ -333,7 +363,7 @@ public:
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         setModule(m);
-        box.size.x = 400;
+        box.size.x = 430;
         for (int i=0;i<8;++i)
         {
             addInput(createInputCentered<PJ301MPort>(Vec(30, 30+i*30), m, XQuantModule::FIRSTINPUT+i));
@@ -354,7 +384,8 @@ public:
             qw->box.size = Vec(300.0,25);
             addChild(qw);
 #endif
-            addOutput(createOutputCentered<PJ301MPort>(Vec(370, 30+i*30), m, XQuantModule::FIRSTOUTPUT+i));
+            addOutput(createOutputCentered<PJ301MPort>(Vec(370, 30+i*30), m, XQuantModule::FIRSTQUANOUTPUT+i));
+            addOutput(createOutputCentered<PJ301MPort>(Vec(395, 30+i*30), m, XQuantModule::FIRSTGATEOUTPUT+i));
         }
         addParam(createParam<RoundLargeBlackKnob>(Vec(38, 270), module, 0));
     }
