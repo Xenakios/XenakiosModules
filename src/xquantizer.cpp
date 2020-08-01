@@ -224,6 +224,62 @@ public:
     }
 };
 
+struct RotateSlider : ui::Slider {
+					struct RotateQuantity : Quantity {
+                        XQuantModule* module = nullptr;
+                        int whichquant = 0;
+                        float slidValue = 0.0f;
+						void setValue(float value) override {
+							auto v = module->quantizers[whichquant].voltages;
+                            for (int i=0;i<v.size();++i)
+                            {
+                                v[i] = wrap_value(-5.0f,v[i]+value,5.0f);
+                            }
+                            module->updateQuantizerValues(whichquant,v,true);
+                            slidValue = value;
+						}
+						float getValue() override {
+							return slidValue;
+						}
+						float getDefaultValue() override {
+							return 0.0f;
+						}
+						float getDisplayValue() override {
+							return getValue();
+						}
+						void setDisplayValue(float displayValue) override {
+							setValue(displayValue);
+						}
+						std::string getLabel() override {
+							return "Rotate";
+						}
+						std::string getUnit() override {
+							return "";
+						}
+						int getDisplayPrecision() override {
+							return 3;
+						}
+						float getMaxValue() override {
+							return 5.0f;
+						}
+						float getMinValue() override {
+							return -5.0f;
+						}
+					};
+                    XQuantModule* module = nullptr;
+                    int whichQuant = -1;
+					RotateSlider(XQuantModule* mod, int which) {
+						box.size.x = 180.0f;
+						RotateQuantity* q = new RotateQuantity;
+                        q->module = mod;
+                        q->whichquant = which;
+                        quantity = q;
+					}
+					~RotateSlider() {
+						delete quantity;
+					}
+				};
+
 class QuantizeValuesWidget : public TransparentWidget
 {
 public:
@@ -327,6 +383,8 @@ public:
             OctavesMenuItem* octaveItem = createMenuItem<OctavesMenuItem>("Set to octaves");
 			octaveItem->w = this;
 			menu->addChild(octaveItem);
+
+            menu->addChild(new RotateSlider(qmod,which_));
 
             e.consume(this);
             return;
