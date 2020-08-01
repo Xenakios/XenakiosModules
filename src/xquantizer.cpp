@@ -2,6 +2,8 @@
 #include <random>
 #include <atomic>
 
+const int NUM_QUANTIZERS = 8;
+
 extern std::shared_ptr<Font> g_font;
 
 template<typename T>
@@ -55,12 +57,11 @@ class Quantizer
 public:
     Quantizer()
     {
-        std::mt19937 gen;
-        std::uniform_real_distribution<float> dist(-10.0,10.0f);
-        //for (int i=0;i<7;++i)
-        //    voltages.push_back(dist(gen));
-        //std::sort(voltages.begin(),voltages.end());
-        voltages = {-5.0f,5.0f};
+        voltages = {-5.0f,0.0f,5.0f};
+    }
+    void sortVoltages()
+    {
+        std::sort(voltages.begin(),voltages.end());
     }
     float process(float x, float strength)
     {
@@ -92,23 +93,23 @@ public:
     enum InputPorts
     {
         FIRSTINPUT = 0,
-        LASTINPUT = 7
+        NUMINPUTS = 8
     };
     enum OutputPorts
     {
         FIRSTOUTPUT = 0,
-        LASTOUTPUT = FIRSTOUTPUT+7
+        NUMOUTPUTS = 8
     };
     std::vector<float> heldOutputs;
     std::atomic<bool> shouldUpdate{false};
     std::vector<float> swapVector;
     int whichQToUpdate = -1;
-    
+    Quantizer quantizers[NUM_QUANTIZERS];
     dsp::ClockDivider divider;
     XQuantModule()
     {
         divider.setDivision(16);
-        heldOutputs.resize(8);
+        heldOutputs.resize(NUM_QUANTIZERS);
         config(1,8,8,0);
         configParam(0,0.0f,1.0f,0.05f,"Foopar");
     }
@@ -147,7 +148,44 @@ public:
         }
         
     }
-    Quantizer quantizers[8];
+    json_t* dataToJson() override
+    {
+        json_t* resultJ = json_object();
+        json_t* arrayJ = json_array();
+        for (int i=0;i<(int)NUM_QUANTIZERS;++i)
+        {
+            json_t* array2J = json_array();
+            for (int j=0;j<quantizers[i].voltages.size();++j)
+            {
+                float v = quantizers[i].voltages[j];
+                json_array_append(array2J,json_real(v));
+            }
+            json_array_append(arrayJ,array2J);
+        }
+        json_object_set(resultJ,"quantizers_v1",arrayJ);
+        return resultJ;
+    }
+    void dataFromJson(json_t* root) override
+    {
+        json_t* arrayJ = json_object_get(root,"quantizers_v1");
+        if (arrayJ)
+        {
+            for (int i=0;i<NUM_QUANTIZERS;++i)
+            {
+                json_t* array2J = json_array_get(arrayJ,i);
+                if (array2J)
+                {
+                    quantizers[i].voltages.clear();
+                    for (int j=0;j<json_array_size(array2J);++j)
+                    {
+                        float v = json_number_value(json_array_get(array2J,j));
+                        quantizers[i].voltages.push_back(v);
+                    }
+                    quantizers[i].sortVoltages();
+                }
+            }
+        }
+    }
 };
 
 class QuantizeValuesWidget : public TransparentWidget
