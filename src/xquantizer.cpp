@@ -103,6 +103,7 @@ public:
     std::atomic<bool> shouldUpdate{false};
     std::vector<float> swapVector;
     int whichQToUpdate = -1;
+    
     dsp::ClockDivider divider;
     XQuantModule()
     {
@@ -118,6 +119,10 @@ public:
         swapVector = values;
         whichQToUpdate = index;
         shouldUpdate = true;
+    }
+    void updateSingleQuantizerValue(int quantizerindex, int index, float value)
+    {
+        quantizers[quantizerindex].voltages[index] = value;
     }
     void process(const ProcessArgs& args) override
     {
@@ -164,7 +169,7 @@ public:
         auto& v = qmod->quantizers[which_].voltages;
         for (int i=0;i<v.size();++i)
         {
-            Rect r(rescale(v[i],-5.0f,5.0f,0.0,box.size.x)-10.0f,0,20.0f,
+            Rect r(rescale(v[i],-5.0f,5.0f,0.0,box.size.x)-2.0f,0,4.0f,
                 box.size.y);
             if (r.contains({xcor,ycor}))
             {
@@ -181,7 +186,8 @@ public:
     {
 
     }
-    float clampValue(std::vector<float>& vec, int index, float input, float minval, float maxval)
+    int mousemod = 0;
+    float clampValue(const std::vector<float>& vec, int index, float input, float minval, float maxval)
     {
         if (index == 0)
             return clamp(input,minval,vec[1]-0.01);
@@ -194,21 +200,23 @@ public:
     }
     void onDragMove(const event::DragMove& e) override
     {
-        auto v = qmod->quantizers[which_].voltages;
+        if (draggedValue_==-1)
+            return;
+        const auto& v = qmod->quantizers[which_].voltages;
         float newDragX = APP->scene->rack->mousePos.x;
         float newPos = initX+(newDragX-dragX);
         float val = rescale(newPos,0.0f,box.size.x,-5.0,5.0);
         
         val = clampValue(v,draggedValue_,val,-5.0f,5.0f);
-        v[draggedValue_]=val;
-        
+        qmod->updateSingleQuantizerValue(which_,draggedValue_,val);
         dirty = true;
-        qmod->updateQuantizerValues(which_,v,false);
+        
         //float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
     }
+    
     void onButton(const event::Button& e) override
     {
-        
+        mousemod = e.mods;
         if (e.action == GLFW_RELEASE)
         {
             draggedValue_ = -1;
@@ -218,7 +226,7 @@ public:
         
         int index = findQuantizeIndex(e.pos.x,e.pos.y);
         auto v = qmod->quantizers[which_].voltages;
-        if (index>=0 && e.mods != GLFW_MOD_SHIFT)
+        if (index>=0 && !(e.mods & GLFW_MOD_SHIFT))
         {
             e.consume(this);
             draggedValue_ = index;
@@ -232,7 +240,7 @@ public:
             float newv = rescale(e.pos.x,0,box.size.x,-5.0f,5.0f);
             v.push_back(newv);
         }
-        if (e.mods == GLFW_MOD_SHIFT)
+        if (e.mods & GLFW_MOD_SHIFT)
         {
             
             if (index>=0 && v.size()>1)
@@ -266,6 +274,13 @@ public:
             nvgLineTo(args.vg,xcor,box.size.y);
             nvgStroke(args.vg);
         }
+        nvgFontSize(args.vg, 15);
+        nvgFontFaceId(args.vg, g_font->handle);
+        nvgTextLetterSpacing(args.vg, -1);
+        nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+        char buf[100];
+        sprintf(buf,"mods %d",mousemod);
+        nvgText(args.vg, 3 , 10, buf, NULL);
         
         nvgRestore(args.vg);
     }
