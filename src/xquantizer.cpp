@@ -6,6 +6,11 @@ const int NUM_QUANTIZERS = 8;
 
 extern std::shared_ptr<Font> g_font;
 
+float customlog(float base, float x)
+{
+	return std::log(x)/std::log(base);
+}
+
 template<typename T>
 inline T wrap_value(const T& minval, const T& val, const T& maxval)
 {
@@ -419,8 +424,21 @@ public:
                         }
                         
                     }
+                } else if (scaleType == 2)
+                {
+                    int harm = 1;
+                    while (true)
+                    {
+                        float volt = customlog(2.0,harm)-5.0f;
+                        if (volt<=0.0f)
+                        {
+                            v.push_back(volt);
+                        } else
+                            break;
+                        ++harm;
+                    }
                 }
-                w->qmod->updateQuantizerValues(w->which_,v,false);
+                w->qmod->updateQuantizerValues(w->which_,v,true);
 			}
 		};
 
@@ -443,6 +461,11 @@ public:
             octaveItem = createMenuItem<OctavesMenuItem>("Set to major scale");
 			octaveItem->w = this;
             octaveItem->scaleType = 1;
+			menu->addChild(octaveItem);
+
+            octaveItem = createMenuItem<OctavesMenuItem>("Set to harmonics");
+			octaveItem->w = this;
+            octaveItem->scaleType = 2;
 			menu->addChild(octaveItem);
 
             menu->addChild(new RotateSlider(qmod,which_));
