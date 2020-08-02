@@ -77,6 +77,13 @@ public:
     {
         std::sort(voltages.begin(),voltages.end());
     }
+    void rotateVoltages(float shift)
+    {
+        for (int i=0;i<voltages.size();++i)
+        {
+            voltages[i] = wrap_value(-5.0f,voltages[i]+shift,5.0f);
+        }
+    }
     float process(float x, float strength)
     {
         return quantize_to_grid(x,voltages,strength);
@@ -115,6 +122,11 @@ public:
         FIRSTGATEOUTPUT = 8,
         NUMOUTPUTS = 16
     };
+    enum Parameters
+    {
+        ENUMS(AMOUNT_PARAM, 8),
+        ENUMS(ROTATE_PARAM, 8)
+    };
     std::vector<float> heldOutputs;
     std::vector<float> triggerOutputs;
     std::atomic<bool> shouldUpdate{false};
@@ -123,13 +135,20 @@ public:
     Quantizer quantizers[NUM_QUANTIZERS];
     dsp::ClockDivider divider;
     dsp::PulseGenerator triggerPulses[8];
+    float lastRotates[8];
     XQuantModule()
     {
         divider.setDivision(128);
         heldOutputs.resize(NUM_QUANTIZERS);
         triggerOutputs.resize(NUM_QUANTIZERS,0.0f);
-        config(1,8,NUMOUTPUTS);
-        configParam(0,0.0f,1.0f,0.05f,"Foopar");
+        config(16,8,NUMOUTPUTS);
+        for (int i=0;i<8;++i)
+        {
+            lastRotates[i] = 0.0f;
+            configParam(AMOUNT_PARAM+i,0.0f,1.0f,1.00f,"Amount "+std::to_string(i));    
+            configParam(ROTATE_PARAM+i,-5.0f,5.0f,0.00f,"Rotate "+std::to_string(i));    
+        }
+        
     }
     void updateQuantizerValues(int index, std::vector<float> values, bool dosort)
     {
@@ -153,9 +172,17 @@ public:
                 std::swap(quantizers[whichQToUpdate].voltages,swapVector);
                 whichQToUpdate = -1;
             }
-            float strength = params[0].getValue();
+            
             for (int i=0;i<8;++i)
             {
+                float strength = params[AMOUNT_PARAM+i].getValue();
+                float rot = params[ROTATE_PARAM+i].getValue();
+                if (lastRotates[i]!=rot)
+                {
+                    float delta = rot-lastRotates[i];
+                    quantizers[i].rotateVoltages(delta);
+                    lastRotates[i] = rot;
+                }
                 if (outputs[i].isConnected())
                 {
                     float quanval = quantizers[i].process(inputs[i].getVoltage(),strength);
@@ -488,10 +515,11 @@ public:
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         setModule(m);
-        box.size.x = 430;
+        box.size.x = 470;
         for (int i=0;i<8;++i)
         {
             addInput(createInputCentered<PJ301MPort>(Vec(30, 30+i*30), m, XQuantModule::FIRSTINPUT+i));
+// #define USEFBFORQW
 #ifdef USEFBFORQW
             auto fbWidget = new FramebufferWidget;
 		    fbWidget->box.pos = Vec(50.0f,17.5+30.0f*i);
@@ -509,10 +537,14 @@ public:
             qw->box.size = Vec(300.0,25);
             addChild(qw);
 #endif
-            addOutput(createOutputCentered<PJ301MPort>(Vec(370, 30+i*30), m, XQuantModule::FIRSTQUANOUTPUT+i));
-            addOutput(createOutputCentered<PJ301MPort>(Vec(395, 30+i*30), m, XQuantModule::FIRSTGATEOUTPUT+i));
+            addParam(createParamCentered<RoundSmallBlackKnob>(Vec(365, 30+i*30), m, 
+                XQuantModule::AMOUNT_PARAM+i));
+            addParam(createParamCentered<RoundSmallBlackKnob>(Vec(390, 30+i*30), m, 
+                XQuantModule::ROTATE_PARAM+i));
+            addOutput(createOutputCentered<PJ301MPort>(Vec(415, 30+i*30), m, XQuantModule::FIRSTQUANOUTPUT+i));
+            addOutput(createOutputCentered<PJ301MPort>(Vec(440, 30+i*30), m, XQuantModule::FIRSTGATEOUTPUT+i));
         }
-        addParam(createParam<RoundLargeBlackKnob>(Vec(38, 270), module, 0));
+        
     }
     void draw(const DrawArgs &args)
     {
