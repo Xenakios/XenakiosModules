@@ -114,7 +114,8 @@ public:
     enum InputPorts
     {
         FIRSTINPUT = 0,
-        NUMINPUTS = 8
+        FIRST_ROT_CV_INPUT = 8,
+        NUM_INPUTS = 16
     };
     enum OutputPorts
     {
@@ -141,7 +142,7 @@ public:
         divider.setDivision(128);
         heldOutputs.resize(NUM_QUANTIZERS);
         triggerOutputs.resize(NUM_QUANTIZERS,0.0f);
-        config(16,8,NUMOUTPUTS);
+        config(16,NUM_INPUTS,NUMOUTPUTS);
         for (int i=0;i<8;++i)
         {
             lastRotates[i] = 0.0f;
@@ -177,6 +178,8 @@ public:
             {
                 float strength = params[AMOUNT_PARAM+i].getValue();
                 float rot = params[ROTATE_PARAM+i].getValue();
+                rot += inputs[FIRST_ROT_CV_INPUT+i].getVoltage();
+                rot = clamp(rot,-5.0f,5.0f);
                 if (lastRotates[i]!=rot)
                 {
                     float delta = rot-lastRotates[i];
@@ -394,11 +397,29 @@ public:
         struct OctavesMenuItem : MenuItem
 		{
 			QuantizeValuesWidget* w = nullptr;
+            int scaleType = 0;
             void onAction(const event::Action &e) override
 			{
 				std::vector<float> v;
-                for (int i=0;i<11;++i)
-                    v.push_back(-5.0+i*1.0f);
+                if (scaleType == 0)
+                {
+                    for (int i=0;i<11;++i)
+                        v.push_back(-5.0+i*1.0f);
+                } else if (scaleType == 1)
+                {
+                    std::vector<int> major{0,2,4,5,7,9,11};
+                    for (int i=0;i<11;++i)
+                    {
+                        for (int j=0;j<major.size();++j)
+                        {
+                            float oct = -5.0+i*1.0f;
+                            float pitch = 1.0/12*major[j];
+                            if (oct+pitch<=5.0f)
+                                v.push_back(oct+pitch);
+                        }
+                        
+                    }
+                }
                 w->qmod->updateQuantizerValues(w->which_,v,false);
 			}
 		};
@@ -417,6 +438,11 @@ public:
             
             OctavesMenuItem* octaveItem = createMenuItem<OctavesMenuItem>("Set to octaves");
 			octaveItem->w = this;
+			menu->addChild(octaveItem);
+
+            octaveItem = createMenuItem<OctavesMenuItem>("Set to major scale");
+			octaveItem->w = this;
+            octaveItem->scaleType = 1;
 			menu->addChild(octaveItem);
 
             menu->addChild(new RotateSlider(qmod,which_));
@@ -515,7 +541,7 @@ public:
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         setModule(m);
-        box.size.x = 470;
+        box.size.x = 500;
         for (int i=0;i<8;++i)
         {
             addInput(createInputCentered<PJ301MPort>(Vec(30, 30+i*30), m, XQuantModule::FIRSTINPUT+i));
@@ -541,8 +567,9 @@ public:
                 XQuantModule::AMOUNT_PARAM+i));
             addParam(createParamCentered<RoundSmallBlackKnob>(Vec(390, 30+i*30), m, 
                 XQuantModule::ROTATE_PARAM+i));
-            addOutput(createOutputCentered<PJ301MPort>(Vec(415, 30+i*30), m, XQuantModule::FIRSTQUANOUTPUT+i));
-            addOutput(createOutputCentered<PJ301MPort>(Vec(440, 30+i*30), m, XQuantModule::FIRSTGATEOUTPUT+i));
+            addInput(createInputCentered<PJ301MPort>(Vec(415, 30+i*30), m, XQuantModule::FIRST_ROT_CV_INPUT+i));
+            addOutput(createOutputCentered<PJ301MPort>(Vec(440, 30+i*30), m, XQuantModule::FIRSTQUANOUTPUT+i));
+            addOutput(createOutputCentered<PJ301MPort>(Vec(465, 30+i*30), m, XQuantModule::FIRSTGATEOUTPUT+i));
         }
         
     }
