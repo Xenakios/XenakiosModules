@@ -77,40 +77,65 @@ public:
     Quantizer()
     {
         voltages = {-5.0f,0.0f,5.0f};
+        transFormedVoltages = voltages;
     }
     void sortVoltages()
     {
         std::sort(voltages.begin(),voltages.end());
+
     }
-    void rotateVoltages(float shift)
-    {
-        for (int i=0;i<voltages.size();++i)
-        {
-            voltages[i] = wrap_value(-5.0f,voltages[i]+shift,5.0f);
-        }
-    }
+    
     float process(float x, float strength)
     {
-        return quantize_to_grid(x,voltages,strength);
-
-        auto it = std::lower_bound(voltages.begin(),voltages.end(),x);
-        //if (it == voltages.end())
-        //    return x;
-        --it;
-        float q0 = *it;
-        ++it;
-        if (it == voltages.end())
-            --it;
-        float q1 = *it;
-        float d0 = fabs(q0-x);
-        float d1 = fabs(q1-x);
-        if (d0<d1)
-            return q0;
-        return q1;
+        return quantize_to_grid(x,transFormedVoltages,strength);
+        
     }
-    std::vector<float> voltages;
+    int getNumVoltages() { return voltages.size(); }
+    float getVoltage(int index)
+    {
+        return voltages[index];
+    }
+    void setVoltage(int index, float v)
+    {
+        voltages[index] = v;
+    }
+    float getTransformedVoltage(int index)
+    {
+        return transFormedVoltages[index];
+    }
+    void setVoltages(std::vector<float> newVoltages)
+    {
+        voltages = newVoltages;
+        updateTransfomedVoltages();
+    }
+    std::vector<float> getVoltages()
+    {
+        return voltages;
+    }
+    void setRotateAmount(float amt)
+    {
+        if (amt!=rotateAmount)
+        {
+            rotateAmount = amt;
+            updateTransfomedVoltages();
+        }
+        
+    }
+    int transformCount = 0;
+    void updateTransfomedVoltages()
+    {
+        ++transformCount;
+        if (transFormedVoltages.size()!=voltages.size())
+            transFormedVoltages.resize(voltages.size());
+        for (int i=0;i<voltages.size();++i)
+        {
+            transFormedVoltages[i] = wrap_value(-5.0f,voltages[i]+rotateAmount,5.0f);
+        }
+    }
 private:
-    
+    std::vector<float> voltages;
+    std::vector<float> transFormedVoltages;
+    float rotateAmount = 0.0f;
 };
 
 class XQuantModule : public rack::Module
@@ -141,7 +166,7 @@ public:
     Quantizer quantizers[NUM_QUANTIZERS];
     dsp::ClockDivider divider;
     dsp::PulseGenerator triggerPulses[8];
-    float lastRotates[8];
+    
     XQuantModule()
     {
         divider.setDivision(128);
@@ -150,7 +175,7 @@ public:
         config(16,NUM_INPUTS,NUMOUTPUTS);
         for (int i=0;i<8;++i)
         {
-            lastRotates[i] = 0.0f;
+            
             configParam(AMOUNT_PARAM+i,0.0f,1.0f,1.00f,"Amount "+std::to_string(i));    
             configParam(ROTATE_PARAM+i,-5.0f,5.0f,0.00f,"Rotate "+std::to_string(i));    
         }
@@ -166,7 +191,7 @@ public:
     }
     void updateSingleQuantizerValue(int quantizerindex, int index, float value)
     {
-        quantizers[quantizerindex].voltages[index] = value;
+        quantizers[quantizerindex].setVoltage(index,value);
     }
     void process(const ProcessArgs& args) override
     {
@@ -175,7 +200,7 @@ public:
             if (shouldUpdate)
             {
                 shouldUpdate = false;
-                std::swap(quantizers[whichQToUpdate].voltages,swapVector);
+                quantizers[whichQToUpdate].setVoltages(swapVector);
                 whichQToUpdate = -1;
             }
             
@@ -185,12 +210,8 @@ public:
                 float rot = params[ROTATE_PARAM+i].getValue();
                 rot += inputs[FIRST_ROT_CV_INPUT+i].getVoltage();
                 rot = clamp(rot,-5.0f,5.0f);
-                if (lastRotates[i]!=rot)
-                {
-                    float delta = rot-lastRotates[i];
-                    quantizers[i].rotateVoltages(delta);
-                    lastRotates[i] = rot;
-                }
+                quantizers[i].setRotateAmount(rot);
+                
                 if (outputs[i].isConnected())
                 {
                     float quanval = quantizers[i].process(inputs[i].getVoltage(),strength);
@@ -226,9 +247,9 @@ public:
         for (int i=0;i<(int)NUM_QUANTIZERS;++i)
         {
             json_t* array2J = json_array();
-            for (int j=0;j<quantizers[i].voltages.size();++j)
+            for (int j=0;j<quantizers[i].getNumVoltages();++j)
             {
-                float v = quantizers[i].voltages[j];
+                float v = quantizers[i].getVoltage(j);
                 json_array_append(array2J,json_real(v));
             }
             json_array_append(arrayJ,array2J);
@@ -246,12 +267,13 @@ public:
                 json_t* array2J = json_array_get(arrayJ,i);
                 if (array2J)
                 {
-                    quantizers[i].voltages.clear();
+                    std::vector<float> volts;
                     for (int j=0;j<json_array_size(array2J);++j)
                     {
                         float v = json_number_value(json_array_get(array2J,j));
-                        quantizers[i].voltages.push_back(v);
+                        volts.push_back(v);
                     }
+                    quantizers[i].setVoltages(volts);
                     quantizers[i].sortVoltages();
                 }
             }
@@ -267,12 +289,12 @@ struct RotateSlider : ui::Slider {
                         std::vector<float> originalValues;
 						void setValue(float value) override {
 							value = clamp(value,-5.0f,5.0f);
-                            auto v = module->quantizers[whichquant].voltages;
-                            for (int i=0;i<v.size();++i)
+                            auto& quantizer = module->quantizers[whichquant];
+                            for (int i=0;i<quantizer.getNumVoltages();++i)
                             {
-                                v[i] = wrap_value(-5.0f,originalValues[i]+value,5.0f);
+                                //v[i] = wrap_value(-5.0f,originalValues[i]+value,5.0f);
                             }
-                            module->updateQuantizerValues(whichquant,v,true);
+                            //module->updateQuantizerValues(whichquant,v,true);
                             slidValue = value;
 						}
 						float getValue() override {
@@ -309,7 +331,7 @@ struct RotateSlider : ui::Slider {
 						box.size.x = 180.0f;
 						RotateQuantity* q = new RotateQuantity;
                         q->module = mod;
-                        q->originalValues = mod->quantizers[which].voltages;
+                        //q->originalValues = mod->quantizers[which].voltages;
                         q->whichquant = which;
                         quantity = q;
 					}
@@ -335,10 +357,10 @@ public:
     }
     int findQuantizeIndex(float xcor, float ycor)
     {
-        auto& v = qmod->quantizers[which_].voltages;
-        for (int i=0;i<v.size();++i)
+        auto& quant = qmod->quantizers[which_];
+        for (int i=0;i<quant.getNumVoltages();++i)
         {
-            Rect r(rescale(v[i],-5.0f,5.0f,0.0,box.size.x)-2.0f,0,4.0f,
+            Rect r(rescale(quant.getVoltage(i),-5.0f,5.0f,0.0,box.size.x)-2.0f,0,4.0f,
                 box.size.y);
             if (r.contains({xcor,ycor}))
             {
@@ -356,22 +378,22 @@ public:
 
     }
     int mousemod = 0;
-    float clampValue(const std::vector<float>& vec, int index, float input, float minval, float maxval)
+    float clampValue(Quantizer& quant, int index, float input, float minval, float maxval)
     {
         if (index == 0)
-            return clamp(input,minval,vec[1]-0.01);
-        if (index == vec.size()-1)
-            return clamp(input,vec[index-1]+0.01,maxval);
+            return clamp(input,minval,quant.getVoltage(1)-0.01);
+        if (index == quant.getNumVoltages()-1)
+            return clamp(input,quant.getVoltage(index-1)+0.01,maxval);
         int leftIndex = index - 1;
         int rightIndex = index + 1;
-        return clamp(input,vec[leftIndex]+0.01,vec[rightIndex]-0.01);
+        return clamp(input,quant.getVoltage(leftIndex)+0.01,quant.getVoltage(rightIndex)-0.01);
         
     }
     void onDragMove(const event::DragMove& e) override
     {
         if (draggedValue_==-1)
             return;
-        const auto& v = qmod->quantizers[which_].voltages;
+        auto& quant = qmod->quantizers[which_];
         float newDragX = APP->scene->rack->mousePos.x;
         float newPos = initX+(newDragX-dragX);
         float val = rescale(newPos,0.0f,box.size.x,-5.0,5.0);
@@ -380,7 +402,7 @@ public:
             int temp = val * 6.0f;
             val = temp / 6.0f;
         }
-        val = clampValue(v,draggedValue_,val,-5.0f,5.0f);
+        val = clampValue(quant,draggedValue_,val,-5.0f,5.0f);
         qmod->updateSingleQuantizerValue(which_,draggedValue_,val);
         dirty = true;
         
@@ -437,6 +459,30 @@ public:
                             break;
                         ++harm;
                     }
+                } else if (scaleType == 3)
+                {
+                    std::vector<float> greek{
+                        1.0,
+                        28.0/27.0,
+                        16.0/15.0,
+                        4.0/3.0,
+                        3.0/2.0,
+                        14.0/9.0,
+                        8.0/5.0
+                        };
+ 
+
+                    for (int i=0;i<11;++i)
+                    {
+                        for (int j=0;j<greek.size();++j)
+                        {
+                            float oct = -5.0+i*1.0f;
+                            float pitch = customlog(2.0,greek[j]);
+                            if (oct+pitch<=5.0f)
+                                v.push_back(oct+pitch);
+                        }
+                        
+                    }
                 }
                 w->qmod->updateQuantizerValues(w->which_,v,true);
 			}
@@ -463,12 +509,19 @@ public:
             octaveItem->scaleType = 1;
 			menu->addChild(octaveItem);
 
+            octaveItem = createMenuItem<OctavesMenuItem>("Set to Greek enharmonic scale");
+			octaveItem->w = this;
+            octaveItem->scaleType = 3;
+			menu->addChild(octaveItem);
+
             octaveItem = createMenuItem<OctavesMenuItem>("Set to harmonics");
 			octaveItem->w = this;
             octaveItem->scaleType = 2;
 			menu->addChild(octaveItem);
 
             menu->addChild(new RotateSlider(qmod,which_));
+            
+            
 
             e.consume(this);
             return;
@@ -481,7 +534,7 @@ public:
         }
         
         int index = findQuantizeIndex(e.pos.x,e.pos.y);
-        auto v = qmod->quantizers[which_].voltages;
+        auto v = qmod->quantizers[which_].getVoltages();
         if (index>=0 && !(e.mods & GLFW_MOD_SHIFT))
         {
             e.consume(this);
@@ -523,32 +576,38 @@ public:
         nvgRect(args.vg,0,0,box.size.x,box.size.y);
         nvgFill(args.vg);
         
-        auto& qvals = qmod->quantizers[which_].voltages;
-        int numqvals = qvals.size();
+        auto& quant = qmod->quantizers[which_];
+        int numqvals = quant.getNumVoltages();
         for (int i=0;i<numqvals;++i)
         {
-            float xcor = rescale(qvals[i],-5.0f,5.0f,0.0,box.size.x);
+            float xcor = rescale(quant.getVoltage(i),-5.0f,5.0f,0.0,box.size.x);
             nvgStrokeColor(args.vg,nvgRGB(255,255,255));
             nvgBeginPath(args.vg);
             nvgMoveTo(args.vg,xcor,0);
+            nvgLineTo(args.vg,xcor,box.size.y*0.74);
+            nvgStroke(args.vg);
+
+            xcor = rescale(quant.getTransformedVoltage(i),-5.0f,5.0f,0.0,box.size.x);
+            nvgStrokeColor(args.vg,nvgRGB(200,200,200));
+            nvgBeginPath(args.vg);
+            nvgMoveTo(args.vg,xcor,box.size.y*0.75);
             nvgLineTo(args.vg,xcor,box.size.y);
             nvgStroke(args.vg);
-            
         }
         float xcor = rescale(qmod->heldOutputs[which_],-5.0f,5.0f,0.0,box.size.x);
         nvgStrokeColor(args.vg,nvgRGB(255,0,0));
         nvgBeginPath(args.vg);
-        nvgMoveTo(args.vg,xcor,0);
+        nvgMoveTo(args.vg,xcor,box.size.y*0.75);
         nvgLineTo(args.vg,xcor,box.size.y);
         nvgStroke(args.vg);
-#define DEBUG_MESSAGES_QUANTIZER 0
+#define DEBUG_MESSAGES_QUANTIZER 1
 #if DEBUG_MESSAGES_QUANTIZER
         nvgFontSize(args.vg, 15);
         nvgFontFaceId(args.vg, g_font->handle);
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
         char buf[100];
-        sprintf(buf,"mods %d",mousemod);
+        sprintf(buf,"transforms %d",quant.transformCount);
         nvgText(args.vg, 3 , 10, buf, NULL);
 #endif
         nvgRestore(args.vg);
