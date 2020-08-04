@@ -234,7 +234,7 @@ public:
             {
                 outputs[i].setVoltage(heldOutputs[i]);
                 float triggerOut = triggerPulses[i].process(args.sampleTime);
-                outputs[FIRSTGATEOUTPUT+i].setVoltage(triggerOut*5.0f);
+                outputs[FIRSTGATEOUTPUT+i].setVoltage(triggerOut*10.0f);
             }
             
         }
@@ -605,7 +605,7 @@ public:
         nvgFontSize(args.vg, 15);
         nvgFontFaceId(args.vg, g_font->handle);
         nvgTextLetterSpacing(args.vg, -1);
-        nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+        nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
         char buf[100];
         sprintf(buf,"transforms %d",quant.transformCount);
         nvgText(args.vg, 3 , 10, buf, NULL);
