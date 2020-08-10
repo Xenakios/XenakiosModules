@@ -1,8 +1,32 @@
 #include "plugin.hpp"
 #include <random>
 #include <atomic>
+#include <osdialog.h>
 
 const int NUM_QUANTIZERS = 8;
+
+std::string getApplicationPathDialog() {
+	char* pathC = NULL;
+#if defined ARCH_LIN
+	pathC = osdialog_file(OSDIALOG_OPEN, "/usr/bin/", NULL, NULL);
+#elif defined ARCH_WIN
+	osdialog_filters* filters = osdialog_filters_parse("Executable:exe");
+	pathC = osdialog_file(OSDIALOG_OPEN, "C:/", NULL, filters);
+	osdialog_filters_free(filters);
+#elif defined ARCH_MAC
+	osdialog_filters* filters = osdialog_filters_parse("Application:app");
+	pathC = osdialog_file(OSDIALOG_OPEN, "/Applications/", NULL, filters);
+	osdialog_filters_free(filters);
+#endif
+	if (!pathC)
+		return "";
+
+	std::string path = "\"";
+	path += pathC;
+	path += "\"";
+	std::free(pathC);
+	return path;
+}
 
 extern std::shared_ptr<Font> g_font;
 
@@ -421,7 +445,9 @@ public:
 			}
 		};
         
-        struct OctavesMenuItem : MenuItem
+        
+
+        struct GenerateScaleMenuItem : MenuItem
 		{
 			QuantizeValuesWidget* w = nullptr;
             int scaleType = 0;
@@ -483,10 +509,81 @@ public:
                         }
                         
                     }
+                } else if (scaleType == 4)
+                {
+                    std::vector<float> gamelan{
+                        1/1,
+                        10/9,
+                        7.0/6,
+                        32.0/25,
+                        47.0/35,
+                        32.0/23,
+                        3.0/2,
+                        20.0/13,
+                        16.0/9,
+                        16.0/9,
+                        23.0/12
+
+                        };
+ 
+
+                    for (int i=0;i<11;++i)
+                    {
+                        for (int j=0;j<gamelan.size();++j)
+                        {
+                            float oct = -5.0+i*1.0f;
+                            float pitch = customlog(2.0,gamelan[j]);
+                            if (oct+pitch<=5.0f)
+                                v.push_back(oct+pitch);
+                        }
+                        
+                    }
                 }
                 w->qmod->updateQuantizerValues(w->which_,v,true);
 			}
 		};
+        struct LoadScalaFileItem  : MenuItem
+        {
+            void onAction(const event::Action &e) override
+            {
+                try
+                {
+                std::string dir = asset::plugin(pluginInstance, "examples");
+                //std::string dir("C:\\Users\\Teemu\\Documents\\Rack\\plugins-v1\\NYSTHI\\res\\microtuning\\scala_scales");
+                char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, NULL);
+		        if (!pathC) {
+			        return;
+		        }
+		        std::string path = pathC;
+		        std::free(pathC);
+                }
+                catch (std::exception& ex)
+                {
+                    INFO("%s",ex.what());
+                }
+            }
+
+        };
+        struct GenerateScalesItem : MenuItem
+        {
+            QuantizeValuesWidget* qw = nullptr;
+            Menu *createChildMenu() override 
+            {
+		        Menu *submenu = new Menu();
+                std::vector<std::string> scaleNames={"Octaves","Major","Natural Harmonics","Greek Enharmonic",
+                    "Gamelan Udan"};
+		        for (int i = 0; i < scaleNames.size(); i++) 
+                {
+			        GenerateScaleMenuItem *item = createMenuItem<GenerateScaleMenuItem>(scaleNames[i]);
+			        item->w = qw;
+			        item->scaleType = i;
+			        submenu->addChild(item);
+                }
+                submenu->addChild(createMenuItem<GenerateScaleMenuItem>("Load Scale file..."));
+                return submenu;
+	        }
+
+        };
 
         mousemod = e.mods;
         if (e.button == GLFW_MOUSE_BUTTON_RIGHT && e.action == GLFW_PRESS)
@@ -500,26 +597,12 @@ public:
 			resetItem->w = this;
 			menu->addChild(resetItem);
             
-            OctavesMenuItem* octaveItem = createMenuItem<OctavesMenuItem>("Set to octaves");
-			octaveItem->w = this;
-			menu->addChild(octaveItem);
 
-            octaveItem = createMenuItem<OctavesMenuItem>("Set to major scale");
-			octaveItem->w = this;
-            octaveItem->scaleType = 1;
-			menu->addChild(octaveItem);
+            GenerateScalesItem* scalesItem = createMenuItem<GenerateScalesItem>("Generate scale",RIGHT_ARROW);
+		    scalesItem->qw = this;
+		    menu->addChild(scalesItem);
 
-            octaveItem = createMenuItem<OctavesMenuItem>("Set to Greek enharmonic scale");
-			octaveItem->w = this;
-            octaveItem->scaleType = 3;
-			menu->addChild(octaveItem);
-
-            octaveItem = createMenuItem<OctavesMenuItem>("Set to harmonics");
-			octaveItem->w = this;
-            octaveItem->scaleType = 2;
-			menu->addChild(octaveItem);
-
-            menu->addChild(new RotateSlider(qmod,which_));
+            //menu->addChild(new RotateSlider(qmod,which_));
             
             
 
