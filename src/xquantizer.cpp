@@ -453,7 +453,9 @@ public:
             int scaleType = 0;
             void onAction(const event::Action &e) override
 			{
-				std::vector<float> v;
+				if (!w)
+                    return;
+                std::vector<float> v;
                 if (scaleType == 0)
                 {
                     for (int i=0;i<11;++i)
@@ -546,21 +548,15 @@ public:
         {
             void onAction(const event::Action &e) override
             {
-                try
-                {
-                std::string dir = asset::plugin(pluginInstance, "examples");
-                //std::string dir("C:\\Users\\Teemu\\Documents\\Rack\\plugins-v1\\NYSTHI\\res\\microtuning\\scala_scales");
+                //std::string dir = asset::plugin(pluginInstance, "examples");
+                std::string dir("C:\\Users\\Teemu\\Documents\\Rack\\plugins-v1\\NYSTHI\\res\\microtuning\\scala_scales");
                 char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, NULL);
 		        if (!pathC) {
 			        return;
 		        }
 		        std::string path = pathC;
 		        std::free(pathC);
-                }
-                catch (std::exception& ex)
-                {
-                    INFO("%s",ex.what());
-                }
+                
             }
 
         };
@@ -579,7 +575,6 @@ public:
 			        item->scaleType = i;
 			        submenu->addChild(item);
                 }
-                submenu->addChild(createMenuItem<GenerateScaleMenuItem>("Load Scale file..."));
                 return submenu;
 	        }
 
@@ -588,6 +583,7 @@ public:
         mousemod = e.mods;
         if (e.button == GLFW_MOUSE_BUTTON_RIGHT && e.action == GLFW_PRESS)
         {
+            
             ui::Menu *menu = createMenu();
             MenuLabel *mastSetLabel = new MenuLabel();
 			mastSetLabel->text = "Quantizer right click menu";
@@ -601,7 +597,7 @@ public:
             GenerateScalesItem* scalesItem = createMenuItem<GenerateScalesItem>("Generate scale",RIGHT_ARROW);
 		    scalesItem->qw = this;
 		    menu->addChild(scalesItem);
-
+            menu->addChild(createMenuItem<LoadScalaFileItem>("Load Scala file..."));
             //menu->addChild(new RotateSlider(qmod,which_));
             
             
