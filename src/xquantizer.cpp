@@ -28,6 +28,120 @@ std::string getApplicationPathDialog() {
 	return path;
 }
 
+#ifdef SCALA_PARSER
+
+std::pair<int, int> parseFractional(std::string& str)
+{
+	int pos = str.find('/');
+	auto first = str.substr(0, pos);
+	auto second = str.substr(pos + 1);
+	return { std::stoi(first),std::stoi(second) };
+}
+
+std::vector<double> parse_scala(std::vector<std::string>& input)
+{
+	std::vector<double> result;
+	bool desc_found = false;
+	int num_notes_found = 0;
+	result.push_back(0.0);
+	for (auto& e : input)
+	{
+		if (e[0] == '!')
+			continue;
+		if (num_notes_found > 0)
+		{
+			if (e.find('.')!=std::string::npos)
+			{
+				double freq = atof(e.c_str());
+				if (freq > 0.0)
+					result.push_back(1.0/1200.0*freq);
+			}
+			else if (e.find("/")!=std::string::npos)
+			{
+				auto fract = parseFractional(e);
+				//std::cout << (double)fract.first/(double)fract.second << " (from fractional)\n";
+				double f0 = fract.first;
+				double f1 = fract.second;
+				
+				result.push_back(customlog(2.0f,f0/f1));
+			}
+			else
+			{
+				try
+				{
+					int whole = std::stoi(e);
+					result.push_back(customlog(2.0f,2.0/whole));
+				}
+				catch (std::exception& ex)
+				{
+					//std::cout << ex.what() << "\n";
+				}
+				
+			}
+		}
+		if (e[0] != '!' && desc_found == true && num_notes_found==0)
+		{
+			//std::cout << e << "\n";
+			int notes = atoi(e.c_str());
+			if (notes < 1)
+			{
+				std::cout << "invalid num notes " << notes << "\n";
+				break;
+			}
+			std::cout << "num notes in scale " << notes << "\n";
+			num_notes_found = notes;
+		}
+		if (desc_found == false)
+		{
+			std::cout << "desc : " << e << "\n";
+			desc_found = true;
+		}
+		
+	}
+	return result;
+}
+
+std::fstream f{ argv[1] };
+	if (f.is_open())
+	{
+		std::vector<std::string> lines;
+		char buf[4096];
+		while (f.eof() == false)
+		{
+			f.getline(buf, 4096);
+			lines.push_back(buf);
+		}
+		auto result = parse_scala(lines);
+		float volts = -5.0f;
+		bool finished = false;
+		std::vector<float> voltScale;
+		while (volts < 5.0f)
+		{
+			float last = 0.0f;
+			for (auto& e : result)
+			{
+				if (volts + e > 5.0f)
+				{
+					finished = true;
+					break;
+				}
+				
+				//std::cout << e << "\t\t" << volts+e << "\n";
+				voltScale.push_back(volts + e);
+				last = e;
+			}
+			volts += last;
+			if (finished)
+				break;
+		}
+		voltScale.erase(std::unique(voltScale.begin(), voltScale.end()), voltScale.end());
+		for (auto& e : voltScale)
+			std::cout << e << "\n";
+	}
+	else std::cout << "could not open file\n";
+
+#endif
+
 extern std::shared_ptr<Font> g_font;
 
 float customlog(float base, float x)
