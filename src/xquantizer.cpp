@@ -2,8 +2,14 @@
 #include <random>
 #include <atomic>
 #include <osdialog.h>
+#include <fstream>
 
 const int NUM_QUANTIZERS = 8;
+
+float customlog(float base, float x)
+{
+	return std::log(x)/std::log(base);
+}
 
 std::string getApplicationPathDialog() {
 	char* pathC = NULL;
@@ -27,7 +33,7 @@ std::string getApplicationPathDialog() {
 	std::free(pathC);
 	return path;
 }
-
+#define SCALA_PARSER
 #ifdef SCALA_PARSER
 
 std::pair<int, int> parseFractional(std::string& str)
@@ -101,7 +107,9 @@ std::vector<double> parse_scala(std::vector<std::string>& input)
 	return result;
 }
 
-std::fstream f{ argv[1] };
+std::vector<float> loadScala(std::string path)
+{
+    std::fstream f{ path };
 	if (f.is_open())
 	{
 		std::vector<std::string> lines;
@@ -112,10 +120,12 @@ std::fstream f{ argv[1] };
 			lines.push_back(buf);
 		}
 		auto result = parse_scala(lines);
-		float volts = -5.0f;
+		std::sort(result.begin(),result.end());
+        float volts = -5.0f;
 		bool finished = false;
 		std::vector<float> voltScale;
-		while (volts < 5.0f)
+		int sanity = 0;
+        while (volts < 5.0f)
 		{
 			float last = 0.0f;
 			for (auto& e : result)
@@ -133,21 +143,23 @@ std::fstream f{ argv[1] };
 			volts += last;
 			if (finished)
 				break;
+            ++sanity;
+            if (sanity>1000)
+                break;
 		}
 		voltScale.erase(std::unique(voltScale.begin(), voltScale.end()), voltScale.end());
-		for (auto& e : voltScale)
-			std::cout << e << "\n";
+		//for (auto& e : voltScale)
+		//	std::cout << e << "\n";
+        return voltScale;
 	}
 	else std::cout << "could not open file\n";
-
+    return {};
+}
 #endif
 
 extern std::shared_ptr<Font> g_font;
 
-float customlog(float base, float x)
-{
-	return std::log(x)/std::log(base);
-}
+
 
 template<typename T>
 inline T wrap_value(const T& minval, const T& val, const T& maxval)
@@ -660,17 +672,24 @@ public:
 		};
         struct LoadScalaFileItem  : MenuItem
         {
+            QuantizeValuesWidget* qw = nullptr;
             void onAction(const event::Action &e) override
             {
+                if (qw==nullptr)
+                    return;
                 //std::string dir = asset::plugin(pluginInstance, "examples");
-                std::string dir("C:\\Users\\Teemu\\Documents\\Rack\\plugins-v1\\NYSTHI\\res\\microtuning\\scala_scales");
+                std::string dir("/Users/teemu/Documents/Rack/plugins-v1/NYSTHI/res/microtuning/scala_scales");
                 char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, NULL);
 		        if (!pathC) {
 			        return;
 		        }
 		        std::string path = pathC;
 		        std::free(pathC);
-                
+                auto result = loadScala(path);
+                if (result.size()>0)
+                {
+                    qw->qmod->updateQuantizerValues(qw->which_,result,false);
+                }
             }
 
         };
@@ -711,7 +730,9 @@ public:
             GenerateScalesItem* scalesItem = createMenuItem<GenerateScalesItem>("Generate scale",RIGHT_ARROW);
 		    scalesItem->qw = this;
 		    menu->addChild(scalesItem);
-            menu->addChild(createMenuItem<LoadScalaFileItem>("Load Scala file..."));
+            auto loadScalaMenuItem = createMenuItem<LoadScalaFileItem>("Load Scala file...");
+            loadScalaMenuItem->qw = this;
+            menu->addChild(loadScalaMenuItem);
             //menu->addChild(new RotateSlider(qmod,which_));
             
             
