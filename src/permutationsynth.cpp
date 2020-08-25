@@ -99,7 +99,7 @@ public:
         segments.emplace_back(64, [](float x) { return -1.0 + 2.0 * x; });
         segments.emplace_back(7, [](float x) { return -x; });
         segments.emplace_back(128, [](float x) { return x; });
-        segments.emplace_back(2000, [](float x) { return sin(x * pi * 2.0); });
+        segments.emplace_back(240, [](float x) { return sin(x * pi * 2.0); });
         segments.emplace_back(64, [&gen, &dist](float x) { return dist(gen); });
         segments.emplace_back(31, [](float x) { return fmod(x * 5.0, 1.0); });
         segments.emplace_back(300, [](float x) { return sin(x * pi * 2) * sin(x * pi * 15.13); });
@@ -119,7 +119,7 @@ public:
             WaveSegment& seg = segments[jtstate.values_[elementCounter] - 1];
             float sample = seg.data[segmentCounter];
             sample = reflect_value(-1.0f, sample * reflGain, 1.0f);
-            rsInBuf[k] = sample * 0.25;
+            rsInBuf[k] = sample;
             //buffer.setSample(0, k, sample*0.25);
             ++segmentCounter;
             if (segmentCounter >= seg.data.size())
