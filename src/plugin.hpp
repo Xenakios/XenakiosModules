@@ -10,6 +10,7 @@ extern Plugin *pluginInstance;
 extern Model *modelRandom;
 
 extern Model *modelXQuantizer;
+extern Model* modelXPSynth;
 
 template <typename TLightBase = RedLight>
 struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {

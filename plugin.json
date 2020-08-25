@@ -120,6 +120,15 @@
       "tags": [
         "Quantizer"
       ]
+    },
+    
+    {
+      "slug": "XPermutationSynth",
+      "name": "Permutative Synth",
+      "description": "Oscillator based on permutation of short waveform segments",
+      "tags": [
+        "Oscillator"
+      ]
     }
     
 

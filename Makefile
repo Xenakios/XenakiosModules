@@ -18,6 +18,7 @@ LDFLAGS +=
 
 # Add .cpp files to the build
 SOURCES += $(wildcard src/*.cpp)
+SOURCES += $(wildcard src/wdl/*.cpp)
 
 # SOURCES += $(wildcard dep/rubberband/src/*.cpp)
 # SOURCES += $(wildcard dep/rubberband/src/audiocurves/*.cpp)

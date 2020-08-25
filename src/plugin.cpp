@@ -293,6 +293,7 @@ void init(Plugin *p) {
 	p->addModel(createModel<AudioStretchModule,AudioStretchWidget>("XAudioStretch"));
 #endif
 	p->addModel(modelXQuantizer);
+	p->addModel(modelXPSynth);
 	p->addModel(modelRandom);
 	
 	
