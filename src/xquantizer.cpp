@@ -677,10 +677,15 @@ public:
             {
                 if (qw==nullptr)
                     return;
-                //std::string dir = asset::plugin(pluginInstance, "examples");
-                std::string dir("/Users/teemu/Documents/Rack/plugins-v1/NYSTHI/res/microtuning/scala_scales");
-                char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, NULL);
-		        if (!pathC) {
+                std::string dir = asset::plugin(pluginInstance, "/scala_scales");
+                osdialog_filters* filters = osdialog_filters_parse("Scala File:scl");
+	            //pathC = osdialog_file(OSDIALOG_OPEN, "C:/", NULL, filters);
+	            
+                //std::string dir("/Users/teemu/Documents/Rack/plugins-v1/NYSTHI/res/microtuning/scala_scales");
+                
+                char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
+		        osdialog_filters_free(filters);
+                if (!pathC) {
 			        return;
 		        }
 		        std::string path = pathC;
