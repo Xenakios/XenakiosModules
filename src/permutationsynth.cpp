@@ -115,8 +115,15 @@ public:
         segments.emplace_back(150, [&gen, &dist](float x) { return sin(x * pi) * dist(gen); });
         rsOutBuf.resize(4);
     }
+    int curoffs_ = 0;
     float process(float srate, float pitch, float fold, int numelems, int offs)
     {
+        if (curoffs_!=offs)
+        {
+            elementCounter = 0;
+            segmentCounter = 0;
+            curoffs_ = offs;
+        }
         if (numelems!=numElements)
         {
             if (numelems<3)
@@ -215,10 +222,17 @@ public:
             g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         addOutput(createOutputCentered<PJ301MPort>(Vec(35, 30), m, 0));
         addInput(createInputCentered<PJ301MPort>(Vec(65, 60), m, 0));
+        
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(35, 60), m, XPSynth::FREQ_PARAM));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(35, 90), m, XPSynth::FOLD_PARAM));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(35, 120), m, XPSynth::NUMELEMS_PARAM));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(35, 150), m, XPSynth::ELEMOFFSET_PARAM));
+        
+        auto knob = createParamCentered<RoundSmallBlackKnob>(Vec(35, 120), m, XPSynth::NUMELEMS_PARAM);
+        knob->snap = true;
+        addParam(knob);
+        knob = createParamCentered<RoundSmallBlackKnob>(Vec(35, 150), m, XPSynth::ELEMOFFSET_PARAM);
+        knob->snap = true;
+        addParam(knob);
+        
     }
     void draw(const DrawArgs &args)
     {

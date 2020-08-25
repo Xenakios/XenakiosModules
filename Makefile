@@ -9,6 +9,10 @@ FLAGS += -Idep
 # FLAGS += -Idep/rubberband
 # FLAGS += -Idep/rubberband/src
 CFLAGS +=
+
+# CFLAGS += -g
+# CXXFLAGS += -g
+
 # CXXFLAGS += -DUSE_KISSFFT
 # CXXFLAGS += -DUSE_SPEEX
 
