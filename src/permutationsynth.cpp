@@ -107,13 +107,13 @@ public:
         segments.emplace_back(150, [&gen, &dist](float x) { return sin(x * pi) * dist(gen); });
         rsOutBuf.resize(4);
     }
-    float process(float srate, float pitch)
+    float process(float srate, float pitch, float fold)
     {
         float ratio = pow(2.0,(pitch/12.0));
         rs.SetRates(ratio*srate, srate);
         double* rsInBuf = nullptr;
         int wanted = rs.ResamplePrepare(1, 1, &rsInBuf);
-        float reflGain = 1.0;
+        float reflGain = fold;
         for (int k = 0; k < wanted; ++k)
         {
             WaveSegment& seg = segments[jtstate.values_[elementCounter] - 1];
@@ -155,19 +155,22 @@ class XPSynth : public rack::Module
 public:
     enum PARAMS
     {
-        FREQ_PARAM
+        FREQ_PARAM,
+        FOLD_PARAM
     };
     XPSynth()
     {
-        config(1,1,1);
+        config(2,1,1);
         configParam(FREQ_PARAM, -48.f, 48.f, 0.f, "Frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
+        configParam(FOLD_PARAM, 1.0f, 64.f, 1.0f, "Fold");
     }
     void process(const ProcessArgs& args) override
     {
         float pitch = params[FREQ_PARAM].getValue();
         pitch += inputs[0].getVoltage()*12.0;
         pitch = clamp(pitch,-48.0,48.0);
-        float sample = osc.process(args.sampleRate,pitch);
+        float fold = params[FOLD_PARAM].getValue();
+        float sample = osc.process(args.sampleRate,pitch,fold);
         outputs[0].setVoltage(sample*5.0f);
     }
 private:
@@ -188,6 +191,7 @@ public:
         addOutput(createOutputCentered<PJ301MPort>(Vec(35, 30), m, 0));
         addInput(createInputCentered<PJ301MPort>(Vec(65, 60), m, 0));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(35, 60), m, XPSynth::FREQ_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(35, 90), m, XPSynth::FOLD_PARAM));
     }
     void draw(const DrawArgs &args)
     {
