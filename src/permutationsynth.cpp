@@ -30,12 +30,11 @@ struct WaveSegment
 
 };
 
-std::vector<int> UpTo(int n, int offset = 0)
+void UpTo(std::vector<int>& v, int n, int offset = 0)
 {
-    std::vector<int> retval(n);
+    v.resize(n);
     for (int ii = 0; ii < n; ++ii)
-        retval[ii] = ii + offset;
-    return retval;
+        v[ii] = ii + offset;
 }
 
 struct JohnsonTrotterState_
@@ -45,11 +44,20 @@ struct JohnsonTrotterState_
     std::vector<char> directions_;
     int sign_;
 
-    JohnsonTrotterState_(int n) : values_(UpTo(n, 1)), positions_(UpTo(n + 1, -1)), directions_(n + 1, 0), sign_(1) {}
+    JohnsonTrotterState_(int n) : sign_(1) 
+    {
+        values_.reserve(512);
+        positions_.reserve(512);
+        directions_.reserve(512);
+        UpTo(values_,n,1);
+        UpTo(positions_,n+1,-1);
+        directions_.resize(n+1);
+        std::fill(directions_.begin(),directions_.end(),0);
+    }
     void reset(int n)
     {
-        values_ = UpTo(n, 1);
-        positions_ = UpTo(n + 1, -1);
+        UpTo(values_,n,1);
+        UpTo(positions_,n+1,-1);
         directions_.resize(n + 1);
         std::fill(directions_.begin(), directions_.end(), 0);
         sign_ = 1;
@@ -115,6 +123,8 @@ public:
                 numelems = 3;
             jtstate.reset(numelems);
             numElements = numelems;
+            elementCounter = 0;
+            segmentCounter = 0;
         }
         float ratio = pow(2.0,(pitch/12.0));
         rs.SetRates(ratio*srate, srate);
@@ -123,8 +133,6 @@ public:
         float reflGain = fold;
         for (int k = 0; k < wanted; ++k)
         {
-            //int elemIndex = (elementCounter+offs);
-            // jtstate.values_[elemIndex] - 1
             int segIndex = jtstate.values_[elementCounter] - 1;
             segIndex = (segIndex+offs) % segments.size();
             WaveSegment& seg = segments[segIndex];
