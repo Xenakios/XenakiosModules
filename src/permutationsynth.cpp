@@ -144,7 +144,7 @@ public:
             segIndex = (segIndex+offs) % segments.size();
             WaveSegment& seg = segments[segIndex];
             float sample = seg.data[segmentCounter];
-            sample = reflect_value(-1.0f, sample * reflGain, 1.0f);
+            
             rsInBuf[k] = sample;
             //buffer.setSample(0, k, sample*0.25);
             ++segmentCounter;
@@ -164,7 +164,8 @@ public:
             }
         }
         rs.ResampleOut(rsOutBuf.data(), wanted, 1, 1);
-        return rsOutBuf[0];
+        float sample = reflect_value(-1.0f, (float)rsOutBuf[0] * reflGain, 1.0f);
+        return sample;
     }
 private:
     WDL_Resampler rs;
@@ -190,7 +191,7 @@ public:
     {
         config(4,1,1);
         configParam(FREQ_PARAM, -48.f, 48.f, 0.f, "Frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
-        configParam(FOLD_PARAM, 1.0f, 64.f, 1.0f, "Fold");
+        configParam(FOLD_PARAM, 0.0f, 1.0f, 0.0f, "Fold");
         configParam(NUMELEMS_PARAM, 3.0f, 12.f, 6.0f, "Number of elements");
         configParam(ELEMOFFSET_PARAM, 0.0f, 11.f, 1.0f, "Element offset");
     }
@@ -199,7 +200,7 @@ public:
         float pitch = params[FREQ_PARAM].getValue();
         pitch += inputs[0].getVoltage()*12.0;
         pitch = clamp(pitch,-48.0,48.0);
-        float fold = params[FOLD_PARAM].getValue();
+        float fold = 1.0+63.0*std::pow(3.0,params[FOLD_PARAM].getValue());
         int offs = params[ELEMOFFSET_PARAM].getValue();
         int numelems = params[NUMELEMS_PARAM].getValue();
         float sample = osc.process(args.sampleRate,pitch,fold,numelems,offs);
@@ -221,15 +222,15 @@ public:
         if (!g_font)
             g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         addOutput(createOutputCentered<PJ301MPort>(Vec(35, 30), m, 0));
-        addInput(createInputCentered<PJ301MPort>(Vec(65, 60), m, 0));
+        addInput(createInputCentered<PJ301MPort>(Vec(45, 60), m, 0));
         
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(35, 60), m, XPSynth::FREQ_PARAM));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(35, 90), m, XPSynth::FOLD_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(15, 60), m, XPSynth::FREQ_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(15, 90), m, XPSynth::FOLD_PARAM));
         
-        auto knob = createParamCentered<RoundSmallBlackKnob>(Vec(35, 120), m, XPSynth::NUMELEMS_PARAM);
+        auto knob = createParamCentered<RoundSmallBlackKnob>(Vec(15, 120), m, XPSynth::NUMELEMS_PARAM);
         knob->snap = true;
         addParam(knob);
-        knob = createParamCentered<RoundSmallBlackKnob>(Vec(35, 150), m, XPSynth::ELEMOFFSET_PARAM);
+        knob = createParamCentered<RoundSmallBlackKnob>(Vec(15, 150), m, XPSynth::ELEMOFFSET_PARAM);
         knob->snap = true;
         addParam(knob);
         
