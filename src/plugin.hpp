@@ -3,6 +3,12 @@
 
 using namespace rack;
 
+inline float customlog(float base, float x)
+{
+	return std::log(x)/std::log(base);
+}
+
+
 // Declare the Plugin, defined in plugin.cpp
 extern Plugin *pluginInstance;
 
@@ -11,6 +17,7 @@ extern Model *modelRandom;
 
 extern Model *modelXQuantizer;
 extern Model* modelXPSynth;
+extern Model* modelInharmonics;
 
 template <typename TLightBase = RedLight>
 struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {

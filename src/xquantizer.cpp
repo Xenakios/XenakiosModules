@@ -6,11 +6,6 @@
 
 const int NUM_QUANTIZERS = 8;
 
-float customlog(float base, float x)
-{
-	return std::log(x)/std::log(base);
-}
-
 std::string getApplicationPathDialog() {
 	char* pathC = NULL;
 #if defined ARCH_LIN

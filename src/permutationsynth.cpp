@@ -235,7 +235,7 @@ public:
         addParam(knob);
         
     }
-    void draw(const DrawArgs &args)
+    void draw(const DrawArgs &args) override
     {
         nvgSave(args.vg);
         float w = box.size.x;

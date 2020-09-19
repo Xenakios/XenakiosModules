@@ -129,6 +129,14 @@
       "tags": [
         "Oscillator"
       ]
+    },
+    {
+      "slug": "XInharmonics",
+      "name": "Inharmonics",
+      "description": "Generate voltages quantized to inharmonic intervals",
+      "tags": [
+        "Utility"
+      ]
     }
     
 
