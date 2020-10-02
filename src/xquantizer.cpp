@@ -6,31 +6,6 @@
 
 const int NUM_QUANTIZERS = 8;
 
-std::string getApplicationPathDialog() {
-	char* pathC = NULL;
-#if defined ARCH_LIN
-	pathC = osdialog_file(OSDIALOG_OPEN, "/usr/bin/", NULL, NULL);
-#elif defined ARCH_WIN
-	osdialog_filters* filters = osdialog_filters_parse("Executable:exe");
-	pathC = osdialog_file(OSDIALOG_OPEN, "C:/", NULL, filters);
-	osdialog_filters_free(filters);
-#elif defined ARCH_MAC
-	osdialog_filters* filters = osdialog_filters_parse("Application:app");
-	pathC = osdialog_file(OSDIALOG_OPEN, "/Applications/", NULL, filters);
-	osdialog_filters_free(filters);
-#endif
-	if (!pathC)
-		return "";
-
-	std::string path = "\"";
-	path += pathC;
-	path += "\"";
-	std::free(pathC);
-	return path;
-}
-#define SCALA_PARSER
-#ifdef SCALA_PARSER
-
 std::pair<int, int> parseFractional(std::string& str)
 {
 	int pos = str.find('/');
@@ -150,11 +125,8 @@ std::vector<float> loadScala(std::string path)
 	else std::cout << "could not open file\n";
     return {};
 }
-#endif
 
 extern std::shared_ptr<Font> g_font;
-
-
 
 template<typename T>
 inline T wrap_value(const T& minval, const T& val, const T& maxval)
@@ -726,17 +698,12 @@ public:
 			resetItem->w = this;
 			menu->addChild(resetItem);
             
-
             GenerateScalesItem* scalesItem = createMenuItem<GenerateScalesItem>("Generate scale",RIGHT_ARROW);
 		    scalesItem->qw = this;
 		    menu->addChild(scalesItem);
             auto loadScalaMenuItem = createMenuItem<LoadScalaFileItem>("Load Scala file...");
             loadScalaMenuItem->qw = this;
             menu->addChild(loadScalaMenuItem);
-            //menu->addChild(new RotateSlider(qmod,which_));
-            
-            
-
             e.consume(this);
             return;
         }
@@ -884,9 +851,6 @@ public:
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
         char buf[100];
-        float cpuload = 0.0f;
-        if (module)
-            cpuload = module->cpuTime;
         sprintf(buf,"XQuantizer");
         nvgText(args.vg, 3 , 10, buf, NULL);
         nvgText(args.vg, 3 , h-11, "Xenakios", NULL);

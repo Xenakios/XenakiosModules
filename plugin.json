@@ -137,6 +137,14 @@
       "tags": [
         "Utility"
       ]
+    },
+    {
+      "slug": "XStochastic",
+      "name": "ST",
+      "description": "Generates voltages and gates following Iannis Xenakis ST-program",
+      "tags": [
+        "Utility"
+      ]
     }
     
 

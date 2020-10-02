@@ -296,5 +296,5 @@ void init(Plugin *p) {
 	p->addModel(modelXPSynth);
 	p->addModel(modelRandom);
 	p->addModel(modelInharmonics);
-	
+	p->addModel(modelXStochastic);
 }
