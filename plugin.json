@@ -139,11 +139,21 @@
       ]
     },
     {
+      "disabled": true,
       "slug": "XStochastic",
       "name": "ST",
       "description": "Generates voltages and gates following Iannis Xenakis ST-program",
       "tags": [
         "Utility"
+      ]
+    },
+    {
+      
+      "slug": "XImageSynth",
+      "name": "ImageSynth",
+      "description": "Synthesises audio from images",
+      "tags": [
+        "Synth"
       ]
     }
     

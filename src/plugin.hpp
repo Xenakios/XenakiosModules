@@ -19,6 +19,7 @@ extern Model *modelXQuantizer;
 extern Model* modelXPSynth;
 extern Model* modelInharmonics;
 extern Model* modelXStochastic;
+extern Model* modelXImageSynth;
 
 template <typename TLightBase = RedLight>
 struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
