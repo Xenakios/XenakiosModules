@@ -3,7 +3,7 @@
 #include <stb_image.h>
 #include <atomic>
 #include <functional>
-
+#include <thread> 
 extern std::shared_ptr<Font> g_font;
 
 inline float harmonics3(float xin)
@@ -309,22 +309,50 @@ class XImageSynth : public rack::Module
 public:
     int m_comp = 0;
     std::vector<stbi_uc> m_backupdata; 
+    dsp::BooleanTrigger reloadTrigger;
+    std::atomic<bool> m_renderingImage;
     XImageSynth()
     {
-        config(0,0,1,0);
+        
+        config(1,0,1,0);
+        configParam(0,0,1,1,"Reload image");
+        reloadImage();
+    }
+    void reloadImage()
+    {
+        auto task=[this]
+        {
         int iw, ih, comp = 0;
-        m_img_data = stbi_load("C:\\ProgrammingProjects\\_experiments2020\\ImageSynth\\input_images\\img1.png",
+        m_img_data = nullptr;
+#if __APPLE__
+        auto tempdata = stbi_load("/Users/teemu/codeprojects/vcv/XenakiosModules/res/img1.png",
+            &iw,&ih,&m_comp,4);
+#elif
+        auto tempdata = stbi_load("C:\\ProgrammingProjects\\_experiments2020\\ImageSynth\\input_images\\img1.png",
         &iw,&ih,&m_comp,4);
-        m_backupdata.resize(m_comp*iw*ih);
-        for (int i=0;i<m_backupdata.size();++i)
-            m_backupdata[i] = m_img_data[i];
+#endif
+        m_playpos = 0.0f;
+        m_bufferplaypos = 0;
+        
         m_syn.m_panMode = 0;
-        m_syn.setImage(m_backupdata.data(),iw,ih);
+        m_img_data = tempdata;
+        m_syn.setImage(m_img_data ,iw,ih);
         m_syn.render(m_out_dur,44100);
+        };
+        std::thread th(task);
+        th.detach();
     }
     void process(const ProcessArgs& args) override
     {
         outputs[0].setChannels(2);
+        if (m_syn.percentReady()<0.1)
+        {
+            outputs[0].setVoltage(0.0,0);
+            outputs[0].setVoltage(0.0,1);
+            return;
+        }
+
+        
         float sample = m_syn.m_renderBuf[m_bufferplaypos*2]*5.0f;
         outputs[0].setVoltage(sample,0);
         sample = m_syn.m_renderBuf[m_bufferplaypos*2+1]*5.0f;
@@ -337,6 +365,7 @@ public:
             m_playpos = 0.0;
     }
     float m_out_dur = 10.0f;
+
     float m_playpos = 0.0f;
     int m_bufferplaypos = 0;
     stbi_uc* m_img_data = nullptr;
@@ -357,18 +386,35 @@ public:
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         
         addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, 0));
+        addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, 0));
     }
     ~XImageSynthWidget()
     {
         //nvgDeleteImage(m_ctx,m_image);
     }
+    bool imgDirty = false;
+    void step() override
+    {
+        if (m_synth==nullptr)
+            return;
+        float p = m_synth->params[0].getValue();
+        if (m_synth->reloadTrigger.process(p>0.0f))
+        {
+            m_synth->reloadImage();
+            imgDirty = true;
+        }
+        ModuleWidget::step();
+    }
     void draw(const DrawArgs &args) override
     {
         m_ctx = args.vg;
+        if (m_synth==nullptr)
+            return;
         nvgSave(args.vg);
-        if (m_image == 0)
+        if (imgDirty || (m_image == 0 && m_synth->m_img_data!=nullptr))
         {
-           m_image = nvgCreateImageRGBA(args.vg,1200,600,NVG_IMAGE_GENERATE_MIPMAPS,m_synth->m_img_data);
+            m_image = nvgCreateImageRGBA(args.vg,1200,600,NVG_IMAGE_GENERATE_MIPMAPS,m_synth->m_img_data);
+            imgDirty = false;
         }
         int imgw = 0;
         int imgh = 0;
@@ -381,6 +427,7 @@ public:
             nvgFillPaint(args.vg,pnt);
             
             nvgFill(args.vg);
+        }
             
             nvgBeginPath(args.vg);
             nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
@@ -400,18 +447,11 @@ public:
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             char buf[100];
-            sprintf(buf,"%d %d %d",imgw,imgh,m_synth->m_comp);
+            sprintf(buf,"%d %d %d",imgw,imgh,m_image);
             nvgText(args.vg, 3 , 10, buf, NULL);
         
             
-        }
-        else
-        {
-            nvgBeginPath(args.vg);
-            nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
-            nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
-            nvgFill(args.vg);
-        }
+        
         //nvgDeleteImage(args.vg,m_image);
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
