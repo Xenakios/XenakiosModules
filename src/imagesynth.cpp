@@ -318,13 +318,15 @@ public:
     XImageSynth()
     {
         presetImages = rack::system::getEntries(asset::plugin(pluginInstance, "res/image_synth_images"));
-        config(6,1,1,0);
+        config(8,1,1,0);
         configParam(0,0,1,1,"Reload image");
         configParam(1,0.5,60,5.0,"Image duration");
         configParam(2,-24,24,0.0,"Playback pitch");
         configParam(3,0,2,0.0,"Frequency mapping type");
         configParam(4,0,2,0.0,"Oscillator type");
         configParam(5,0,presetImages.size()-1,0.0,"Preset image");
+        configParam(6,0.0,0.95,0.0,"Loop start");
+        configParam(7,0.01,1.00,1.0,"Loop length");
         reloadImage();
     }
     void reloadImage()
@@ -373,15 +375,37 @@ public:
         pitch += inputs[0].getVoltage()*12.0f;
         pitch = clamp(pitch,-36.0,36.0);
         m_src.SetRates(44100 ,44100/pow(2.0,1.0/12*pitch));
+        int outlensamps = m_out_dur*args.sampleRate;
+        int loopstartsamps = outlensamps*params[6].getValue();
+        int looplensamps = outlensamps*params[7].getValue();
+        if (looplensamps<256) looplensamps = 256;
+        int loopendsampls = loopstartsamps+looplensamps;
+        int xfadelensamples = 128;
+        if (m_bufferplaypos<loopstartsamps)
+            m_bufferplaypos = loopstartsamps;
         double* rsbuf = nullptr;
         int wanted = m_src.ResamplePrepare(1,2,&rsbuf);
         for (int i=0;i<wanted;++i)
         {
+            float gain_a = 1.0f;
+            float gain_b = 0.0f;
+            if (m_bufferplaypos>=loopendsampls-xfadelensamples)
+            {
+                gain_a = rescale(m_bufferplaypos,loopendsampls-xfadelensamples,loopendsampls,1.0f,0.0f);
+                gain_b = 1.0-gain_a;
+            }
+            int xfadepos = m_bufferplaypos-looplensamps;
+            if (xfadepos<0) xfadepos = 0;
+            
             for (int j=0;j<2;++j)
-                rsbuf[i*2+j]=m_syn.m_renderBuf[m_bufferplaypos*2+j];
+            {
+                rsbuf[i*2+j] = gain_a * m_syn.m_renderBuf[m_bufferplaypos*2+j];
+                
+                rsbuf[i*2+j] += gain_b * m_syn.m_renderBuf[xfadepos*2+j];
+            }
             ++m_bufferplaypos;
-            if (m_bufferplaypos>=m_out_dur*args.sampleRate)
-                m_bufferplaypos = 0;
+            if (m_bufferplaypos>=loopendsampls)
+                m_bufferplaypos = loopstartsamps;
         }
         double samples_out[2];
         m_src.ResampleOut(samples_out,wanted,1,2);
@@ -425,6 +449,8 @@ public:
         knob->snap = true;
         addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(180.00, 330), m, 5));
         knob->snap = true;
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 330), m, 6));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 360), m, 7));
     }
     ~XImageSynthWidget()
     {
