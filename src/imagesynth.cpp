@@ -282,7 +282,8 @@ public:
         if (!m_shouldCancel)
         {
             //m_renderBuf.applyGainRamp(outdursamples - 512, 512 + m_stepsize, 1.0f, 0.0f);
-            m_maxGain = 1.0; // m_renderBuf.getMagnitude(0, m_renderBuf.getNumSamples());
+            auto it = std::max_element(m_renderBuf.begin(),m_renderBuf.end());
+            m_maxGain = *it; 
             //m_elapsedTime = juce::Time::getMillisecondCounterHiRes() - t0;
         }
         m_percent_ready = 1.0;
@@ -322,6 +323,8 @@ public:
     {
         IN_PITCH_CV,
         IN_RESET,
+        IN_LOOPSTART_CV,
+        IN_LOOPLEN_CV,
         LAST_INPUT
     };
     enum Outputs
@@ -342,6 +345,7 @@ public:
         PAR_LOOP_LEN,
         PAR_FREQUENCY_BALANCE,
         PAR_HARMONICS_FUNDAMENTAL,
+        PAR_PAN_MODE,
         PAR_LAST
     };
     int m_comp = 0;
@@ -349,8 +353,11 @@ public:
     std::vector<stbi_uc> m_backupdata; 
     dsp::BooleanTrigger reloadTrigger;
     std::atomic<bool> m_renderingImage;
+    float loopstart = 0.0f;
+    float looplen = 1.0f;
     XImageSynth()
     {
+        m_renderingImage = false;
         presetImages = rack::system::getEntries(asset::plugin(pluginInstance, "res/image_synth_images"));
         config(PAR_LAST,LAST_INPUT,LAST_OUTPUT,0);
         configParam(PAR_RELOAD_IMAGE,0,1,1,"Reload image");
@@ -363,13 +370,17 @@ public:
         configParam(PAR_LOOP_LEN,0.01,1.00,1.0,"Loop length");
         configParam(PAR_FREQUENCY_BALANCE,0.00,1.00,0.25,"Frequency balance");
         configParam(PAR_HARMONICS_FUNDAMENTAL,-72.0,0.00,-24.00,"Harmonics fundamental");
+        configParam(PAR_PAN_MODE,0.0,2.0,0.00,"Frequency panning mode");
         m_syn.m_numOutChans = 4;
         reloadImage();
     }
     void reloadImage()
     {
+        if (m_renderingImage==true)
+            return;
         auto task=[this]
         {
+        
         int iw, ih, comp = 0;
         m_img_data = nullptr;
         int imagetoload = params[PAR_PRESET_IMAGE].getValue();
@@ -385,6 +396,7 @@ public:
         m_syn.m_panMode = 0;
         m_img_data = tempdata;
         m_img_data_dirty = true;
+        m_syn.m_panMode = params[PAR_PAN_MODE].getValue();
         m_syn.m_frequencyMapping = params[PAR_FREQMAPPING].getValue();
         m_syn.m_freq_response_curve = params[PAR_FREQUENCY_BALANCE].getValue();
         m_syn.m_fundamental = params[PAR_HARMONICS_FUNDAMENTAL].getValue();
@@ -392,7 +404,9 @@ public:
         m_syn.setImage(m_img_data ,iw,ih);
         m_out_dur = params[PAR_DURATION].getValue();
         m_syn.render(m_out_dur,44100);
+        m_renderingImage = false;
         };
+        m_renderingImage = true;
         std::thread th(task);
         th.detach();
     }
@@ -414,8 +428,14 @@ public:
         pitch = clamp(pitch,-36.0,36.0);
         m_src.SetRates(44100 ,44100/pow(2.0,1.0/12*pitch));
         int outlensamps = m_out_dur*args.sampleRate;
-        int loopstartsamps = outlensamps*params[PAR_LOOP_START].getValue();
-        int looplensamps = outlensamps*params[PAR_LOOP_LEN].getValue();
+        loopstart = params[PAR_LOOP_START].getValue();
+        loopstart += inputs[IN_LOOPSTART_CV].getVoltage()/5.0f;
+        loopstart = clamp(loopstart,0.0f,1.0f);
+        int loopstartsamps = outlensamps*loopstart;
+        looplen = params[PAR_LOOP_LEN].getValue();
+        looplen += inputs[IN_LOOPLEN_CV].getVoltage()/5.0f;
+        looplen = clamp(looplen,0.0f,1.0f);
+        int looplensamps = outlensamps*looplen;
         if (looplensamps<256) looplensamps = 256;
         int loopendsampls = loopstartsamps+looplensamps;
         if (loopendsampls>=outlensamps)
@@ -536,6 +556,11 @@ public:
         slowknob->m_syn = m;
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(270.00, 360), m, XImageSynth::PAR_HARMONICS_FUNDAMENTAL));
         slowknob->m_syn = m;
+        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(300.00, 330), m, XImageSynth::PAR_PAN_MODE));
+        slowknob->m_syn = m;
+        slowknob->snap = true;
+        addInput(createInputCentered<PJ301MPort>(Vec(300, 330), m, XImageSynth::IN_LOOPSTART_CV));
+        addInput(createInputCentered<PJ301MPort>(Vec(300, 360), m, XImageSynth::IN_LOOPLEN_CV));
     }
     ~XImageSynthWidget()
     {
@@ -597,7 +622,7 @@ public:
             nvgLineTo(args.vg,xcor,300);
             nvgStroke(args.vg);
 
-            float loopstart = m_synth->params[6].getValue();
+            float loopstart = m_synth->loopstart;
             xcor = rescale(loopstart,0.0,1.0,0,600);
             nvgBeginPath(args.vg);
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0x00, 0xff));
@@ -605,7 +630,7 @@ public:
             nvgLineTo(args.vg,xcor,300);
             nvgStroke(args.vg);
 
-            float loopend = m_synth->params[7].getValue()+loopstart;
+            float loopend = m_synth->looplen+loopstart;
             if (loopend>1.0f)
                 loopend = 1.0f;
 
