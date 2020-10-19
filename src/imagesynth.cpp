@@ -351,6 +351,7 @@ public:
         configParam(PAR_LOOP_LEN,0.01,1.00,1.0,"Loop length");
         configParam(PAR_FREQUENCY_BALANCE,0.00,1.00,0.25,"Frequency balance");
         configParam(PAR_HARMONICS_FUNDAMENTAL,-72.0,0.00,-24.00,"Harmonics fundamental");
+        m_syn.m_numOutChans = 4;
         reloadImage();
     }
     void reloadImage()
@@ -385,11 +386,14 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
-        outputs[0].setChannels(2);
+        int ochans = m_syn.m_numOutChans;
+        outputs[0].setChannels(ochans);
         if (m_syn.percentReady()*m_out_dur<0.5)
         {
             outputs[0].setVoltage(0.0,0);
             outputs[0].setVoltage(0.0,1);
+            outputs[0].setVoltage(0.0,2);
+            outputs[0].setVoltage(0.0,3);
             return;
         }
         
@@ -410,7 +414,7 @@ public:
         if (rewindTrigger.process(inputs[1].getVoltage()))
             m_bufferplaypos = loopstartsamps;
         double* rsbuf = nullptr;
-        int wanted = m_src.ResamplePrepare(1,2,&rsbuf);
+        int wanted = m_src.ResamplePrepare(1,ochans,&rsbuf);
         for (int i=0;i<wanted;++i)
         {
             float gain_a = 1.0f;
@@ -423,11 +427,11 @@ public:
             int xfadepos = m_bufferplaypos-looplensamps;
             if (xfadepos<0) xfadepos = 0;
             
-            for (int j=0;j<2;++j)
+            for (int j=0;j<ochans;++j)
             {
-                rsbuf[i*2+j] = gain_a * m_syn.m_renderBuf[m_bufferplaypos*2+j];
+                rsbuf[i*ochans+j] = gain_a * m_syn.m_renderBuf[m_bufferplaypos*ochans+j];
                 
-                rsbuf[i*2+j] += gain_b * m_syn.m_renderBuf[xfadepos*2+j];
+                rsbuf[i*ochans+j] += gain_b * m_syn.m_renderBuf[xfadepos*ochans+j];
             }
             ++m_bufferplaypos;
             if (m_bufferplaypos>=loopendsampls)
@@ -440,10 +444,13 @@ public:
             else
                 outputs[1].setVoltage(0.0f);
         }
-        double samples_out[2];
-        m_src.ResampleOut(samples_out,wanted,1,2);
-        outputs[0].setVoltage(samples_out[0]*5.0,0);
-        outputs[0].setVoltage(samples_out[1]*5.0,1);
+        double samples_out[16];
+        memset(&samples_out,0,sizeof(double)*16);
+        m_src.ResampleOut(samples_out,wanted,1,ochans);
+        for (int i=0;i<ochans;++i)
+        {
+            outputs[0].setVoltage(samples_out[i]*5.0,i);
+        }
         m_playpos = m_bufferplaypos / args.sampleRate;
         
     }
