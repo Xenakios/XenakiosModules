@@ -372,7 +372,7 @@ public:
         configParam(PAR_FREQUENCY_BALANCE,0.00,1.00,0.25,"Frequency balance");
         configParam(PAR_HARMONICS_FUNDAMENTAL,-72.0,0.00,-24.00,"Harmonics fundamental");
         configParam(PAR_PAN_MODE,0.0,2.0,0.00,"Frequency panning mode");
-        configParam(PAR_NUMOUTCHANS,0.0,2.0,0.00,"Output channels configuration");
+        configParam(PAR_NUMOUTCHANS,0.0,4.0,0.00,"Output channels configuration");
         m_syn.m_numOutChans = 2;
         reloadImage();
     }
@@ -397,7 +397,7 @@ public:
         
         m_syn.m_panMode = 0;
         int outconf = params[PAR_NUMOUTCHANS].getValue();
-        int numoutchans[3]={2,4,8};
+        int numoutchans[5]={2,2,4,8,16};
         m_syn.m_numOutChans=numoutchans[outconf];
         m_img_data = tempdata;
         m_img_data_dirty = true;
