@@ -451,14 +451,18 @@ public:
     XImageSynth* m_syn = nullptr;
     MySmallKnob() : RoundSmallBlackKnob()
     {
-
+        
     }
     void onDragEnd(const event::DragEnd& e) override
     {
         RoundSmallBlackKnob::onDragEnd(e);
-        if (m_syn)
+        if (m_syn && paramQuantity->getValue()!=mLastValue)
+        {
             m_syn->reloadImage();
+            mLastValue = this->paramQuantity->getValue();
+        }
     }
+    float mLastValue = 0.0f;
 };
 
 class XImageSynthWidget : public ModuleWidget
@@ -483,10 +487,12 @@ public:
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
         slowknob->m_syn = m;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, XImageSynth::PAR_PITCH));
-        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, 3));
-        knob->snap = true;
-        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 360), m, 4));
-        knob->snap = true;
+        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(150.00, 330), m, XImageSynth::PAR_FREQMAPPING));
+        slowknob->snap = true;
+        slowknob->m_syn = m;
+        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(150.00, 360), m, XImageSynth::PAR_WAVEFORMTYPE));
+        slowknob->snap = true;
+        slowknob->m_syn = m;
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(180.00, 330), m, XImageSynth::PAR_PRESET_IMAGE));
         slowknob->snap = true;
         slowknob->m_syn = m;
