@@ -317,7 +317,7 @@ public:
     XImageSynth()
     {
         
-        config(3,0,1,0);
+        config(3,1,1,0);
         configParam(0,0,1,1,"Reload image");
         configParam(1,0.5,60,5.0,"Image duration");
         configParam(2,-24,24,0.0,"Playback pitch");
@@ -359,6 +359,8 @@ public:
             return;
         }
         float pitch = params[2].getValue();
+        pitch += inputs[0].getVoltage()*12.0f;
+        pitch = clamp(pitch,-36.0,36.0);
         m_src.SetRates(44100 ,44100/pow(2.0,1.0/12*pitch));
         double* rsbuf = nullptr;
         int wanted = m_src.ResamplePrepare(1,2,&rsbuf);
@@ -401,6 +403,7 @@ public:
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         
         addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, 0));
+        addInput(createInputCentered<PJ301MPort>(Vec(120, 360), m, 0));
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, 0));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, 1));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, 2));
