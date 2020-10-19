@@ -275,6 +275,7 @@ public:
             m_maxGain = 1.0; // m_renderBuf.getMagnitude(0, m_renderBuf.getNumSamples());
             //m_elapsedTime = juce::Time::getMillisecondCounterHiRes() - t0;
         }
+        m_percent_ready = 1.0;
     }
 
     float percentReady()
@@ -314,8 +315,9 @@ public:
     XImageSynth()
     {
         
-        config(1,0,1,0);
+        config(2,0,1,0);
         configParam(0,0,1,1,"Reload image");
+        configParam(1,0.5,60,5.0,"Image duration");
         reloadImage();
     }
     void reloadImage()
@@ -336,7 +338,9 @@ public:
         
         m_syn.m_panMode = 0;
         m_img_data = tempdata;
+        m_img_data_dirty = true;
         m_syn.setImage(m_img_data ,iw,ih);
+        m_out_dur = params[1].getValue();
         m_syn.render(m_out_dur,44100);
         };
         std::thread th(task);
@@ -345,7 +349,8 @@ public:
     void process(const ProcessArgs& args) override
     {
         outputs[0].setChannels(2);
-        if (m_syn.percentReady()<0.1)
+        m_out_dur = params[1].getValue();
+        if (m_syn.percentReady()*m_out_dur<1.0)
         {
             outputs[0].setVoltage(0.0,0);
             outputs[0].setVoltage(0.0,1);
@@ -369,6 +374,7 @@ public:
     float m_playpos = 0.0f;
     int m_bufferplaypos = 0;
     stbi_uc* m_img_data = nullptr;
+    bool m_img_data_dirty = false;
     ImgSynth m_syn;
 };
 
@@ -387,11 +393,13 @@ public:
         
         addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, 0));
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, 0));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, 1));
     }
     ~XImageSynthWidget()
     {
         //nvgDeleteImage(m_ctx,m_image);
     }
+    int imageCreateCounter = 0;
     bool imgDirty = false;
     void step() override
     {
@@ -401,7 +409,7 @@ public:
         if (m_synth->reloadTrigger.process(p>0.0f))
         {
             m_synth->reloadImage();
-            imgDirty = true;
+            
         }
         ModuleWidget::step();
     }
@@ -411,10 +419,15 @@ public:
         if (m_synth==nullptr)
             return;
         nvgSave(args.vg);
-        if (imgDirty || (m_image == 0 && m_synth->m_img_data!=nullptr))
+        if ((m_image == 0 && m_synth->m_img_data!=nullptr))
         {
             m_image = nvgCreateImageRGBA(args.vg,1200,600,NVG_IMAGE_GENERATE_MIPMAPS,m_synth->m_img_data);
-            imgDirty = false;
+            ++imageCreateCounter;
+        }
+        if (m_synth->m_img_data_dirty)
+        {
+            nvgUpdateImage(args.vg,m_image,m_synth->m_img_data);
+            m_synth->m_img_data_dirty = false;
         }
         int imgw = 0;
         int imgh = 0;
@@ -447,10 +460,19 @@ public:
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             char buf[100];
-            sprintf(buf,"%d %d %d",imgw,imgh,m_image);
+            sprintf(buf,"%d %d %d %d",imgw,imgh,m_image,imageCreateCounter);
             nvgText(args.vg, 3 , 10, buf, NULL);
         
-            
+        float progr = m_synth->m_syn.percentReady();
+        if (progr<1.0)
+        {
+            float progw = rescale(progr,0.0,1.0,0.0,box.size.x);
+            nvgBeginPath(args.vg);
+            nvgFillColor(args.vg, nvgRGBA(0x00, 0x9f, 0x00, 0xa0));
+            nvgRect(args.vg,0.0f,280.0f,progw,20);
+            nvgFill(args.vg);
+        }
+        
         
         //nvgDeleteImage(args.vg,m_image);
         nvgRestore(args.vg);
