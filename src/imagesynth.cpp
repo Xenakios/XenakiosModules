@@ -525,7 +525,7 @@ public:
     void onDragEnd(const event::DragEnd& e) override
     {
         RoundSmallBlackKnob::onDragEnd(e);
-        if (m_syn && paramQuantity->getValue()!=mLastValue)
+        if (m_syn)
         {
             m_syn->reloadImage();
             mLastValue = this->paramQuantity->getValue();
