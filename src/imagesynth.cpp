@@ -310,6 +310,18 @@ private:
 class XImageSynth : public rack::Module
 {
 public:
+    enum Parameters
+    {
+        PAR_RELOAD_IMAGE,
+        PAR_DURATION,
+        PAR_PITCH,
+        PAR_FREQMAPPING,
+        PAR_WAVEFORMTYPE,
+        PAR_PRESET_IMAGE,
+        PAR_LOOP_START,
+        PAR_LOOP_LEN,
+        PAR_LAST
+    };
     int m_comp = 0;
     std::list<std::string> presetImages;
     std::vector<stbi_uc> m_backupdata; 
@@ -318,15 +330,15 @@ public:
     XImageSynth()
     {
         presetImages = rack::system::getEntries(asset::plugin(pluginInstance, "res/image_synth_images"));
-        config(8,2,1,0);
-        configParam(0,0,1,1,"Reload image");
-        configParam(1,0.5,60,5.0,"Image duration");
-        configParam(2,-24,24,0.0,"Playback pitch");
-        configParam(3,0,2,0.0,"Frequency mapping type");
-        configParam(4,0,2,0.0,"Oscillator type");
-        configParam(5,0,presetImages.size()-1,0.0,"Preset image");
-        configParam(6,0.0,0.95,0.0,"Loop start");
-        configParam(7,0.01,1.00,1.0,"Loop length");
+        config(PAR_LAST,2,2,0);
+        configParam(PAR_RELOAD_IMAGE,0,1,1,"Reload image");
+        configParam(PAR_DURATION,0.5,60,5.0,"Image duration");
+        configParam(PAR_PITCH,-24,24,0.0,"Playback pitch");
+        configParam(PAR_FREQMAPPING,0,2,0.0,"Frequency mapping type");
+        configParam(PAR_WAVEFORMTYPE,0,2,0.0,"Oscillator type");
+        configParam(PAR_PRESET_IMAGE,0,presetImages.size()-1,0.0,"Preset image");
+        configParam(PAR_LOOP_START,0.0,0.95,0.0,"Loop start");
+        configParam(PAR_LOOP_LEN,0.01,1.00,1.0,"Loop length");
         reloadImage();
     }
     void reloadImage()
@@ -335,7 +347,7 @@ public:
         {
         int iw, ih, comp = 0;
         m_img_data = nullptr;
-        int imagetoload = params[5].getValue();
+        int imagetoload = params[PAR_PRESET_IMAGE].getValue();
         auto it = presetImages.begin();
         std::advance(it,imagetoload);
         std::string filename = *it;
@@ -348,10 +360,10 @@ public:
         m_syn.m_panMode = 0;
         m_img_data = tempdata;
         m_img_data_dirty = true;
-        m_syn.m_frequencyMapping = params[3].getValue();
-        m_syn.m_waveFormType = params[4].getValue();
+        m_syn.m_frequencyMapping = params[PAR_FREQMAPPING].getValue();
+        m_syn.m_waveFormType = params[PAR_WAVEFORMTYPE].getValue();
         m_syn.setImage(m_img_data ,iw,ih);
-        m_out_dur = params[1].getValue();
+        m_out_dur = params[PAR_DURATION].getValue();
         m_syn.render(m_out_dur,44100);
         };
         std::thread th(task);
@@ -367,13 +379,13 @@ public:
             return;
         }
         
-        float pitch = params[2].getValue();
+        float pitch = params[PAR_PITCH].getValue();
         pitch += inputs[0].getVoltage()*12.0f;
         pitch = clamp(pitch,-36.0,36.0);
         m_src.SetRates(44100 ,44100/pow(2.0,1.0/12*pitch));
         int outlensamps = m_out_dur*args.sampleRate;
-        int loopstartsamps = outlensamps*params[6].getValue();
-        int looplensamps = outlensamps*params[7].getValue();
+        int loopstartsamps = outlensamps*params[PAR_LOOP_START].getValue();
+        int looplensamps = outlensamps*params[PAR_LOOP_LEN].getValue();
         if (looplensamps<256) looplensamps = 256;
         int loopendsampls = loopstartsamps+looplensamps;
         if (loopendsampls>=outlensamps)
@@ -405,7 +417,14 @@ public:
             }
             ++m_bufferplaypos;
             if (m_bufferplaypos>=loopendsampls)
+            {
                 m_bufferplaypos = loopstartsamps;
+                loopStartPulse.trigger();
+            }
+            if (loopStartPulse.process(args.sampleTime))
+                outputs[1].setVoltage(10.0f);
+            else
+                outputs[1].setVoltage(0.0f);
         }
         double samples_out[2];
         m_src.ResampleOut(samples_out,wanted,1,2);
@@ -423,6 +442,23 @@ public:
     ImgSynth m_syn;
     WDL_Resampler m_src;
     rack::dsp::SchmittTrigger rewindTrigger;
+    rack::dsp::PulseGenerator loopStartPulse;
+};
+
+class MySmallKnob : public RoundSmallBlackKnob
+{
+public:
+    XImageSynth* m_syn = nullptr;
+    MySmallKnob() : RoundSmallBlackKnob()
+    {
+
+    }
+    void onDragEnd(const event::DragEnd& e) override
+    {
+        RoundSmallBlackKnob::onDragEnd(e);
+        if (m_syn)
+            m_syn->reloadImage();
+    }
 };
 
 class XImageSynthWidget : public ModuleWidget
@@ -441,18 +477,22 @@ public:
         addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, 0));
         addInput(createInputCentered<PJ301MPort>(Vec(120, 360), m, 0));
         addInput(createInputCentered<PJ301MPort>(Vec(30, 360), m, 1));
-        addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, 0));
+        addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, XImageSynth::PAR_RELOAD_IMAGE));
         RoundSmallBlackKnob* knob = nullptr;
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, 1));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, 2));
+        MySmallKnob* slowknob = nullptr;
+        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
+        slowknob->m_syn = m;
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, XImageSynth::PAR_PITCH));
         addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, 3));
         knob->snap = true;
         addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 360), m, 4));
         knob->snap = true;
-        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(180.00, 330), m, 5));
-        knob->snap = true;
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 330), m, 6));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 360), m, 7));
+        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(180.00, 330), m, XImageSynth::PAR_PRESET_IMAGE));
+        slowknob->snap = true;
+        slowknob->m_syn = m;
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 330), m, XImageSynth::PAR_LOOP_START));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(240, 330), m, 1));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 360), m, XImageSynth::PAR_LOOP_LEN));
     }
     ~XImageSynthWidget()
     {
@@ -510,6 +550,26 @@ public:
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             
             float xcor = rescale(m_synth->m_playpos,0.0,m_synth->m_out_dur,0,600);
+            nvgMoveTo(args.vg,xcor,0);
+            nvgLineTo(args.vg,xcor,300);
+            nvgStroke(args.vg);
+
+            float loopstart = m_synth->params[6].getValue();
+            xcor = rescale(loopstart,0.0,1.0,0,600);
+            nvgBeginPath(args.vg);
+            nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0x00, 0xff));
+            nvgMoveTo(args.vg,xcor,0);
+            nvgLineTo(args.vg,xcor,300);
+            nvgStroke(args.vg);
+
+            float loopend = m_synth->params[7].getValue()+loopstart;
+            if (loopend>1.0f)
+                loopend = 1.0f;
+
+            xcor = rescale(loopend,0.0,1.0,0,600);
+
+            nvgBeginPath(args.vg);
+            
             nvgMoveTo(args.vg,xcor,0);
             nvgLineTo(args.vg,xcor,300);
             nvgStroke(args.vg);
