@@ -318,7 +318,7 @@ public:
     XImageSynth()
     {
         presetImages = rack::system::getEntries(asset::plugin(pluginInstance, "res/image_synth_images"));
-        config(8,1,1,0);
+        config(8,2,1,0);
         configParam(0,0,1,1,"Reload image");
         configParam(1,0.5,60,5.0,"Image duration");
         configParam(2,-24,24,0.0,"Playback pitch");
@@ -339,14 +339,9 @@ public:
         auto it = presetImages.begin();
         std::advance(it,imagetoload);
         std::string filename = *it;
-#if __APPLE__
-        //auto tempdata = stbi_load("/Users/teemu/codeprojects/vcv/XenakiosModules/res/img1.png",
-        //    &iw,&ih,&m_comp,4);
+
         auto tempdata = stbi_load(filename.c_str(),&iw,&ih,&comp,4);
-#elif
-        auto tempdata = stbi_load("C:\\ProgrammingProjects\\_experiments2020\\ImageSynth\\input_images\\img1.png",
-        &iw,&ih,&m_comp,4);
-#endif
+
         m_playpos = 0.0f;
         m_bufferplaypos = 0;
         
@@ -371,6 +366,7 @@ public:
             outputs[0].setVoltage(0.0,1);
             return;
         }
+        
         float pitch = params[2].getValue();
         pitch += inputs[0].getVoltage()*12.0f;
         pitch = clamp(pitch,-36.0,36.0);
@@ -380,8 +376,12 @@ public:
         int looplensamps = outlensamps*params[7].getValue();
         if (looplensamps<256) looplensamps = 256;
         int loopendsampls = loopstartsamps+looplensamps;
+        if (loopendsampls>=outlensamps)
+            loopendsampls = outlensamps-1;
         int xfadelensamples = 128;
         if (m_bufferplaypos<loopstartsamps)
+            m_bufferplaypos = loopstartsamps;
+        if (rewindTrigger.process(inputs[1].getVoltage()))
             m_bufferplaypos = loopstartsamps;
         double* rsbuf = nullptr;
         int wanted = m_src.ResamplePrepare(1,2,&rsbuf);
@@ -422,6 +422,7 @@ public:
     bool m_img_data_dirty = false;
     ImgSynth m_syn;
     WDL_Resampler m_src;
+    rack::dsp::SchmittTrigger rewindTrigger;
 };
 
 class XImageSynthWidget : public ModuleWidget
@@ -439,6 +440,7 @@ public:
         
         addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, 0));
         addInput(createInputCentered<PJ301MPort>(Vec(120, 360), m, 0));
+        addInput(createInputCentered<PJ301MPort>(Vec(30, 360), m, 1));
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, 0));
         RoundSmallBlackKnob* knob = nullptr;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, 1));
