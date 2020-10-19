@@ -136,7 +136,7 @@ public:
         m_img_w = w;
         m_img_h = h;
         float thefundamental = rack::dsp::FREQ_C4 * pow(2.0, 1.0 / 12 * m_fundamental);
-        for (int i = 0; i < m_oscillators.size(); ++i)
+        for (int i = 0; i < (int)m_oscillators.size(); ++i)
         {
             if (m_frequencyMapping == 0)
             {
@@ -180,7 +180,7 @@ public:
         }
         
         std::uniform_real_distribution<float> pandist(0.0, 3.141592653 / 2.0f);
-        for (int i = 0; i < m_oscillators.size(); ++i)
+        for (int i = 0; i < (int)m_oscillators.size(); ++i)
         {
             m_oscillators[i].m_osc.prepare(1,sr);
             m_oscillators[i].m_osc.reset(dist(m_rng));
@@ -346,6 +346,7 @@ public:
         PAR_FREQUENCY_BALANCE,
         PAR_HARMONICS_FUNDAMENTAL,
         PAR_PAN_MODE,
+        PAR_NUMOUTCHANS,
         PAR_LAST
     };
     int m_comp = 0;
@@ -371,7 +372,8 @@ public:
         configParam(PAR_FREQUENCY_BALANCE,0.00,1.00,0.25,"Frequency balance");
         configParam(PAR_HARMONICS_FUNDAMENTAL,-72.0,0.00,-24.00,"Harmonics fundamental");
         configParam(PAR_PAN_MODE,0.0,2.0,0.00,"Frequency panning mode");
-        m_syn.m_numOutChans = 4;
+        configParam(PAR_NUMOUTCHANS,0.0,2.0,0.00,"Output channels configuration");
+        m_syn.m_numOutChans = 2;
         reloadImage();
     }
     void reloadImage()
@@ -394,6 +396,9 @@ public:
         m_bufferplaypos = 0;
         
         m_syn.m_panMode = 0;
+        int outconf = params[PAR_NUMOUTCHANS].getValue();
+        int numoutchans[3]={2,4,8};
+        m_syn.m_numOutChans=numoutchans[outconf];
         m_img_data = tempdata;
         m_img_data_dirty = true;
         m_syn.m_panMode = params[PAR_PAN_MODE].getValue();
@@ -559,8 +564,11 @@ public:
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(300.00, 330), m, XImageSynth::PAR_PAN_MODE));
         slowknob->m_syn = m;
         slowknob->snap = true;
-        addInput(createInputCentered<PJ301MPort>(Vec(300, 330), m, XImageSynth::IN_LOOPSTART_CV));
-        addInput(createInputCentered<PJ301MPort>(Vec(300, 360), m, XImageSynth::IN_LOOPLEN_CV));
+        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(300.00, 360), m, XImageSynth::PAR_NUMOUTCHANS));
+        slowknob->m_syn = m;
+        slowknob->snap = true;
+        addInput(createInputCentered<PJ301MPort>(Vec(330, 330), m, XImageSynth::IN_LOOPSTART_CV));
+        addInput(createInputCentered<PJ301MPort>(Vec(330, 360), m, XImageSynth::IN_LOOPLEN_CV));
     }
     ~XImageSynthWidget()
     {
