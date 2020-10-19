@@ -4,6 +4,8 @@
 #include <atomic>
 #include <functional>
 #include <thread> 
+#include "wdl/resample.h"
+
 extern std::shared_ptr<Font> g_font;
 
 inline float harmonics3(float xin)
@@ -315,9 +317,10 @@ public:
     XImageSynth()
     {
         
-        config(2,0,1,0);
+        config(3,0,1,0);
         configParam(0,0,1,1,"Reload image");
         configParam(1,0.5,60,5.0,"Image duration");
+        configParam(2,-24,24,0.0,"Playback pitch");
         reloadImage();
     }
     void reloadImage()
@@ -349,25 +352,30 @@ public:
     void process(const ProcessArgs& args) override
     {
         outputs[0].setChannels(2);
-        m_out_dur = params[1].getValue();
-        if (m_syn.percentReady()*m_out_dur<1.0)
+        if (m_syn.percentReady()*m_out_dur<0.5)
         {
             outputs[0].setVoltage(0.0,0);
             outputs[0].setVoltage(0.0,1);
             return;
         }
-
+        float pitch = params[2].getValue();
+        m_src.SetRates(44100 ,44100/pow(2.0,1.0/12*pitch));
+        double* rsbuf = nullptr;
+        int wanted = m_src.ResamplePrepare(1,2,&rsbuf);
+        for (int i=0;i<wanted;++i)
+        {
+            for (int j=0;j<2;++j)
+                rsbuf[i*2+j]=m_syn.m_renderBuf[m_bufferplaypos*2+j];
+            ++m_bufferplaypos;
+            if (m_bufferplaypos>=m_out_dur*args.sampleRate)
+                m_bufferplaypos = 0;
+        }
+        double samples_out[2];
+        m_src.ResampleOut(samples_out,wanted,1,2);
+        outputs[0].setVoltage(samples_out[0]*5.0,0);
+        outputs[0].setVoltage(samples_out[1]*5.0,1);
+        m_playpos = m_bufferplaypos / args.sampleRate;
         
-        float sample = m_syn.m_renderBuf[m_bufferplaypos*2]*5.0f;
-        outputs[0].setVoltage(sample,0);
-        sample = m_syn.m_renderBuf[m_bufferplaypos*2+1]*5.0f;
-        outputs[0].setVoltage(sample,1);
-        ++m_bufferplaypos;
-        if (m_bufferplaypos>=m_out_dur*args.sampleRate)
-            m_bufferplaypos = 0;
-        m_playpos += args.sampleTime;
-        if (m_playpos>m_out_dur)
-            m_playpos = 0.0;
     }
     float m_out_dur = 10.0f;
 
@@ -376,6 +384,7 @@ public:
     stbi_uc* m_img_data = nullptr;
     bool m_img_data_dirty = false;
     ImgSynth m_syn;
+    WDL_Resampler m_src;
 };
 
 class XImageSynthWidget : public ModuleWidget
@@ -394,6 +403,7 @@ public:
         addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, 0));
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, 0));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, 1));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, 2));
     }
     ~XImageSynthWidget()
     {
