@@ -311,18 +311,20 @@ class XImageSynth : public rack::Module
 {
 public:
     int m_comp = 0;
+    std::list<std::string> presetImages;
     std::vector<stbi_uc> m_backupdata; 
     dsp::BooleanTrigger reloadTrigger;
     std::atomic<bool> m_renderingImage;
     XImageSynth()
     {
-        
-        config(5,1,1,0);
+        presetImages = rack::system::getEntries(asset::plugin(pluginInstance, "res/image_synth_images"));
+        config(6,1,1,0);
         configParam(0,0,1,1,"Reload image");
         configParam(1,0.5,60,5.0,"Image duration");
         configParam(2,-24,24,0.0,"Playback pitch");
         configParam(3,0,2,0.0,"Frequency mapping type");
         configParam(4,0,2,0.0,"Oscillator type");
+        configParam(5,0,presetImages.size()-1,0.0,"Preset image");
         reloadImage();
     }
     void reloadImage()
@@ -331,9 +333,14 @@ public:
         {
         int iw, ih, comp = 0;
         m_img_data = nullptr;
+        int imagetoload = params[5].getValue();
+        auto it = presetImages.begin();
+        std::advance(it,imagetoload);
+        std::string filename = *it;
 #if __APPLE__
-        auto tempdata = stbi_load("/Users/teemu/codeprojects/vcv/XenakiosModules/res/img1.png",
-            &iw,&ih,&m_comp,4);
+        //auto tempdata = stbi_load("/Users/teemu/codeprojects/vcv/XenakiosModules/res/img1.png",
+        //    &iw,&ih,&m_comp,4);
+        auto tempdata = stbi_load(filename.c_str(),&iw,&ih,&comp,4);
 #elif
         auto tempdata = stbi_load("C:\\ProgrammingProjects\\_experiments2020\\ImageSynth\\input_images\\img1.png",
         &iw,&ih,&m_comp,4);
@@ -409,10 +416,15 @@ public:
         addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, 0));
         addInput(createInputCentered<PJ301MPort>(Vec(120, 360), m, 0));
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, 0));
+        RoundSmallBlackKnob* knob = nullptr;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, 1));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, 2));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, 3));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 360), m, 4));
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, 3));
+        knob->snap = true;
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 360), m, 4));
+        knob->snap = true;
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(180.00, 330), m, 5));
+        knob->snap = true;
     }
     ~XImageSynthWidget()
     {
