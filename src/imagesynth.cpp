@@ -14,6 +14,15 @@ inline T triplemax (T a, T b, T c)
     return a < b ? (b < c ? c : b) : (a < c ? c : a); 
 }
 
+inline float soft_clip(float x)
+{
+    if (x<-1.0f)
+        return -2.0f/3.0f;
+    if (x>1.0f)
+        return 2.0f/3.0f;
+    return x-(std::pow(x,3.0f)/3.0f);
+}
+
 inline float harmonics3(float xin)
 {
     return 0.5 * std::sin(xin) + 0.25 * std::sin(xin * 2.0) + 0.1 * std::sin(xin * 3);
@@ -486,7 +495,9 @@ public:
         m_src.ResampleOut(samples_out,wanted,1,ochans);
         for (int i=0;i<ochans;++i)
         {
-            outputs[OUT_AUDIO].setVoltage(samples_out[i]*5.0,i);
+            float outsample = samples_out[i];
+            outsample = soft_clip(outsample);
+            outputs[OUT_AUDIO].setVoltage(outsample*5.0,i);
         }
         m_playpos = m_bufferplaypos / args.sampleRate;
         
