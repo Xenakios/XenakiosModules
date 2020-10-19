@@ -317,11 +317,12 @@ public:
     XImageSynth()
     {
         
-        config(4,1,1,0);
+        config(5,1,1,0);
         configParam(0,0,1,1,"Reload image");
         configParam(1,0.5,60,5.0,"Image duration");
         configParam(2,-24,24,0.0,"Playback pitch");
         configParam(3,0,2,0.0,"Frequency mapping type");
+        configParam(4,0,2,0.0,"Oscillator type");
         reloadImage();
     }
     void reloadImage()
@@ -344,6 +345,7 @@ public:
         m_img_data = tempdata;
         m_img_data_dirty = true;
         m_syn.m_frequencyMapping = params[3].getValue();
+        m_syn.m_waveFormType = params[4].getValue();
         m_syn.setImage(m_img_data ,iw,ih);
         m_out_dur = params[1].getValue();
         m_syn.render(m_out_dur,44100);
@@ -410,6 +412,7 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, 1));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, 2));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, 3));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 360), m, 4));
     }
     ~XImageSynthWidget()
     {
