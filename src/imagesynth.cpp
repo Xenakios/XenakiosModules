@@ -151,7 +151,7 @@ public:
             }
             if (m_frequencyMapping == 2)
             {
-                int harmonic = rescale(i, 0, h, 64.0f, 1.0f);
+                int harmonic = rescale(i, 0, h, 128.0f, 1.0f);
                 m_oscillators[i].m_osc.setFrequency(thefundamental * harmonic);
             }
             float curve_begin = 1.0f - m_freq_response_curve;
