@@ -8,6 +8,12 @@
 
 extern std::shared_ptr<Font> g_font;
 
+template <typename T>
+inline T triplemax (T a, T b, T c)                           
+{ 
+    return a < b ? (b < c ? c : b) : (a < c ? c : a); 
+}
+
 inline float harmonics3(float xin)
 {
     return 0.5 * std::sin(xin) + 0.25 * std::sin(xin * 2.0) + 0.1 * std::sin(xin * 3);
@@ -129,6 +135,7 @@ public:
         m_img_data = data;
         m_img_w = w;
         m_img_h = h;
+        float thefundamental = rack::dsp::FREQ_C4 * pow(2.0, 1.0 / 12 * m_fundamental);
         for (int i = 0; i < m_oscillators.size(); ++i)
         {
             if (m_frequencyMapping == 0)
@@ -145,7 +152,7 @@ public:
             if (m_frequencyMapping == 2)
             {
                 int harmonic = rescale(i, 0, h, 64.0f, 1.0f);
-                m_oscillators[i].m_osc.setFrequency(m_fundamental * harmonic);
+                m_oscillators[i].m_osc.setFrequency(thefundamental * harmonic);
             }
             float curve_begin = 1.0f - m_freq_response_curve;
             float curve_end = m_freq_response_curve;
@@ -250,8 +257,9 @@ public:
                 unsigned char r = p[0];
                 unsigned char g = p[1];
                 unsigned char b = p[2];
-                unsigned char a = p[3];
-                float pix_mid_gain = (r / 255.0) * 0.3 + (g / 255.0) * 0.59 + (b / 255.0) * 0.11;
+                //unsigned char a = p[3];
+                float pix_mid_gain = (float)triplemax(r,g,b)/255.0f;
+                //float pix_mid_gain = (r / 255.0) * 0.3 + (g / 255.0) * 0.59 + (b / 255.0) * 0.11;
                 
                 //float pix_mid_gain = 0.0f;
                 for (int i = 0; i < m_stepsize; ++i)
@@ -289,7 +297,7 @@ public:
     double m_elapsedTime = 0.0f;
     std::atomic<bool> m_shouldCancel{ false };
     int m_frequencyMapping = 0;
-    float m_fundamental = 32.0f;
+    float m_fundamental = -24.0f; // semitones below middle C!
     int m_panMode = 0;
     int m_numOutChans = 2;
     float m_envAmount = 0.95f;
@@ -320,6 +328,8 @@ public:
         PAR_PRESET_IMAGE,
         PAR_LOOP_START,
         PAR_LOOP_LEN,
+        PAR_FREQUENCY_BALANCE,
+        PAR_HARMONICS_FUNDAMENTAL,
         PAR_LAST
     };
     int m_comp = 0;
@@ -339,6 +349,8 @@ public:
         configParam(PAR_PRESET_IMAGE,0,presetImages.size()-1,0.0,"Preset image");
         configParam(PAR_LOOP_START,0.0,0.95,0.0,"Loop start");
         configParam(PAR_LOOP_LEN,0.01,1.00,1.0,"Loop length");
+        configParam(PAR_FREQUENCY_BALANCE,0.00,1.00,0.25,"Frequency balance");
+        configParam(PAR_HARMONICS_FUNDAMENTAL,-72.0,0.00,-24.00,"Harmonics fundamental");
         reloadImage();
     }
     void reloadImage()
@@ -361,6 +373,8 @@ public:
         m_img_data = tempdata;
         m_img_data_dirty = true;
         m_syn.m_frequencyMapping = params[PAR_FREQMAPPING].getValue();
+        m_syn.m_freq_response_curve = params[PAR_FREQUENCY_BALANCE].getValue();
+        m_syn.m_fundamental = params[PAR_HARMONICS_FUNDAMENTAL].getValue();
         m_syn.m_waveFormType = params[PAR_WAVEFORMTYPE].getValue();
         m_syn.setImage(m_img_data ,iw,ih);
         m_out_dur = params[PAR_DURATION].getValue();
@@ -499,6 +513,10 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 330), m, XImageSynth::PAR_LOOP_START));
         addOutput(createOutputCentered<PJ301MPort>(Vec(240, 330), m, 1));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 360), m, XImageSynth::PAR_LOOP_LEN));
+        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(270.00, 330), m, XImageSynth::PAR_FREQUENCY_BALANCE));
+        slowknob->m_syn = m;
+        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(270.00, 360), m, XImageSynth::PAR_HARMONICS_FUNDAMENTAL));
+        slowknob->m_syn = m;
     }
     ~XImageSynthWidget()
     {
