@@ -318,6 +318,18 @@ private:
 class XImageSynth : public rack::Module
 {
 public:
+    enum Inputs
+    {
+        IN_PITCH_CV,
+        IN_RESET,
+        LAST_INPUT
+    };
+    enum Outputs
+    {
+        OUT_AUDIO,
+        OUT_LOOP_SWITCH,
+        LAST_OUTPUT
+    };
     enum Parameters
     {
         PAR_RELOAD_IMAGE,
@@ -340,7 +352,7 @@ public:
     XImageSynth()
     {
         presetImages = rack::system::getEntries(asset::plugin(pluginInstance, "res/image_synth_images"));
-        config(PAR_LAST,2,2,0);
+        config(PAR_LAST,LAST_INPUT,LAST_OUTPUT,0);
         configParam(PAR_RELOAD_IMAGE,0,1,1,"Reload image");
         configParam(PAR_DURATION,0.5,60,5.0,"Image duration");
         configParam(PAR_PITCH,-24,24,0.0,"Playback pitch");
@@ -387,18 +399,18 @@ public:
     void process(const ProcessArgs& args) override
     {
         int ochans = m_syn.m_numOutChans;
-        outputs[0].setChannels(ochans);
+        outputs[OUT_AUDIO].setChannels(ochans);
         if (m_syn.percentReady()*m_out_dur<0.5)
         {
-            outputs[0].setVoltage(0.0,0);
-            outputs[0].setVoltage(0.0,1);
-            outputs[0].setVoltage(0.0,2);
-            outputs[0].setVoltage(0.0,3);
+            outputs[OUT_AUDIO].setVoltage(0.0,0);
+            outputs[OUT_AUDIO].setVoltage(0.0,1);
+            outputs[OUT_AUDIO].setVoltage(0.0,2);
+            outputs[OUT_AUDIO].setVoltage(0.0,3);
             return;
         }
         
         float pitch = params[PAR_PITCH].getValue();
-        pitch += inputs[0].getVoltage()*12.0f;
+        pitch += inputs[IN_PITCH_CV].getVoltage()*12.0f;
         pitch = clamp(pitch,-36.0,36.0);
         m_src.SetRates(44100 ,44100/pow(2.0,1.0/12*pitch));
         int outlensamps = m_out_dur*args.sampleRate;
@@ -411,7 +423,7 @@ public:
         int xfadelensamples = 128;
         if (m_bufferplaypos<loopstartsamps)
             m_bufferplaypos = loopstartsamps;
-        if (rewindTrigger.process(inputs[1].getVoltage()))
+        if (rewindTrigger.process(inputs[IN_RESET].getVoltage()))
             m_bufferplaypos = loopstartsamps;
         double* rsbuf = nullptr;
         int wanted = m_src.ResamplePrepare(1,ochans,&rsbuf);
@@ -440,16 +452,16 @@ public:
                 loopStartPulse.trigger();
             }
             if (loopStartPulse.process(args.sampleTime))
-                outputs[1].setVoltage(10.0f);
+                outputs[OUT_LOOP_SWITCH].setVoltage(10.0f);
             else
-                outputs[1].setVoltage(0.0f);
+                outputs[OUT_LOOP_SWITCH].setVoltage(0.0f);
         }
         double samples_out[16];
         memset(&samples_out,0,sizeof(double)*16);
         m_src.ResampleOut(samples_out,wanted,1,ochans);
         for (int i=0;i<ochans;++i)
         {
-            outputs[0].setVoltage(samples_out[i]*5.0,i);
+            outputs[OUT_AUDIO].setVoltage(samples_out[i]*5.0,i);
         }
         m_playpos = m_bufferplaypos / args.sampleRate;
         
@@ -499,11 +511,11 @@ public:
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         
-        addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, 0));
-        addInput(createInputCentered<PJ301MPort>(Vec(120, 360), m, 0));
-        addInput(createInputCentered<PJ301MPort>(Vec(30, 360), m, 1));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, XImageSynth::OUT_AUDIO));
+        addInput(createInputCentered<PJ301MPort>(Vec(120, 360), m, XImageSynth::IN_PITCH_CV));
+        addInput(createInputCentered<PJ301MPort>(Vec(30, 360), m, XImageSynth::IN_RESET));
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, XImageSynth::PAR_RELOAD_IMAGE));
-        RoundSmallBlackKnob* knob = nullptr;
+        
         MySmallKnob* slowknob = nullptr;
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
         slowknob->m_syn = m;
@@ -518,7 +530,7 @@ public:
         slowknob->snap = true;
         slowknob->m_syn = m;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 330), m, XImageSynth::PAR_LOOP_START));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(240, 330), m, 1));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(240, 330), m, XImageSynth::OUT_LOOP_SWITCH));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 360), m, XImageSynth::PAR_LOOP_LEN));
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(270.00, 330), m, XImageSynth::PAR_FREQUENCY_BALANCE));
         slowknob->m_syn = m;
