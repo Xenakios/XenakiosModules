@@ -554,7 +554,10 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                         float resp_gain = m_freq_gain_table[y];
                         for (int chan = 0; chan < m_numOutChans; ++chan)
                         {
-                            m_renderBuf[(x + i)*m_numOutChans+chan] += sample * 0.1f * resp_gain * m_oscillators[y].m_pan_coeffs[chan];
+                            int outbufindex = (x + i)*m_numOutChans+chan;
+                            float previous = m_renderBuf[outbufindex];
+                            previous += sample * 0.1f * resp_gain * m_oscillators[y].m_pan_coeffs[chan];
+                            m_renderBuf[outbufindex] = previous;
                         }
                     }
                 }
@@ -667,7 +670,7 @@ public:
         auto tempdata = stbi_load(filename.c_str(),&iw,&ih,&comp,4);
 
         m_playpos = 0.0f;
-        m_bufferplaypos = 0;
+        //m_bufferplaypos = 0;
         
         int outconf = params[PAR_NUMOUTCHANS].getValue();
         int numoutchans[5]={2,2,4,8,16};
@@ -734,7 +737,7 @@ public:
     {
         int ochans = m_syn.getNumOutputChannels();
         outputs[OUT_AUDIO].setChannels(ochans);
-        if (m_syn.percentReady()*m_out_dur<0.5)
+        if (m_syn.percentReady()<0.01)
         {
             outputs[OUT_AUDIO].setVoltage(0.0,0);
             outputs[OUT_AUDIO].setVoltage(0.0,1);
@@ -775,6 +778,8 @@ public:
         if (m_bufferplaypos<loopstartsamps)
             m_bufferplaypos = loopstartsamps;
         if (rewindTrigger.process(inputs[IN_RESET].getVoltage()))
+            m_bufferplaypos = loopstartsamps;
+        if (m_bufferplaypos>=m_out_dur*args.sampleRate)
             m_bufferplaypos = loopstartsamps;
         float loop_phase = rescale(m_bufferplaypos,loopstartsamps,loopendsampls,0.0f,10.0f);
         outputs[OUT_LOOP_PHASE].setVoltage(loop_phase);
