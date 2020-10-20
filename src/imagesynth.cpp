@@ -203,7 +203,7 @@ public:
             if (m_frequencyMapping == 3)
             {
                 float pitch = rescale(i, 0, h, 102.0, 0.0);
-                pitch = quantize_to_grid(pitch,scale,0.99);
+                pitch = quantize_to_grid(pitch,scale,m_scala_quan_amount);
                 float frequency = 32.0 * pow(2.0, 1.0 / 12 * pitch);
                 m_oscillators[i].m_osc.setFrequency(frequency);
             }
@@ -304,6 +304,15 @@ public:
 
     int getNumOutputChannels() { return m_numOutChans; }
 
+    void setScalaTuningAmount(float x)
+    {
+        if (x!=m_scala_quan_amount)
+        {
+            m_scala_quan_amount = x;
+            startDirtyCountdown();
+        }
+    }
+
     void startDirtyCountdown()
     {
         m_isDirty = true;
@@ -335,7 +344,7 @@ private:
     float m_fundamental = -24.0f; // semitones below middle C!
     int m_panMode = 0;
     int m_numOutChans = 2;
-    
+    float m_scala_quan_amount = 0.99f;
     float m_pixel_to_gain_curve = 1.0f;
 };
 
@@ -613,6 +622,7 @@ public:
         PAR_DESIGNER_ACTIVE,
         PAR_DESIGNER_VOLUME,
         PAR_ENVELOPE_SHAPE,
+        PAR_SCALA_TUNING_AMOUNT,
         PAR_LAST
     };
     int m_comp = 0;
@@ -645,6 +655,7 @@ public:
         configParam(PAR_DESIGNER_ACTIVE,0,1,0,"Edit oscillator waveform");
         configParam(PAR_DESIGNER_VOLUME,-24.0,3.0,-12.0,"Oscillator editor volume");
         configParam(PAR_ENVELOPE_SHAPE,0.0,1.0,0.95,"Envelope shape");
+        configParam(PAR_SCALA_TUNING_AMOUNT,0.0,1.0,0.99,"Scala tuning amount");
         m_syn.setOutputChannelsMode(2);
         //reloadImage();
     }
@@ -710,6 +721,7 @@ public:
             m_syn.setEnvelopeShape(params[PAR_ENVELOPE_SHAPE].getValue());
             m_syn.setHarmonicsFundamental(params[PAR_HARMONICS_FUNDAMENTAL].getValue());
             m_syn.setPanMode(params[PAR_PAN_MODE].getValue());
+            m_syn.setScalaTuningAmount(params[PAR_SCALA_TUNING_AMOUNT].getValue());
             int outconf = params[PAR_NUMOUTCHANS].getValue();
             int numoutchans[5]={2,2,4,8,16};
             m_syn.setOutputChannelsMode(numoutchans[outconf]);
@@ -966,6 +978,7 @@ public:
         addParam(createParamCentered<CKSS>(Vec(360.00, 330), m, XImageSynth::PAR_DESIGNER_ACTIVE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(360.00, 360), m, XImageSynth::PAR_DESIGNER_VOLUME));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(390.00, 330), m, XImageSynth::PAR_ENVELOPE_SHAPE));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(390.00, 360), m, XImageSynth::PAR_SCALA_TUNING_AMOUNT));
         
     }
     
