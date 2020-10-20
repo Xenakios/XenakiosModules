@@ -96,9 +96,11 @@ public:
 
             }, 1024);
     }
+    float m_freq = 440.0f;
     void setFrequency(float hz)
     {
         m_osc.setFrequency(hz);
+        m_freq = hz;
     }
     void setEnvelopeAmount(float amt)
     {
@@ -130,6 +132,8 @@ public:
     float a = 0.998;
     float b = 1.0 - a;
 };
+
+class OscillatorBuilder;
 
 class ImgSynth
 {
@@ -195,8 +199,132 @@ public:
         }
 
     }
+    void render(float outdur, float sr, OscillatorBuilder& oscbuilder);
+    
 
-    void render(float outdur, float sr,std::vector<float> customwave)
+    float percentReady()
+    {
+        return m_percent_ready;
+    }
+    std::vector<float> m_renderBuf;
+    float m_maxGain = 0.0f;
+    double m_elapsedTime = 0.0f;
+    std::atomic<bool> m_shouldCancel{ false };
+    int m_frequencyMapping = 0;
+    float m_fundamental = -24.0f; // semitones below middle C!
+    int m_panMode = 0;
+    int m_numOutChans = 2;
+    float m_envAmount = 0.95f;
+    float m_pixel_to_gain_curve = 1.0f;
+    int m_stepsize = 64;
+    float m_freq_response_curve = 0.5f;
+    int m_waveFormType = 0;
+private:
+    
+    std::vector<ImgOscillator> m_oscillators;
+    std::vector<float> m_freq_gain_table;
+    std::vector<float> m_pixel_to_gain_table;
+    std::atomic<float> m_percent_ready{ 0.0 };
+};
+
+class OscillatorBuilder
+{
+public:
+    OscillatorBuilder(int numharmonics)
+    {
+        m_table.resize(m_tablesize);
+        m_harmonics.resize(numharmonics);
+        m_harmonics[0] = 1.0f;
+        m_harmonics[1] = 0.5f;
+        m_harmonics[2] = 0.25f;
+        m_harmonics[4] = 0.125f;
+        m_osc.prepare(1,m_samplerate);
+        updateOscillator();
+    }
+    void updateOscillator()
+    {
+        for (int i=0;i<m_tablesize;++i)
+        {
+            float sum = 0.0f;
+            for (int j=0;j<m_harmonics.size();++j)
+            {
+                sum+=m_harmonics[j]*std::sin(2*3.141592653/m_tablesize*i*(j+1));
+            }
+            m_table[i]=sum;
+        }
+        auto it = std::max_element(m_table.begin(),m_table.end());
+        float normscaler = 1.0f / *it;
+        for (int i=0;i<m_tablesize;++i)
+            m_table[i]*=normscaler;
+        m_generating = true;
+        m_osc.setTable(m_table);
+        m_generating = false;
+    }
+    float process()
+    {
+        if (m_generating)
+            return 0.0f;
+        return m_osc.processSample(0.0f);
+    }
+    void setFrequency(float hz)
+    {
+        m_osc.setFrequency(hz);
+    }
+    float getHarmonic(int index)
+    {
+        if (index>=0 && index<m_harmonics.size())
+            return m_harmonics[index];
+        return 0.0f;
+    }
+    void setHarmonic(int index, float v)
+    {
+        if (index>=0 && index<m_harmonics.size())
+        {
+            m_harmonics[index] = v;
+            m_dirty = true;
+        }
+    }
+    int getNumHarmonics()
+    {
+        return m_harmonics.size();
+    }
+    std::vector<float> getTable()
+    {
+        return m_table;
+    }
+    std::vector<float> getTableForFrequency(int size, float hz, float sr)
+    {
+        std::vector<float> result(size);
+        for (int i=0;i<size;++i)
+        {
+            float sum = 0.0f;
+            for (int j=0;j<m_harmonics.size();++j)
+            {
+                float checkfreq = hz*j;
+                if (checkfreq<sr/2.0)
+                    sum+=m_harmonics[j]*std::sin(2*3.141592653/m_tablesize*i*(j+1));
+            }
+            result[i]=sum;
+        }
+        auto it = std::max_element(result.begin(),result.end());
+        float normscaler = 0.0f;
+        if (*it>0.0)
+            normscaler = 1.0f / *it;
+        for (int i=0;i<size;++i)
+            result[i]*=normscaler;
+        return result;
+    }
+    bool m_dirty = true;
+private:
+    std::vector<float> m_harmonics;
+    std::vector<float> m_table;
+    ImgWaveOscillator m_osc;
+    int m_tablesize = 1024;
+    float m_samplerate = 44100;
+    std::atomic<bool> m_generating{false};
+};
+
+void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
     {
         m_shouldCancel = false;
         m_elapsedTime = 0.0;
@@ -231,7 +359,12 @@ public:
                                                   { return harmonics4(xin);},1024);
             else if (m_waveFormType == 3)
             {
-                m_oscillators[i].m_osc.setTable(customwave);
+                if (oscBuilder.m_dirty)
+                {
+                    float oschz = m_oscillators[i].m_freq;
+                    m_oscillators[i].m_osc.setTable(oscBuilder.getTableForFrequency(1024,oschz,sr));
+                }
+                
             }
             if (m_panMode == 0)
             {
@@ -326,102 +459,6 @@ public:
         m_percent_ready = 1.0;
     }
 
-    float percentReady()
-    {
-        return m_percent_ready;
-    }
-    std::vector<float> m_renderBuf;
-    float m_maxGain = 0.0f;
-    double m_elapsedTime = 0.0f;
-    std::atomic<bool> m_shouldCancel{ false };
-    int m_frequencyMapping = 0;
-    float m_fundamental = -24.0f; // semitones below middle C!
-    int m_panMode = 0;
-    int m_numOutChans = 2;
-    float m_envAmount = 0.95f;
-    float m_pixel_to_gain_curve = 1.0f;
-    int m_stepsize = 64;
-    float m_freq_response_curve = 0.5f;
-    int m_waveFormType = 0;
-private:
-    
-    std::vector<ImgOscillator> m_oscillators;
-    std::vector<float> m_freq_gain_table;
-    std::vector<float> m_pixel_to_gain_table;
-    std::atomic<float> m_percent_ready{ 0.0 };
-};
-
-class OscillatorBuilder
-{
-public:
-    OscillatorBuilder(int numharmonics)
-    {
-        m_table.resize(m_tablesize);
-        m_harmonics.resize(numharmonics);
-        m_harmonics[0] = 1.0f;
-        m_harmonics[1] = 0.5f;
-        m_harmonics[2] = 0.25f;
-        m_harmonics[4] = 0.125f;
-        m_osc.prepare(1,m_samplerate);
-        updateOscillator();
-    }
-    void updateOscillator()
-    {
-        for (int i=0;i<m_tablesize;++i)
-        {
-            float sum = 0.0f;
-            for (int j=0;j<m_harmonics.size();++j)
-            {
-                sum+=m_harmonics[j]*std::sin(2*3.141592653/m_tablesize*i*(j+1));
-            }
-            m_table[i]=sum;
-        }
-        auto it = std::max_element(m_table.begin(),m_table.end());
-        float normscaler = 1.0f / *it;
-        for (int i=0;i<m_tablesize;++i)
-            m_table[i]*=normscaler;
-        m_generating = true;
-        m_osc.setTable(m_table);
-        m_generating = false;
-    }
-    float process()
-    {
-        if (m_generating)
-            return 0.0f;
-        return m_osc.processSample(0.0f);
-    }
-    void setFrequency(float hz)
-    {
-        m_osc.setFrequency(hz);
-    }
-    float getHarmonic(int index)
-    {
-        if (index>=0 && index<m_harmonics.size())
-            return m_harmonics[index];
-        return 0.0f;
-    }
-    void setHarmonic(int index, float v)
-    {
-        if (index>=0 && index<m_harmonics.size())
-            m_harmonics[index] = v;
-    }
-    int getNumHarmonics()
-    {
-        return m_harmonics.size();
-    }
-    std::vector<float> getTable()
-    {
-        return m_table;
-    }
-private:
-    std::vector<float> m_harmonics;
-    std::vector<float> m_table;
-    ImgWaveOscillator m_osc;
-    int m_tablesize = 1024;
-    float m_samplerate = 44100;
-    std::atomic<bool> m_generating{false};
-};
-
 class XImageSynth : public rack::Module
 {
 public:
@@ -455,6 +492,7 @@ public:
         PAR_PAN_MODE,
         PAR_NUMOUTCHANS,
         PAR_DESIGNER_ACTIVE,
+        PAR_DESIGNER_VOLUME,
         PAR_LAST
     };
     int m_comp = 0;
@@ -484,6 +522,7 @@ public:
         configParam(PAR_PAN_MODE,0.0,2.0,0.00,"Frequency panning mode");
         configParam(PAR_NUMOUTCHANS,0.0,4.0,0.00,"Output channels configuration");
         configParam(PAR_DESIGNER_ACTIVE,0,1,0,"Edit oscillator waveform");
+        configParam(PAR_DESIGNER_VOLUME,-24.0,3.0,-12.0,"Oscillator editor volume");
         m_syn.m_numOutChans = 2;
         //reloadImage();
     }
@@ -523,7 +562,8 @@ public:
         m_syn.m_waveFormType = params[PAR_WAVEFORMTYPE].getValue();
         m_syn.setImage(m_img_data ,iw,ih);
         m_out_dur = params[PAR_DURATION].getValue();
-        m_syn.render(m_out_dur,44100,m_oscBuilder.getTable());
+        m_syn.render(m_out_dur,44100,m_oscBuilder);
+        m_oscBuilder.m_dirty = false;
         m_renderingImage = false;
         };
         m_renderingImage = true;
@@ -552,6 +592,8 @@ public:
             float preview_freq = rack::dsp::FREQ_C4 * pow(2.0, 1.0 / 12 * pitch);
             m_oscBuilder.setFrequency(preview_freq);
             float preview_sample = m_oscBuilder.process();
+            float preview_volume = params[PAR_DESIGNER_VOLUME].getValue();
+            preview_sample *= rack::dsp::dbToAmplitude(preview_volume);
             outputs[OUT_AUDIO].setVoltage(preview_sample,0);
             outputs[OUT_AUDIO].setVoltage(preview_sample,1);
             return;
@@ -759,7 +801,7 @@ public:
         addInput(createInputCentered<PJ301MPort>(Vec(330, 330), m, XImageSynth::IN_LOOPSTART_CV));
         addInput(createInputCentered<PJ301MPort>(Vec(330, 360), m, XImageSynth::IN_LOOPLEN_CV));
         addParam(createParamCentered<CKSS>(Vec(360.00, 330), m, XImageSynth::PAR_DESIGNER_ACTIVE));
-        
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(360.00, 360), m, XImageSynth::PAR_DESIGNER_VOLUME));
     }
     
     ~XImageSynthWidget()
