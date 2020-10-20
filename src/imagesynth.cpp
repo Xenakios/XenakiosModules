@@ -359,6 +359,7 @@ public:
     {
         OUT_AUDIO,
         OUT_LOOP_SWITCH,
+        OUT_LOOP_PHASE,
         LAST_OUTPUT
     };
     enum Parameters
@@ -402,6 +403,10 @@ public:
         configParam(PAR_PAN_MODE,0.0,2.0,0.00,"Frequency panning mode");
         configParam(PAR_NUMOUTCHANS,0.0,4.0,0.00,"Output channels configuration");
         m_syn.m_numOutChans = 2;
+        //reloadImage();
+    }
+    void onAdd() override
+    {
         reloadImage();
     }
     void reloadImage()
@@ -478,6 +483,8 @@ public:
             m_bufferplaypos = loopstartsamps;
         if (rewindTrigger.process(inputs[IN_RESET].getVoltage()))
             m_bufferplaypos = loopstartsamps;
+        float loop_phase = rescale(m_bufferplaypos,loopstartsamps,loopendsampls,0.0f,10.0f);
+        outputs[OUT_LOOP_PHASE].setVoltage(loop_phase);
         double* rsbuf = nullptr;
         int wanted = m_src.ResamplePrepare(1,ochans,&rsbuf);
         for (int i=0;i<wanted;++i)
@@ -586,6 +593,7 @@ public:
         slowknob->m_syn = m;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 330), m, XImageSynth::PAR_LOOP_START));
         addOutput(createOutputCentered<PJ301MPort>(Vec(240, 330), m, XImageSynth::OUT_LOOP_SWITCH));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(240, 360), m, XImageSynth::OUT_LOOP_PHASE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 360), m, XImageSynth::PAR_LOOP_LEN));
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(270.00, 330), m, XImageSynth::PAR_FREQUENCY_BALANCE));
         slowknob->m_syn = m;
