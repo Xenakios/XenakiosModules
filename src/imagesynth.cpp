@@ -156,8 +156,10 @@ class ImgSynth
 {
 public:
     std::mt19937 m_rng{ 99937 };
+    std::list<std::string> m_scala_scales;
     ImgSynth()
     {
+        
         m_pixel_to_gain_table.resize(256);
         m_oscillators.resize(1024);
         m_freq_gain_table.resize(1024);
@@ -166,6 +168,7 @@ public:
     stbi_uc* m_img_data = nullptr;
     int m_img_w = 0;
     int m_img_h = 0;
+    std::string currentScalaFile;
     void setImage(stbi_uc* data, int w, int h)
     {
         m_img_data = data;
@@ -173,11 +176,21 @@ public:
         m_img_h = h;
         float thefundamental = rack::dsp::FREQ_C4 * pow(2.0, 1.0 / 12 * m_fundamental);
         float f = thefundamental;
-        std::vector<float> scale = 
-            loadScala("/Users/teemu/Documents/Rack/plugins-v1/NYSTHI/res/microtuning/scala_scales/Indonesian Pelog.scl",true);
-        if (scale.size()==0 && m_frequencyMapping == 3)
-            m_frequencyMapping = 0;
         
+        std::vector<float> scale;
+        if (m_frequencyMapping>=3)
+        {
+            auto it = m_scala_scales.begin();
+            std::advance(it,m_frequencyMapping-3);
+            std::string filename = *it;
+            scale = loadScala(filename,true);
+            currentScalaFile = filename;
+            if (scale.size()==0 && m_frequencyMapping == 3)
+            {
+                m_frequencyMapping = 0;
+                currentScalaFile ="Failed to load .scl file";
+            }
+        }
         for (int i = 0; i < (int)m_oscillators.size(); ++i)
         {
             if (m_frequencyMapping == 0)
@@ -200,7 +213,7 @@ public:
                     f+=detunedist(m_rng);
                 m_oscillators[i].m_osc.setFrequency(f);
             }
-            if (m_frequencyMapping == 3)
+            if (m_frequencyMapping >= 3)
             {
                 float pitch = rescale(i, 0, h, 102.0, 0.0);
                 pitch = quantize_to_grid(pitch,scale,m_scala_quan_amount);
@@ -634,16 +647,18 @@ public:
     float looplen = 1.0f;
     
     OscillatorBuilder m_oscBuilder{32};
+    std::list<std::string> m_scala_scales;
     XImageSynth()
     {
-        //m_src.SetMode(false,0,true,64,32);
+        m_scala_scales = rack::system::getEntries(asset::plugin(pluginInstance, "res/scala_scales"));
+        m_syn.m_scala_scales = m_scala_scales;
         m_renderingImage = false;
         presetImages = rack::system::getEntries(asset::plugin(pluginInstance, "res/image_synth_images"));
         config(PAR_LAST,LAST_INPUT,LAST_OUTPUT,0);
         configParam(PAR_RELOAD_IMAGE,0,1,1,"Reload image");
         configParam(PAR_DURATION,0.5,60,5.0,"Image duration");
         configParam(PAR_PITCH,-24,24,0.0,"Playback pitch");
-        configParam(PAR_FREQMAPPING,0,3,0.0,"Frequency mapping type");
+        configParam(PAR_FREQMAPPING,0,2+(m_scala_scales.size()),0.0,"Frequency mapping type");
         configParam(PAR_WAVEFORMTYPE,0,3,0.0,"Oscillator type");
         configParam(PAR_PRESET_IMAGE,0,presetImages.size()-1,0.0,"Preset image");
         configParam(PAR_LOOP_START,0.0,0.95,0.0,"Loop start");
@@ -1079,10 +1094,11 @@ public:
             nvgFontFaceId(args.vg, g_font->handle);
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            char buf[100];
+            char buf[1000];
             float dirtyElapsed = m_synth->m_syn.getDirtyElapsedTime();
-            sprintf(buf,"%d %d %d %d %d %f",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
-                dirtyElapsed);
+            auto scalefile = rack::string::filename(m_synth->m_syn.currentScalaFile);
+            sprintf(buf,"%d %d %d %d %d %f %s",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
+                dirtyElapsed,scalefile.c_str());
             nvgText(args.vg, 3 , 10, buf, NULL);
         
         float progr = m_synth->m_syn.percentReady();
