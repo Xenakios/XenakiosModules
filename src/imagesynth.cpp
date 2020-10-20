@@ -5,6 +5,7 @@
 #include <functional>
 #include <thread> 
 #include "wdl/resample.h"
+#include <chrono>
 
 extern std::shared_ptr<Font> g_font;
 
@@ -160,6 +161,7 @@ public:
         m_pixel_to_gain_table.resize(256);
         m_oscillators.resize(1024);
         m_freq_gain_table.resize(1024);
+        startDirtyCountdown();
     }
     stbi_uc* m_img_data = nullptr;
     int m_img_w = 0;
@@ -226,21 +228,62 @@ public:
     float m_maxGain = 0.0f;
     double m_elapsedTime = 0.0f;
     std::atomic<bool> m_shouldCancel{ false };
-    int m_frequencyMapping = 0;
+    
     float m_fundamental = -24.0f; // semitones below middle C!
     int m_panMode = 0;
     int m_numOutChans = 2;
-    float m_envAmount = 0.95f;
+    
     float m_pixel_to_gain_curve = 1.0f;
     int m_stepsize = 64;
-    float m_freq_response_curve = 0.5f;
-    int m_waveFormType = 0;
-private:
     
+    int m_waveFormType = 0;
+    void setFrequencyMapping(int m)
+    {
+        if (m!=m_frequencyMapping)
+        {
+            m_frequencyMapping = m;
+            startDirtyCountdown();
+        }
+    }
+    void setFrequencyResponseCurve(float x)
+    {
+        if (x!=m_freq_response_curve)
+        {
+            m_freq_response_curve = x;
+            startDirtyCountdown();
+        }
+    }
+    void setEnvelopeShape(float x)
+    {
+        if (x!=m_envAmount)
+        {
+            m_envAmount = x;
+            startDirtyCountdown();
+        }
+    }
+    void startDirtyCountdown()
+    {
+        m_isDirty = true;
+        m_lastSetDirty = std::chrono::steady_clock::now();
+    }
+    float getDirtyElapsedTime()
+    {
+        if (m_isDirty==false)
+            return 0.0f;
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastSetDirty).count();
+        return elapsed/1000.0f;
+    }
+private:
+    std::chrono::steady_clock::time_point m_lastSetDirty;
+    bool m_isDirty = false;
+    int m_frequencyMapping = 0;
     std::vector<ImgOscillator> m_oscillators;
     std::vector<float> m_freq_gain_table;
     std::vector<float> m_pixel_to_gain_table;
     std::atomic<float> m_percent_ready{ 0.0 };
+    float m_freq_response_curve = 0.5f;
+    float m_envAmount = 0.95f;
 };
 
 class OscillatorBuilder
@@ -343,6 +386,7 @@ private:
 
 void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
     {
+        m_isDirty = false;
         m_shouldCancel = false;
         m_elapsedTime = 0.0;
         std::uniform_real_distribution<float> dist(0.0, 3.141);
@@ -473,6 +517,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
             m_maxGain = *it; 
             //m_elapsedTime = juce::Time::getMillisecondCounterHiRes() - t0;
         }
+        
         m_percent_ready = 1.0;
     }
 
@@ -578,14 +623,14 @@ public:
         m_img_data = tempdata;
         m_img_data_dirty = true;
         m_syn.m_panMode = params[PAR_PAN_MODE].getValue();
-        m_syn.m_frequencyMapping = params[PAR_FREQMAPPING].getValue();
-        m_syn.m_freq_response_curve = params[PAR_FREQUENCY_BALANCE].getValue();
+        m_syn.setFrequencyMapping(params[PAR_FREQMAPPING].getValue());
+        m_syn.setFrequencyResponseCurve(params[PAR_FREQUENCY_BALANCE].getValue());
         m_syn.m_fundamental = params[PAR_HARMONICS_FUNDAMENTAL].getValue();
         int wtype = params[PAR_WAVEFORMTYPE].getValue();
         if (m_syn.m_waveFormType!=3 && wtype == 3)
             m_oscBuilder.m_dirty = true;
         m_syn.m_waveFormType = wtype;
-        m_syn.m_envAmount = params[PAR_ENVELOPE_SHAPE].getValue();
+        m_syn.setEnvelopeShape(params[PAR_ENVELOPE_SHAPE].getValue());
         m_syn.setImage(m_img_data ,iw,ih);
         m_out_dur = params[PAR_DURATION].getValue();
         m_syn.render(m_out_dur,44100,m_oscBuilder);
@@ -595,6 +640,22 @@ public:
         m_renderingImage = true;
         std::thread th(task);
         th.detach();
+    }
+    int m_timerCount = 0;
+    void onTimer()
+    {
+        ++m_timerCount;
+        if (!m_renderingImage)
+        {
+            m_syn.setFrequencyResponseCurve(params[PAR_FREQUENCY_BALANCE].getValue());
+            m_syn.setFrequencyMapping(params[PAR_FREQMAPPING].getValue());
+            m_syn.setEnvelopeShape(params[PAR_ENVELOPE_SHAPE].getValue());
+            if (m_syn.getDirtyElapsedTime()>1.0)
+            {
+                reloadImage();
+            }
+        }
+        
     }
     void process(const ProcessArgs& args) override
     {
@@ -803,7 +864,7 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, XImageSynth::PAR_PITCH));
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(150.00, 330), m, XImageSynth::PAR_FREQMAPPING));
         slowknob->snap = true;
-        slowknob->m_syn = m;
+        //slowknob->m_syn = m;
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(150.00, 360), m, XImageSynth::PAR_WAVEFORMTYPE));
         slowknob->snap = true;
         slowknob->m_syn = m;
@@ -815,7 +876,7 @@ public:
         addOutput(createOutputCentered<PJ301MPort>(Vec(240, 360), m, XImageSynth::OUT_LOOP_PHASE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 360), m, XImageSynth::PAR_LOOP_LEN));
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(270.00, 330), m, XImageSynth::PAR_FREQUENCY_BALANCE));
-        slowknob->m_syn = m;
+        //slowknob->m_syn = m;
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(270.00, 360), m, XImageSynth::PAR_HARMONICS_FUNDAMENTAL));
         slowknob->m_syn = m;
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(300.00, 330), m, XImageSynth::PAR_PAN_MODE));
@@ -829,7 +890,7 @@ public:
         addParam(createParamCentered<CKSS>(Vec(360.00, 330), m, XImageSynth::PAR_DESIGNER_ACTIVE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(360.00, 360), m, XImageSynth::PAR_DESIGNER_VOLUME));
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(390.00, 330), m, XImageSynth::PAR_ENVELOPE_SHAPE));
-        slowknob->m_syn = m;
+        //slowknob->m_syn = m;
     }
     
     ~XImageSynthWidget()
@@ -860,6 +921,7 @@ public:
             m_synth->reloadImage();
             
         }
+        m_synth->onTimer();
         ModuleWidget::step();
     }
     void draw(const DrawArgs &args) override
@@ -929,7 +991,9 @@ public:
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             char buf[100];
-            sprintf(buf,"%d %d %d %d %d",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount);
+            float dirtyElapsed = m_synth->m_syn.getDirtyElapsedTime();
+            sprintf(buf,"%d %d %d %d %d %f",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
+                dirtyElapsed);
             nvgText(args.vg, 3 , 10, buf, NULL);
         
         float progr = m_synth->m_syn.percentReady();
@@ -938,6 +1002,15 @@ public:
             float progw = rescale(progr,0.0,1.0,0.0,box.size.x);
             nvgBeginPath(args.vg);
             nvgFillColor(args.vg, nvgRGBA(0x00, 0x9f, 0x00, 0xa0));
+            nvgRect(args.vg,0.0f,280.0f,progw,20);
+            nvgFill(args.vg);
+        }
+        float dirtyTimer = m_synth->m_syn.getDirtyElapsedTime();
+        if (dirtyTimer<=1.0)
+        {
+            float progw = rescale(dirtyTimer,0.0,1.0,0.0,box.size.x);
+            nvgBeginPath(args.vg);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0x00, 0x00, 0xa0));
             nvgRect(args.vg,0.0f,280.0f,progw,20);
             nvgFill(args.vg);
         }
