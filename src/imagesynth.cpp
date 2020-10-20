@@ -145,6 +145,15 @@ public:
         m_img_w = w;
         m_img_h = h;
         float thefundamental = rack::dsp::FREQ_C4 * pow(2.0, 1.0 / 12 * m_fundamental);
+        float f = thefundamental;
+        int i = 0;
+        std::vector<float> harmseries;
+        while (f<20000.0)
+        {
+            harmseries.push_back(f);
+            ++i;
+            f = i * thefundamental;
+        }
         for (int i = 0; i < (int)m_oscillators.size(); ++i)
         {
             if (m_frequencyMapping == 0)
@@ -161,7 +170,17 @@ public:
             if (m_frequencyMapping == 2)
             {
                 int harmonic = rescale(i, 0, h, 64.0f, 1.0f);
-                m_oscillators[i].m_osc.setFrequency(thefundamental * harmonic);
+                f = thefundamental*harmonic;
+                std::uniform_real_distribution<float> detunedist(-1.0f,1.0f);
+                if (f>127.0f)
+                    f+=detunedist(m_rng);
+                m_oscillators[i].m_osc.setFrequency(f);
+            }
+            if (m_frequencyMapping == 3)
+            {
+                //int harmonic = rescale(i, 0, h, 64.0f, 1.0f);
+                //float f = thefundamental
+                //m_oscillators[i].m_osc.setFrequency(thefundamental * harmonic);
             }
             float curve_begin = 1.0f - m_freq_response_curve;
             float curve_end = m_freq_response_curve;
