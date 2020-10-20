@@ -8,7 +8,8 @@
 
 extern std::shared_ptr<Font> g_font;
 
-const int g_wtsize = 4096;
+const int g_wtsize = 2048;
+const float g_pi = 3.14159265358979;
 
 template <typename T>
 inline T triplemax (T a, T b, T c)                           
@@ -253,6 +254,7 @@ public:
         m_harmonics[1] = 0.5f;
         m_harmonics[2] = 0.25f;
         m_harmonics[4] = 0.125f;
+        m_harmonics[13] = 0.5f;
         m_osc.prepare(1,m_samplerate);
         updateOscillator();
     }
@@ -508,6 +510,7 @@ public:
         PAR_NUMOUTCHANS,
         PAR_DESIGNER_ACTIVE,
         PAR_DESIGNER_VOLUME,
+        PAR_ENVELOPE_SHAPE,
         PAR_LAST
     };
     int m_comp = 0;
@@ -539,6 +542,7 @@ public:
         configParam(PAR_NUMOUTCHANS,0.0,4.0,0.00,"Output channels configuration");
         configParam(PAR_DESIGNER_ACTIVE,0,1,0,"Edit oscillator waveform");
         configParam(PAR_DESIGNER_VOLUME,-24.0,3.0,-12.0,"Oscillator editor volume");
+        configParam(PAR_ENVELOPE_SHAPE,0.0,1.0,0.95,"Envelope shape");
         m_syn.m_numOutChans = 2;
         //reloadImage();
     }
@@ -546,8 +550,10 @@ public:
     {
         reloadImage();
     }
+    int renderCount = 0;
     void reloadImage()
     {
+        ++renderCount;
         if (m_renderingImage==true)
             return;
         auto task=[this]
@@ -575,7 +581,11 @@ public:
         m_syn.m_frequencyMapping = params[PAR_FREQMAPPING].getValue();
         m_syn.m_freq_response_curve = params[PAR_FREQUENCY_BALANCE].getValue();
         m_syn.m_fundamental = params[PAR_HARMONICS_FUNDAMENTAL].getValue();
-        m_syn.m_waveFormType = params[PAR_WAVEFORMTYPE].getValue();
+        int wtype = params[PAR_WAVEFORMTYPE].getValue();
+        if (m_syn.m_waveFormType!=3 && wtype == 3)
+            m_oscBuilder.m_dirty = true;
+        m_syn.m_waveFormType = wtype;
+        m_syn.m_envAmount = params[PAR_ENVELOPE_SHAPE].getValue();
         m_syn.setImage(m_img_data ,iw,ih);
         m_out_dur = params[PAR_DURATION].getValue();
         m_syn.render(m_out_dur,44100,m_oscBuilder);
@@ -671,7 +681,7 @@ public:
         for (int i=0;i<ochans;++i)
         {
             float outsample = samples_out[i];
-            outsample = soft_clip(outsample);
+            //outsample = soft_clip(outsample);
             outputs[OUT_AUDIO].setVoltage(outsample*5.0,i);
         }
         m_playpos = m_bufferplaypos / args.sampleRate;
@@ -818,6 +828,8 @@ public:
         addInput(createInputCentered<PJ301MPort>(Vec(330, 360), m, XImageSynth::IN_LOOPLEN_CV));
         addParam(createParamCentered<CKSS>(Vec(360.00, 330), m, XImageSynth::PAR_DESIGNER_ACTIVE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(360.00, 360), m, XImageSynth::PAR_DESIGNER_VOLUME));
+        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(390.00, 330), m, XImageSynth::PAR_ENVELOPE_SHAPE));
+        slowknob->m_syn = m;
     }
     
     ~XImageSynthWidget()
@@ -834,7 +846,14 @@ public:
         if (m_synth->params[XImageSynth::PAR_DESIGNER_ACTIVE].getValue()>0.5)
             m_osc_design_widget->show();
         else
-            m_osc_design_widget->hide();
+        {
+            if (m_osc_design_widget->visible)
+            {
+                m_osc_design_widget->hide();
+                m_synth->reloadImage();
+            }
+            
+        }
         float p = m_synth->params[0].getValue();
         if (m_synth->reloadTrigger.process(p>0.0f))
         {
@@ -910,7 +929,7 @@ public:
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             char buf[100];
-            sprintf(buf,"%d %d %d %d",imgw,imgh,m_image,imageCreateCounter);
+            sprintf(buf,"%d %d %d %d %d",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount);
             nvgText(args.vg, 3 , 10, buf, NULL);
         
         float progr = m_synth->m_syn.percentReady();
