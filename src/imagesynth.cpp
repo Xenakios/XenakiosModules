@@ -229,11 +229,8 @@ public:
     double m_elapsedTime = 0.0f;
     std::atomic<bool> m_shouldCancel{ false };
     
-    float m_fundamental = -24.0f; // semitones below middle C!
-    int m_panMode = 0;
-    int m_numOutChans = 2;
     
-    float m_pixel_to_gain_curve = 1.0f;
+    
     int m_stepsize = 64;
     
     
@@ -270,6 +267,45 @@ public:
         }
     }
     int getWaveFormType() { return m_waveFormType; }
+    
+    void setHarmonicsFundamental(float semitones)
+    {
+        if (semitones!=m_fundamental)
+        {
+            m_fundamental = semitones;
+            startDirtyCountdown();
+        }
+    }
+
+    void setPanMode(int x)
+    {
+        if (x!=m_panMode)
+        {
+            m_panMode = x;
+            startDirtyCountdown();
+        }
+    }
+
+    void setPixelGainCurve(float x)
+    {
+        if (x!=m_pixel_to_gain_curve)
+        {
+            m_pixel_to_gain_curve = x;
+            startDirtyCountdown();
+        }
+    }
+
+    void setOutputChannelsMode(int m)
+    {
+        if (m!=m_numOutChans)
+        {
+            m_numOutChans = m;
+            startDirtyCountdown();
+        }
+    }
+
+    int getNumOutputChannels() { return m_numOutChans; }
+
     void startDirtyCountdown()
     {
         m_isDirty = true;
@@ -295,6 +331,11 @@ private:
     float m_envAmount = 0.95f;
     int m_waveFormType = 0;
     int m_currentPreset = 0;
+    float m_fundamental = -24.0f; // semitones below middle C!
+    int m_panMode = 0;
+    int m_numOutChans = 2;
+    
+    float m_pixel_to_gain_curve = 1.0f;
 };
 
 class OscillatorBuilder
@@ -599,7 +640,7 @@ public:
         configParam(PAR_DESIGNER_ACTIVE,0,1,0,"Edit oscillator waveform");
         configParam(PAR_DESIGNER_VOLUME,-24.0,3.0,-12.0,"Oscillator editor volume");
         configParam(PAR_ENVELOPE_SHAPE,0.0,1.0,0.95,"Envelope shape");
-        m_syn.m_numOutChans = 2;
+        m_syn.setOutputChannelsMode(2);
         //reloadImage();
     }
     void onAdd() override
@@ -628,16 +669,15 @@ public:
         m_playpos = 0.0f;
         m_bufferplaypos = 0;
         
-        m_syn.m_panMode = 0;
         int outconf = params[PAR_NUMOUTCHANS].getValue();
         int numoutchans[5]={2,2,4,8,16};
-        m_syn.m_numOutChans=numoutchans[outconf];
+        m_syn.setOutputChannelsMode(numoutchans[outconf]);
         m_img_data = tempdata;
         m_img_data_dirty = true;
-        m_syn.m_panMode = params[PAR_PAN_MODE].getValue();
+        m_syn.setPanMode(params[PAR_PAN_MODE].getValue());
         m_syn.setFrequencyMapping(params[PAR_FREQMAPPING].getValue());
         m_syn.setFrequencyResponseCurve(params[PAR_FREQUENCY_BALANCE].getValue());
-        m_syn.m_fundamental = params[PAR_HARMONICS_FUNDAMENTAL].getValue();
+        m_syn.setHarmonicsFundamental(params[PAR_HARMONICS_FUNDAMENTAL].getValue());
         int wtype = params[PAR_WAVEFORMTYPE].getValue();
         if (m_syn.getWaveFormType()!=3 && wtype == 3)
             m_oscBuilder.m_dirty = true;
@@ -663,6 +703,11 @@ public:
             m_syn.setFrequencyResponseCurve(params[PAR_FREQUENCY_BALANCE].getValue());
             m_syn.setFrequencyMapping(params[PAR_FREQMAPPING].getValue());
             m_syn.setEnvelopeShape(params[PAR_ENVELOPE_SHAPE].getValue());
+            m_syn.setHarmonicsFundamental(params[PAR_HARMONICS_FUNDAMENTAL].getValue());
+            m_syn.setPanMode(params[PAR_PAN_MODE].getValue());
+            int outconf = params[PAR_NUMOUTCHANS].getValue();
+            int numoutchans[5]={2,2,4,8,16};
+            m_syn.setOutputChannelsMode(numoutchans[outconf]);
             int wtype = params[PAR_WAVEFORMTYPE].getValue();
             if (m_syn.getWaveFormType()!=3 && wtype == 3)
                 m_oscBuilder.m_dirty = true;
@@ -687,7 +732,7 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
-        int ochans = m_syn.m_numOutChans;
+        int ochans = m_syn.getNumOutputChannels();
         outputs[OUT_AUDIO].setChannels(ochans);
         if (m_syn.percentReady()*m_out_dur<0.5)
         {
@@ -787,7 +832,7 @@ public:
     rack::dsp::SchmittTrigger rewindTrigger;
     rack::dsp::PulseGenerator loopStartPulse;
 };
-
+/*
 class MySmallKnob : public RoundSmallBlackKnob
 {
 public:
@@ -807,7 +852,7 @@ public:
     }
     float mLastValue = 0.0f;
 };
-
+*/
 class OscDesignerWidget : public TransparentWidget
 {
 public: 
@@ -880,45 +925,41 @@ public:
             m_osc_design_widget->box.size.y = 300.0f;
             addChild(m_osc_design_widget);
         }
-
+        RoundSmallBlackKnob* knob = nullptr;
         addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, XImageSynth::OUT_AUDIO));
         addInput(createInputCentered<PJ301MPort>(Vec(120, 360), m, XImageSynth::IN_PITCH_CV));
         addInput(createInputCentered<PJ301MPort>(Vec(30, 360), m, XImageSynth::IN_RESET));
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, XImageSynth::PAR_RELOAD_IMAGE));
         
-        MySmallKnob* slowknob = nullptr;
-        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
         //slowknob->m_syn = m;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, XImageSynth::PAR_PITCH));
-        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(150.00, 330), m, XImageSynth::PAR_FREQMAPPING));
-        slowknob->snap = true;
-        //slowknob->m_syn = m;
-        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(150.00, 360), m, XImageSynth::PAR_WAVEFORMTYPE));
-        slowknob->snap = true;
-        //slowknob->m_syn = m;
-        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(180.00, 330), m, XImageSynth::PAR_PRESET_IMAGE));
-        slowknob->snap = true;
-        //slowknob->m_syn = m;
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, XImageSynth::PAR_FREQMAPPING));
+        knob->snap = true;
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 360), m, XImageSynth::PAR_WAVEFORMTYPE));
+        knob->snap = true;
+        
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(180.00, 330), m, XImageSynth::PAR_PRESET_IMAGE));
+        knob->snap = true;
+        
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 330), m, XImageSynth::PAR_LOOP_START));
         addOutput(createOutputCentered<PJ301MPort>(Vec(240, 330), m, XImageSynth::OUT_LOOP_SWITCH));
         addOutput(createOutputCentered<PJ301MPort>(Vec(240, 360), m, XImageSynth::OUT_LOOP_PHASE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 360), m, XImageSynth::PAR_LOOP_LEN));
-        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(270.00, 330), m, XImageSynth::PAR_FREQUENCY_BALANCE));
-        //slowknob->m_syn = m;
-        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(270.00, 360), m, XImageSynth::PAR_HARMONICS_FUNDAMENTAL));
-        slowknob->m_syn = m;
-        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(300.00, 330), m, XImageSynth::PAR_PAN_MODE));
-        slowknob->m_syn = m;
-        slowknob->snap = true;
-        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(300.00, 360), m, XImageSynth::PAR_NUMOUTCHANS));
-        slowknob->m_syn = m;
-        slowknob->snap = true;
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(270.00, 330), m, XImageSynth::PAR_FREQUENCY_BALANCE));
+        
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(270.00, 360), m, XImageSynth::PAR_HARMONICS_FUNDAMENTAL));
+        
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(300.00, 330), m, XImageSynth::PAR_PAN_MODE));
+        knob->snap = true;
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(300.00, 360), m, XImageSynth::PAR_NUMOUTCHANS));
+        knob->snap = true;
         addInput(createInputCentered<PJ301MPort>(Vec(330, 330), m, XImageSynth::IN_LOOPSTART_CV));
         addInput(createInputCentered<PJ301MPort>(Vec(330, 360), m, XImageSynth::IN_LOOPLEN_CV));
         addParam(createParamCentered<CKSS>(Vec(360.00, 330), m, XImageSynth::PAR_DESIGNER_ACTIVE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(360.00, 360), m, XImageSynth::PAR_DESIGNER_VOLUME));
-        addParam(slowknob = createParamCentered<MySmallKnob>(Vec(390.00, 330), m, XImageSynth::PAR_ENVELOPE_SHAPE));
-        //slowknob->m_syn = m;
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(390.00, 330), m, XImageSynth::PAR_ENVELOPE_SHAPE));
+        
     }
     
     ~XImageSynthWidget()
