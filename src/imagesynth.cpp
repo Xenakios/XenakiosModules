@@ -236,7 +236,7 @@ public:
     float m_pixel_to_gain_curve = 1.0f;
     int m_stepsize = 64;
     
-    int m_waveFormType = 0;
+    
     void setFrequencyMapping(int m)
     {
         if (m!=m_frequencyMapping)
@@ -261,6 +261,15 @@ public:
             startDirtyCountdown();
         }
     }
+    void setWaveFormType(int x)
+    {
+        if (x!=m_waveFormType)
+        {
+            m_waveFormType = x;
+            startDirtyCountdown();
+        }
+    }
+    int getWaveFormType() { return m_waveFormType; }
     void startDirtyCountdown()
     {
         m_isDirty = true;
@@ -284,6 +293,8 @@ private:
     std::atomic<float> m_percent_ready{ 0.0 };
     float m_freq_response_curve = 0.5f;
     float m_envAmount = 0.95f;
+    int m_waveFormType = 0;
+    int m_currentPreset = 0;
 };
 
 class OscillatorBuilder
@@ -596,6 +607,7 @@ public:
         reloadImage();
     }
     int renderCount = 0;
+    int m_currentPresetImage = 0;
     void reloadImage()
     {
         ++renderCount;
@@ -627,9 +639,9 @@ public:
         m_syn.setFrequencyResponseCurve(params[PAR_FREQUENCY_BALANCE].getValue());
         m_syn.m_fundamental = params[PAR_HARMONICS_FUNDAMENTAL].getValue();
         int wtype = params[PAR_WAVEFORMTYPE].getValue();
-        if (m_syn.m_waveFormType!=3 && wtype == 3)
+        if (m_syn.getWaveFormType()!=3 && wtype == 3)
             m_oscBuilder.m_dirty = true;
-        m_syn.m_waveFormType = wtype;
+        m_syn.setWaveFormType(wtype);
         m_syn.setEnvelopeShape(params[PAR_ENVELOPE_SHAPE].getValue());
         m_syn.setImage(m_img_data ,iw,ih);
         m_out_dur = params[PAR_DURATION].getValue();
@@ -650,6 +662,21 @@ public:
             m_syn.setFrequencyResponseCurve(params[PAR_FREQUENCY_BALANCE].getValue());
             m_syn.setFrequencyMapping(params[PAR_FREQMAPPING].getValue());
             m_syn.setEnvelopeShape(params[PAR_ENVELOPE_SHAPE].getValue());
+            int wtype = params[PAR_WAVEFORMTYPE].getValue();
+            if (m_syn.getWaveFormType()!=3 && wtype == 3)
+                m_oscBuilder.m_dirty = true;
+            m_syn.setWaveFormType(wtype);
+            int imagetoload = params[PAR_PRESET_IMAGE].getValue();
+            if (imagetoload!=m_currentPresetImage)
+            {
+                m_syn.startDirtyCountdown();
+                m_currentPresetImage = imagetoload;
+            }
+            if (m_out_dur!=params[PAR_DURATION].getValue())
+            {
+                m_out_dur = params[PAR_DURATION].getValue();
+                m_syn.startDirtyCountdown();
+            }
             if (m_syn.getDirtyElapsedTime()>1.0)
             {
                 reloadImage();
@@ -860,17 +887,17 @@ public:
         
         MySmallKnob* slowknob = nullptr;
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
-        slowknob->m_syn = m;
+        //slowknob->m_syn = m;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, XImageSynth::PAR_PITCH));
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(150.00, 330), m, XImageSynth::PAR_FREQMAPPING));
         slowknob->snap = true;
         //slowknob->m_syn = m;
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(150.00, 360), m, XImageSynth::PAR_WAVEFORMTYPE));
         slowknob->snap = true;
-        slowknob->m_syn = m;
+        //slowknob->m_syn = m;
         addParam(slowknob = createParamCentered<MySmallKnob>(Vec(180.00, 330), m, XImageSynth::PAR_PRESET_IMAGE));
         slowknob->snap = true;
-        slowknob->m_syn = m;
+        //slowknob->m_syn = m;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(210.00, 330), m, XImageSynth::PAR_LOOP_START));
         addOutput(createOutputCentered<PJ301MPort>(Vec(240, 330), m, XImageSynth::OUT_LOOP_SWITCH));
         addOutput(createOutputCentered<PJ301MPort>(Vec(240, 360), m, XImageSynth::OUT_LOOP_PHASE));
