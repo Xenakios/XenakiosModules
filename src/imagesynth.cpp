@@ -300,8 +300,8 @@ public:
             float sum = 0.0f;
             for (int j=0;j<m_harmonics.size();++j)
             {
-                float checkfreq = hz*j;
-                if (checkfreq<sr/2.0)
+                float checkfreq = hz*(j+1);
+                if (checkfreq<sr/2.0 && m_harmonics[j]>0.0)
                     sum+=m_harmonics[j]*std::sin(2*3.141592653/m_tablesize*i*(j+1));
             }
             result[i]=sum;
@@ -506,6 +506,7 @@ public:
     OscillatorBuilder m_oscBuilder{32};
     XImageSynth()
     {
+        //m_src.SetMode(false,0,true,64,32);
         m_renderingImage = false;
         presetImages = rack::system::getEntries(asset::plugin(pluginInstance, "res/image_synth_images"));
         config(PAR_LAST,LAST_INPUT,LAST_OUTPUT,0);
