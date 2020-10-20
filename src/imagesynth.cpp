@@ -68,6 +68,11 @@ public:
     {
         m_phase = initphase;
     }
+    void setTable(std::vector<float> tb)
+    {
+        m_tablesize = tb.size();
+        m_table = tb;
+    }
 private:
     int m_tablesize = 0;
     std::vector<float> m_table;
@@ -191,7 +196,7 @@ public:
 
     }
 
-    void render(float outdur, float sr)
+    void render(float outdur, float sr,std::vector<float> customwave)
     {
         m_shouldCancel = false;
         m_elapsedTime = 0.0;
@@ -224,6 +229,10 @@ public:
             else if (m_waveFormType == 2)
                 m_oscillators[i].m_osc.initialise([](float xin)
                                                   { return harmonics4(xin);},1024);
+            else if (m_waveFormType == 3)
+            {
+                m_oscillators[i].m_osc.setTable(customwave);
+            }
             if (m_panMode == 0)
             {
                 if (m_numOutChans == 2)
@@ -342,7 +351,76 @@ private:
     std::atomic<float> m_percent_ready{ 0.0 };
 };
 
-
+class OscillatorBuilder
+{
+public:
+    OscillatorBuilder(int numharmonics)
+    {
+        m_table.resize(m_tablesize);
+        m_harmonics.resize(numharmonics);
+        m_harmonics[0] = 1.0f;
+        m_harmonics[1] = 0.5f;
+        m_harmonics[2] = 0.25f;
+        m_harmonics[4] = 0.125f;
+        m_osc.prepare(1,m_samplerate);
+        updateOscillator();
+    }
+    void updateOscillator()
+    {
+        for (int i=0;i<m_tablesize;++i)
+        {
+            float sum = 0.0f;
+            for (int j=0;j<m_harmonics.size();++j)
+            {
+                sum+=m_harmonics[j]*std::sin(2*3.141592653/m_tablesize*i*(j+1));
+            }
+            m_table[i]=sum;
+        }
+        auto it = std::max_element(m_table.begin(),m_table.end());
+        float normscaler = 1.0f / *it;
+        for (int i=0;i<m_tablesize;++i)
+            m_table[i]*=normscaler;
+        m_generating = true;
+        m_osc.setTable(m_table);
+        m_generating = false;
+    }
+    float process()
+    {
+        if (m_generating)
+            return 0.0f;
+        return m_osc.processSample(0.0f);
+    }
+    void setFrequency(float hz)
+    {
+        m_osc.setFrequency(hz);
+    }
+    float getHarmonic(int index)
+    {
+        if (index>=0 && index<m_harmonics.size())
+            return m_harmonics[index];
+        return 0.0f;
+    }
+    void setHarmonic(int index, float v)
+    {
+        if (index>=0 && index<m_harmonics.size())
+            m_harmonics[index] = v;
+    }
+    int getNumHarmonics()
+    {
+        return m_harmonics.size();
+    }
+    std::vector<float> getTable()
+    {
+        return m_table;
+    }
+private:
+    std::vector<float> m_harmonics;
+    std::vector<float> m_table;
+    ImgWaveOscillator m_osc;
+    int m_tablesize = 1024;
+    float m_samplerate = 44100;
+    std::atomic<bool> m_generating{false};
+};
 
 class XImageSynth : public rack::Module
 {
@@ -376,6 +454,7 @@ public:
         PAR_HARMONICS_FUNDAMENTAL,
         PAR_PAN_MODE,
         PAR_NUMOUTCHANS,
+        PAR_DESIGNER_ACTIVE,
         PAR_LAST
     };
     int m_comp = 0;
@@ -385,6 +464,8 @@ public:
     std::atomic<bool> m_renderingImage;
     float loopstart = 0.0f;
     float looplen = 1.0f;
+    
+    OscillatorBuilder m_oscBuilder{32};
     XImageSynth()
     {
         m_renderingImage = false;
@@ -394,7 +475,7 @@ public:
         configParam(PAR_DURATION,0.5,60,5.0,"Image duration");
         configParam(PAR_PITCH,-24,24,0.0,"Playback pitch");
         configParam(PAR_FREQMAPPING,0,2,0.0,"Frequency mapping type");
-        configParam(PAR_WAVEFORMTYPE,0,2,0.0,"Oscillator type");
+        configParam(PAR_WAVEFORMTYPE,0,3,0.0,"Oscillator type");
         configParam(PAR_PRESET_IMAGE,0,presetImages.size()-1,0.0,"Preset image");
         configParam(PAR_LOOP_START,0.0,0.95,0.0,"Loop start");
         configParam(PAR_LOOP_LEN,0.01,1.00,1.0,"Loop length");
@@ -402,6 +483,7 @@ public:
         configParam(PAR_HARMONICS_FUNDAMENTAL,-72.0,0.00,-24.00,"Harmonics fundamental");
         configParam(PAR_PAN_MODE,0.0,2.0,0.00,"Frequency panning mode");
         configParam(PAR_NUMOUTCHANS,0.0,4.0,0.00,"Output channels configuration");
+        configParam(PAR_DESIGNER_ACTIVE,0,1,0,"Edit oscillator waveform");
         m_syn.m_numOutChans = 2;
         //reloadImage();
     }
@@ -441,7 +523,7 @@ public:
         m_syn.m_waveFormType = params[PAR_WAVEFORMTYPE].getValue();
         m_syn.setImage(m_img_data ,iw,ih);
         m_out_dur = params[PAR_DURATION].getValue();
-        m_syn.render(m_out_dur,44100);
+        m_syn.render(m_out_dur,44100,m_oscBuilder.getTable());
         m_renderingImage = false;
         };
         m_renderingImage = true;
@@ -465,6 +547,15 @@ public:
         pitch += inputs[IN_PITCH_CV].getVoltage()*12.0f;
         pitch = clamp(pitch,-36.0,36.0);
         m_src.SetRates(44100 ,44100/pow(2.0,1.0/12*pitch));
+        if (params[PAR_DESIGNER_ACTIVE].getValue()>0.5)
+        {
+            float preview_freq = rack::dsp::FREQ_C4 * pow(2.0, 1.0 / 12 * pitch);
+            m_oscBuilder.setFrequency(preview_freq);
+            float preview_sample = m_oscBuilder.process();
+            outputs[OUT_AUDIO].setVoltage(preview_sample,0);
+            outputs[OUT_AUDIO].setVoltage(preview_sample,1);
+            return;
+        }
         int outlensamps = m_out_dur*args.sampleRate;
         loopstart = params[PAR_LOOP_START].getValue();
         loopstart += inputs[IN_LOOPSTART_CV].getVoltage()/5.0f;
@@ -560,10 +651,60 @@ public:
     float mLastValue = 0.0f;
 };
 
+class OscDesignerWidget : public TransparentWidget
+{
+public: 
+    XImageSynth* m_syn = nullptr;
+    OscDesignerWidget(XImageSynth* s) : m_syn(s)
+    {
+
+    }
+    void onButton(const event::Button& e) override
+    {
+        if (e.action == GLFW_RELEASE)
+            return;
+        float w = box.size.x/m_syn->m_oscBuilder.getNumHarmonics();
+        int index = e.pos.x/w;
+        float v = rescale(e.pos.y,0.0,300.0,1.0,0.0);
+        v = clamp(v,0.0,1.0);
+        m_syn->m_oscBuilder.setHarmonic(index,v);
+        m_syn->m_oscBuilder.updateOscillator();
+    }
+    void draw(const DrawArgs &args) override
+    {
+        if (!m_syn)
+            return;
+        nvgSave(args.vg);
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg, nvgRGB(0,0,0));
+        nvgRect(args.vg,0,0,box.size.x,box.size.y);
+        nvgFill(args.vg);
+        int numharms = m_syn->m_oscBuilder.getNumHarmonics();
+        float w = box.size.x / numharms - 2.0f;
+        if (w<2.0f)
+            w = 2.0f;
+        nvgFillColor(args.vg, nvgRGB(0,255,0));
+        for (int i=0;i<numharms;++i)
+        {
+            float v = m_syn->m_oscBuilder.getHarmonic(i);
+            if (v>0.0f)
+            {
+                float xcor = rescale(i,0,numharms-1,0,box.size.x);
+                float ycor = v*box.size.y;
+                nvgBeginPath(args.vg);
+                nvgRect(args.vg,xcor,box.size.y-ycor,w,ycor);
+                nvgFill(args.vg);
+            }
+            
+        }
+        nvgRestore(args.vg);
+    }
+};
+
 class XImageSynthWidget : public ModuleWidget
 {
 public:
-    
+    OscDesignerWidget* m_osc_design_widget = nullptr;
     XImageSynth* m_synth = nullptr;
     XImageSynthWidget(XImageSynth* m)
     {
@@ -573,6 +714,16 @@ public:
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         
+        if (m)
+        {
+            m_osc_design_widget = new OscDesignerWidget(m);
+            m_osc_design_widget->box.pos.x = 0.0;
+            m_osc_design_widget->box.pos.y = 0.0;
+            m_osc_design_widget->box.size.x = box.size.x;
+            m_osc_design_widget->box.size.y = 300.0f;
+            addChild(m_osc_design_widget);
+        }
+
         addOutput(createOutputCentered<PJ301MPort>(Vec(30, 330), m, XImageSynth::OUT_AUDIO));
         addInput(createInputCentered<PJ301MPort>(Vec(120, 360), m, XImageSynth::IN_PITCH_CV));
         addInput(createInputCentered<PJ301MPort>(Vec(30, 360), m, XImageSynth::IN_RESET));
@@ -607,7 +758,10 @@ public:
         slowknob->snap = true;
         addInput(createInputCentered<PJ301MPort>(Vec(330, 330), m, XImageSynth::IN_LOOPSTART_CV));
         addInput(createInputCentered<PJ301MPort>(Vec(330, 360), m, XImageSynth::IN_LOOPLEN_CV));
+        addParam(createParamCentered<CKSS>(Vec(360.00, 330), m, XImageSynth::PAR_DESIGNER_ACTIVE));
+        
     }
+    
     ~XImageSynthWidget()
     {
         //nvgDeleteImage(m_ctx,m_image);
@@ -618,6 +772,11 @@ public:
     {
         if (m_synth==nullptr)
             return;
+        
+        if (m_synth->params[XImageSynth::PAR_DESIGNER_ACTIVE].getValue()>0.5)
+            m_osc_design_widget->show();
+        else
+            m_osc_design_widget->hide();
         float p = m_synth->params[0].getValue();
         if (m_synth->reloadTrigger.process(p>0.0f))
         {
