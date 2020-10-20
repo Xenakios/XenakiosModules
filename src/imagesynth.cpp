@@ -174,7 +174,7 @@ public:
         float thefundamental = rack::dsp::FREQ_C4 * pow(2.0, 1.0 / 12 * m_fundamental);
         float f = thefundamental;
         std::vector<float> scale = 
-            loadScala("/Users/teemu/Documents/Rack/plugins-v1/NYSTHI/res/microtuning/scala_scales/Ancient Greek Archytas Enharmonic.scl",true);
+            loadScala("/Users/teemu/Documents/Rack/plugins-v1/NYSTHI/res/microtuning/scala_scales/Indonesian Pelog.scl",true);
         if (scale.size()==0 && m_frequencyMapping == 3)
             m_frequencyMapping = 0;
         
