@@ -319,6 +319,9 @@ public:
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastSetDirty).count();
         return elapsed/1000.0f;
     }
+    // keep false while resizing the buffer, the playback code
+    // checks that to skip rendering samples
+    std::atomic<bool> m_BufferReady{false};
 private:
     std::chrono::steady_clock::time_point m_lastSetDirty;
     bool m_isDirty = false;
@@ -446,8 +449,9 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         const float cut_th = rack::dsp::dbToAmplitude(-72.0f);
         m_maxGain = 0.0f;
         m_percent_ready = 0.0f;
+        m_BufferReady = false;
         m_renderBuf.resize(m_numOutChans* ((1.0 + outdur) * sr));
-        
+        m_BufferReady = true;
         for (int i = 0; i < 256; ++i)
         {
             m_pixel_to_gain_table[i] = std::pow(1.0 / 256 * i,m_pixel_to_gain_curve);
@@ -517,18 +521,20 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                 m_oscillators[i].m_pan_coeffs[3] = 0.71f;
             }
         }
-        m_renderBuf.clear();
-        //auto outbuf = m_renderBuf.getArrayOfWritePointers();
         int imgw = m_img_w;
         int imgh = m_img_h;
         int outdursamples = sr * outdur;
-        
+        //m_renderBuf.clear();
         for (int x = 0; x < outdursamples; x += m_stepsize)
         {
             if (m_shouldCancel)
                 break;
             m_percent_ready = 1.0 / outdursamples * x;
-
+            for (int i = 0; i < m_stepsize; ++i)
+            {
+                for (int chan=0;chan<m_numOutChans;++chan)
+                    m_renderBuf[(x+i)*m_numOutChans+chan]=0.0f;    
+            }
             for (int y = 0; y < imgh; ++y)
             {
                 int xcor = rescale(x, 0, outdursamples, 0, imgw);
@@ -542,9 +548,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                 unsigned char b = p[2];
                 //unsigned char a = p[3];
                 float pix_mid_gain = (float)triplemax(r,g,b)/255.0f;
-                //float pix_mid_gain = (r / 255.0) * 0.3 + (g / 255.0) * 0.59 + (b / 255.0) * 0.11;
                 
-                //float pix_mid_gain = 0.0f;
                 for (int i = 0; i < m_stepsize; ++i)
                 {
                     m_oscillators[y].generate(pix_mid_gain);
@@ -737,7 +741,7 @@ public:
     {
         int ochans = m_syn.getNumOutputChannels();
         outputs[OUT_AUDIO].setChannels(ochans);
-        if (m_syn.percentReady()<0.01)
+        if (m_syn.m_BufferReady==false)
         {
             outputs[OUT_AUDIO].setVoltage(0.0,0);
             outputs[OUT_AUDIO].setVoltage(0.0,1);
