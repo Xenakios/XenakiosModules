@@ -654,6 +654,7 @@ public:
         th.detach();
     }
     int m_timerCount = 0;
+    float m_checkOutputDur = 0.0f;
     void onTimer()
     {
         ++m_timerCount;
@@ -672,9 +673,9 @@ public:
                 m_syn.startDirtyCountdown();
                 m_currentPresetImage = imagetoload;
             }
-            if (m_out_dur!=params[PAR_DURATION].getValue())
+            if (m_checkOutputDur!=params[PAR_DURATION].getValue())
             {
-                m_out_dur = params[PAR_DURATION].getValue();
+                m_checkOutputDur = params[PAR_DURATION].getValue();
                 m_syn.startDirtyCountdown();
             }
             if (m_syn.getDirtyElapsedTime()>1.0)
