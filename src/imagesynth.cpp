@@ -173,14 +173,11 @@ public:
         m_img_h = h;
         float thefundamental = rack::dsp::FREQ_C4 * pow(2.0, 1.0 / 12 * m_fundamental);
         float f = thefundamental;
-        int i = 0;
-        std::vector<float> harmseries;
-        while (f<20000.0)
-        {
-            harmseries.push_back(f);
-            ++i;
-            f = i * thefundamental;
-        }
+        std::vector<float> scale = 
+            loadScala("/Users/teemu/Documents/Rack/plugins-v1/NYSTHI/res/microtuning/scala_scales/Ancient Greek Archytas Enharmonic.scl",true);
+        if (scale.size()==0 && m_frequencyMapping == 3)
+            m_frequencyMapping = 0;
+        
         for (int i = 0; i < (int)m_oscillators.size(); ++i)
         {
             if (m_frequencyMapping == 0)
@@ -205,9 +202,10 @@ public:
             }
             if (m_frequencyMapping == 3)
             {
-                //int harmonic = rescale(i, 0, h, 64.0f, 1.0f);
-                //float f = thefundamental
-                //m_oscillators[i].m_osc.setFrequency(thefundamental * harmonic);
+                float pitch = rescale(i, 0, h, 102.0, 0.0);
+                pitch = quantize_to_grid(pitch,scale,0.99);
+                float frequency = 32.0 * pow(2.0, 1.0 / 12 * pitch);
+                m_oscillators[i].m_osc.setFrequency(frequency);
             }
             float curve_begin = 1.0f - m_freq_response_curve;
             float curve_end = m_freq_response_curve;
@@ -635,7 +633,7 @@ public:
         configParam(PAR_RELOAD_IMAGE,0,1,1,"Reload image");
         configParam(PAR_DURATION,0.5,60,5.0,"Image duration");
         configParam(PAR_PITCH,-24,24,0.0,"Playback pitch");
-        configParam(PAR_FREQMAPPING,0,2,0.0,"Frequency mapping type");
+        configParam(PAR_FREQMAPPING,0,3,0.0,"Frequency mapping type");
         configParam(PAR_WAVEFORMTYPE,0,3,0.0,"Oscillator type");
         configParam(PAR_PRESET_IMAGE,0,presetImages.size()-1,0.0,"Preset image");
         configParam(PAR_LOOP_START,0.0,0.95,0.0,"Loop start");
@@ -730,7 +728,7 @@ public:
                 m_checkOutputDur = params[PAR_DURATION].getValue();
                 m_syn.startDirtyCountdown();
             }
-            if (m_syn.getDirtyElapsedTime()>1.0)
+            if (m_syn.getDirtyElapsedTime()>0.5)
             {
                 reloadImage();
             }
@@ -1084,9 +1082,9 @@ public:
             nvgFill(args.vg);
         }
         float dirtyTimer = m_synth->m_syn.getDirtyElapsedTime();
-        if (dirtyTimer<=1.0)
+        if (dirtyTimer<=0.5)
         {
-            float progw = rescale(dirtyTimer,0.0,1.0,0.0,box.size.x);
+            float progw = rescale(dirtyTimer,0.0,0.5,0.0,box.size.x);
             nvgBeginPath(args.vg);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0x00, 0x00, 0xa0));
             nvgRect(args.vg,0.0f,280.0f,progw,20);
