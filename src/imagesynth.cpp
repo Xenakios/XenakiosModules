@@ -8,6 +8,8 @@
 
 extern std::shared_ptr<Font> g_font;
 
+const int g_wtsize = 4096;
+
 template <typename T>
 inline T triplemax (T a, T b, T c)                           
 { 
@@ -52,8 +54,21 @@ public:
     }
     float processSample(float)
     {
+        /*
         int index = m_phase;
         float sample = m_table[index];
+        m_phase+=m_phaseincrement;
+        if (m_phase>=m_tablesize)
+            m_phase-=m_tablesize;
+        */
+        int index0 = std::floor(m_phase);
+        int index1 = std::floor(m_phase)+1;
+        if (index1>=m_tablesize)
+            index1 = 0;
+        float frac = m_phase-index0;
+        float y0 = m_table[index0];
+        float y1 = m_table[index1];
+        float sample = y0+(y1-y0)*frac;
         m_phase+=m_phaseincrement;
         if (m_phase>=m_tablesize)
             m_phase-=m_tablesize;
@@ -94,7 +109,7 @@ public:
             {
                 return 0.5 * std::sin(x) + 0.25 * std::sin(x * 2.0) + 0.1 * std::sin(x * 3);
 
-            }, 1024);
+            }, g_wtsize);
     }
     float m_freq = 440.0f;
     void setFrequency(float hz)
@@ -319,7 +334,7 @@ private:
     std::vector<float> m_harmonics;
     std::vector<float> m_table;
     ImgWaveOscillator m_osc;
-    int m_tablesize = 1024;
+    int m_tablesize = g_wtsize;
     float m_samplerate = 44100;
     std::atomic<bool> m_generating{false};
 };
@@ -350,19 +365,19 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
             m_oscillators[i].setEnvelopeAmount(m_envAmount);
             m_oscillators[i].m_gainCurve = m_pixel_to_gain_table.data();
             if (m_waveFormType == 0)
-                m_oscillators[i].m_osc.initialise([](float xin){ return std::sin(xin); },1024);
+                m_oscillators[i].m_osc.initialise([](float xin){ return std::sin(xin); },g_wtsize);
             else if (m_waveFormType == 1)
                 m_oscillators[i].m_osc.initialise([](float xin)
-                                                { return harmonics3(xin);},1024);
+                                                { return harmonics3(xin);},g_wtsize);
             else if (m_waveFormType == 2)
                 m_oscillators[i].m_osc.initialise([](float xin)
-                                                  { return harmonics4(xin);},1024);
+                                                  { return harmonics4(xin);},g_wtsize);
             else if (m_waveFormType == 3)
             {
                 if (oscBuilder.m_dirty)
                 {
                     float oschz = m_oscillators[i].m_freq;
-                    m_oscillators[i].m_osc.setTable(oscBuilder.getTableForFrequency(1024,oschz,sr));
+                    m_oscillators[i].m_osc.setTable(oscBuilder.getTableForFrequency(g_wtsize,oschz,sr));
                 }
                 
             }
