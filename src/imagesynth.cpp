@@ -930,7 +930,7 @@ public:
             return;
         float w = box.size.x/(m_syn->m_oscBuilder.getNumHarmonics()-1);
         int index = std::floor(e.pos.x/w);
-        float v = rescale(e.pos.y,0.0,300.0,-61.0,0.0);
+        float v = rescale(e.pos.y,0.0,300.0,0,-61.0);
         v = clamp(v,-61.0,0.0);
         if (v<-60.0)
             v = -120.0;
@@ -960,7 +960,7 @@ public:
             {
                 float xcor = rescale(i,0,numharms-1,0,box.size.x);
                 float db = rack::dsp::amplitudeToDb(v);
-                float ycor = rescale(db,-61.0,0.0,box.size.y,0.0);
+                float ycor = rescale(db,-61.0,0.0,0.0,box.size.y);
                 nvgBeginPath(args.vg);
                 nvgRect(args.vg,xcor,box.size.y-ycor,w,ycor);
                 nvgFill(args.vg);
@@ -985,7 +985,7 @@ class MyMenuButton : public LEDBezel
 {
 public:
     XImageSynth* m_syn = nullptr;
-    
+    int whichParam = 0;
     MyMenuButton() : LEDBezel()
     {
         
