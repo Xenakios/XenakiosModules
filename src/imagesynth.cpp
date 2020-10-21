@@ -457,13 +457,14 @@ public:
     std::vector<float> getTableForFrequency(int size, float hz, float sr)
     {
         std::vector<float> result(size);
+        float th = rack::dsp::dbToAmplitude(-60.0);
         for (int i=0;i<size;++i)
         {
             float sum = 0.0f;
             for (int j=0;j<m_harmonics.size();++j)
             {
                 float checkfreq = hz*(j+1);
-                if (checkfreq<sr/2.0 && m_harmonics[j]>0.0)
+                if (checkfreq<sr/2.0 && m_harmonics[j]>th)
                     sum+=m_harmonics[j]*std::sin(2*3.141592653/m_tablesize*i*(j+1));
             }
             result[i]=sum;
@@ -926,12 +927,16 @@ public:
     {
         if (e.action == GLFW_RELEASE)
             return;
-        float w = box.size.x/m_syn->m_oscBuilder.getNumHarmonics();
-        int index = e.pos.x/w;
-        float v = rescale(e.pos.y,0.0,300.0,1.0,0.0);
-        v = clamp(v,0.0,1.0);
+        float w = box.size.x/(m_syn->m_oscBuilder.getNumHarmonics()-1);
+        int index = std::floor(e.pos.x/w);
+        float v = rescale(e.pos.y,0.0,300.0,-61.0,0.0);
+        v = clamp(v,-61.0,0.0);
+        if (v<-60.0)
+            v = -120.0;
+        v = rack::dsp::dbToAmplitude(v);
         m_syn->m_oscBuilder.setHarmonic(index,v);
         m_syn->m_oscBuilder.updateOscillator();
+        e.consume(nullptr);
     }
     void draw(const DrawArgs &args) override
     {
@@ -953,7 +958,8 @@ public:
             if (v>0.0f)
             {
                 float xcor = rescale(i,0,numharms-1,0,box.size.x);
-                float ycor = v*box.size.y;
+                float db = rack::dsp::amplitudeToDb(v);
+                float ycor = rescale(db,-61.0,0.0,box.size.y,0.0);
                 nvgBeginPath(args.vg);
                 nvgRect(args.vg,xcor,box.size.y-ycor,w,ycor);
                 nvgFill(args.vg);
@@ -981,12 +987,13 @@ public:
     
     MyMenuButton() : LEDBezel()
     {
-
+        
     }
     void onButton(const event::Button& e) override
     {
         if (m_syn==nullptr)
             return;
+        
         ui::Menu *menu = createMenu();
         auto namelist = m_syn->m_scala_scales;
         namelist.push_front("Harmonic series");
