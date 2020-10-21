@@ -163,7 +163,7 @@ public:
         m_pixel_to_gain_table.resize(256);
         m_oscillators.resize(1024);
         m_freq_gain_table.resize(1024);
-        startDirtyCountdown();
+        
     }
     stbi_uc* m_img_data = nullptr;
     int m_img_w = 0;
@@ -185,7 +185,10 @@ public:
             std::string filename = *it;
             scale = loadScala(filename,true);
             currentScalaFile = filename;
-            if (scale.size()==0 && m_frequencyMapping == 3)
+            for (auto& e : scale)
+                std::cout << e << " , ";
+            std::cout << "\n";
+            if (scale.size()<2 && m_frequencyMapping == 3)
             {
                 m_frequencyMapping = 0;
                 currentScalaFile ="Failed to load .scl file";
@@ -676,7 +679,7 @@ public:
     }
     void onAdd() override
     {
-        reloadImage();
+        //reloadImage();
     }
     int renderCount = 0;
     int m_currentPresetImage = 0;
@@ -1022,7 +1025,7 @@ public:
         float p = m_synth->params[0].getValue();
         if (m_synth->reloadTrigger.process(p>0.0f))
         {
-            m_synth->reloadImage();
+            //m_synth->reloadImage();
             
         }
         m_synth->onTimer();
