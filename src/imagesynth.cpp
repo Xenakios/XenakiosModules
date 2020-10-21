@@ -964,6 +964,49 @@ public:
     }
 };
 
+struct ChooseScaleItem  : MenuItem
+{
+    XImageSynth* syn = nullptr;
+    int m_index = 0;
+    void onAction(const event::Action &e) override
+    {
+        syn->params[XImageSynth::PAR_FREQMAPPING].setValue(m_index);
+    }
+};
+
+class MyMenuButton : public LEDBezel
+{
+public:
+    XImageSynth* m_syn = nullptr;
+    
+    MyMenuButton() : LEDBezel()
+    {
+
+    }
+    void onButton(const event::Button& e) override
+    {
+        if (m_syn==nullptr)
+            return;
+        ui::Menu *menu = createMenu();
+        auto namelist = m_syn->m_scala_scales;
+        namelist.push_front("Harmonic series");
+        namelist.push_front("Linear");
+        namelist.push_front("Equal tempered per pixel row");
+        int i=0;
+        for (auto& name : namelist)
+        {
+             ChooseScaleItem* item = createMenuItem<ChooseScaleItem>(rack::string::filename(name));
+             item->syn = m_syn;
+             item->m_index = i;
+             menu->addChild(item);
+             ++i;
+        }
+        e.consume(nullptr);
+    }
+private:
+
+};
+
 class XImageSynthWidget : public ModuleWidget
 {
 public:
@@ -995,8 +1038,13 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
         //slowknob->m_syn = m;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, XImageSynth::PAR_PITCH));
-        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, XImageSynth::PAR_FREQMAPPING));
-        knob->snap = true;
+        
+        // addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, XImageSynth::PAR_FREQMAPPING)); 
+        
+        MyMenuButton* mbut = nullptr;
+        addChild(mbut = createWidgetCentered<MyMenuButton>(Vec(150.00, 330)));
+        mbut->m_syn = m;
+        
         addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 360), m, XImageSynth::PAR_WAVEFORMTYPE));
         knob->snap = true;
         
