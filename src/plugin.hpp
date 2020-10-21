@@ -36,7 +36,7 @@ inline std::vector<double> parse_scala(std::vector<std::string>& input,
 				if (freq > 0.0)
                     if (!outputSemitones)
 					    result.push_back(1.0/1200.0*freq);
-                    else result.push_back(freq/1200.0);
+                    else result.push_back(freq/100.0);
 			}
 			else if (e.find("/")!=std::string::npos)
 			{

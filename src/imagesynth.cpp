@@ -54,6 +54,10 @@ public:
         m_phaseincrement = m_tablesize*hz*(1.0/m_sr);
         m_freq = hz;
     }
+    float getFrequency()
+    {
+        return m_freq;
+    }
     float processSample(float)
     {
         /*
@@ -163,7 +167,7 @@ public:
         m_pixel_to_gain_table.resize(256);
         m_oscillators.resize(1024);
         m_freq_gain_table.resize(1024);
-        
+        currentFrequencies.resize(1024);
     }
     stbi_uc* m_img_data = nullptr;
     int m_img_w = 0;
@@ -194,7 +198,22 @@ public:
                 currentScalaFile ="Failed to load .scl file";
             }
         }
-        for (int i = 0; i < (int)m_oscillators.size(); ++i)
+        if (m_frequencyMapping == 0 || m_frequencyMapping>=3)
+        {
+            minFrequency = 32.0f;
+            maxFrequency = 32.0 * pow(2.0, 1.0 / 12 * 102.0);
+        }
+        else if (m_frequencyMapping == 1)
+        {
+            minFrequency = 32.0f;
+            maxFrequency = 7000.0f;
+        }
+        else if (m_frequencyMapping == 2)
+        {
+            minFrequency = thefundamental;
+            maxFrequency = thefundamental*64;
+        }
+        for (int i = 0; i < h; ++i)
         {
             if (m_frequencyMapping == 0)
             {
@@ -223,13 +242,14 @@ public:
                 float frequency = 32.0 * pow(2.0, 1.0 / 12 * pitch);
                 m_oscillators[i].m_osc.setFrequency(frequency);
             }
+            currentFrequencies[i] = m_oscillators[i].m_osc.getFrequency();
             float curve_begin = 1.0f - m_freq_response_curve;
             float curve_end = m_freq_response_curve;
             float resp_gain = rescale(i, 0, h, curve_end, curve_begin);
             m_freq_gain_table[i] = resp_gain;
             
         }
-
+        
     }
     void render(float outdur, float sr, OscillatorBuilder& oscbuilder);
     
@@ -345,6 +365,10 @@ public:
     // keep false while resizing the buffer, the playback code
     // checks that to skip rendering samples
     std::atomic<bool> m_BufferReady{false};
+
+    std::vector<float> currentFrequencies;
+    float minFrequency = 0.0f;
+    float maxFrequency = 1.0f;
 private:
     std::chrono::steady_clock::time_point m_lastSetDirty;
     bool m_isDirty = false;
@@ -1006,6 +1030,12 @@ public:
     }
     int imageCreateCounter = 0;
     bool imgDirty = false;
+    float hoverYCor = 0.0f;
+    void onHover(const event::Hover& e) override
+    {
+        ModuleWidget::onHover(e);
+        hoverYCor = e.pos.y;
+    }
     void step() override
     {
         if (m_synth==nullptr)
@@ -1059,7 +1089,22 @@ public:
             
             nvgFill(args.vg);
         }
+        int numfreqs = 600;
+        float minf = m_synth->m_syn.minFrequency;
+        float maxf = m_synth->m_syn.maxFrequency;
+        nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0x50));
+        for (int i=0;i<numfreqs;i+=4)
+        {
+            if (i>=numfreqs)
+                break;
+            float ycor = rescale(m_synth->m_syn.currentFrequencies[i],minf,maxf,0.0,300.0);
+            nvgBeginPath(args.vg);
             
+            
+            nvgMoveTo(args.vg,580,ycor);
+            nvgLineTo(args.vg,600,ycor);
+            nvgStroke(args.vg);
+        }
             nvgBeginPath(args.vg);
             nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
             nvgRect(args.vg,0.0f,300.0f,box.size.x,box.size.y-300);
@@ -1100,8 +1145,14 @@ public:
             char buf[1000];
             float dirtyElapsed = m_synth->m_syn.getDirtyElapsedTime();
             auto scalefile = rack::string::filename(m_synth->m_syn.currentScalaFile);
-            sprintf(buf,"%d %d %d %d %d %f %s",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
-                dirtyElapsed,scalefile.c_str());
+            if ((int)m_synth->params[XImageSynth::PAR_FREQMAPPING].getValue()<3)
+                scalefile = "";
+            int freqIndex = rescale(hoverYCor,0.0f,300.0f,0.0f,599.0f);
+            freqIndex = clamp(freqIndex,0,599);
+            float hoverFreq = m_synth->m_syn.currentFrequencies[freqIndex];
+            sprintf(buf,"%d %d %d %d %d %f %s %f %f %f",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
+                dirtyElapsed,scalefile.c_str(),m_synth->m_syn.minFrequency,m_synth->m_syn.maxFrequency,
+                hoverFreq);
             nvgText(args.vg, 3 , 10, buf, NULL);
         
         float progr = m_synth->m_syn.percentReady();
