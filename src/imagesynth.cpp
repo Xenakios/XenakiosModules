@@ -493,7 +493,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         m_shouldCancel = false;
         m_elapsedTime = 0.0;
         std::uniform_real_distribution<float> dist(0.0, 3.141);
-        //double t0 = juce::Time::getMillisecondCounterHiRes();
+        auto t0 = std::chrono::steady_clock::now();
         const float cut_th = rack::dsp::dbToAmplitude(-72.0f);
         m_maxGain = 0.0f;
         m_percent_ready = 0.0f;
@@ -619,10 +619,10 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         }
         if (!m_shouldCancel)
         {
-            //m_renderBuf.applyGainRamp(outdursamples - 512, 512 + m_stepsize, 1.0f, 0.0f);
             auto it = std::max_element(m_renderBuf.begin(),m_renderBuf.end());
             m_maxGain = *it; 
-            //m_elapsedTime = juce::Time::getMillisecondCounterHiRes() - t0;
+            auto t1 = std::chrono::steady_clock::now();
+            m_elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count()/1000.0;
         }
         
         m_percent_ready = 1.0;
@@ -1003,7 +1003,12 @@ public:
         int i=0;
         for (auto& name : namelist)
         {
-             ChooseScaleItem* item = createMenuItem<ChooseScaleItem>(rack::string::filename(name));
+             std::string check;
+             if (i == (int)m_syn->params[XImageSynth::PAR_FREQMAPPING].getValue())
+             {
+                check = CHECKMARK_STRING;
+             }
+             ChooseScaleItem* item = createMenuItem<ChooseScaleItem>(rack::string::filename(name),check);
              item->syn = m_syn;
              item->m_index = i;
              menu->addChild(item);
@@ -1206,9 +1211,14 @@ public:
             int freqIndex = rescale(hoverYCor,0.0f,300.0f,0.0f,599.0f);
             freqIndex = clamp(freqIndex,0,599);
             float hoverFreq = m_synth->m_syn.currentFrequencies[freqIndex];
-            sprintf(buf,"%d %d %d %d %d %f %s %f %f %f",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
+            float elapsed = m_synth->m_syn.m_elapsedTime;
+            float rtfactor = 0.0f;
+            if (elapsed>0.0f)
+                rtfactor = m_synth->params[XImageSynth::PAR_DURATION].getValue()/elapsed;
+
+            sprintf(buf,"%d %d %d %d %d %.1f %s [%.1fHz - %.1fHz %.1fHz] (%.1fx realtime)",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
                 dirtyElapsed,scalefile.c_str(),m_synth->m_syn.minFrequency,m_synth->m_syn.maxFrequency,
-                hoverFreq);
+                hoverFreq,rtfactor);
             nvgText(args.vg, 3 , 10, buf, NULL);
         
         float progr = m_synth->m_syn.percentReady();
