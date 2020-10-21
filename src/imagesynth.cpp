@@ -960,10 +960,14 @@ public:
             {
                 float xcor = rescale(i,0,numharms-1,0,box.size.x);
                 float db = rack::dsp::amplitudeToDb(v);
-                float ycor = rescale(db,-61.0,0.0,0.0,box.size.y);
-                nvgBeginPath(args.vg);
-                nvgRect(args.vg,xcor,box.size.y-ycor,w,ycor);
-                nvgFill(args.vg);
+                if (db>=-60.0)
+                {
+                    float ycor = rescale(db,-61.0,0.0,0.0,box.size.y);
+                    nvgBeginPath(args.vg);
+                    nvgRect(args.vg,xcor,box.size.y-ycor,w,ycor);
+                    nvgFill(args.vg);
+                }
+                
             }
             
         }
@@ -990,6 +994,8 @@ public:
     {
         
     }
+           
+    
     void onButton(const event::Button& e) override
     {
         if (m_syn==nullptr)
