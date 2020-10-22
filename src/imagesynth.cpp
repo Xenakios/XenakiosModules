@@ -259,6 +259,7 @@ public:
         return m_percent_ready;
     }
     std::vector<float> m_renderBuf;
+    
     float m_maxGain = 0.0f;
     double m_elapsedTime = 0.0f;
     std::atomic<bool> m_shouldCancel{ false };
@@ -512,7 +513,8 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         m_maxGain = 0.0f;
         m_percent_ready = 0.0f;
         m_BufferReady = false;
-        m_renderBuf.resize(m_numOutChans* ((1.0 + outdur) * sr));
+        m_renderBuf.resize((m_numOutChans+1)* ((1.0 + outdur) * sr));
+        int auxChanIdx = m_numOutChans;
         m_BufferReady = true;
         for (int i = 0; i < 256; ++i)
         {
@@ -587,6 +589,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         int imgh = m_img_h;
         int outdursamples = sr * outdur;
         //m_renderBuf.clear();
+        int outchanstouse = m_numOutChans+1;
         for (int x = 0; x < outdursamples; x += m_stepsize)
         {
             if (m_shouldCancel)
@@ -594,8 +597,10 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
             m_percent_ready = 1.0 / outdursamples * x;
             for (int i = 0; i < m_stepsize; ++i)
             {
-                for (int chan=0;chan<m_numOutChans;++chan)
-                    m_renderBuf[(x+i)*m_numOutChans+chan]=0.0f;    
+                for (int chan=0;chan<outchanstouse;++chan)
+                {
+                    m_renderBuf[(x+i)*outchanstouse+chan]=0.0f;    
+                }
             }
             for (int y = 0; y < imgh; ++y)
             {
@@ -610,7 +615,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                 unsigned char b = p[2];
                 //unsigned char a = p[3];
                 float pix_mid_gain = (float)triplemax(r,g,b)/255.0f;
-                
+                float send_gain = g/255.0;
                 for (int i = 0; i < m_stepsize; ++i)
                 {
                     m_oscillators[y].generate(pix_mid_gain);
@@ -618,13 +623,16 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                     if (fabs(sample) > 0.0f)
                     {
                         float resp_gain = m_freq_gain_table[y];
+                        
                         for (int chan = 0; chan < m_numOutChans; ++chan)
                         {
-                            int outbufindex = (x + i)*m_numOutChans+chan;
+                            int outbufindex = (x + i)*outchanstouse+chan;
                             float previous = m_renderBuf[outbufindex];
                             previous += sample * 0.1f * resp_gain * m_oscillators[y].m_pan_coeffs[chan];
                             m_renderBuf[outbufindex] = previous;
                         }
+                        int outbufauxindex = (x + i)*outchanstouse+auxChanIdx;
+                        m_renderBuf[outbufauxindex]+= sample*0.1f*resp_gain*send_gain;
                     }
                 }
 
@@ -811,7 +819,7 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
-        int ochans = m_syn.getNumOutputChannels();
+        int ochans = m_syn.getNumOutputChannels()+1;
         outputs[OUT_AUDIO].setChannels(ochans);
         if (m_syn.m_BufferReady==false)
         {
