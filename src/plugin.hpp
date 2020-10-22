@@ -86,7 +86,8 @@ inline std::vector<double> parse_scala(std::vector<std::string>& input,
 	return result;
 }
 
-inline std::vector<float> loadScala(std::string path, bool outputSemitones=false)
+inline std::vector<float> loadScala(std::string path, 
+	bool outputSemitones=false,float minpitch=0.0f,float maxpitch=0.0f)
 {
     std::fstream f{ path };
 	if (f.is_open())
@@ -104,8 +105,8 @@ inline std::vector<float> loadScala(std::string path, bool outputSemitones=false
         float endvalue = 5.0f;
         if (outputSemitones)
         {
-            volts = 0.0f;
-            endvalue = 102.0f;
+            volts = minpitch;
+            endvalue = maxpitch;
         }
 		bool finished = false;
 		std::vector<float> voltScale;

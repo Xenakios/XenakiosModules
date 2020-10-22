@@ -187,10 +187,10 @@ public:
             auto it = m_scala_scales.begin();
             std::advance(it,m_frequencyMapping-3);
             std::string filename = *it;
-            scale = loadScala(filename,true);
+            scale = loadScala(filename,true,m_minPitch,m_maxPitch);
             currentScalaFile = filename;
-            for (auto& e : scale)
-                std::cout << e << " , ";
+            //for (auto& e : scale)
+            //    std::cout << e << " , ";
             std::cout << "\n";
             if (scale.size()<2 && m_frequencyMapping == 3)
             {
@@ -200,13 +200,13 @@ public:
         }
         if (m_frequencyMapping == 0 || m_frequencyMapping>=3)
         {
-            minFrequency = 32.0f;
-            maxFrequency = 32.0 * pow(2.0, 1.0 / 12 * 102.0);
+            minFrequency = 32.0 * pow(2.0, 1.0 / 12 * m_minPitch);
+            maxFrequency = 32.0 * pow(2.0, 1.0 / 12 * m_maxPitch);
         }
         else if (m_frequencyMapping == 1)
         {
-            minFrequency = 32.0f;
-            maxFrequency = 7000.0f;
+            minFrequency = 32.0 * pow(2.0, 1.0 / 12 * m_minPitch);
+            maxFrequency = 32.0 * pow(2.0, 1.0 / 12 * m_maxPitch);
         }
         else if (m_frequencyMapping == 2)
         {
@@ -217,13 +217,13 @@ public:
         {
             if (m_frequencyMapping == 0)
             {
-                float pitch = rescale(i, 0, h, 102.0, 0.0);
+                float pitch = rescale(i, 0, h, m_maxPitch, m_minPitch);
                 float frequency = 32.0 * pow(2.0, 1.0 / 12 * pitch);
                 m_oscillators[i].m_osc.setFrequency(frequency);
             }
             if (m_frequencyMapping == 1)
             {
-                float frequency = rescale(i, 0, h, 7000.0f, 32.0f);
+                float frequency = rescale(i, 0, h, maxFrequency, minFrequency);
                 m_oscillators[i].m_osc.setFrequency(frequency);
             }
             if (m_frequencyMapping == 2)
@@ -237,7 +237,7 @@ public:
             }
             if (m_frequencyMapping >= 3)
             {
-                float pitch = rescale(i, 0, h, 102.0, 0.0);
+                float pitch = rescale(i, 0, h, m_maxPitch, m_minPitch);
                 pitch = quantize_to_grid(pitch,scale,m_scala_quan_amount);
                 float frequency = 32.0 * pow(2.0, 1.0 / 12 * pitch);
                 m_oscillators[i].m_osc.setFrequency(frequency);
@@ -349,6 +349,18 @@ public:
         }
     }
 
+    void setPitchRange(float a, float b)
+    {
+        if (a!=m_minPitch || b!=m_maxPitch)
+        {
+            if (a>b)
+                std::swap(a,b);
+            m_minPitch = a;
+            m_maxPitch = b;
+            startDirtyCountdown();
+        }
+    }
+
     void startDirtyCountdown()
     {
         m_isDirty = true;
@@ -386,6 +398,8 @@ private:
     int m_numOutChans = 2;
     float m_scala_quan_amount = 0.99f;
     float m_pixel_to_gain_curve = 1.0f;
+    float m_minPitch = 0.0f;
+    float m_maxPitch = 102.0f;
 };
 
 class OscillatorBuilder
@@ -664,6 +678,8 @@ public:
         PAR_DESIGNER_VOLUME,
         PAR_ENVELOPE_SHAPE,
         PAR_SCALA_TUNING_AMOUNT,
+        PAR_MINPITCH,
+        PAR_MAXPITCH,
         PAR_LAST
     };
     int m_comp = 0;
@@ -699,6 +715,8 @@ public:
         configParam(PAR_DESIGNER_VOLUME,-24.0,3.0,-12.0,"Oscillator editor volume");
         configParam(PAR_ENVELOPE_SHAPE,0.0,1.0,0.95,"Envelope shape");
         configParam(PAR_SCALA_TUNING_AMOUNT,0.0,1.0,0.99,"Scala tuning amount");
+        configParam(PAR_MINPITCH,0.0,102.0,0.0,"Minimum pitch");
+        configParam(PAR_MAXPITCH,0.0,102.0,90.0,"Maximum pitch");
         m_syn.setOutputChannelsMode(2);
         //reloadImage();
     }
@@ -765,6 +783,7 @@ public:
             m_syn.setHarmonicsFundamental(params[PAR_HARMONICS_FUNDAMENTAL].getValue());
             m_syn.setPanMode(params[PAR_PAN_MODE].getValue());
             m_syn.setScalaTuningAmount(params[PAR_SCALA_TUNING_AMOUNT].getValue());
+            m_syn.setPitchRange(params[PAR_MINPITCH].getValue(),params[PAR_MAXPITCH].getValue());
             int outconf = params[PAR_NUMOUTCHANS].getValue();
             int numoutchans[5]={2,2,4,8,16};
             m_syn.setOutputChannelsMode(numoutchans[outconf]);
@@ -1035,7 +1054,7 @@ public:
     {
         setModule(m);
         m_synth = m;
-        box.size.x = 600.0f;
+        box.size.x = 620.0f;
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         
@@ -1088,7 +1107,8 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(360.00, 360), m, XImageSynth::PAR_DESIGNER_VOLUME));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(390.00, 330), m, XImageSynth::PAR_ENVELOPE_SHAPE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(390.00, 360), m, XImageSynth::PAR_SCALA_TUNING_AMOUNT));
-        
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(420.00, 330), m, XImageSynth::PAR_MINPITCH));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(420.00, 360), m, XImageSynth::PAR_MAXPITCH));
     }
     
     ~XImageSynthWidget()
@@ -1115,7 +1135,7 @@ public:
             if (m_osc_design_widget->visible)
             {
                 m_osc_design_widget->hide();
-                m_synth->reloadImage();
+                //m_synth->reloadImage();
             }
             
         }
@@ -1144,6 +1164,10 @@ public:
             nvgUpdateImage(args.vg,m_image,m_synth->m_img_data);
             m_synth->m_img_data_dirty = false;
         }
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+        nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
+        nvgFill(args.vg);
         int imgw = 0;
         int imgh = 0;
         nvgImageSize(args.vg,m_image,&imgw,&imgh);
@@ -1160,22 +1184,15 @@ public:
         float minf = m_synth->m_syn.minFrequency;
         float maxf = m_synth->m_syn.maxFrequency;
         nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0x50));
-        for (int i=0;i<numfreqs;i+=4)
+        for (int i=0;i<numfreqs;++i)
         {
-            if (i>=numfreqs)
-                break;
             float ycor = rescale(m_synth->m_syn.currentFrequencies[i],minf,maxf,0.0,300.0);
             nvgBeginPath(args.vg);
-            
-            
-            nvgMoveTo(args.vg,580,ycor);
-            nvgLineTo(args.vg,600,ycor);
+            nvgMoveTo(args.vg,600,ycor);
+            nvgLineTo(args.vg,620,ycor);
             nvgStroke(args.vg);
         }
-            nvgBeginPath(args.vg);
-            nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
-            nvgRect(args.vg,0.0f,300.0f,box.size.x,box.size.y-300);
-            nvgFill(args.vg);
+            
 
             nvgBeginPath(args.vg);
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
@@ -1230,7 +1247,7 @@ public:
         float progr = m_synth->m_syn.percentReady();
         if (progr<1.0)
         {
-            float progw = rescale(progr,0.0,1.0,0.0,box.size.x);
+            float progw = rescale(progr,0.0,1.0,0.0,600.0);
             nvgBeginPath(args.vg);
             nvgFillColor(args.vg, nvgRGBA(0x00, 0x9f, 0x00, 0xa0));
             nvgRect(args.vg,0.0f,280.0f,progw,20);
@@ -1239,7 +1256,7 @@ public:
         float dirtyTimer = m_synth->m_syn.getDirtyElapsedTime();
         if (dirtyTimer<=0.5)
         {
-            float progw = rescale(dirtyTimer,0.0,0.5,0.0,box.size.x);
+            float progw = rescale(dirtyTimer,0.0,0.5,0.0,600.0f);
             nvgBeginPath(args.vg);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0x00, 0x00, 0xa0));
             nvgRect(args.vg,0.0f,280.0f,progw,20);
