@@ -615,7 +615,8 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                 unsigned char b = p[2];
                 //unsigned char a = p[3];
                 float pix_mid_gain = (float)triplemax(r,g,b)/255.0f;
-                float send_gain = g/255.0;
+                float send_gain = (float)g/255.0f-((float)(r+b)/512.0f);
+                send_gain = clamp(send_gain,0.0f,1.0f);
                 for (int i = 0; i < m_stepsize; ++i)
                 {
                     m_oscillators[y].generate(pix_mid_gain);
