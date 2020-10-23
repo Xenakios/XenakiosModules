@@ -479,8 +479,13 @@ public:
             for (int j=0;j<m_harmonics.size();++j)
             {
                 float checkfreq = hz*(j+1);
-                if (checkfreq<sr/2.0 && m_harmonics[j]>th)
-                    sum+=m_harmonics[j]*std::sin(2*3.141592653/m_tablesize*i*(j+1));
+                if (checkfreq < sr/2.0 && m_harmonics[j]>th)
+                {
+                    double phase = rescale(i,0,size-1,-3.141592653,3.14159263);
+                    sum+=m_harmonics[j]*std::sin(phase*(j+1));
+                    //sum+=m_harmonics[j]*std::sin(2*3.141592653/(size-1)*i*(j+1));
+                }
+                    
             }
             result[i]=sum;
         }
