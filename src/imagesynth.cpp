@@ -1219,7 +1219,10 @@ public:
         nvgSave(args.vg);
         int imgw = m_synth->m_img_w;
         int imgh = m_synth->m_img_h;
-        if ((m_image == 0 && m_synth->m_img_data!=nullptr) && imgw>0)
+        int neww = 0;
+        int newh = 0;
+        nvgImageSize(args.vg,m_image,&neww,&newh);
+        if ((m_image == 0 && m_synth->m_img_data!=nullptr) || neww!=imgw)
         {
             m_image = nvgCreateImageRGBA(args.vg,imgw,imgh,NVG_IMAGE_GENERATE_MIPMAPS,m_synth->m_img_data);
             ++imageCreateCounter;
@@ -1234,7 +1237,7 @@ public:
         nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
         nvgFill(args.vg);
         
-        nvgImageSize(args.vg,m_image,&imgw,&imgh);
+        
         if (imgw>0 && imgh>0)
         {
             //auto pnt = nvgImagePattern(args.vg,0,0,600.0f,300.0f,0.0f,m_image,1.0f);
