@@ -1241,7 +1241,7 @@ public:
         if (imgw>0 && imgh>0)
         {
             //auto pnt = nvgImagePattern(args.vg,0,0,600.0f,300.0f,0.0f,m_image,1.0f);
-            auto pnt = nvgImagePattern(args.vg,0,0,imgw,imgh,0.0f,m_image,1.0f);
+            auto pnt = nvgImagePattern(args.vg,0,0,600.0,300.0,0.0f,m_image,1.0f);
             nvgBeginPath(args.vg);
             nvgRect(args.vg,0,0,600,300);
             nvgFillPaint(args.vg,pnt);
