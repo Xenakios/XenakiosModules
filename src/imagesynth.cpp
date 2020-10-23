@@ -653,7 +653,8 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                 //send_gain = clamp(send_gain,0.0f,1.0f);
                 float aux_param = (-r/255.0)+(g/255.0);
                 aux_param = (aux_param+1.0f)*0.5f;
-                float pangains[4]={aux_param,1.0f-aux_param,0.0f,0.0f};
+                
+                /*
                 if (m_numOutChans == 4)
                 {
                     float panx = 0.5f + 0.5f * std::cos(2*3.141592653*aux_param);
@@ -663,12 +664,15 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                     pangains[2] = pany;
                     pangains[3] = 1.0f - pany;
                 }
+                */
                 for (int i = 0; i < m_stepsize; ++i)
                 {
                     m_oscillators[y].generate(pix_mid_gain, aux_param);
                     float sample = m_oscillators[y].outSample;
                     if (fabs(sample) > 0.0f)
                     {
+                        float auxval = m_oscillators[y].outAuxValue;
+                        float pangains[4]={auxval,1.0f-auxval,0.0f,0.0f};
                         float resp_gain = m_freq_gain_table[y];
                         
                         for (int chan = 0; chan < m_numOutChans; ++chan)
