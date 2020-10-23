@@ -786,6 +786,8 @@ public:
     }
     int renderCount = 0;
     int m_currentPresetImage = 0;
+    int m_img_w = 0;
+    int m_img_h = 0;
     void reloadImage()
     {
         ++renderCount;
@@ -794,14 +796,15 @@ public:
         auto task=[this]
         {
         
-        int iw, ih, comp = 0;
+        int comp = 0;
         m_img_data = nullptr;
         int imagetoload = params[PAR_PRESET_IMAGE].getValue();
         auto it = presetImages.begin();
         std::advance(it,imagetoload);
         std::string filename = *it;
-
-        auto tempdata = stbi_load(filename.c_str(),&iw,&ih,&comp,4);
+        m_img_w = 0;
+        m_img_h = 0;
+        auto tempdata = stbi_load(filename.c_str(),&m_img_w,&m_img_h,&comp,4);
 
         m_playpos = 0.0f;
         //m_bufferplaypos = 0;
@@ -820,7 +823,7 @@ public:
             m_oscBuilder.m_dirty = true;
         m_syn.setWaveFormType(wtype);
         m_syn.setEnvelopeShape(params[PAR_ENVELOPE_SHAPE].getValue());
-        m_syn.setImage(m_img_data ,iw,ih);
+        m_syn.setImage(m_img_data ,m_img_w,m_img_h);
         m_out_dur = params[PAR_DURATION].getValue();
         m_syn.render(m_out_dur,44100,m_oscBuilder);
         m_oscBuilder.m_dirty = false;
@@ -1214,9 +1217,11 @@ public:
         if (m_synth==nullptr)
             return;
         nvgSave(args.vg);
-        if ((m_image == 0 && m_synth->m_img_data!=nullptr))
+        int imgw = m_synth->m_img_w;
+        int imgh = m_synth->m_img_h;
+        if ((m_image == 0 && m_synth->m_img_data!=nullptr) && imgw>0)
         {
-            m_image = nvgCreateImageRGBA(args.vg,1200,600,NVG_IMAGE_GENERATE_MIPMAPS,m_synth->m_img_data);
+            m_image = nvgCreateImageRGBA(args.vg,imgw,imgh,NVG_IMAGE_GENERATE_MIPMAPS,m_synth->m_img_data);
             ++imageCreateCounter;
         }
         if (m_synth->m_img_data_dirty)
@@ -1228,19 +1233,19 @@ public:
         nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
         nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
         nvgFill(args.vg);
-        int imgw = 0;
-        int imgh = 0;
+        
         nvgImageSize(args.vg,m_image,&imgw,&imgh);
         if (imgw>0 && imgh>0)
         {
-            auto pnt = nvgImagePattern(args.vg,0,0,600.0f,300.0f,0.0f,m_image,1.0f);
+            //auto pnt = nvgImagePattern(args.vg,0,0,600.0f,300.0f,0.0f,m_image,1.0f);
+            auto pnt = nvgImagePattern(args.vg,0,0,imgw,imgh,0.0f,m_image,1.0f);
             nvgBeginPath(args.vg);
             nvgRect(args.vg,0,0,600,300);
             nvgFillPaint(args.vg,pnt);
             
             nvgFill(args.vg);
         }
-        int numfreqs = 600;
+        int numfreqs = imgh;
         float minf = m_synth->m_syn.minFrequency;
         float maxf = m_synth->m_syn.maxFrequency;
         nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0x50));
