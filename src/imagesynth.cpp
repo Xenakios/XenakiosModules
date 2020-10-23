@@ -615,8 +615,10 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                 unsigned char b = p[2];
                 //unsigned char a = p[3];
                 float pix_mid_gain = (float)triplemax(r,g,b)/255.0f;
-                float send_gain = (float)g/255.0f-((float)(r+b)/512.0f);
-                send_gain = clamp(send_gain,0.0f,1.0f);
+                //float send_gain = (float)g/255.0f-((float)(r+b)/512.0f);
+                //send_gain = clamp(send_gain,0.0f,1.0f);
+                float aux_param = (-r/255.0)+(g/255.0);
+                aux_param = aux_param+1.0f*0.5f;
                 for (int i = 0; i < m_stepsize; ++i)
                 {
                     m_oscillators[y].generate(pix_mid_gain);
@@ -624,16 +626,17 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                     if (fabs(sample) > 0.0f)
                     {
                         float resp_gain = m_freq_gain_table[y];
-                        
+                        float pangains[2]={aux_param,1.0f-aux_param};
                         for (int chan = 0; chan < m_numOutChans; ++chan)
                         {
                             int outbufindex = (x + i)*outchanstouse+chan;
                             float previous = m_renderBuf[outbufindex];
-                            previous += sample * 0.1f * resp_gain * m_oscillators[y].m_pan_coeffs[chan];
+                            //previous += sample * 0.1f * resp_gain * m_oscillators[y].m_pan_coeffs[chan];
+                            previous += sample * 0.1f * resp_gain * pangains[chan];
                             m_renderBuf[outbufindex] = previous;
                         }
-                        int outbufauxindex = (x + i)*outchanstouse+auxChanIdx;
-                        m_renderBuf[outbufauxindex]+= sample*0.1f*resp_gain*send_gain;
+                        //int outbufauxindex = (x + i)*outchanstouse+auxChanIdx;
+                        //m_renderBuf[outbufauxindex]+= sample*0.1f*resp_gain*send_gain;
                     }
                 }
 
