@@ -38,6 +38,28 @@ inline float harmonics4(float xin)
         0.15*std::sin(xin*7);
 }
 
+class OnePoleFilter
+{
+public:
+    OnePoleFilter() {}
+    void setAmount(float x)
+    {
+        a = x;
+        b = 1.0f-a;
+    }
+    inline __attribute__((always_inline)) float process(float x)
+    {
+        float temp = (x * b) + (z * a);
+        z = temp;
+        return temp;
+    }
+private:
+    float z = 0.0f;
+    float a = 0.99f;
+    float b = 1.0f-a;
+
+};
+
 class ImgWaveOscillator
 {
 public:
@@ -128,7 +150,7 @@ public:
         a = rescale(amt, 0.0f, 1.0f, 0.9f, 0.9999f);
         b = 1.0 - a;
     }
-    void generate(float pix_mid_gain)
+    void generate(float pix_mid_gain, float aux_value)
     {
         int gain_index = rescale(pix_mid_gain, 0.0f, 1.0f, 0, 255);
         pix_mid_gain = m_gainCurve[gain_index];
@@ -136,6 +158,9 @@ public:
         if (z < m_cut_th)
             z = 0.0;
         m_env_state = z;
+        float pan_z = (aux_value*b)+(m_pan_env_state*a);
+        outAuxValue = pan_z;
+        m_pan_env_state = pan_z;
         if (z > 0.00)
         {
             outSample = z * m_osc.processSample(0.0f);
@@ -144,10 +169,14 @@ public:
             outSample = 0.0f;
 
     }
-    float outSample = 0.0f;
-    //private:
     ImgWaveOscillator m_osc;
+    float outSample = 0.0f;
+    float outAuxValue = 0.0f;
+    //private:
+    
+    
     float m_env_state = 0.0f;
+    float m_pan_env_state = 0.0f;
     float m_pan_coeffs[4];
     float m_cut_th = 0.0f;
     float a = 0.998;
@@ -636,7 +665,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                 }
                 for (int i = 0; i < m_stepsize; ++i)
                 {
-                    m_oscillators[y].generate(pix_mid_gain);
+                    m_oscillators[y].generate(pix_mid_gain, aux_param);
                     float sample = m_oscillators[y].outSample;
                     if (fabs(sample) > 0.0f)
                     {
