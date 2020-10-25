@@ -352,7 +352,7 @@ public:
     {
         return m_percent_ready;
     }
-    std::vector<float> m_renderBuf;
+    
     
     float m_maxGain = 0.0f;
     double m_elapsedTime = 0.0f;
@@ -472,7 +472,16 @@ public:
     std::vector<float> currentFrequencies;
     float minFrequency = 0.0f;
     float maxFrequency = 1.0f;
+    float getBufferSample(int index)
+    {
+        if (m_BufferReady==false)
+            return 0.0f;
+        if (index>=0 && index<m_renderBuf.size())
+            return m_renderBuf[index];
+        return 0.0f;
+    }
 private:
+    std::vector<float> m_renderBuf;
     std::chrono::steady_clock::time_point m_lastSetDirty;
     bool m_isDirty = false;
     int m_frequencyMapping = 0;
@@ -986,14 +995,7 @@ public:
             outputs[OUT_AUDIO].setChannels(ochans);
         else 
             outputs[OUT_AUDIO].setChannels(2);
-        if (m_syn.m_BufferReady==false)
-        {
-            outputs[OUT_AUDIO].setVoltage(0.0,0);
-            outputs[OUT_AUDIO].setVoltage(0.0,1);
-            outputs[OUT_AUDIO].setVoltage(0.0,2);
-            outputs[OUT_AUDIO].setVoltage(0.0,3);
-            return;
-        }
+        
         
         float pitch = params[PAR_PITCH].getValue();
         pitch += inputs[IN_PITCH_CV].getVoltage()*12.0f;
@@ -1049,9 +1051,9 @@ public:
             
             for (int j=0;j<ochans;++j)
             {
-                rsbuf[i*ochans+j] = gain_a * m_syn.m_renderBuf[m_bufferplaypos*ochans+j];
-                
-                rsbuf[i*ochans+j] += gain_b * m_syn.m_renderBuf[xfadepos*ochans+j];
+                rsbuf[i*ochans+j] = gain_a * m_syn.getBufferSample(m_bufferplaypos*ochans+j);
+                if (gain_b>0.0f)
+                    rsbuf[i*ochans+j] += gain_b * m_syn.getBufferSample(xfadepos*ochans+j);
             }
             ++m_bufferplaypos;
             if (m_bufferplaypos>=loopendsampls)
@@ -1067,11 +1069,19 @@ public:
         double samples_out[16];
         memset(&samples_out,0,sizeof(double)*16);
         m_src.ResampleOut(samples_out,wanted,1,ochans);
-        for (int i=0;i<ochans;++i)
+        if (ochans>1)
         {
-            float outsample = samples_out[i];
-            //outsample = soft_clip(outsample);
-            outputs[OUT_AUDIO].setVoltage(outsample*5.0,i);
+            for (int i=0;i<ochans;++i)
+            {
+                float outsample = samples_out[i];
+                //outsample = soft_clip(outsample);
+                outputs[OUT_AUDIO].setVoltage(outsample*5.0,i);
+            }
+        } else if (ochans == 1)
+        {
+            float outsample = samples_out[0];
+            outputs[OUT_AUDIO].setVoltage(outsample*5.0,0);
+            outputs[OUT_AUDIO].setVoltage(outsample*5.0,1);
         }
         m_playpos = m_bufferplaypos / args.sampleRate;
         
