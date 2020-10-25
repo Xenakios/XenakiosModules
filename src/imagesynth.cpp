@@ -10,6 +10,25 @@
 
 extern std::shared_ptr<Font> g_font;
 
+struct PanMode
+{
+    PanMode(const char* d, int nch, int uc) : desc(d), numoutchans(nch), usecolors(uc) {}
+    const char* desc = nullptr;
+    int numoutchans = 0;
+    int usecolors = 0;
+};
+
+PanMode g_panmodes[7]=
+{
+    {"Mono (ignore colors)",1,0},
+    {"Stereo (ignore colors, random panning)",2,0},
+    {"Stereo (ignore colors, alternate panning)",2,0},
+    {"Stereo (pan based on red/yellow/green)",2,1},
+    {"Quad (ignore colors, random panning)",4,0},
+    {"Quad (ignore colors, alternate panning)",4,0},
+    {"Quad (pan in circle based on red/yellow/green)",4,1}
+};
+
 const int g_wtsize = 2048;
 const float g_pi = 3.14159265358979;
 
@@ -380,14 +399,7 @@ public:
         }
     }
 
-    void setPanMode(int x)
-    {
-        if (x!=m_panMode)
-        {
-            m_panMode = x;
-            startDirtyCountdown();
-        }
-    }
+    
 
     void setPixelGainCurve(float x)
     {
@@ -400,14 +412,17 @@ public:
 
     void setOutputChannelsMode(int m)
     {
-        if (m!=m_numOutChans)
+        if (m!=m_outputChansMode)
         {
-            m_numOutChans = m;
+            m_outputChansMode = m;
             startDirtyCountdown();
         }
     }
 
-    int getNumOutputChannels() { return m_numOutChans; }
+    int getNumOutputChannels() 
+    { 
+        return g_panmodes[m_outputChansMode].numoutchans;
+    }
 
     void setScalaTuningAmount(float x)
     {
@@ -463,8 +478,8 @@ private:
     int m_waveFormType = 0;
     int m_currentPreset = 0;
     float m_fundamental = -24.0f; // semitones below middle C!
-    int m_panMode = 0;
-    int m_numOutChans = 2;
+    
+    int m_outputChansMode = 1;
     float m_scala_quan_amount = 0.99f;
     float m_pixel_to_gain_curve = 1.0f;
     float m_minPitch = 0.0f;
@@ -586,8 +601,9 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         m_maxGain = 0.0f;
         m_percent_ready = 0.0f;
         m_BufferReady = false;
-        m_renderBuf.resize((m_numOutChans+1)* ((1.0 + outdur) * sr));
-        int auxChanIdx = m_numOutChans;
+        int ochanstouse = g_panmodes[m_outputChansMode].numoutchans;
+        m_renderBuf.resize(ochanstouse * ((1.0 + outdur) * sr));
+        //int auxChanIdx = m_numOutChans;
         m_BufferReady = true;
         for (int i = 0; i < 256; ++i)
         {
@@ -620,29 +636,32 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                 }
                 
             }
-            if (m_panMode == 0)
+            if (m_outputChansMode == 0)
             {
-                if (m_numOutChans == 2)
-                {
-                    float panpos = pandist(m_rng);
-                    m_oscillators[i].m_pan_coeffs[0] = std::cos(panpos);
-                    m_oscillators[i].m_pan_coeffs[1] = std::sin(panpos);
-                }
-                else if (m_numOutChans == 4)
-                {
-                    float angle = pandist(m_rng) * 2.0f; // position along circle
-                    float panposx = rescale(std::cos(angle), -1.0f, 1.0, 0.0f, 3.141592653);
-                    float panposy = rescale(std::sin(angle), -1.0f, 1.0, 0.0f, 3.141592653);
-                    m_oscillators[i].m_pan_coeffs[0] = std::cos(panposx);
-                    m_oscillators[i].m_pan_coeffs[1] = std::sin(panposx);
-                    m_oscillators[i].m_pan_coeffs[2] = std::cos(panposy);
-                    m_oscillators[i].m_pan_coeffs[3] = std::sin(panposy);
-                }
+                m_oscillators[i].m_pan_coeffs[0] = 0.71f;
+                m_oscillators[i].m_pan_coeffs[1] = 0.71f;
             }
-            if (m_panMode == 1)
+            if (m_outputChansMode == 1)
             {
-                int outspeaker = i % m_numOutChans;
-                for (int j = 0; j < m_numOutChans; ++j)
+                float panpos = pandist(m_rng);
+                m_oscillators[i].m_pan_coeffs[0] = std::cos(panpos);
+                m_oscillators[i].m_pan_coeffs[1] = std::sin(panpos);
+            }
+            if (m_outputChansMode == 4)
+            {
+                float angle = pandist(m_rng) * 2.0f; // position along circle
+                float panposx = rescale(std::cos(angle), -1.0f, 1.0, 0.0f, 3.141592653);
+                float panposy = rescale(std::sin(angle), -1.0f, 1.0, 0.0f, 3.141592653);
+                m_oscillators[i].m_pan_coeffs[0] = std::cos(panposx);
+                m_oscillators[i].m_pan_coeffs[1] = std::sin(panposx);
+                m_oscillators[i].m_pan_coeffs[2] = std::cos(panposy);
+                m_oscillators[i].m_pan_coeffs[3] = std::sin(panposy);
+            }
+            
+            if (m_outputChansMode == 2 || m_outputChansMode == 5)
+            {
+                int outspeaker = i % ochanstouse;
+                for (int j = 0; j < ochanstouse; ++j)
                 {
                     if (j == outspeaker)
                         m_oscillators[i].m_pan_coeffs[j] = 1.0f;
@@ -650,19 +669,13 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                 }
 
             }
-            if (m_panMode == 2)
-            {
-                m_oscillators[i].m_pan_coeffs[0] = 0.71f;
-                m_oscillators[i].m_pan_coeffs[1] = 0.71f;
-                m_oscillators[i].m_pan_coeffs[2] = 0.71f;
-                m_oscillators[i].m_pan_coeffs[3] = 0.71f;
-            }
+            
         }
         int imgw = m_img_w;
         int imgh = m_img_h;
         int outdursamples = sr * outdur;
         //m_renderBuf.clear();
-        int outchanstouse = m_numOutChans+1;
+        bool usecolors = g_panmodes[m_outputChansMode].usecolors;
         for (int x = 0; x < outdursamples; x += m_stepsize)
         {
             if (m_shouldCancel)
@@ -670,9 +683,9 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
             m_percent_ready = 1.0 / outdursamples * x;
             for (int i = 0; i < m_stepsize; ++i)
             {
-                for (int chan=0;chan<outchanstouse;++chan)
+                for (int chan=0;chan<ochanstouse;++chan)
                 {
-                    m_renderBuf[(x+i)*outchanstouse+chan]=0.0f;    
+                    m_renderBuf[(x+i)*ochanstouse+chan]=0.0f;    
                 }
             }
             for (int y = 0; y < imgh; ++y)
@@ -704,6 +717,12 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                     pangains[3] = 1.0f - pany;
                 }
                 */
+                float pangains[4]={0.0f,0.0f,0.0f,0.0f};
+                if (usecolors==false)
+                {
+                    for (int i=0;i<ochanstouse;++i)
+                        pangains[i]=m_oscillators[y].m_pan_coeffs[i];
+                }
                 for (int i = 0; i < m_stepsize; ++i)
                 {
                     m_oscillators[y].generate(pix_mid_gain, aux_param);
@@ -711,12 +730,19 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                     if (fabs(sample) > 0.0f)
                     {
                         float auxval = m_oscillators[y].outAuxValue;
-                        float pangains[4]={auxval,1.0f-auxval,0.0f,0.0f};
+                        if (usecolors)
+                        {
+                            pangains[0] = auxval;
+                            pangains[1] = 1.0-auxval;
+                            pangains[2] = 0.0f;
+                            pangains[3] = 0.0f;
+                        }
+                        
                         float resp_gain = m_freq_gain_table[y];
                         
-                        for (int chan = 0; chan < m_numOutChans; ++chan)
+                        for (int chan = 0; chan < ochanstouse; ++chan)
                         {
-                            int outbufindex = (x + i)*outchanstouse+chan;
+                            int outbufindex = (x + i)*ochanstouse+chan;
                             float previous = m_renderBuf[outbufindex];
                             //previous += sample * 0.1f * resp_gain * m_oscillators[y].m_pan_coeffs[chan];
                             previous += sample * 0.1f * resp_gain * pangains[chan];
@@ -808,15 +834,15 @@ public:
         configParam(PAR_LOOP_LEN,0.00,1.00,1.0,"Loop length");
         configParam(PAR_FREQUENCY_BALANCE,0.00,1.00,0.25,"Frequency balance");
         configParam(PAR_HARMONICS_FUNDAMENTAL,-72.0,0.00,-24.00,"Harmonics fundamental");
-        configParam(PAR_PAN_MODE,0.0,2.0,0.00,"Frequency panning mode");
-        configParam(PAR_NUMOUTCHANS,0.0,4.0,0.00,"Output channels configuration");
+        configParam(PAR_PAN_MODE,0.0,6.0,1.00,"Frequency panning mode");
+        configParam(PAR_NUMOUTCHANS,0.0,6.0,0.00,"Output channels configuration");
         configParam(PAR_DESIGNER_ACTIVE,0,1,0,"Edit oscillator waveform");
         configParam(PAR_DESIGNER_VOLUME,-24.0,3.0,-12.0,"Oscillator editor volume");
         configParam(PAR_ENVELOPE_SHAPE,0.0,1.0,0.95,"Envelope shape");
         configParam(PAR_SCALA_TUNING_AMOUNT,0.0,1.0,0.99,"Scala tuning amount");
         configParam(PAR_MINPITCH,0.0,102.0,0.0,"Minimum pitch");
         configParam(PAR_MAXPITCH,0.0,102.0,90.0,"Maximum pitch");
-        m_syn.setOutputChannelsMode(2);
+        //m_syn.setOutputChannelsMode(2);
         //reloadImage();
     }
     void onAdd() override
@@ -854,8 +880,8 @@ public:
         //m_bufferplaypos = 0;
         
         int outconf = params[PAR_NUMOUTCHANS].getValue();
-        int numoutchans[5]={2,2,4,8,16};
-        m_syn.setOutputChannelsMode(numoutchans[outconf]);
+        
+        m_syn.setOutputChannelsMode(outconf);
         
         m_mtx.lock();
         stbi_image_free(imagetofree);
@@ -865,7 +891,7 @@ public:
         m_img_h = temp_h;
         m_mtx.unlock();
         m_img_data_dirty = true;
-        m_syn.setPanMode(params[PAR_PAN_MODE].getValue());
+        
         m_syn.setFrequencyMapping(params[PAR_FREQMAPPING].getValue());
         m_syn.setFrequencyResponseCurve(params[PAR_FREQUENCY_BALANCE].getValue());
         m_syn.setHarmonicsFundamental(params[PAR_HARMONICS_FUNDAMENTAL].getValue());
@@ -895,12 +921,12 @@ public:
             m_syn.setFrequencyMapping(params[PAR_FREQMAPPING].getValue());
             m_syn.setEnvelopeShape(params[PAR_ENVELOPE_SHAPE].getValue());
             m_syn.setHarmonicsFundamental(params[PAR_HARMONICS_FUNDAMENTAL].getValue());
-            m_syn.setPanMode(params[PAR_PAN_MODE].getValue());
+            
             m_syn.setScalaTuningAmount(params[PAR_SCALA_TUNING_AMOUNT].getValue());
             m_syn.setPitchRange(params[PAR_MINPITCH].getValue(),params[PAR_MAXPITCH].getValue());
             int outconf = params[PAR_NUMOUTCHANS].getValue();
-            int numoutchans[5]={2,2,4,8,16};
-            m_syn.setOutputChannelsMode(numoutchans[outconf]);
+            
+            m_syn.setOutputChannelsMode(outconf);
             int wtype = params[PAR_WAVEFORMTYPE].getValue();
             if (m_syn.getWaveFormType()!=3 && wtype == 3)
                 m_oscBuilder.m_dirty = true;
@@ -925,8 +951,11 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
-        int ochans = m_syn.getNumOutputChannels()+1;
-        outputs[OUT_AUDIO].setChannels(ochans);
+        int ochans = m_syn.getNumOutputChannels();
+        if (ochans>1)
+            outputs[OUT_AUDIO].setChannels(ochans);
+        else 
+            outputs[OUT_AUDIO].setChannels(2);
         if (m_syn.m_BufferReady==false)
         {
             outputs[OUT_AUDIO].setVoltage(0.0,0);
@@ -1223,8 +1252,8 @@ public:
         
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(270.00, 360), m, XImageSynth::PAR_HARMONICS_FUNDAMENTAL));
         
-        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(300.00, 330), m, XImageSynth::PAR_PAN_MODE));
-        knob->snap = true;
+        //addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(300.00, 330), m, XImageSynth::PAR_PAN_MODE));
+        //knob->snap = true;
         addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(300.00, 360), m, XImageSynth::PAR_NUMOUTCHANS));
         knob->snap = true;
         addInput(createInputCentered<PJ301MPort>(Vec(330, 330), m, XImageSynth::IN_LOOPSTART_CV));
