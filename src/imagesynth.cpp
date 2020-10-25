@@ -253,6 +253,13 @@ public:
         m_oscillators.resize(1024);
         m_freq_gain_table.resize(1024);
         currentFrequencies.resize(1024);
+        m_sinTable.resize(512);
+        m_cosTable.resize(512);
+        for (int i=0;i<m_sinTable.size();++i)
+        {
+            m_sinTable[i] = std::sin(2*3.141592653/m_sinTable.size()*i);
+            m_cosTable[i] = std::cos(2*3.141592653/m_sinTable.size()*i);
+        }
     }
     stbi_uc* m_img_data = nullptr;
     int m_img_w = 0;
@@ -472,6 +479,8 @@ private:
     std::vector<ImgOscillator> m_oscillators;
     std::vector<float> m_freq_gain_table;
     std::vector<float> m_pixel_to_gain_table;
+    std::vector<float> m_sinTable;
+    std::vector<float> m_cosTable;
     std::atomic<float> m_percent_ready{ 0.0 };
     float m_freq_response_curve = 0.5f;
     float m_envAmount = 0.95f;
@@ -732,10 +741,31 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                         float auxval = m_oscillators[y].outAuxValue;
                         if (usecolors)
                         {
-                            pangains[0] = auxval;
-                            pangains[1] = 1.0-auxval;
-                            pangains[2] = 0.0f;
-                            pangains[3] = 0.0f;
+                            if (ochanstouse == 2)
+                            {
+                                pangains[0] = auxval;
+                                pangains[1] = 1.0-auxval;
+                                pangains[2] = 0.0f;
+                                pangains[3] = 0.0f;
+                            }
+                            else if (ochanstouse == 1)
+                            {
+                                pangains[0] = 1.0f;
+                            }
+                            else if (ochanstouse == 4)
+                            {
+                                int trigindex = aux_param*511;
+                                if (trigindex<0)
+                                    trigindex = 0;
+                                if (trigindex>511)
+                                    trigindex = 511;
+                                float panx = 0.5f+0.5f*m_cosTable[trigindex];
+                                float pany = 0.5f+0.5f*m_sinTable[trigindex];
+                                pangains[0] = 1.0f - panx;
+                                pangains[1] = panx;
+                                pangains[2] = pany;
+                                pangains[3] = 1.0f - pany;
+                            }
                         }
                         
                         float resp_gain = m_freq_gain_table[y];
