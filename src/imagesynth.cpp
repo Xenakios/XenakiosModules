@@ -4,6 +4,7 @@
 #include <atomic>
 #include <functional>
 #include <thread> 
+#include <mutex>
 #include "wdl/resample.h"
 #include <chrono>
 
@@ -824,8 +825,7 @@ public:
     }
     int renderCount = 0;
     int m_currentPresetImage = 0;
-    int m_img_w = 0;
-    int m_img_h = 0;
+    
     void reloadImage()
     {
         ++renderCount;
@@ -834,15 +834,19 @@ public:
         auto task=[this]
         {
         
-        int comp = 0;
+        
+        auto imagetofree = m_img_data;
+        m_mtx.lock();
         m_img_data = nullptr;
+        m_mtx.unlock();
         int imagetoload = params[PAR_PRESET_IMAGE].getValue();
         auto it = presetImages.begin();
         std::advance(it,imagetoload);
         std::string filename = *it;
-        m_img_w = 0;
-        m_img_h = 0;
-        auto tempdata = stbi_load(filename.c_str(),&m_img_w,&m_img_h,&comp,4);
+        int comp = 0;
+        int temp_w = 0;
+        int temp_h = 0;
+        auto tempdata = stbi_load(filename.c_str(),&temp_w,&temp_h,&comp,4);
 
         m_playpos = 0.0f;
         //m_bufferplaypos = 0;
@@ -850,7 +854,14 @@ public:
         int outconf = params[PAR_NUMOUTCHANS].getValue();
         int numoutchans[5]={2,2,4,8,16};
         m_syn.setOutputChannelsMode(numoutchans[outconf]);
+        
+        m_mtx.lock();
+        stbi_image_free(imagetofree);
+        
         m_img_data = tempdata;
+        m_img_w = temp_w;
+        m_img_h = temp_h;
+        m_mtx.unlock();
         m_img_data_dirty = true;
         m_syn.setPanMode(params[PAR_PAN_MODE].getValue());
         m_syn.setFrequencyMapping(params[PAR_FREQMAPPING].getValue());
@@ -1008,12 +1019,24 @@ public:
 
     float m_playpos = 0.0f;
     int m_bufferplaypos = 0;
-    stbi_uc* m_img_data = nullptr;
+    
     bool m_img_data_dirty = false;
     ImgSynth m_syn;
     WDL_Resampler m_src;
     rack::dsp::SchmittTrigger rewindTrigger;
     rack::dsp::PulseGenerator loopStartPulse;
+    void getImageData(stbi_uc*& ptr,int& w,int& h)
+    {
+        std::lock_guard<std::mutex> locker(m_mtx);
+        ptr = m_img_data;
+        w = m_img_w;
+        h = m_img_h;   
+    }
+private:
+    stbi_uc* m_img_data = nullptr;
+    int m_img_w = 0;
+    int m_img_h = 0;
+    std::mutex m_mtx;
 };
 /*
 class MySmallKnob : public RoundSmallBlackKnob
@@ -1214,7 +1237,8 @@ public:
     
     ~XImageSynthWidget()
     {
-        //nvgDeleteImage(m_ctx,m_image);
+        if (m_ctx && m_image!=0)
+            nvgDeleteImage(m_ctx,m_image);
     }
     int imageCreateCounter = 0;
     bool imgDirty = false;
@@ -1255,19 +1279,34 @@ public:
         if (m_synth==nullptr)
             return;
         nvgSave(args.vg);
-        int imgw = m_synth->m_img_w;
-        int imgh = m_synth->m_img_h;
-        int neww = 0;
-        int newh = 0;
-        nvgImageSize(args.vg,m_image,&neww,&newh);
-        if ((m_image == 0 && m_synth->m_img_data!=nullptr) || neww!=imgw)
+        int imgw = 0; 
+        int imgh = 0; 
+        int neww = 0; 
+        int newh = 0; 
+        stbi_uc* idataptr = nullptr;
+        m_synth->getImageData(idataptr,neww,newh);
+        if (m_image == 0 && neww>0 && idataptr!=nullptr)
         {
-            m_image = nvgCreateImageRGBA(args.vg,imgw,imgh,NVG_IMAGE_GENERATE_MIPMAPS,m_synth->m_img_data);
-            ++imageCreateCounter;
+            m_image = nvgCreateImageRGBA(args.vg,neww,newh,NVG_IMAGE_GENERATE_MIPMAPS,idataptr);
+            
+            imageCreateCounter+=1;
         }
-        if (m_synth->m_img_data_dirty)
+        nvgImageSize(args.vg,m_image,&imgw,&imgh);
+        if (neww!=imgw)
+        //if (false)
         {
-            nvgUpdateImage(args.vg,m_image,m_synth->m_img_data);
+            if (neww>0 && idataptr!=nullptr)
+            {
+                if (m_image!=0)
+                    nvgDeleteImage(args.vg,m_image);
+                m_image = nvgCreateImageRGBA(args.vg,neww,newh,NVG_IMAGE_GENERATE_MIPMAPS,idataptr);
+                imageCreateCounter+=1;
+            }
+            
+        }
+        if (m_synth->m_img_data_dirty && idataptr!=nullptr)
+        {
+            nvgUpdateImage(args.vg,m_image,idataptr);
             m_synth->m_img_data_dirty = false;
         }
         nvgBeginPath(args.vg);
@@ -1345,7 +1384,7 @@ public:
             if (elapsed>0.0f)
                 rtfactor = m_synth->params[XImageSynth::PAR_DURATION].getValue()/elapsed;
 
-            sprintf(buf,"%d %d %d %d %d %.1f %s [%.1fHz - %.1fHz %.1fHz] (%.1fx realtime)",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
+            sprintf(buf,"%d %d (%d %d ic) %d %.1f %s [%.1fHz - %.1fHz %.1fHz] (%.1fx realtime)",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
                 dirtyElapsed,scalefile.c_str(),m_synth->m_syn.minFrequency,m_synth->m_syn.maxFrequency,
                 hoverFreq,rtfactor);
             nvgText(args.vg, 3 , 10, buf, NULL);
