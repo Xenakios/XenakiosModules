@@ -23,21 +23,29 @@ float g_freq_to_gain_tables[5][5]=
 
 inline float get_gain_curve_value(float morph,float x)
 {
-    int index_y0=morph*4;
+    int index_y0=std::floor(morph*4);
     int index_y1=index_y0+1;
     if (index_y1>4)
         index_y1=4;
-    int index_x0 = x*4;
+    float frac_y = (morph*4.0f)-index_y0;
+    float morphedtable[5];
+    for (int i=0;i<5;++i)
+    {
+        float r0=g_freq_to_gain_tables[index_y0][i];
+        float r1=g_freq_to_gain_tables[index_y1][i];
+        float v0 = r0+(r1-r0)*frac_y;
+        morphedtable[i]=v0;
+    }
+    int index_x0 = std::floor(x*4);
     int index_x1 = index_x0+1;
     if (index_x1>4)
         index_x1=4;
-    float frac_x = x-index_x0;
-    float frac_y = morph-index_y0;
-    float r0=g_freq_to_gain_tables[index_y0][index_x0];
-    float r1=g_freq_to_gain_tables[index_y0][index_x1];
-    float v0 = r0+(r1-r0)*frac_y;
-    
-    return 0.0f;
+    float frac_x = (x*4.0f)-index_x0;
+    float r0=morphedtable[index_x0];
+    float r1=morphedtable[index_x1];
+    float v0 = r0+(r1-r0)*frac_x;
+
+    return v0;
 }
 
 template <typename T>
@@ -302,7 +310,9 @@ public:
             currentFrequencies[i] = m_oscillators[i].m_osc.getFrequency();
             float curve_begin = 1.0f - m_freq_response_curve;
             float curve_end = m_freq_response_curve;
-            float resp_gain = rescale(i, 0, h, curve_end, curve_begin);
+            //float resp_gain = rescale(i, 0, h, curve_end, curve_begin);
+            float normf = rescale(i,0,h,1.0f,0.0f);
+            float resp_gain = get_gain_curve_value(m_freq_response_curve,normf);
             m_freq_gain_table[i] = resp_gain;
             
         }
@@ -1359,7 +1369,20 @@ public:
             nvgFill(args.vg);
         }
         
-        
+        // 460,330
+        nvgBeginPath(args.vg);
+        nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+        float morph = m_synth->params[XImageSynth::PAR_FREQUENCY_BALANCE].getValue();
+        for (int i=0;i<128;i+=2)
+        {
+            float normx = rescale(i,0,127,0.0,1.0);
+            float normy = get_gain_curve_value(morph,normx);
+            if (i == 0)
+                nvgMoveTo(args.vg,460+i,370-normy*50.0);
+            else
+                nvgLineTo(args.vg,460+i,370-normy*50.0);
+        }
+        nvgStroke(args.vg);
         //nvgDeleteImage(args.vg,m_image);
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
