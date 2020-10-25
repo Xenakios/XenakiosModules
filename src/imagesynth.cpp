@@ -12,6 +12,34 @@ extern std::shared_ptr<Font> g_font;
 const int g_wtsize = 2048;
 const float g_pi = 3.14159265358979;
 
+float g_freq_to_gain_tables[5][5]=
+{
+    {1.0f,0.0f,0.0f,0.0f,0.0f},
+    {1.0f,1.0f,0.66f,0.33f,0.0f},
+    {1.0f,1.0f,1.0f,1.0f,1.0f},
+    {0.0f,0.33f,0.66f,1.0f,1.0f},
+    {0.0f,0.0f,0.0f,0.0f,1.0f}
+};
+
+inline float get_gain_curve_value(float morph,float x)
+{
+    int index_y0=morph*4;
+    int index_y1=index_y0+1;
+    if (index_y1>4)
+        index_y1=4;
+    int index_x0 = x*4;
+    int index_x1 = index_x0+1;
+    if (index_x1>4)
+        index_x1=4;
+    float frac_x = x-index_x0;
+    float frac_y = morph-index_y0;
+    float r0=g_freq_to_gain_tables[index_y0][index_x0];
+    float r1=g_freq_to_gain_tables[index_y0][index_x1];
+    float v0 = r0+(r1-r0)*frac_y;
+    
+    return 0.0f;
+}
+
 template <typename T>
 inline T triplemax (T a, T b, T c)                           
 { 
