@@ -838,6 +838,8 @@ public:
         auto imagetofree = m_img_data;
         m_mtx.lock();
         m_img_data = nullptr;
+        m_img_w = 0;
+        m_img_h = 0;
         m_mtx.unlock();
         int imagetoload = params[PAR_PRESET_IMAGE].getValue();
         auto it = presetImages.begin();
