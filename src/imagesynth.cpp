@@ -7,6 +7,8 @@
 #include <mutex>
 #include "wdl/resample.h"
 #include <chrono>
+#define cimg_display 0
+#include "CImg.h"
 
 extern std::shared_ptr<Font> g_font;
 
@@ -1240,13 +1242,26 @@ private:
 
 };
 
+using namespace cimg_library;
+using img_t = CImg<unsigned char>;
+
 class XImageSynthWidget : public ModuleWidget
 {
 public:
     OscDesignerWidget* m_osc_design_widget = nullptr;
     XImageSynth* m_synth = nullptr;
+    img_t m_test_cimg;
     XImageSynthWidget(XImageSynth* m)
     {
+        m_test_cimg = img_t(1200,600,1,4,0);
+        m_test_cimg.fill(0,128,0,255);
+        unsigned char col[4];
+        col[0] = 255; col[1]=255; col[2] = 255; col[3] = 255;
+        
+        m_test_cimg.draw_circle(600,300,250,col,0.5f);
+        col[0] = 255; col[1]=0; col[2] = 0; col[3] = 255;
+        m_test_cimg.draw_circle(630,330,240,col,0.5f);
+        
         setModule(m);
         m_synth = m;
         box.size.x = 620.0f;
@@ -1356,15 +1371,20 @@ public:
         int newh = 0; 
         stbi_uc* idataptr = nullptr;
         m_synth->getImageData(idataptr,neww,newh);
+        neww = m_test_cimg.width();
+        newh = m_test_cimg.height();
+        idataptr = m_test_cimg.data();
         if (m_image == 0 && neww>0 && idataptr!=nullptr)
         {
-            m_image = nvgCreateImageRGBA(args.vg,neww,newh,NVG_IMAGE_GENERATE_MIPMAPS,idataptr);
+            m_image = nvgCreateImageRGBA(
+                args.vg,neww,newh,
+                NVG_IMAGE_GENERATE_MIPMAPS|NVG_IMAGE_PREMULTIPLIED,idataptr);
             
             imageCreateCounter+=1;
         }
         nvgImageSize(args.vg,m_image,&imgw,&imgh);
-        if (neww!=imgw)
-        //if (false)
+        //if (neww!=imgw)
+        if (false)
         {
             if (neww>0 && idataptr!=nullptr)
             {
