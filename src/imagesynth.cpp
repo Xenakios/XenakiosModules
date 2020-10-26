@@ -1378,7 +1378,7 @@ public:
         {
             m_image = nvgCreateImageRGBA(
                 args.vg,neww,newh,
-                NVG_IMAGE_GENERATE_MIPMAPS|NVG_IMAGE_PREMULTIPLIED,idataptr);
+                NVG_IMAGE_REPEATX,idataptr);
             
             imageCreateCounter+=1;
         }
