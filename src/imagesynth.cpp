@@ -1253,7 +1253,7 @@ public:
     img_t m_test_cimg;
     XImageSynthWidget(XImageSynth* m)
     {
-        m_test_cimg = img_t(1200,600,1,4,0);
+        m_test_cimg = img_t(1200,600,1,4);
         m_test_cimg.fill(0,128,0,255);
         unsigned char col[4];
         col[0] = 255; col[1]=255; col[2] = 255; col[3] = 255;
@@ -1261,7 +1261,7 @@ public:
         m_test_cimg.draw_circle(600,300,250,col,0.5f);
         col[0] = 255; col[1]=0; col[2] = 0; col[3] = 255;
         m_test_cimg.draw_circle(630,330,240,col,0.5f);
-        
+        m_test_cimg.permute_axes("xyzc");
         setModule(m);
         m_synth = m;
         box.size.x = 620.0f;
@@ -1378,7 +1378,7 @@ public:
         {
             m_image = nvgCreateImageRGBA(
                 args.vg,neww,newh,
-                NVG_IMAGE_REPEATX,idataptr);
+                0,idataptr);
             
             imageCreateCounter+=1;
         }
