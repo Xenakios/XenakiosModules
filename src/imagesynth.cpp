@@ -329,7 +329,7 @@ public:
             }
             if (m_frequencyMapping >= 3)
             {
-                float pitch = rescale(i, 0, h, m_maxPitch, m_minPitch);
+                float pitch = rescale(i, 0, (h-1.0f), m_maxPitch, m_minPitch);
                 pitch = quantize_to_grid(pitch,scale,m_scala_quan_amount);
                 float frequency = 32.0 * pow(2.0, 1.0 / 12 * pitch);
                 m_oscillators[i].m_osc.setFrequency(frequency);
@@ -1399,16 +1399,19 @@ public:
         int numfreqs = imgh;
         float minf = m_synth->m_syn.minFrequency;
         float maxf = m_synth->m_syn.maxFrequency;
-        nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0x50));
+        nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+        nvgStrokeWidth(args.vg,1.0f);
+        nvgBeginPath(args.vg);
         for (int i=0;i<numfreqs;++i)
         {
-            float ycor = rescale(m_synth->m_syn.currentFrequencies[i],minf,maxf,0.0,300.0);
-            nvgBeginPath(args.vg);
+            float ycor = rescale(m_synth->m_syn.currentFrequencies[i],minf,maxf,1.0,299.0);
+            
             nvgMoveTo(args.vg,600,ycor);
             nvgLineTo(args.vg,620,ycor);
-            nvgStroke(args.vg);
-        }
             
+        }
+        nvgStroke(args.vg);
+            nvgStrokeWidth(args.vg,1.0f);
 
             nvgBeginPath(args.vg);
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
