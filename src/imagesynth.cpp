@@ -125,7 +125,7 @@ public:
         m_tablesize = tablesize;
         m_table.resize(tablesize);
         for (int i=0;i<tablesize;++i)
-            m_table[i] = f(rescale(i,0,tablesize-1,-3.141592653,3.141592653));
+            m_table[i] = f(rescale(i,0,tablesize-1,-g_pi,g_pi));
     }
     void setFrequency(float hz)
     {
@@ -255,10 +255,10 @@ public:
         currentFrequencies.resize(1024);
         m_sinTable.resize(512);
         m_cosTable.resize(512);
-        for (int i=0;i<m_sinTable.size();++i)
+        for (int i=0;i<(int)m_sinTable.size();++i)
         {
-            m_sinTable[i] = std::sin(2*3.141592653/m_sinTable.size()*i);
-            m_cosTable[i] = std::cos(2*3.141592653/m_sinTable.size()*i);
+            m_sinTable[i] = std::sin(2*g_pi/m_sinTable.size()*i);
+            m_cosTable[i] = std::cos(2*g_pi/m_sinTable.size()*i);
         }
     }
     stbi_uc* m_img_data = nullptr;
@@ -335,9 +335,6 @@ public:
                 m_oscillators[i].m_osc.setFrequency(frequency);
             }
             currentFrequencies[i] = m_oscillators[i].m_osc.getFrequency();
-            float curve_begin = 1.0f - m_freq_response_curve;
-            float curve_end = m_freq_response_curve;
-            //float resp_gain = rescale(i, 0, h, curve_end, curve_begin);
             float normf = rescale(i,0,h,1.0f,0.0f);
             float resp_gain = get_gain_curve_value(m_freq_response_curve,normf);
             m_freq_gain_table[i] = resp_gain;
@@ -476,7 +473,7 @@ public:
     {
         if (m_BufferReady==false)
             return 0.0f;
-        if (index>=0 && index<m_renderBuf.size())
+        if (index>=0 && index<(int)m_renderBuf.size())
             return m_renderBuf[index];
         return 0.0f;
     }
@@ -494,7 +491,7 @@ private:
     float m_freq_response_curve = 0.5f;
     float m_envAmount = 0.95f;
     int m_waveFormType = 0;
-    int m_currentPreset = 0;
+    
     float m_fundamental = -24.0f; // semitones below middle C!
     
     int m_outputChansMode = 1;
@@ -524,9 +521,9 @@ public:
         for (int i=0;i<m_tablesize;++i)
         {
             float sum = 0.0f;
-            for (int j=0;j<m_harmonics.size();++j)
+            for (int j=0;j<(int)m_harmonics.size();++j)
             {
-                sum+=m_harmonics[j]*std::sin(2*3.141592653/m_tablesize*i*(j+1));
+                sum+=m_harmonics[j]*std::sin(2*g_pi/m_tablesize*i*(j+1));
             }
             m_table[i]=sum;
         }
@@ -550,13 +547,13 @@ public:
     }
     float getHarmonic(int index)
     {
-        if (index>=0 && index<m_harmonics.size())
+        if (index>=0 && index<(int)m_harmonics.size())
             return m_harmonics[index];
         return 0.0f;
     }
     void setHarmonic(int index, float v)
     {
-        if (index>=0 && index<m_harmonics.size())
+        if (index>=0 && index<(int)m_harmonics.size())
         {
             m_harmonics[index] = v;
             m_dirty = true;
@@ -577,12 +574,12 @@ public:
         for (int i=0;i<size;++i)
         {
             float sum = 0.0f;
-            for (int j=0;j<m_harmonics.size();++j)
+            for (int j=0;j<(int)m_harmonics.size();++j)
             {
                 float checkfreq = hz*(j+1);
                 if (checkfreq < sr/2.0 && m_harmonics[j]>th)
                 {
-                    double phase = rescale(i,0,size-1,-3.141592653,3.14159263);
+                    double phase = rescale(i,0,size-1,-g_pi,g_pi);
                     sum+=m_harmonics[j]*std::sin(phase*(j+1));
                     //sum+=m_harmonics[j]*std::sin(2*3.141592653/(size-1)*i*(j+1));
                 }
@@ -613,7 +610,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         m_isDirty = false;
         m_shouldCancel = false;
         m_elapsedTime = 0.0;
-        std::uniform_real_distribution<float> dist(0.0, 3.141);
+        std::uniform_real_distribution<float> dist(0.0, g_pi);
         auto t0 = std::chrono::steady_clock::now();
         const float cut_th = rack::dsp::dbToAmplitude(-72.0f);
         m_maxGain = 0.0f;
@@ -628,7 +625,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
             m_pixel_to_gain_table[i] = std::pow(1.0 / 256 * i,m_pixel_to_gain_curve);
         }
         
-        std::uniform_real_distribution<float> pandist(0.0, 3.141592653 / 2.0f);
+        std::uniform_real_distribution<float> pandist(0.0, g_pi / 2.0f);
         for (int i = 0; i < (int)m_oscillators.size(); ++i)
         {
             m_oscillators[i].m_osc.prepare(1,sr);
@@ -668,8 +665,8 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
             if (m_outputChansMode == 4)
             {
                 float angle = pandist(m_rng) * 2.0f; // position along circle
-                float panposx = rescale(std::cos(angle), -1.0f, 1.0, 0.0f, 3.141592653);
-                float panposy = rescale(std::sin(angle), -1.0f, 1.0, 0.0f, 3.141592653);
+                float panposx = rescale(std::cos(angle), -1.0f, 1.0, 0.0f, g_pi);
+                float panposy = rescale(std::sin(angle), -1.0f, 1.0, 0.0f, g_pi);
                 m_oscillators[i].m_pan_coeffs[0] = std::cos(panposx);
                 m_oscillators[i].m_pan_coeffs[1] = std::sin(panposx);
                 m_oscillators[i].m_pan_coeffs[2] = std::cos(panposy);
