@@ -844,6 +844,7 @@ public:
         PAR_SCALA_TUNING_AMOUNT,
         PAR_MINPITCH,
         PAR_MAXPITCH,
+        PAR_LOOPMODE,
         PAR_LAST
     };
     int m_comp = 0;
@@ -884,6 +885,7 @@ public:
         configParam(PAR_SCALA_TUNING_AMOUNT,0.0,1.0,0.99,"Scala tuning amount");
         configParam(PAR_MINPITCH,0.0,102.0,0.0,"Minimum pitch");
         configParam(PAR_MAXPITCH,0.0,102.0,90.0,"Maximum pitch");
+        configParam(PAR_LOOPMODE,0,1,0,"Looping mode");
         //m_syn.setOutputChannelsMode(2);
         //reloadImage();
     }
@@ -1021,6 +1023,9 @@ public:
             outputs[OUT_AUDIO].setVoltage(preview_sample,1);
             return;
         }
+        loopMode = params[PAR_LOOPMODE].getValue();
+        if (loopMode==0)
+            loopDir = 1;
         int outlensamps = m_out_dur*args.sampleRate;
         loopstart = params[PAR_LOOP_START].getValue();
         loopstart += inputs[IN_LOOPSTART_CV].getVoltage()/5.0f;
@@ -1362,6 +1367,8 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(390.00, 360), m, XImageSynth::PAR_SCALA_TUNING_AMOUNT));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(420.00, 330), m, XImageSynth::PAR_MINPITCH));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(420.00, 360), m, XImageSynth::PAR_MAXPITCH));
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(450.00, 330), m, XImageSynth::PAR_LOOPMODE));
+        knob->snap = true;
     }
     
     ~XImageSynthWidget()
