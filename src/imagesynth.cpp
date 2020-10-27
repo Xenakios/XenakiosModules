@@ -1057,6 +1057,14 @@ public:
                 gain_a = rescale(m_bufferplaypos,loopendsampls-xfadelensamples,loopendsampls,1.0f,0.0f);
                 gain_b = 1.0-gain_a;
             }
+            if (loopMode == 1) 
+            {
+                if (m_bufferplaypos>=loopstartsamps && m_bufferplaypos<loopstartsamps+xfadelensamples)
+                    gain_a = rescale(m_bufferplaypos,loopstartsamps,loopstartsamps+xfadelensamples,0.0f,1.0f);
+                if (m_bufferplaypos>=loopendsampls-xfadelensamples)
+                    gain_a = rescale(m_bufferplaypos,loopendsampls-xfadelensamples,loopendsampls,1.0f,0.0f);
+            }
+
             int xfadepos = m_bufferplaypos-looplensamps;
             if (xfadepos<0) xfadepos = 0;
             
