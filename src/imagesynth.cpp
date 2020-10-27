@@ -856,8 +856,11 @@ public:
     
     OscillatorBuilder m_oscBuilder{32};
     std::list<std::string> m_scala_scales;
+    dsp::DoubleRingBuffer<dsp::Frame<4>, 256> outputBuffer;
+    std::vector<double> srcOutBuffer;
     XImageSynth()
     {
+        srcOutBuffer.resize(16*64);
         m_scala_scales = rack::system::getEntries(asset::plugin(pluginInstance, "res/scala_scales"));
         m_syn.m_scala_scales = m_scala_scales;
         m_renderingImage = false;
@@ -996,6 +999,9 @@ public:
         else 
             outputs[OUT_AUDIO].setChannels(2);
         
+        if (outputBuffer.empty())
+        {
+            const int blocksize = 32;
         
         float pitch = params[PAR_PITCH].getValue();
         pitch += inputs[IN_PITCH_CV].getVoltage()*12.0f;
@@ -1036,7 +1042,7 @@ public:
         float loop_phase = rescale(m_bufferplaypos,loopstartsamps,loopendsampls,0.0f,10.0f);
         outputs[OUT_LOOP_PHASE].setVoltage(loop_phase);
         double* rsbuf = nullptr;
-        int wanted = m_src.ResamplePrepare(1,ochans,&rsbuf);
+        int wanted = m_src.ResamplePrepare(blocksize,ochans,&rsbuf);
         for (int i=0;i<wanted;++i)
         {
             float gain_a = 1.0f;
@@ -1066,23 +1072,41 @@ public:
             else
                 outputs[OUT_LOOP_SWITCH].setVoltage(0.0f);
         }
-        double samples_out[16];
-        memset(&samples_out,0,sizeof(double)*16);
-        m_src.ResampleOut(samples_out,wanted,1,ochans);
-        if (ochans>1)
+        
+        m_src.ResampleOut(srcOutBuffer.data(),wanted,blocksize,ochans);
+        for (int i=0;i<blocksize;++i)
         {
-            for (int i=0;i<ochans;++i)
+            auto frame = outputBuffer.endData();
+            for (int j=0;j<ochans;++j)
             {
-                float outsample = samples_out[i];
-                //outsample = soft_clip(outsample);
-                outputs[OUT_AUDIO].setVoltage(outsample*5.0,i);
+                frame->samples[j] = srcOutBuffer[i*ochans+j];
             }
-        } else if (ochans == 1)
-        {
-            float outsample = samples_out[0];
-            outputs[OUT_AUDIO].setVoltage(outsample*5.0,0);
-            outputs[OUT_AUDIO].setVoltage(outsample*5.0,1);
+            outputBuffer.endIncr(1);
         }
+        }
+        if (!outputBuffer.empty())
+        {
+            if (ochans>1)
+            {
+                
+                auto outFrame = outputBuffer.shift();
+                for (int i=0;i<ochans;++i)
+                {
+                    float outsample = outFrame.samples[i];
+                    //outsample = soft_clip(outsample);
+                    outputs[OUT_AUDIO].setVoltage(outsample*5.0,i);
+                }
+                
+                
+            } else if (ochans == 1)
+            {
+                auto outFrame = outputBuffer.shift();
+                float outsample = outFrame.samples[0];
+                outputs[OUT_AUDIO].setVoltage(outsample*5.0,0);
+                outputs[OUT_AUDIO].setVoltage(outsample*5.0,1);
+            }
+        }
+        
         m_playpos = m_bufferplaypos / args.sampleRate;
         
     }
