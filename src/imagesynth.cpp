@@ -1036,6 +1036,7 @@ public:
         if (loopendsampls>=outlensamps)
             loopendsampls = outlensamps-1;
         int xfadelensamples = 128;
+        int ppfadelensamples = 128;
         if (m_bufferplaypos<loopstartsamps)
             m_bufferplaypos = loopstartsamps;
         if (m_bufferplaypos>loopendsampls && loopMode == 1)
@@ -1059,10 +1060,10 @@ public:
             }
             if (loopMode == 1) 
             {
-                if (m_bufferplaypos>=loopstartsamps && m_bufferplaypos<loopstartsamps+xfadelensamples)
-                    gain_a = rescale(m_bufferplaypos,loopstartsamps,loopstartsamps+xfadelensamples,0.0f,1.0f);
-                if (m_bufferplaypos>=loopendsampls-xfadelensamples)
-                    gain_a = rescale(m_bufferplaypos,loopendsampls-xfadelensamples,loopendsampls,1.0f,0.0f);
+                if (m_bufferplaypos>=loopstartsamps && m_bufferplaypos<loopstartsamps+ppfadelensamples)
+                    gain_a = rescale(m_bufferplaypos,loopstartsamps,loopstartsamps+ppfadelensamples,0.0f,1.0f);
+                if (m_bufferplaypos>=loopendsampls-ppfadelensamples)
+                    gain_a = rescale(m_bufferplaypos,loopendsampls-ppfadelensamples,loopendsampls,1.0f,0.0f);
             }
 
             int xfadepos = m_bufferplaypos-looplensamps;
