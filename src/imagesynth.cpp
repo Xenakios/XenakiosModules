@@ -393,7 +393,12 @@ public:
         }
     }
     int getWaveFormType() { return m_waveFormType; }
-    
+    int m_numOutputSamples = 0;
+    int getNumOutputSamples()
+    {
+        return m_numOutputSamples;
+    }
+
     void setHarmonicsFundamental(float semitones)
     {
         if (semitones!=m_fundamental)
@@ -607,6 +612,7 @@ private:
 
 void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
     {
+        m_numOutputSamples = 0;
         m_isDirty = false;
         m_shouldCancel = false;
         m_elapsedTime = 0.0;
@@ -799,9 +805,100 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
             auto t1 = std::chrono::steady_clock::now();
             m_elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count()/1000.0;
         }
-        
+        m_numOutputSamples = outdursamples;
         m_percent_ready = 1.0;
     }
+
+class ISGrain
+{
+public:
+    ISGrain(ImgSynth* s) : m_syn(s)
+    {
+        m_grainOutBuffer.resize(m_grainSize*m_chans+64);
+    }
+    void process(float* buf)
+    {
+        if (m_outpos == 0)
+        {
+            double* rsinbuf = nullptr;
+            int wanted = m_resampler.ResamplePrepare(m_grainSize,m_chans,&rsinbuf);
+            int srcpossamples = m_srcpos+m_offset;
+            for (int i=0;i<wanted;++i)
+            {
+                for (int j=0;j<m_chans;++j)
+                {
+                    int bufferindex = (srcpossamples+i)*m_chans+j;
+                    float src_sample = m_syn->getBufferSample(bufferindex);
+                    rsinbuf[i*m_chans+j] = src_sample;
+                }
+                
+            }
+            m_resampler.ResampleOut(m_grainOutBuffer.data(),wanted,m_grainSize,m_chans);
+            for (int i=0;i<m_grainSize;++i)
+            {
+                float win = dsp::hann(1.0/(m_grainSize-1)*i);   
+                for (int j=0;j<m_chans;++j)
+                {
+                    m_grainOutBuffer[i*m_chans+j]*=win;
+                }
+                
+            }
+        }
+        for (int i=0;i<m_chans;++i)
+        {
+            buf[i] += m_grainOutBuffer[m_outpos*m_chans+i];
+        }
+        ++m_outpos;
+        
+        if (m_outpos>=m_grainSize)
+        {
+            m_srcpos+=m_playSpeed*m_grainSize;
+            if (m_srcpos>=m_syn->getNumOutputSamples())
+                m_srcpos-=m_syn->getNumOutputSamples();
+            m_outpos = 0;
+        }
+        
+        
+        
+    }
+    
+    void setPlaySpeed(float r)
+    {
+        m_playSpeed = clamp(r,0.01,10.0);
+    }
+    void setPitch(float semitones)
+    {
+        m_resampler.SetRates(m_sr , m_sr / pow(2.0,1.0/12*semitones));
+        
+    }
+    double getSourcePlayPosition()
+    {
+        return m_srcpos;
+    }
+    void setOffset(float offs)
+    {
+        m_offset = m_grainSize*offs;
+        m_outpos = m_offset;
+    }
+    float getWindow(int pos)
+    {
+        if (pos<m_grainSize/2)
+            return rescale(pos,0,m_grainSize/2,0.0,1.0);
+        return rescale(pos,m_grainSize/2,m_grainSize ,1.0,0.0);
+    }
+private:
+    ImgSynth* m_syn = nullptr;
+    float m_playSpeed = 1.0f;
+    
+    int m_outpos = 0;
+    int m_grainSize = 2048;
+    int m_offset = 0;
+    double m_srcpos = 0.0;
+    float m_sr = 44100.0f;
+    int m_chans = 2;
+    WDL_Resampler m_resampler;
+    std::vector<double> m_grainOutBuffer;
+};
 
 class XImageSynth : public rack::Module
 {
@@ -842,6 +939,7 @@ public:
         PAR_MINPITCH,
         PAR_MAXPITCH,
         PAR_LOOPMODE,
+        PAR_GRAIN_PLAYSPEED,
         PAR_LAST
     };
     int m_comp = 0;
@@ -858,6 +956,8 @@ public:
     std::vector<double> srcOutBuffer;
     XImageSynth()
     {
+        m_grain1.setOffset(0.0);
+        m_grain2.setOffset(0.5);
         srcOutBuffer.resize(16*64);
         m_scala_scales = rack::system::getEntries(asset::plugin(pluginInstance, "res/scala_scales"));
         m_syn.m_scala_scales = m_scala_scales;
@@ -883,6 +983,7 @@ public:
         configParam(PAR_MINPITCH,0.0,102.0,0.0,"Minimum pitch");
         configParam(PAR_MAXPITCH,0.0,102.0,90.0,"Maximum pitch");
         configParam(PAR_LOOPMODE,0,1,0,"Looping mode");
+        configParam(PAR_GRAIN_PLAYSPEED,0.01,2.0,1.0,"Play rate");
         //m_syn.setOutputChannelsMode(2);
         //reloadImage();
     }
@@ -993,6 +1094,7 @@ public:
     bool loopTrigger = false;
     int loopDir = 1; // forward
     int loopMode = 1; // pingpong
+    bool granularActive = true;
     void process(const ProcessArgs& args) override
     {
         int ochans = m_syn.getNumOutputChannels();
@@ -1000,6 +1102,26 @@ public:
             outputs[OUT_AUDIO].setChannels(ochans);
         else 
             outputs[OUT_AUDIO].setChannels(2);
+        if (granularActive)
+        {
+            float grainout[4];
+            memset(grainout,0,4*sizeof(float));
+            float pspeed = params[PAR_GRAIN_PLAYSPEED].getValue();
+            float pitch = params[PAR_PITCH].getValue();
+            pitch += inputs[IN_PITCH_CV].getVoltage()*12.0f;
+            pitch = clamp(pitch,-36.0,36.0);
+            m_grain1.setPlaySpeed(pspeed);
+            m_grain1.setPitch(pitch);
+            m_grain2.setPlaySpeed(pspeed);
+            m_grain2.setPitch(pitch);
+            m_grain1.process(grainout);
+            m_grain2.process(grainout);
+            outputs[OUT_AUDIO].setVoltage(grainout[0]*5.0f,0);
+            outputs[OUT_AUDIO].setVoltage(grainout[1]*5.0f,1);
+            m_playpos = m_grain1.getSourcePlayPosition()/args.sampleRate;
+            return;
+        }
+        
         
         if (outputBuffer.empty())
         {
@@ -1153,6 +1275,8 @@ public:
     
     bool m_img_data_dirty = false;
     ImgSynth m_syn;
+    ISGrain m_grain1{&m_syn};
+    ISGrain m_grain2{&m_syn};
     WDL_Resampler m_src;
     rack::dsp::SchmittTrigger rewindTrigger;
     rack::dsp::PulseGenerator loopStartPulse;
@@ -1329,7 +1453,7 @@ public:
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, XImageSynth::PAR_RELOAD_IMAGE));
         
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
-        //slowknob->m_syn = m;
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 360), m, XImageSynth::PAR_GRAIN_PLAYSPEED));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, XImageSynth::PAR_PITCH));
         
         // addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, XImageSynth::PAR_FREQMAPPING)); 
