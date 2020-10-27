@@ -856,7 +856,7 @@ public:
     
     OscillatorBuilder m_oscBuilder{32};
     std::list<std::string> m_scala_scales;
-    dsp::DoubleRingBuffer<dsp::Frame<4>, 256> outputBuffer;
+    dsp::DoubleRingBuffer<dsp::Frame<5>, 256> outputBuffer;
     std::vector<double> srcOutBuffer;
     XImageSynth()
     {
@@ -991,6 +991,9 @@ public:
         }
         
     }
+    bool loopTrigger = false;
+    int loopDir = 1; // forward
+    int loopMode = 1; // pingpong
     void process(const ProcessArgs& args) override
     {
         int ochans = m_syn.getNumOutputChannels();
@@ -1035,6 +1038,8 @@ public:
         int xfadelensamples = 128;
         if (m_bufferplaypos<loopstartsamps)
             m_bufferplaypos = loopstartsamps;
+        if (m_bufferplaypos>loopendsampls && loopMode == 1)
+            m_bufferplaypos = loopendsampls-1;
         if (rewindTrigger.process(inputs[IN_RESET].getVoltage()))
             m_bufferplaypos = loopstartsamps;
         if (m_bufferplaypos>=m_out_dur*args.sampleRate)
@@ -1047,7 +1052,7 @@ public:
         {
             float gain_a = 1.0f;
             float gain_b = 0.0f;
-            if (m_bufferplaypos>=loopendsampls-xfadelensamples)
+            if (m_bufferplaypos>=loopendsampls-xfadelensamples && loopMode == 0)
             {
                 gain_a = rescale(m_bufferplaypos,loopendsampls-xfadelensamples,loopendsampls,1.0f,0.0f);
                 gain_b = 1.0-gain_a;
@@ -1061,16 +1066,29 @@ public:
                 if (gain_b>0.0f)
                     rsbuf[i*ochans+j] += gain_b * m_syn.getBufferSample(xfadepos*ochans+j);
             }
-            ++m_bufferplaypos;
-            if (m_bufferplaypos>=loopendsampls)
+            m_bufferplaypos+=loopDir;
+            if (m_bufferplaypos>=loopendsampls || m_bufferplaypos<loopstartsamps)
             {
-                m_bufferplaypos = loopstartsamps;
+                if (loopDir == 1 && loopMode == 0)
+                {
+                    m_bufferplaypos = loopstartsamps;
+                }
+                if (loopDir == 1 && loopMode == 1)
+                {
+                    --m_bufferplaypos;
+                    
+                    loopDir = -1;
+                } else if (loopDir == -1 && loopMode == 1)
+                {
+                    ++m_bufferplaypos;
+                    
+                    loopDir = 1;
+                }
+                
                 loopStartPulse.trigger();
             }
-            if (loopStartPulse.process(args.sampleTime))
-                outputs[OUT_LOOP_SWITCH].setVoltage(10.0f);
-            else
-                outputs[OUT_LOOP_SWITCH].setVoltage(0.0f);
+            
+            
         }
         
         m_src.ResampleOut(srcOutBuffer.data(),wanted,blocksize,ochans);
@@ -1081,9 +1099,15 @@ public:
             {
                 frame->samples[j] = srcOutBuffer[i*ochans+j];
             }
+            loopTrigger = loopStartPulse.process(args.sampleTime);
+            if (loopTrigger)
+                frame->samples[4] = 10.0f;
+            else
+                frame->samples[4] = 0.0f;
             outputBuffer.endIncr(1);
         }
         }
+        
         if (!outputBuffer.empty())
         {
             if (ochans>1)
@@ -1096,7 +1120,7 @@ public:
                     //outsample = soft_clip(outsample);
                     outputs[OUT_AUDIO].setVoltage(outsample*5.0,i);
                 }
-                
+                outputs[OUT_LOOP_SWITCH].setVoltage(outFrame.samples[4]);
                 
             } else if (ochans == 1)
             {
@@ -1104,6 +1128,7 @@ public:
                 float outsample = outFrame.samples[0];
                 outputs[OUT_AUDIO].setVoltage(outsample*5.0,0);
                 outputs[OUT_AUDIO].setVoltage(outsample*5.0,1);
+                outputs[OUT_LOOP_SWITCH].setVoltage(outFrame.samples[4]);
             }
         }
         
