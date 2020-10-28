@@ -47,6 +47,8 @@ Reduce 8 inputs to a single output with a selectable algorithm.
 
 **HIGHLY EXPERIMENTAL AND WORK-IN-PROGRESS**
 
+https://github.com/Xenakios/XenakiosModules/blob/master/imgsyn01.png
+
 Generates audio from image files, using up to 1024 oscillators, with various tuning and other options for the oscillators.
 
 At the moment, the image is rendered into sound as an offline process. (The module tries to keep the previously rendered sound playing, if possible, during the rendering of the new waveform.) The rendered waveform is then played back in sampler style (speed changes together with pitch) or with a rudimentary granular engine that allows adjusting speed and pitch independently. 
