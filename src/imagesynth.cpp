@@ -814,15 +814,21 @@ class ISGrain
 public:
     ISGrain(ImgSynth* s) : m_syn(s)
     {
-        m_grainOutBuffer.resize(m_grainSize*m_chans+64);
+        m_grainOutBuffer.resize(65536*m_chans*2);
     }
     void process(float* buf)
     {
         if (m_outpos == 0)
         {
+            
             double* rsinbuf = nullptr;
             int wanted = m_resampler.ResamplePrepare(m_grainSize,m_chans,&rsinbuf);
-            int srcpossamples = m_srcpos+m_offset;
+            int offstouse = m_offset;
+            offstouse+=rack::random::normal()*m_offset*m_random_amt;
+            offstouse = clamp(offstouse,1,m_grainSize-1);
+            int srcpossamples = m_srcpos;
+            srcpossamples+=rack::random::normal()*m_grainSize*m_random_amt;
+            srcpossamples = clamp(srcpossamples,0,m_syn->getNumOutputSamples()-1);
             for (int i=0;i<wanted;++i)
             {
                 for (int j=0;j<m_chans;++j)
@@ -861,7 +867,27 @@ public:
         
         
     }
-    
+    void setSampleRate(float sr)
+    {
+        m_sr = sr;
+    }
+    void setGrainSize(float seconds)
+    {
+        seconds = clamp(seconds,0.005,0.5);
+        int newsize = seconds*m_sr;
+        if (newsize!=m_grainSize)
+        {
+            m_grainSize = newsize;
+            m_offset = m_grainSize*m_storedOffset;
+            //if (m_outpos>=m_offset)
+            m_outpos = m_offset;
+        }
+        
+    }
+    void setGrainRandomAmount(float a)
+    {
+        m_random_amt = a;
+    }
     void setPlaySpeed(float r)
     {
         m_playSpeed = clamp(r,0.01,10.0);
@@ -878,8 +904,10 @@ public:
     void setOffset(float offs)
     {
         m_offset = m_grainSize*offs;
-        m_outpos = m_offset;
+        //m_outpos = m_offset;
+        m_storedOffset = offs;
     }
+    int getOutputPos() { return m_cachedOutputPos; }
     float getWindow(int pos)
     {
         if (pos<m_grainSize/2)
@@ -889,15 +917,17 @@ public:
 private:
     ImgSynth* m_syn = nullptr;
     float m_playSpeed = 1.0f;
-    
+    int m_cachedOutputPos = 0;
     int m_outpos = 0;
     int m_grainSize = 2048;
     int m_offset = 0;
-    double m_srcpos = 0.0;
+    double m_srcpos{0.0};
     float m_sr = 44100.0f;
     int m_chans = 2;
     WDL_Resampler m_resampler;
     std::vector<double> m_grainOutBuffer;
+    float m_storedOffset = 0.0f;
+    float m_random_amt = 0.1f;
 };
 
 class XImageSynth : public rack::Module
@@ -940,6 +970,8 @@ public:
         PAR_MAXPITCH,
         PAR_LOOPMODE,
         PAR_GRAIN_PLAYSPEED,
+        PAR_GRAIN_SIZE,
+        PAR_GRAIN_RANDOM,
         PAR_LAST
     };
     int m_comp = 0;
@@ -984,6 +1016,8 @@ public:
         configParam(PAR_MAXPITCH,0.0,102.0,90.0,"Maximum pitch");
         configParam(PAR_LOOPMODE,0,1,0,"Looping mode");
         configParam(PAR_GRAIN_PLAYSPEED,0.01,2.0,1.0,"Play rate");
+        configParam(PAR_GRAIN_SIZE,0.005,0.5,0.05,"Grain size");
+        configParam(PAR_GRAIN_RANDOM,0.0,0.1,0.05,"Grain random");
         //m_syn.setOutputChannelsMode(2);
         //reloadImage();
     }
@@ -1108,12 +1142,18 @@ public:
             memset(grainout,0,4*sizeof(float));
             float pspeed = params[PAR_GRAIN_PLAYSPEED].getValue();
             float pitch = params[PAR_PITCH].getValue();
+            float gsize = params[PAR_GRAIN_SIZE].getValue();
+            float grnd = params[PAR_GRAIN_RANDOM].getValue();
             pitch += inputs[IN_PITCH_CV].getVoltage()*12.0f;
             pitch = clamp(pitch,-36.0,36.0);
             m_grain1.setPlaySpeed(pspeed);
+            m_grain1.setGrainRandomAmount(grnd);
             m_grain1.setPitch(pitch);
+            m_grain1.setGrainSize(gsize);
             m_grain2.setPlaySpeed(pspeed);
+            m_grain2.setGrainRandomAmount(grnd);
             m_grain2.setPitch(pitch);
+            m_grain2.setGrainSize(gsize);
             m_grain1.process(grainout);
             m_grain2.process(grainout);
             outputs[OUT_AUDIO].setVoltage(grainout[0]*5.0f,0);
@@ -1490,6 +1530,8 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(420.00, 360), m, XImageSynth::PAR_MAXPITCH));
         addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(450.00, 330), m, XImageSynth::PAR_LOOPMODE));
         knob->snap = true;
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(450.00, 360), m, XImageSynth::PAR_GRAIN_SIZE));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(480.00, 330), m, XImageSynth::PAR_GRAIN_RANDOM));
     }
     
     ~XImageSynthWidget()
@@ -1649,7 +1691,9 @@ public:
                 dirtyElapsed,scalefile.c_str(),m_synth->m_syn.minFrequency,m_synth->m_syn.maxFrequency,
                 hoverFreq,rtfactor);
             nvgText(args.vg, 3 , 10, buf, NULL);
-        
+            //sprintf(buf,"%d %d",m_synth->m_grain1.getOutputPos(),
+            //    m_synth->m_grain2.getOutputPos());
+            //nvgText(args.vg, 3 , 30, buf, NULL);
         float progr = m_synth->m_syn.percentReady();
         if (progr<1.0)
         {
