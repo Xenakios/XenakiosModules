@@ -824,7 +824,7 @@ public:
             double* rsinbuf = nullptr;
             int wanted = m_resampler.ResamplePrepare(m_grainSize,m_chans,&rsinbuf);
             
-            int srcpossamples = m_srcpos; //+(m_offset*m_playSpeed);
+            int srcpossamples = m_srcpos; //-(m_offset*1.0);
             srcpossamples+=rack::random::normal()*m_grainSize*m_random_amt;
             srcpossamples = clamp(srcpossamples,0,m_syn->getNumOutputSamples()-1);
             for (int i=0;i<wanted;++i)
@@ -845,6 +845,8 @@ public:
                 
                 int outbufpos = (i+m_offset) % m_grainSize;
                 float win = getWindow(outbufpos); // dsp::hann(hannpos);   
+                //if (m_offset!=0)
+                //    win*=-1.0;
                 for (int j=0;j<m_chans;++j)
                 {
                     m_grainOutBuffer[i*m_chans+j]*=win;
@@ -882,7 +884,7 @@ public:
             m_grainSize = newsize;
             m_offset = m_grainSize*m_storedOffset;
             //if (m_outpos>=m_offset)
-            m_outpos = m_offset;
+            m_outpos = 0;
         }
         
     }
@@ -1159,7 +1161,7 @@ public:
             m_grain2.setPitch(pitch);
             m_grain2.setGrainSize(gsize);
             m_grain1.process(grain1out);
-            
+            m_grain2.process(grain1out);
             outputs[OUT_AUDIO].setVoltage(grain1out[0]*5.0f,0);
             outputs[OUT_AUDIO].setVoltage(grain1out[1]*5.0f,1);
             m_playpos = m_grain1.getSourcePlayPosition()/args.sampleRate;
