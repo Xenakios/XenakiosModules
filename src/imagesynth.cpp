@@ -818,13 +818,13 @@ public:
     }
     void process(float* buf)
     {
-        if (m_outpos == m_offset)
+        if (m_outpos == 0)
         {
             
             double* rsinbuf = nullptr;
             int wanted = m_resampler.ResamplePrepare(m_grainSize,m_chans,&rsinbuf);
             
-            int srcpossamples = m_srcpos+(m_offset*m_playSpeed);
+            int srcpossamples = m_srcpos; //+(m_offset*m_playSpeed);
             srcpossamples+=rack::random::normal()*m_grainSize*m_random_amt;
             srcpossamples = clamp(srcpossamples,0,m_syn->getNumOutputSamples()-1);
             for (int i=0;i<wanted;++i)
@@ -847,7 +847,7 @@ public:
                 float win = getWindow(outbufpos); // dsp::hann(hannpos);   
                 for (int j=0;j<m_chans;++j)
                 {
-                    m_grainOutBuffer[outbufpos*m_chans+j]*=win;
+                    m_grainOutBuffer[i*m_chans+j]*=win;
                 }
                 
             }
@@ -912,7 +912,7 @@ public:
     int getOutputPos() { return m_cachedOutputPos; }
     float getWindow(int pos)
     {
-        if (pos<m_grainSize/2)
+        if (pos<=m_grainSize/2)
             return rescale(pos,0,m_grainSize/2,0.0,1.0);
         return rescale(pos,m_grainSize/2,m_grainSize ,1.0,0.0);
     }
@@ -1141,9 +1141,9 @@ public:
         if (granularActive)
         {
             float grain1out[4];
-            float grain2out[4];
+            
             memset(grain1out,0,4*sizeof(float));
-            memset(grain2out,0,4*sizeof(float));
+            
             float pspeed = params[PAR_GRAIN_PLAYSPEED].getValue();
             float pitch = params[PAR_PITCH].getValue();
             float gsize = params[PAR_GRAIN_SIZE].getValue();
@@ -1159,9 +1159,9 @@ public:
             m_grain2.setPitch(pitch);
             m_grain2.setGrainSize(gsize);
             m_grain1.process(grain1out);
-            m_grain2.process(grain2out);
+            
             outputs[OUT_AUDIO].setVoltage(grain1out[0]*5.0f,0);
-            outputs[OUT_AUDIO].setVoltage(grain2out[0]*5.0f,1);
+            outputs[OUT_AUDIO].setVoltage(grain1out[1]*5.0f,1);
             m_playpos = m_grain1.getSourcePlayPosition()/args.sampleRate;
             return;
         }
