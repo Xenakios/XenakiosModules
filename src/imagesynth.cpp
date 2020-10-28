@@ -1726,6 +1726,12 @@ public:
             nvgLineTo(args.vg,xcor,300);
             nvgStroke(args.vg);
 
+            // background for text
+            nvgBeginPath(args.vg);
+            nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
+            nvgRect(args.vg,0,0,600,20);
+            nvgFill(args.vg);
+
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, g_font->handle);
             nvgTextLetterSpacing(args.vg, -1);
@@ -1743,7 +1749,7 @@ public:
             if (elapsed>0.0f)
                 rtfactor = m_synth->params[XImageSynth::PAR_DURATION].getValue()/elapsed;
 
-            sprintf(buf,"%d %d (%d %d ic) %d %.1f %s [%.1fHz - %.1fHz %.1fHz] (%.1fx realtime)",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
+            sprintf(buf,"%dx%d (%d %d ic) %d %.1f %s [%.1fHz - %.1fHz %.1fHz] (%.1fx realtime)",imgw,imgh,m_image,imageCreateCounter,m_synth->renderCount,
                 dirtyElapsed,scalefile.c_str(),m_synth->m_syn.minFrequency,m_synth->m_syn.maxFrequency,
                 hoverFreq,rtfactor);
             nvgText(args.vg, 3 , 10, buf, NULL);
@@ -1773,14 +1779,14 @@ public:
         nvgBeginPath(args.vg);
         nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
         float morph = m_synth->params[XImageSynth::PAR_FREQUENCY_BALANCE].getValue();
-        for (int i=0;i<128;i+=2)
+        for (int i=0;i<100;i+=2)
         {
-            float normx = rescale(i,0,127,0.0,1.0);
+            float normx = rescale(i,0,100,0.0,1.0);
             float normy = get_gain_curve_value(morph,normx);
             if (i == 0)
-                nvgMoveTo(args.vg,460+i,370-normy*50.0);
+                nvgMoveTo(args.vg,500+i,370-normy*50.0);
             else
-                nvgLineTo(args.vg,460+i,370-normy*50.0);
+                nvgLineTo(args.vg,500+i,370-normy*50.0);
         }
         nvgStroke(args.vg);
         //nvgDeleteImage(args.vg,m_image);
