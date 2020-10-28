@@ -849,7 +849,7 @@ public:
             //hannpos = fmod(hannpos+m_storedOffset,1.0f);
             
             int outbufpos = (i+m_offset) % m_grainSize;
-            float win = getWindow(hannpos); // dsp::hann(hannpos);   
+            float win = getWindow(hannpos,1); 
             for (int j=0;j<m_chans;++j)
             {
                 m_grainOutBuffer[i*m_chans+j]*=win;
@@ -882,11 +882,19 @@ public:
     }
     
     
-    float getWindow(float pos)
+    float getWindow(float pos, int wtype)
     {
-        if (pos<0.5)
-            return rescale(pos,0.0,0.5,0.0,1.0);
-        return rescale(pos,0.5,1.0 ,1.0,0.0);
+        if (wtype == 0)
+        {
+            if (pos<0.5)
+                return rescale(pos,0.0,0.5,0.0,1.0);
+            return rescale(pos,0.5,1.0 ,1.0,0.0);
+        }
+        else if (wtype == 1)
+        {
+            return 0.5f * (1.0f - std::cos(2.0f * g_pi * pos));
+        }
+        return 0.0f;
     }
     ImgSynth* m_syn = nullptr;
 private:
@@ -972,6 +980,7 @@ public:
         IN_RESET,
         IN_LOOPSTART_CV,
         IN_LOOPLEN_CV,
+        IN_GRAINPLAYRATE_CV,
         LAST_INPUT
     };
     enum Outputs
@@ -1175,6 +1184,8 @@ public:
             memset(grain1out,0,4*sizeof(float));
             
             float pspeed = params[PAR_GRAIN_PLAYSPEED].getValue();
+            pspeed += rescale(inputs[IN_GRAINPLAYRATE_CV].getVoltage(),-5.0f,5.0f,-2.0f,2.0f);
+            pspeed = clamp(pspeed,-2.0,2.0);
             float pitch = params[PAR_PITCH].getValue();
             float gsize = params[PAR_GRAIN_SIZE].getValue();
             float grnd = params[PAR_GRAIN_RANDOM].getValue();
@@ -1534,8 +1545,11 @@ public:
         addInput(createInputCentered<PJ301MPort>(Vec(30, 360), m, XImageSynth::IN_RESET));
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, XImageSynth::PAR_RELOAD_IMAGE));
         addParam(createParamCentered<CKSS>(Vec(60.00, 360), m, XImageSynth::PAR_PLAYBACKMODE));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 360), m, XImageSynth::PAR_GRAIN_PLAYSPEED));
+        
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 315), m, XImageSynth::PAR_DURATION));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 340), m, XImageSynth::PAR_GRAIN_PLAYSPEED));
+        addInput(createInputCentered<PJ301MPort>(Vec(90.0, 365), m, XImageSynth::IN_GRAINPLAYRATE_CV));
+
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, XImageSynth::PAR_PITCH));
         
         // addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(150.00, 330), m, XImageSynth::PAR_FREQMAPPING)); 
