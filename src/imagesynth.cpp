@@ -818,15 +818,13 @@ public:
     }
     void process(float* buf)
     {
-        if (m_outpos == 0)
+        if (m_outpos == m_offset)
         {
             
             double* rsinbuf = nullptr;
             int wanted = m_resampler.ResamplePrepare(m_grainSize,m_chans,&rsinbuf);
-            int offstouse = m_offset;
-            offstouse+=rack::random::normal()*m_offset*m_random_amt;
-            offstouse = clamp(offstouse,1,m_grainSize-1);
-            int srcpossamples = m_srcpos;
+            
+            int srcpossamples = m_srcpos+(m_offset*m_playSpeed);
             srcpossamples+=rack::random::normal()*m_grainSize*m_random_amt;
             srcpossamples = clamp(srcpossamples,0,m_syn->getNumOutputSamples()-1);
             for (int i=0;i<wanted;++i)
@@ -842,10 +840,14 @@ public:
             m_resampler.ResampleOut(m_grainOutBuffer.data(),wanted,m_grainSize,m_chans);
             for (int i=0;i<m_grainSize;++i)
             {
-                float win = dsp::hann(1.0/(m_grainSize-1)*i);   
+                float hannpos = 1.0/(m_grainSize-1)*i;
+                //hannpos = fmod(hannpos+m_storedOffset,1.0f);
+                
+                int outbufpos = (i+m_offset) % m_grainSize;
+                float win = getWindow(outbufpos); // dsp::hann(hannpos);   
                 for (int j=0;j<m_chans;++j)
                 {
-                    m_grainOutBuffer[i*m_chans+j]*=win;
+                    m_grainOutBuffer[outbufpos*m_chans+j]*=win;
                 }
                 
             }
@@ -1138,8 +1140,10 @@ public:
             outputs[OUT_AUDIO].setChannels(2);
         if (granularActive)
         {
-            float grainout[4];
-            memset(grainout,0,4*sizeof(float));
+            float grain1out[4];
+            float grain2out[4];
+            memset(grain1out,0,4*sizeof(float));
+            memset(grain2out,0,4*sizeof(float));
             float pspeed = params[PAR_GRAIN_PLAYSPEED].getValue();
             float pitch = params[PAR_PITCH].getValue();
             float gsize = params[PAR_GRAIN_SIZE].getValue();
@@ -1154,10 +1158,10 @@ public:
             m_grain2.setGrainRandomAmount(grnd);
             m_grain2.setPitch(pitch);
             m_grain2.setGrainSize(gsize);
-            m_grain1.process(grainout);
-            m_grain2.process(grainout);
-            outputs[OUT_AUDIO].setVoltage(grainout[0]*5.0f,0);
-            outputs[OUT_AUDIO].setVoltage(grainout[1]*5.0f,1);
+            m_grain1.process(grain1out);
+            m_grain2.process(grain2out);
+            outputs[OUT_AUDIO].setVoltage(grain1out[0]*5.0f,0);
+            outputs[OUT_AUDIO].setVoltage(grain2out[0]*5.0f,1);
             m_playpos = m_grain1.getSourcePlayPosition()/args.sampleRate;
             return;
         }
