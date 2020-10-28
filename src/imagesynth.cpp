@@ -1074,7 +1074,7 @@ public:
         configParam(PAR_MAXPITCH,0.0,102.0,90.0,"Maximum pitch");
         configParam(PAR_LOOPMODE,0,1,0,"Looping mode");
         configParam(PAR_GRAIN_PLAYSPEED,0.01,2.0,1.0,"Play rate");
-        configParam(PAR_GRAIN_SIZE,0.005,0.5,0.05,"Grain size");
+        configParam(PAR_GRAIN_SIZE,0.005,0.25,0.05,"Grain size");
         configParam(PAR_GRAIN_RANDOM,0.0,0.1,0.05,"Grain random");
         //m_syn.setOutputChannelsMode(2);
         //reloadImage();
@@ -1209,6 +1209,7 @@ public:
             m_grainsmixer.m_pitch = pitch;
             m_grainsmixer.m_sourcePlaySpeed = pspeed;
             m_grainsmixer.m_posrandamt = grnd;
+            m_grainsmixer.m_grainDensity = gsize;
             m_grainsmixer.processAudio(grain1out);
             outputs[OUT_AUDIO].setVoltage(grain1out[0]*5.0f,0);
             outputs[OUT_AUDIO].setVoltage(grain1out[1]*5.0f,1);
