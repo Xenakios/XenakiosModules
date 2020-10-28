@@ -817,9 +817,12 @@ public:
     {
         m_grainOutBuffer.resize(65536*m_chans*2);
     }
-    void initGrain(float startInSource,float len, float pitch)
+    void initGrain(float inputdur, float startInSource,float len, float pitch)
     {
+        if (playState == 1)
+            return;
         playState = 1;
+        m_outpos = 0;
         m_resampler.SetRates(m_sr , m_sr / pow(2.0,1.0/12*pitch));
         double* rsinbuf = nullptr;
         int lensamples = m_sr*len;
@@ -828,7 +831,7 @@ public:
         
         int srcpossamples = startInSource;
         //srcpossamples+=rack::random::normal()*lensamples;
-        srcpossamples = clamp(srcpossamples,0,m_syn->getNumOutputSamples()-1);
+        srcpossamples = clamp((float)srcpossamples,(float)0,inputdur-1.0f);
         for (int i=0;i<wanted;++i)
         {
             for (int j=0;j<m_chans;++j)
@@ -877,43 +880,8 @@ public:
     {
         m_sr = sr;
     }
-    void setGrainSize(float seconds)
-    {
-        seconds = clamp(seconds,0.005,0.5);
-        int newsize = seconds*m_sr;
-        if (newsize!=m_grainSize)
-        {
-            m_grainSize = newsize;
-            m_offset = m_grainSize*m_storedOffset;
-            //if (m_outpos>=m_offset)
-            m_outpos = 0;
-        }
-        
-    }
-    void setGrainRandomAmount(float a)
-    {
-        m_random_amt = a;
-    }
-    void setPlaySpeed(float r)
-    {
-        m_playSpeed = clamp(r,0.01,10.0);
-    }
-    void setPitch(float semitones)
-    {
-        m_resampler.SetRates(m_sr , m_sr / pow(2.0,1.0/12*semitones));
-        
-    }
-    double getSourcePlayPosition()
-    {
-        return m_srcpos;
-    }
-    void setOffset(float offs)
-    {
-        m_offset = m_grainSize*offs;
-        //m_outpos = m_offset;
-        m_storedOffset = offs;
-    }
-    int getOutputPos() { return m_cachedOutputPos; }
+    
+    
     float getWindow(float pos)
     {
         if (pos<0.5)
@@ -923,8 +891,6 @@ public:
     ImgSynth* m_syn = nullptr;
 private:
     
-    float m_playSpeed = 1.0f;
-    int m_cachedOutputPos = 0;
     int m_outpos = 0;
     int m_grainSize = 2048;
     int m_offset = 0;
@@ -950,20 +916,24 @@ public:
     }
     void processAudio(float* buf)
     {
+        if (m_inputdur<0.5f)
+            return;
         if (m_outcounter >= m_nextGrainPos)
         {
             float glen = m_grainDensity*2.0;
             float glensamples = m_sr*glen;
             float posrand = random::normal()*m_posrandamt*glensamples;
             float srcpostouse = m_srcpos+posrand;
-            m_grains[m_grainCounter].initGrain(srcpostouse,glen,m_pitch);
+            m_grains[m_grainCounter].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch);
             ++m_grainCounter;
             if (m_grainCounter==m_grains.size())
                 m_grainCounter = 0;
             m_nextGrainPos+=m_sr*(m_grainDensity);
             m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed;
-            if (m_srcpos>=m_syn->getNumOutputSamples())
+            if (m_srcpos>=m_looplen*m_inputdur)
                 m_srcpos = 0.0f;
+            else if (m_srcpos<0.0f)
+                m_srcpos = m_looplen*m_inputdur;
         }
         for (int i=0;i<m_grains.size();++i)
         {
@@ -976,7 +946,7 @@ public:
     }
     float getSourcePlayPosition()
     {
-        return m_srcpos;
+        return m_srcpos+m_inputdur*m_loopstart;
     }
     double m_srcpos = 0.0;
     float m_sr = 44100.0;
@@ -984,6 +954,9 @@ public:
     float m_sourcePlaySpeed = 1.0f;
     float m_pitch = 0.0f;
     float m_posrandamt = 0.0f;
+    float m_inputdur = 0.0f;
+    float m_loopstart = 0.0f;
+    float m_looplen = 0.0f;
     int m_outcounter = 0;
     int m_nextGrainPos = 0;
     int m_grainCounter = 0;
@@ -1073,7 +1046,7 @@ public:
         configParam(PAR_MINPITCH,0.0,102.0,0.0,"Minimum pitch");
         configParam(PAR_MAXPITCH,0.0,102.0,90.0,"Maximum pitch");
         configParam(PAR_LOOPMODE,0,1,0,"Looping mode");
-        configParam(PAR_GRAIN_PLAYSPEED,0.01,2.0,1.0,"Play rate");
+        configParam(PAR_GRAIN_PLAYSPEED,-2.0,2.0,1.0,"Play rate");
         configParam(PAR_GRAIN_SIZE,0.005,0.25,0.05,"Grain size");
         configParam(PAR_GRAIN_RANDOM,0.0,0.1,0.05,"Grain random");
         //m_syn.setOutputChannelsMode(2);
@@ -1206,10 +1179,24 @@ public:
             float grnd = params[PAR_GRAIN_RANDOM].getValue();
             pitch += inputs[IN_PITCH_CV].getVoltage()*12.0f;
             pitch = clamp(pitch,-36.0,36.0);
+
+            loopstart = params[PAR_LOOP_START].getValue();
+            loopstart += inputs[IN_LOOPSTART_CV].getVoltage()/5.0f;
+            loopstart = clamp(loopstart,0.0f,1.0f);
+            
+            looplen = params[PAR_LOOP_LEN].getValue();
+            looplen += inputs[IN_LOOPLEN_CV].getVoltage()/5.0f;
+            looplen = clamp(looplen,0.0f,1.0f);
+            looplen = std::pow(looplen,2.0f);
+            m_grainsmixer.m_inputdur = m_out_dur*args.sampleRate;
+            m_grainsmixer.m_loopstart = loopstart;
+            m_grainsmixer.m_looplen = looplen;
             m_grainsmixer.m_pitch = pitch;
             m_grainsmixer.m_sourcePlaySpeed = pspeed;
             m_grainsmixer.m_posrandamt = grnd;
             m_grainsmixer.m_grainDensity = gsize;
+            if (rewindTrigger.process(inputs[IN_RESET].getVoltage()))
+                m_grainsmixer.m_srcpos = 0.0f;
             m_grainsmixer.processAudio(grain1out);
             outputs[OUT_AUDIO].setVoltage(grain1out[0]*5.0f,0);
             outputs[OUT_AUDIO].setVoltage(grain1out[1]*5.0f,1);
