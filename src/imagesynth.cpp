@@ -2,6 +2,7 @@
 #include <random>
 #include <stb_image.h>
 #include <atomic>
+#include <array>
 #include <functional>
 #include <thread> 
 #include <mutex>
@@ -812,48 +813,50 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
 class ISGrain
 {
 public:
-    ISGrain(ImgSynth* s) : m_syn(s)
+    ISGrain() 
     {
         m_grainOutBuffer.resize(65536*m_chans*2);
     }
+    void initGrain(float startInSource,float len, float pitch)
+    {
+        playState = 1;
+        m_resampler.SetRates(m_sr , m_sr / pow(2.0,1.0/12*pitch));
+        double* rsinbuf = nullptr;
+        int lensamples = m_sr*len;
+        m_grainSize = lensamples;
+        int wanted = m_resampler.ResamplePrepare(lensamples,m_chans,&rsinbuf);
+        
+        int srcpossamples = startInSource;
+        //srcpossamples+=rack::random::normal()*lensamples;
+        srcpossamples = clamp(srcpossamples,0,m_syn->getNumOutputSamples()-1);
+        for (int i=0;i<wanted;++i)
+        {
+            for (int j=0;j<m_chans;++j)
+            {
+                int bufferindex = (srcpossamples+i)*m_chans+j;
+                float src_sample = m_syn->getBufferSample(bufferindex);
+                rsinbuf[i*m_chans+j] = src_sample;
+            }
+            
+        }
+        m_resampler.ResampleOut(m_grainOutBuffer.data(),wanted,lensamples,m_chans);
+        for (int i=0;i<lensamples;++i)
+        {
+            float hannpos = 1.0/(m_grainSize-1)*i;
+            //hannpos = fmod(hannpos+m_storedOffset,1.0f);
+            
+            int outbufpos = (i+m_offset) % m_grainSize;
+            float win = getWindow(hannpos); // dsp::hann(hannpos);   
+            for (int j=0;j<m_chans;++j)
+            {
+                m_grainOutBuffer[i*m_chans+j]*=win;
+            }
+            
+        }
+    }
     void process(float* buf)
     {
-        if (m_outpos == 0)
-        {
-            
-            double* rsinbuf = nullptr;
-            int wanted = m_resampler.ResamplePrepare(m_grainSize,m_chans,&rsinbuf);
-            
-            int srcpossamples = m_srcpos; //-(m_offset*1.0);
-            srcpossamples+=rack::random::normal()*m_grainSize*m_random_amt;
-            srcpossamples = clamp(srcpossamples,0,m_syn->getNumOutputSamples()-1);
-            for (int i=0;i<wanted;++i)
-            {
-                for (int j=0;j<m_chans;++j)
-                {
-                    int bufferindex = (srcpossamples+i)*m_chans+j;
-                    float src_sample = m_syn->getBufferSample(bufferindex);
-                    rsinbuf[i*m_chans+j] = src_sample;
-                }
-                
-            }
-            m_resampler.ResampleOut(m_grainOutBuffer.data(),wanted,m_grainSize,m_chans);
-            for (int i=0;i<m_grainSize;++i)
-            {
-                float hannpos = 1.0/(m_grainSize-1)*i;
-                //hannpos = fmod(hannpos+m_storedOffset,1.0f);
-                
-                int outbufpos = (i+m_offset) % m_grainSize;
-                float win = getWindow(outbufpos); // dsp::hann(hannpos);   
-                //if (m_offset!=0)
-                //    win*=-1.0;
-                for (int j=0;j<m_chans;++j)
-                {
-                    m_grainOutBuffer[i*m_chans+j]*=win;
-                }
-                
-            }
-        }
+        
         for (int i=0;i<m_chans;++i)
         {
             buf[i] += m_grainOutBuffer[m_outpos*m_chans+i];
@@ -862,15 +865,14 @@ public:
         
         if (m_outpos>=m_grainSize)
         {
-            m_srcpos+=m_playSpeed*m_grainSize;
-            if (m_srcpos>=m_syn->getNumOutputSamples())
-                m_srcpos-=m_syn->getNumOutputSamples();
             m_outpos = 0;
+            playState = 0;
         }
         
         
         
     }
+    int playState = 0;
     void setSampleRate(float sr)
     {
         m_sr = sr;
@@ -912,14 +914,15 @@ public:
         m_storedOffset = offs;
     }
     int getOutputPos() { return m_cachedOutputPos; }
-    float getWindow(int pos)
+    float getWindow(float pos)
     {
-        if (pos<=m_grainSize/2)
-            return rescale(pos,0,m_grainSize/2,0.0,1.0);
-        return rescale(pos,m_grainSize/2,m_grainSize ,1.0,0.0);
+        if (pos<0.5)
+            return rescale(pos,0.0,0.5,0.0,1.0);
+        return rescale(pos,0.5,1.0 ,1.0,0.0);
     }
-private:
     ImgSynth* m_syn = nullptr;
+private:
+    
     float m_playSpeed = 1.0f;
     int m_cachedOutputPos = 0;
     int m_outpos = 0;
@@ -932,6 +935,59 @@ private:
     std::vector<double> m_grainOutBuffer;
     float m_storedOffset = 0.0f;
     float m_random_amt = 0.1f;
+};
+
+class GrainMixer
+{
+public:
+    ImgSynth* m_syn = nullptr;
+    GrainMixer(ImgSynth* s) : m_syn(s)
+    {
+        for (int i=0;i<m_grains.size();++i)
+        {
+            m_grains[i].m_syn = s;
+        }
+    }
+    void processAudio(float* buf)
+    {
+        if (m_outcounter >= m_nextGrainPos)
+        {
+            float glen = m_grainDensity*2.0;
+            float glensamples = m_sr*glen;
+            float posrand = random::normal()*m_posrandamt*glensamples;
+            float srcpostouse = m_srcpos+posrand;
+            m_grains[m_grainCounter].initGrain(srcpostouse,glen,m_pitch);
+            ++m_grainCounter;
+            if (m_grainCounter==m_grains.size())
+                m_grainCounter = 0;
+            m_nextGrainPos+=m_sr*(m_grainDensity);
+            m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed;
+            if (m_srcpos>=m_syn->getNumOutputSamples())
+                m_srcpos = 0.0f;
+        }
+        for (int i=0;i<m_grains.size();++i)
+        {
+            if (m_grains[i].playState==1)
+            {
+                m_grains[i].process(buf);
+            }
+        }
+        ++m_outcounter;
+    }
+    float getSourcePlayPosition()
+    {
+        return m_srcpos;
+    }
+    double m_srcpos = 0.0;
+    float m_sr = 44100.0;
+    float m_grainDensity = 0.1;
+    float m_sourcePlaySpeed = 1.0f;
+    float m_pitch = 0.0f;
+    float m_posrandamt = 0.0f;
+    int m_outcounter = 0;
+    int m_nextGrainPos = 0;
+    int m_grainCounter = 0;
+    std::array<ISGrain,2> m_grains;
 };
 
 class XImageSynth : public rack::Module
@@ -992,8 +1048,6 @@ public:
     std::vector<double> srcOutBuffer;
     XImageSynth()
     {
-        m_grain1.setOffset(0.0);
-        m_grain2.setOffset(0.5);
         srcOutBuffer.resize(16*64);
         m_scala_scales = rack::system::getEntries(asset::plugin(pluginInstance, "res/scala_scales"));
         m_syn.m_scala_scales = m_scala_scales;
@@ -1152,19 +1206,13 @@ public:
             float grnd = params[PAR_GRAIN_RANDOM].getValue();
             pitch += inputs[IN_PITCH_CV].getVoltage()*12.0f;
             pitch = clamp(pitch,-36.0,36.0);
-            m_grain1.setPlaySpeed(pspeed);
-            m_grain1.setGrainRandomAmount(grnd);
-            m_grain1.setPitch(pitch);
-            m_grain1.setGrainSize(gsize);
-            m_grain2.setPlaySpeed(pspeed);
-            m_grain2.setGrainRandomAmount(grnd);
-            m_grain2.setPitch(pitch);
-            m_grain2.setGrainSize(gsize);
-            m_grain1.process(grain1out);
-            m_grain2.process(grain1out);
+            m_grainsmixer.m_pitch = pitch;
+            m_grainsmixer.m_sourcePlaySpeed = pspeed;
+            m_grainsmixer.m_posrandamt = grnd;
+            m_grainsmixer.processAudio(grain1out);
             outputs[OUT_AUDIO].setVoltage(grain1out[0]*5.0f,0);
             outputs[OUT_AUDIO].setVoltage(grain1out[1]*5.0f,1);
-            m_playpos = m_grain1.getSourcePlayPosition()/args.sampleRate;
+            m_playpos = m_grainsmixer.getSourcePlayPosition()/args.sampleRate;
             return;
         }
         
@@ -1321,8 +1369,7 @@ public:
     
     bool m_img_data_dirty = false;
     ImgSynth m_syn;
-    ISGrain m_grain1{&m_syn};
-    ISGrain m_grain2{&m_syn};
+    GrainMixer m_grainsmixer{&m_syn};
     WDL_Resampler m_src;
     rack::dsp::SchmittTrigger rewindTrigger;
     rack::dsp::PulseGenerator loopStartPulse;
