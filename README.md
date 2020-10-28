@@ -43,3 +43,12 @@ Reduce 8 inputs to a single output with a selectable algorithm.
 - Difference : Cumulatively calculate absolute differences between the inputs and scale to -10.0 - 10.0 volts
 - Round robin : Step through inputs at audio rate
 
+## Image Synth
+
+**HIGHLY EXPERIMENTAL AND WORK-IN-PROGRESS**
+
+Generates audio from image files, using up to 1024 oscillators, with various tuning options for the oscillators.
+
+At the moment, the image is rendered into sound as an offline process. (The module tries to keep the previously rendered sound playing if possible.) The rendered waveform can then be played back in sampler style (speed changes together with pitch) or with a rudimentary granular engine that allows adjusting speed and pitch indepedently. Future plans include a better granular engine and a spectral time/pitch changer as well as the ability to draw and manipulate images directly in the module. It might also be possible to make the image to sound synthesis work in real time, but with a very high CPU cost. 
+
+Although images like photographs could in principle be used directly, it's probably better to use more abstract images that have lots of black or dim pixels in them, so that all the oscillators don't sound simultaneously, which can sound like noise.
