@@ -1005,6 +1005,7 @@ public:
         PAR_GRAIN_PLAYSPEED,
         PAR_GRAIN_SIZE,
         PAR_GRAIN_RANDOM,
+        PAR_PLAYBACKMODE,
         PAR_LAST
     };
     int m_comp = 0;
@@ -1049,8 +1050,7 @@ public:
         configParam(PAR_GRAIN_PLAYSPEED,-2.0,2.0,1.0,"Play rate");
         configParam(PAR_GRAIN_SIZE,0.005,0.25,0.05,"Grain size");
         configParam(PAR_GRAIN_RANDOM,0.0,0.1,0.05,"Grain random");
-        //m_syn.setOutputChannelsMode(2);
-        //reloadImage();
+        configParam(PAR_PLAYBACKMODE,0,1,0,"Playback mode");
     }
     void onAdd() override
     {
@@ -1167,6 +1167,7 @@ public:
             outputs[OUT_AUDIO].setChannels(ochans);
         else 
             outputs[OUT_AUDIO].setChannels(2);
+        granularActive = (int)params[PAR_PLAYBACKMODE].getValue() == 1;
         if (granularActive)
         {
             float grain1out[4];
@@ -1532,7 +1533,7 @@ public:
         addInput(createInputCentered<PJ301MPort>(Vec(120, 360), m, XImageSynth::IN_PITCH_CV));
         addInput(createInputCentered<PJ301MPort>(Vec(30, 360), m, XImageSynth::IN_RESET));
         addParam(createParamCentered<LEDBezel>(Vec(60.00, 330), m, XImageSynth::PAR_RELOAD_IMAGE));
-        
+        addParam(createParamCentered<CKSS>(Vec(60.00, 360), m, XImageSynth::PAR_PLAYBACKMODE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 330), m, XImageSynth::PAR_DURATION));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(90.00, 360), m, XImageSynth::PAR_GRAIN_PLAYSPEED));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(120.00, 330), m, XImageSynth::PAR_PITCH));
