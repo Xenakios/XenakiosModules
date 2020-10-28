@@ -47,7 +47,7 @@ Reduce 8 inputs to a single output with a selectable algorithm.
 
 **HIGHLY EXPERIMENTAL AND WORK-IN-PROGRESS**
 
-https://github.com/Xenakios/XenakiosModules/blob/master/imgsyn01.png
+<img src="https://github.com/Xenakios/XenakiosModules/blob/master/imgsyn01.png" width="300">
 
 Generates audio from image files, using up to 1024 oscillators, with various tuning and other options for the oscillators.
 
