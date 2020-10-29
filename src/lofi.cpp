@@ -169,9 +169,12 @@ private:
 class XLOFIWidget : public ModuleWidget
 {
 public:
+    XLOFI* m_lofi = nullptr;
+    LOFIEngine m_eng;
     XLOFIWidget(XLOFI* m)
     {
         setModule(m);
+        m_lofi = m;
         box.size.x = 80;
         
         addInput(createInputCentered<PJ301MPort>(Vec(30, 30), m, XLOFI::IN_AUDIO));
@@ -209,7 +212,30 @@ public:
         nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
         nvgRect(args.vg,0.0f,0.0f,w,h);
         nvgFill(args.vg);
-
+        
+        if (m_lofi)
+        {
+            int w = 78;
+            float srdiv = m_lofi->params[XLOFI::PAR_RATEDIV].getValue();
+            srdiv = std::pow(srdiv,2.0f);
+            srdiv = 1.0+srdiv*99.0;
+            float bitd = m_lofi->params[XLOFI::PAR_BITDIV].getValue();
+            float drive = m_lofi->params[XLOFI::PAR_DRIVE].getValue();
+            drive = rescale(drive,0.0f,1.0f,-12.0,52.0f);
+            drive = dsp::dbToAmplitude(drive);
+            float dtype = m_lofi->params[XLOFI::PAR_DISTORTTYPE].getValue();
+            nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            for (int i=0;i<w;++i)
+            {
+                float s = std::sin(2*3.141592653/w*i*2.0f);
+                s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f);
+                float ycor = rescale(s,-1.0f,1.0f,270.0,320.0f);
+                nvgBeginPath(args.vg);
+                nvgMoveTo(args.vg,i+1,295.0f);
+                nvgLineTo(args.vg,i+1,ycor);
+                nvgStroke(args.vg);
+            }
+        }
         
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
