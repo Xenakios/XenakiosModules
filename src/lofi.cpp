@@ -12,6 +12,7 @@ public:
             heldsample = insample;
         }
         return heldsample;
+        
     }
     void setRates(float inrate, float outrate)
     {
@@ -57,12 +58,23 @@ class LOFIEngine
 public:
     LOFIEngine()
     {}
-    float process(float in, float insamplerate, float srdiv, float bits, float drive, float dtype)
+    float process(float in, float insamplerate, float srdiv, float bits, float drive, float dtype, float oversample)
     {
         float driven = drive*in;
+        float oversampledriven = 0.0f;
+        if (oversample>0.0f) // only oversample when oversampled signal is going to be mixed in
+        {
+            float osarr[8];
+            m_upsampler.process(driven,osarr);
+            for (int i=0;i<8;++i)
+                osarr[i] = distort(osarr[i],1.0f,dtype);
+            oversampledriven = 2.0f*m_downsampler.process(osarr);
+        }
+        
         driven = distort(driven,1.0f,dtype);
+        float drivemix = (1.0f-oversample) * driven + oversample * oversampledriven;
         m_reducer.setRates(insamplerate,insamplerate/srdiv);
-        float reduced = m_reducer.process(driven);
+        float reduced = m_reducer.process(drivemix);
         bits = getBitDepthFromNormalized(bits);
         float bitlevels = std::round(std::pow(2.0f,17.0-bits))-1.0f;
         float crushed = reduced*32767.0;
@@ -72,6 +84,8 @@ public:
     }
 private:
     SampleRateReducer m_reducer;
+    dsp::Upsampler<8,2> m_upsampler;
+    dsp::Decimator<8,2> m_downsampler;
 };
 
 class XLOFI : public rack::Module
@@ -87,6 +101,8 @@ public:
         PAR_ATTN_BITDIV,
         PAR_ATTN_DRIVE,
         PAR_ATTN_DISTYPE,
+        PAR_OVERSAMPLE,
+        PAR_ATTN_OVERSAMPLE,
         PAR_LAST
     };
     enum INPUTS
@@ -96,6 +112,7 @@ public:
         IN_CV_BITDIV,
         IN_CV_DRIVE,
         IN_CV_DISTTYPE,
+        IN_CV_OVERSAMPLE,
         LAST_INPUT
     };
     enum OUTPUTS
@@ -114,6 +131,8 @@ public:
         configParam(PAR_ATTN_BITDIV,-1.0f,1.0f,0.0,"Bit depth CV");
         configParam(PAR_ATTN_DRIVE,-1.0f,1.0f,0.0,"Drive CV");
         configParam(PAR_ATTN_DISTYPE,-1.0f,1.0f,0.0,"Distortion type CV");
+        configParam(PAR_OVERSAMPLE,0.0f,1.0f,0.0,"Distortion oversampling mix");
+        configParam(PAR_ATTN_OVERSAMPLE,-1.0f,1.0f,0.0,"Distortion oversampling mix CV");
     }
     
     
@@ -136,7 +155,10 @@ public:
         float bits = params[PAR_BITDIV].getValue();
         bits += inputs[IN_CV_BITDIV].getVoltage()*params[PAR_ATTN_BITDIV].getValue()/10.0f;
         bits = clamp(bits,0.0f,1.0f);
-        float processed = m_engines[0].process(insample,args.sampleRate,srdiv,bits,drivegain,dtype);
+        float osamt = params[PAR_OVERSAMPLE].getValue();
+        osamt += inputs[IN_CV_OVERSAMPLE].getVoltage()*params[PAR_ATTN_OVERSAMPLE].getValue()/10.0f;
+        osamt = clamp(osamt,0.0f,1.0f);
+        float processed = m_engines[0].process(insample,args.sampleRate,srdiv,bits,drivegain,dtype,osamt);
         outputs[OUT_AUDIO].setVoltage(processed*5.0f);
     }
 private:
@@ -171,9 +193,12 @@ public:
         
         RoundBlackKnob* knob = nullptr;
         addParam(knob = createParamCentered<RoundBlackKnob>(Vec(15.00, 200), m, XLOFI::PAR_DISTORTTYPE));
-        //knob->snap = true;
         addInput(createInputCentered<PJ301MPort>(Vec(45, 200), m, XLOFI::IN_CV_DISTTYPE));
         addParam(createParamCentered<Trimpot>(Vec(70.00, 200), m, XLOFI::PAR_ATTN_DISTYPE));
+
+        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 240), m, XLOFI::PAR_OVERSAMPLE));
+        addInput(createInputCentered<PJ301MPort>(Vec(45, 240), m, XLOFI::IN_CV_OVERSAMPLE));
+        addParam(createParamCentered<Trimpot>(Vec(70.00, 240), m, XLOFI::PAR_ATTN_OVERSAMPLE));
     }
     void draw(const DrawArgs &args)
     {
