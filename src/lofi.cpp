@@ -215,7 +215,7 @@ public:
         
         if (m_lofi)
         {
-            int w = 78;
+            int w = 78*2;
             float srdiv = m_lofi->params[XLOFI::PAR_RATEDIV].getValue();
             srdiv = std::pow(srdiv,2.0f);
             srdiv = 1.0+srdiv*99.0;
@@ -224,17 +224,24 @@ public:
             drive = rescale(drive,0.0f,1.0f,-12.0,52.0f);
             drive = dsp::dbToAmplitude(drive);
             float dtype = m_lofi->params[XLOFI::PAR_DISTORTTYPE].getValue();
+            nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0x80));
+            nvgBeginPath(args.vg);
+            nvgMoveTo(args.vg,0.0,295.0f);
+            nvgLineTo(args.vg,80.0,295.0f);
+            nvgStroke(args.vg);
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            nvgBeginPath(args.vg);
             for (int i=0;i<w;++i)
             {
                 float s = std::sin(2*3.141592653/w*i*2.0f);
                 s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f);
                 float ycor = rescale(s,-1.0f,1.0f,270.0,320.0f);
-                nvgBeginPath(args.vg);
-                nvgMoveTo(args.vg,i+1,295.0f);
-                nvgLineTo(args.vg,i+1,ycor);
-                nvgStroke(args.vg);
+                float xcor = rescale(i,0,w,0.0,80.0);
+                nvgMoveTo(args.vg,xcor,295.0f);
+                nvgLineTo(args.vg,xcor,ycor);
+                
             }
+            nvgStroke(args.vg);
         }
         
         nvgRestore(args.vg);
