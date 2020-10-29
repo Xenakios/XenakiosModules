@@ -155,6 +155,15 @@
       "tags": [
         "Synth"
       ]
+    },
+    {
+      
+      "slug": "XLOFI",
+      "name": "LOFI",
+      "description": "Audio quality reducer",
+      "tags": [
+        "Effect"
+      ]
     }
     
 

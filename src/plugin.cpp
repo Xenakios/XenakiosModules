@@ -298,4 +298,5 @@ void init(Plugin *p) {
 	p->addModel(modelInharmonics);
 	p->addModel(modelXStochastic);
 	p->addModel(modelXImageSynth);
+	p->addModel(modelXLOFI);
 }

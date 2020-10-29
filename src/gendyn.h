@@ -37,33 +37,7 @@ enum ResetModes
 	LASTRM
 };
 
-template<typename T>
-inline T wrap_value(const T& minval, const T& val, const T& maxval)
-{
-	T temp = val;
-	while (temp<minval || temp>maxval)
-	{
-		if (temp < minval)
-			temp = maxval - (minval - temp);
-		if (temp > maxval)
-			temp = minval - (maxval - temp);
-	}
-	return temp;
-}
 
-template<typename T>
-inline T reflect_value(const T& minval, const T& val, const T& maxval)
-{
-	T temp = val;
-	while (temp<minval || temp>maxval)
-	{
-		if (temp < minval)
-			temp = minval + (minval - temp);
-		if (temp > maxval)
-			temp = maxval + (maxval - temp);
-	}
-	return temp;
-}
 
 
 inline float avg(float a, float b)

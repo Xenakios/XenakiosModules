@@ -9,23 +9,6 @@ const int NUM_QUANTIZERS = 8;
 
 extern std::shared_ptr<Font> g_font;
 
-template<typename T>
-inline T wrap_value(const T& minval, const T& val, const T& maxval)
-{
-    T temp = val;
-    while (temp<minval || temp>maxval)
-    {
-        if (temp < minval)
-            temp = maxval - (minval - temp);
-        if (temp > maxval)
-            temp = minval - (maxval - temp);
-    }
-    return temp;
-}
-
-
-
-
 class Quantizer
 {
 public:

@@ -2,20 +2,6 @@
 #include <random>
 #include "wdl/resample.h"
 
-template<typename T>
-inline T reflect_value(const T& minval, const T& val, const T& maxval)
-{
-    T temp = val;
-    while (temp<minval || temp>maxval)
-    {
-        if (temp < minval)
-            temp = minval + (minval - temp);
-        if (temp > maxval)
-            temp = maxval + (maxval - temp);
-    }
-    return temp;
-}
-
 struct WaveSegment
 {
     WaveSegment() {}

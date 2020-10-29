@@ -200,6 +200,7 @@ extern Model* modelXPSynth;
 extern Model* modelInharmonics;
 extern Model* modelXStochastic;
 extern Model* modelXImageSynth;
+extern Model* modelXLOFI;
 
 template <typename TLightBase = RedLight>
 struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
@@ -207,3 +208,31 @@ struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
 		this->setHandleSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/LEDSliderHandle.svg")));
 	}
 };
+
+template<typename T>
+inline T wrap_value(const T& minval, const T& val, const T& maxval)
+{
+	T temp = val;
+	while (temp<minval || temp>maxval)
+	{
+		if (temp < minval)
+			temp = maxval - (minval - temp);
+		if (temp > maxval)
+			temp = minval - (maxval - temp);
+	}
+	return temp;
+}
+
+template<typename T>
+inline T reflect_value(const T& minval, const T& val, const T& maxval)
+{
+	T temp = val;
+	while (temp<minval || temp>maxval)
+	{
+		if (temp < minval)
+			temp = minval + (minval - temp);
+		if (temp > maxval)
+			temp = maxval + (maxval - temp);
+	}
+	return temp;
+}
