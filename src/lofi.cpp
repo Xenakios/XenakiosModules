@@ -25,15 +25,20 @@ private:
     double divlen = 1.0;
 };
 
-inline float distort(float in, float th, int type)
+inline float distort(float in, float th, float type)
 {
-    if (type == 0)
-        return clamp(in,-th,th);
-    else if (type == 1)
-        return reflect_value(-th,in,th);
-    else if (type == 2)
-        return wrap_value(-th,in,th);
-    return in;
+    float distsamples[5];
+    distsamples[0] = soft_clip(in);
+    distsamples[1] = clamp(in,-th,th);
+    distsamples[2] = reflect_value(-th,in,th);
+    distsamples[3] = wrap_value(-th,in,th);
+    distsamples[4] = distsamples[3];
+    int index0 = std::floor(type);
+    int index1 = index0+1;
+    float frac = type-index0;
+    float y0 = distsamples[index0];
+    float y1 = distsamples[index1];
+    return y0+(y1-y0)*frac;
 }
 
 inline float getBitDepthFromNormalized(float x)
@@ -52,7 +57,7 @@ class LOFIEngine
 public:
     LOFIEngine()
     {}
-    float process(float in, float insamplerate, float srdiv, float bits, float drive, int dtype)
+    float process(float in, float insamplerate, float srdiv, float bits, float drive, float dtype)
     {
         float driven = drive*in;
         driven = distort(driven,1.0f,dtype);
@@ -81,6 +86,7 @@ public:
         PAR_ATTN_RATEDIV,
         PAR_ATTN_BITDIV,
         PAR_ATTN_DRIVE,
+        PAR_ATTN_DISTYPE,
         PAR_LAST
     };
     enum INPUTS
@@ -89,6 +95,7 @@ public:
         IN_CV_RATEDIV,
         IN_CV_BITDIV,
         IN_CV_DRIVE,
+        IN_CV_DISTTYPE,
         LAST_INPUT
     };
     enum OUTPUTS
@@ -102,10 +109,11 @@ public:
         configParam(PAR_RATEDIV,0.0,1.0,0.0,"Sample rate reduction");
         configParam(PAR_BITDIV,0.0,1.0,1.0,"Bit depth");
         configParam(PAR_DRIVE,0.0,1.0,0.15,"Drive");
-        configParam(PAR_DISTORTTYPE,0,2.0,0,"Distortion type");
+        configParam(PAR_DISTORTTYPE,0,3,0,"Distortion type");
         configParam(PAR_ATTN_RATEDIV,-1.0f,1.0f,0.0,"Sample rate reduction CV");
         configParam(PAR_ATTN_BITDIV,-1.0f,1.0f,0.0,"Bit depth CV");
         configParam(PAR_ATTN_DRIVE,-1.0f,1.0f,0.0,"Drive CV");
+        configParam(PAR_ATTN_DISTYPE,-1.0f,1.0f,0.0,"Distortion type CV");
     }
     
     
@@ -117,8 +125,9 @@ public:
         drivegain = clamp(drivegain,0.0f,1.0f);
         drivegain = rescale(drivegain,0.0f,1.0f,-12.0,52.0f);
         drivegain = dsp::dbToAmplitude(drivegain);
-        int dtype = params[PAR_DISTORTTYPE].getValue();
-        
+        float dtype = params[PAR_DISTORTTYPE].getValue();
+        dtype += inputs[IN_CV_DISTTYPE].getVoltage()*params[PAR_ATTN_DISTYPE].getValue()/3.0f;
+        dtype = clamp(dtype,0.0f,3.0f);
         float srdiv = params[PAR_RATEDIV].getValue(); 
         srdiv += inputs[IN_CV_RATEDIV].getVoltage()*params[PAR_ATTN_RATEDIV].getValue()/10.0f;
         srdiv = clamp(srdiv,0.0f,1.0f);
@@ -161,8 +170,10 @@ public:
         addParam(createParamCentered<Trimpot>(Vec(70.00, 160), m, XLOFI::PAR_ATTN_DRIVE));
         
         RoundBlackKnob* knob = nullptr;
-        addParam(knob = createParamCentered<RoundBlackKnob>(Vec(30.00, 200), m, XLOFI::PAR_DISTORTTYPE));
-        knob->snap = true;
+        addParam(knob = createParamCentered<RoundBlackKnob>(Vec(15.00, 200), m, XLOFI::PAR_DISTORTTYPE));
+        //knob->snap = true;
+        addInput(createInputCentered<PJ301MPort>(Vec(45, 200), m, XLOFI::IN_CV_DISTTYPE));
+        addParam(createParamCentered<Trimpot>(Vec(70.00, 200), m, XLOFI::PAR_ATTN_DISTYPE));
     }
     void draw(const DrawArgs &args)
     {

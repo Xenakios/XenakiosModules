@@ -75,14 +75,6 @@ inline T triplemax (T a, T b, T c)
     return a < b ? (b < c ? c : b) : (a < c ? c : a); 
 }
 
-inline float soft_clip(float x)
-{
-    if (x<-1.0f)
-        return -2.0f/3.0f;
-    if (x>1.0f)
-        return 2.0f/3.0f;
-    return x-(std::pow(x,3.0f)/3.0f);
-}
 
 inline float harmonics3(float xin)
 {

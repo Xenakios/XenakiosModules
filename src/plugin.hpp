@@ -209,6 +209,16 @@ struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
 	}
 };
 
+inline float soft_clip(float x)
+{
+    if (x<-1.0f)
+        return -2.0f/3.0f;
+    if (x>1.0f)
+        return 2.0f/3.0f;
+    return x-(std::pow(x,3.0f)/3.0f);
+}
+
+
 template<typename T>
 inline T wrap_value(const T& minval, const T& val, const T& maxval)
 {
