@@ -25,6 +25,50 @@ private:
     double divlen = 1.0;
 };
 
+inline float distort(float in, float th, int type)
+{
+    if (type == 0)
+        return clamp(in,-th,th);
+    else if (type == 1)
+        return reflect_value(-th,in,th);
+    else if (type == 2)
+        return wrap_value(-th,in,th);
+    return in;
+}
+
+inline float getBitDepthFromNormalized(float x)
+{
+    if (x>=0.1 && x<=0.9)
+        return rescale(x,0.1f,0.9f,2.0f,7.0f);
+    if (x<0.1f)
+        return rescale(x,0.0f,0.1f,1.0f,2.0f);
+    if (x>0.9f)
+        return rescale(x,0.9,1.0f,7.0f,16.0f); 
+    return 16.0f;           
+}
+
+class LOFIEngine
+{
+public:
+    LOFIEngine()
+    {}
+    float process(float in, float insamplerate, float srdiv, float bits, float drive, int dtype)
+    {
+        float driven = drive*in;
+        driven = distort(driven,1.0f,dtype);
+        m_reducer.setRates(insamplerate,insamplerate/srdiv);
+        float reduced = m_reducer.process(driven);
+        bits = getBitDepthFromNormalized(bits);
+        float bitlevels = std::round(std::pow(2.0f,17.0-bits))-1.0f;
+        float crushed = reduced*32767.0;
+        crushed = std::round(crushed/bitlevels)*bitlevels;
+        crushed /= 32767.0;
+        return clamp(crushed,-1.0f,1.0f);
+    }
+private:
+    SampleRateReducer m_reducer;
+};
+
 class XLOFI : public rack::Module
 {
 public:
@@ -57,63 +101,38 @@ public:
         config(PAR_LAST,LAST_INPUT,LAST_OUTPUT);
         configParam(PAR_RATEDIV,0.0,1.0,0.0,"Sample rate reduction");
         configParam(PAR_BITDIV,0.0,1.0,1.0,"Bit depth");
-        configParam(PAR_DRIVE,0.0,1.0,0.0,"Drive");
+        configParam(PAR_DRIVE,0.0,1.0,0.15,"Drive");
         configParam(PAR_DISTORTTYPE,0,2.0,0,"Distortion type");
         configParam(PAR_ATTN_RATEDIV,-1.0f,1.0f,0.0,"Sample rate reduction CV");
         configParam(PAR_ATTN_BITDIV,-1.0f,1.0f,0.0,"Bit depth CV");
         configParam(PAR_ATTN_DRIVE,-1.0f,1.0f,0.0,"Drive CV");
     }
-    float getBitDepthFromNormalized(float x)
-    {
-        if (x>=0.1 && x<=0.9)
-            return rescale(x,0.1f,0.9f,2.0f,7.0f);
-        if (x<0.1f)
-            return rescale(x,0.0f,0.1f,1.0f,2.0f);
-        if (x>0.9f)
-            return rescale(x,0.9,1.0f,7.0f,16.0f); 
-        return 16.0f;           
-    }
-    float distort(float in, float th, int type)
-    {
-        if (type == 0)
-            return clamp(in,-th,th);
-        else if (type == 1)
-            return reflect_value(-th,in,th);
-        else if (type == 2)
-            return wrap_value(-th,in,th);
-        return in;
-    }
+    
+    
     void process(const ProcessArgs& args) override
     {
         float insample = inputs[IN_AUDIO].getVoltage()/5.0f;
         float drivegain = params[PAR_DRIVE].getValue();
         drivegain += inputs[IN_CV_DRIVE].getVoltage()*params[PAR_ATTN_DRIVE].getValue()/10.0f;
         drivegain = clamp(drivegain,0.0f,1.0f);
-        drivegain = rescale(drivegain,0.0f,1.0f,-12.0,64.0f);
+        drivegain = rescale(drivegain,0.0f,1.0f,-12.0,52.0f);
         drivegain = dsp::dbToAmplitude(drivegain);
-        float driven = drivegain*insample;
-        driven = distort(driven,1.0f,params[PAR_DISTORTTYPE].getValue());
+        int dtype = params[PAR_DISTORTTYPE].getValue();
+        
         float srdiv = params[PAR_RATEDIV].getValue(); 
         srdiv += inputs[IN_CV_RATEDIV].getVoltage()*params[PAR_ATTN_RATEDIV].getValue()/10.0f;
         srdiv = clamp(srdiv,0.0f,1.0f);
         srdiv = std::pow(srdiv,2.0f);
         srdiv = 1.0+srdiv*99.0;
-        m_reducer.setRates(args.sampleRate,args.sampleRate/srdiv);
-        float reduced = m_reducer.process(driven);
         float bits = params[PAR_BITDIV].getValue();
         bits += inputs[IN_CV_BITDIV].getVoltage()*params[PAR_ATTN_BITDIV].getValue()/10.0f;
         bits = clamp(bits,0.0f,1.0f);
-        bits = getBitDepthFromNormalized(bits);
-        float bitlevels = std::round(std::pow(2.0f,17.0-bits))-1.0f;
-        float crushed = reduced*32767.0;
-        crushed = std::round(crushed/bitlevels)*bitlevels;
-        crushed /= 32767.0;
-        crushed = clamp(crushed,-1.0f,1.0f);
-        float outsample = crushed*5.0f;
-        outputs[OUT_AUDIO].setVoltage(outsample);
+        float processed = m_engines[0].process(insample,args.sampleRate,srdiv,bits,drivegain,dtype);
+        outputs[OUT_AUDIO].setVoltage(processed*5.0f);
     }
 private:
-    SampleRateReducer m_reducer;
+    
+    LOFIEngine m_engines[16];
 };
 
 class XLOFIWidget : public ModuleWidget
