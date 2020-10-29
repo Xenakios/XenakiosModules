@@ -34,6 +34,9 @@ public:
         PAR_BITDIV,
         PAR_DRIVE,
         PAR_DISTORTTYPE,
+        PAR_ATTN_RATEDIV,
+        PAR_ATTN_BITDIV,
+        PAR_ATTN_DRIVE,
         PAR_LAST
     };
     enum INPUTS
@@ -56,6 +59,9 @@ public:
         configParam(PAR_BITDIV,0.0,1.0,1.0,"Bit depth");
         configParam(PAR_DRIVE,0.0,1.0,0.0,"Drive");
         configParam(PAR_DISTORTTYPE,0,2.0,0,"Distortion type");
+        configParam(PAR_ATTN_RATEDIV,-1.0f,1.0f,0.0,"Sample rate reduction CV");
+        configParam(PAR_ATTN_BITDIV,-1.0f,1.0f,0.0,"Bit depth CV");
+        configParam(PAR_ATTN_DRIVE,-1.0f,1.0f,0.0,"Drive CV");
     }
     float getBitDepthFromNormalized(float x)
     {
@@ -81,21 +87,21 @@ public:
     {
         float insample = inputs[IN_AUDIO].getVoltage()/5.0f;
         float drivegain = params[PAR_DRIVE].getValue();
-        drivegain += inputs[IN_CV_DRIVE].getVoltage()/5.0f;
+        drivegain += inputs[IN_CV_DRIVE].getVoltage()*params[PAR_ATTN_DRIVE].getValue()/10.0f;
         drivegain = clamp(drivegain,0.0f,1.0f);
         drivegain = rescale(drivegain,0.0f,1.0f,-12.0,64.0f);
         drivegain = dsp::dbToAmplitude(drivegain);
         float driven = drivegain*insample;
         driven = distort(driven,1.0f,params[PAR_DISTORTTYPE].getValue());
         float srdiv = params[PAR_RATEDIV].getValue(); 
-        srdiv += inputs[IN_CV_RATEDIV].getVoltage()/5.0f;
+        srdiv += inputs[IN_CV_RATEDIV].getVoltage()*params[PAR_ATTN_RATEDIV].getValue()/10.0f;
         srdiv = clamp(srdiv,0.0f,1.0f);
         srdiv = std::pow(srdiv,2.0f);
         srdiv = 1.0+srdiv*99.0;
         m_reducer.setRates(args.sampleRate,args.sampleRate/srdiv);
         float reduced = m_reducer.process(driven);
         float bits = params[PAR_BITDIV].getValue();
-        bits += inputs[IN_CV_BITDIV].getVoltage()/5.0f;
+        bits += inputs[IN_CV_BITDIV].getVoltage()*params[PAR_ATTN_BITDIV].getValue()/10.0f;
         bits = clamp(bits,0.0f,1.0f);
         bits = getBitDepthFromNormalized(bits);
         float bitlevels = std::round(std::pow(2.0f,17.0-bits))-1.0f;
@@ -117,17 +123,27 @@ public:
     {
         setModule(m);
         box.size.x = 80;
+        
         addInput(createInputCentered<PJ301MPort>(Vec(30, 30), m, XLOFI::IN_AUDIO));
         
         addOutput(createOutputCentered<PJ301MPort>(Vec(60, 30), m, XLOFI::IN_AUDIO));
-        addParam(createParamCentered<RoundBlackKnob>(Vec(30.00, 80), m, XLOFI::PAR_RATEDIV));
-        addInput(createInputCentered<PJ301MPort>(Vec(60, 80), m, XLOFI::IN_CV_RATEDIV));
-        addParam(createParamCentered<RoundBlackKnob>(Vec(30.00, 120), m, XLOFI::PAR_BITDIV));
-        addInput(createInputCentered<PJ301MPort>(Vec(60, 120), m, XLOFI::IN_CV_BITDIV));
-        addParam(createParamCentered<RoundBlackKnob>(Vec(30.00, 160), m, XLOFI::PAR_DRIVE));
-        addInput(createInputCentered<PJ301MPort>(Vec(60, 160), m, XLOFI::IN_CV_DRIVE));
-        addParam(createParamCentered<RoundBlackKnob>(Vec(30.00, 200), m, XLOFI::PAR_DISTORTTYPE));
+        
+        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 80), m, XLOFI::PAR_RATEDIV));
+        addInput(createInputCentered<PJ301MPort>(Vec(45, 80), m, XLOFI::IN_CV_RATEDIV));
+        addParam(createParamCentered<Trimpot>(Vec(70.00, 80), m, XLOFI::PAR_ATTN_RATEDIV));
+        
+        
+        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 120), m, XLOFI::PAR_BITDIV));
+        addInput(createInputCentered<PJ301MPort>(Vec(45, 120), m, XLOFI::IN_CV_BITDIV));
+        addParam(createParamCentered<Trimpot>(Vec(70.00, 120), m, XLOFI::PAR_ATTN_BITDIV));
 
+        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 160), m, XLOFI::PAR_DRIVE));
+        addInput(createInputCentered<PJ301MPort>(Vec(45, 160), m, XLOFI::IN_CV_DRIVE));
+        addParam(createParamCentered<Trimpot>(Vec(70.00, 160), m, XLOFI::PAR_ATTN_DRIVE));
+        
+        RoundBlackKnob* knob = nullptr;
+        addParam(knob = createParamCentered<RoundBlackKnob>(Vec(30.00, 200), m, XLOFI::PAR_DISTORTTYPE));
+        knob->snap = true;
     }
     void draw(const DrawArgs &args)
     {
