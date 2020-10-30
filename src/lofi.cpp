@@ -1,4 +1,5 @@
 #include "plugin.hpp"
+#include <random>
 
 class SampleRateReducer
 {
@@ -24,6 +25,93 @@ private:
     float heldsample = 0.0f;
     double phase = 0.0;
     double divlen = 1.0;
+};
+
+class GlitchGenerator
+{
+public:
+    enum GLITCHES
+    {
+        GLT_SILENCE,
+        GLT_KILOSINE,
+        GLT_RINGMOD,
+        GLT_NOISE,
+        GLT_LAST,
+    };
+    GlitchGenerator()
+    {
+        m_gen = std::mt19937((size_t)this);
+    }
+    float process(float in, float samplerate, float density)
+    {
+        
+        if (m_phase>=m_nextglitchpos)
+        {
+            std::uniform_int_distribution<int> dist(0,GLT_LAST-1);
+            m_curglitch = (GLITCHES)dist(m_gen);
+            m_glitchphase = 0;
+            m_phase = 0;
+            
+            std::uniform_real_distribution<float> lendist(0.001,0.010);
+            m_glitchlen = lendist(m_gen)*samplerate;
+            if (density<0.45)
+            {
+                float rate = rescale(density,0.0f,0.45f,1.0f/16,1.0f);
+                m_nextglitchpos = rate*samplerate;
+            } else if (density>0.55)
+            {
+                float rate = rescale(density,0.55f,1.00f,1.0f,1.0f/16);
+                float exprand = -log(random::uniform())/(1.0/rate);
+                exprand = clamp(exprand,0.001,2.0f);
+                m_nextglitchpos = exprand*samplerate;
+            }
+        }
+        if (density>=0.45 && density<=0.55)
+        {
+            m_curglitch = GLT_LAST;
+            m_phase = 0;
+            m_glitchphase = 0;
+        }
+        float out = in;
+        if (m_curglitch==GLT_SILENCE)
+        {
+            out = 0.0f;
+            ++m_glitchphase;
+            if (m_glitchphase>=m_glitchlen)
+                m_curglitch = GLT_LAST;
+        }
+        else if (m_curglitch == GLT_KILOSINE)
+        {
+            out = 0.5f*std::sin(2*3.141592653/samplerate*m_glitchphase*1000.0f);
+            ++m_glitchphase;
+            if (m_glitchphase>=m_glitchlen)
+                m_curglitch = GLT_LAST;
+        }
+        else if (m_curglitch == GLT_RINGMOD)
+        {
+            out = in * std::sin(2*3.141592653/samplerate*m_glitchphase*2000.0f);
+            ++m_glitchphase;
+            if (m_glitchphase>=m_glitchlen)
+                m_curglitch = GLT_LAST;
+        }
+        else if (m_curglitch == GLT_NOISE)
+        {
+            out = clamp(random::normal(),-0.7,0.7);
+            ++m_glitchphase;
+            if (m_glitchphase>=m_glitchlen)
+                m_curglitch = GLT_LAST;
+        }
+        ++m_phase;
+        return out;
+    }
+private:
+    int m_nextglitchpos = 0;
+    int m_phase = 0;
+    int m_glitchphase = 0;
+    int m_glitchlen = 0;
+    float m_curdensity = 0.5f;
+    GLITCHES m_curglitch = GLT_LAST;
+    std::mt19937 m_gen;
 };
 
 inline float distort(float in, float th, float type)
@@ -58,7 +146,8 @@ class LOFIEngine
 public:
     LOFIEngine()
     {}
-    float process(float in, float insamplerate, float srdiv, float bits, float drive, float dtype, float oversample)
+    float process(float in, float insamplerate, float srdiv, float bits, 
+        float drive, float dtype, float oversample, float glitchrate)
     {
         float driven = drive*in;
         float oversampledriven = 0.0f;
@@ -80,12 +169,14 @@ public:
         float crushed = reduced*32767.0;
         crushed = std::round(crushed/bitlevels)*bitlevels;
         crushed /= 32767.0;
-        return clamp(crushed,-1.0f,1.0f);
+        float glitch = m_glitcher.process(crushed,insamplerate,glitchrate);
+        return clamp(glitch,-1.0f,1.0f);
     }
 private:
     SampleRateReducer m_reducer;
     dsp::Upsampler<8,2> m_upsampler;
     dsp::Decimator<8,2> m_downsampler;
+    GlitchGenerator m_glitcher;
 };
 
 class XLOFI : public rack::Module
@@ -103,6 +194,8 @@ public:
         PAR_ATTN_DISTYPE,
         PAR_OVERSAMPLE,
         PAR_ATTN_OVERSAMPLE,
+        PAR_GLITCHRATE,
+        PAR_ATTN_GLITCHRATE,
         PAR_LAST
     };
     enum INPUTS
@@ -113,6 +206,7 @@ public:
         IN_CV_DRIVE,
         IN_CV_DISTTYPE,
         IN_CV_OVERSAMPLE,
+        IN_CV_GLITCHRATE,
         LAST_INPUT
     };
     enum OUTPUTS
@@ -133,12 +227,15 @@ public:
         configParam(PAR_ATTN_DISTYPE,-1.0f,1.0f,0.0,"Distortion type CV");
         configParam(PAR_OVERSAMPLE,0.0f,1.0f,0.0,"Distortion oversampling mix");
         configParam(PAR_ATTN_OVERSAMPLE,-1.0f,1.0f,0.0,"Distortion oversampling mix CV");
+        configParam(PAR_GLITCHRATE,0.0f,1.0f,0.5,"Glitch rate");
+        configParam(PAR_ATTN_GLITCHRATE,-1.0f,1.0f,0.0,"Glitch rate CV");
     }
     
     
     void process(const ProcessArgs& args) override
     {
-        float insample = inputs[IN_AUDIO].getVoltage()/5.0f;
+        float insample = inputs[IN_AUDIO].getVoltageSum()/5.0f;
+        
         float drivegain = params[PAR_DRIVE].getValue();
         drivegain += inputs[IN_CV_DRIVE].getVoltage()*params[PAR_ATTN_DRIVE].getValue()/10.0f;
         drivegain = clamp(drivegain,0.0f,1.0f);
@@ -158,7 +255,11 @@ public:
         float osamt = params[PAR_OVERSAMPLE].getValue();
         osamt += inputs[IN_CV_OVERSAMPLE].getVoltage()*params[PAR_ATTN_OVERSAMPLE].getValue()/10.0f;
         osamt = clamp(osamt,0.0f,1.0f);
-        float processed = m_engines[0].process(insample,args.sampleRate,srdiv,bits,drivegain,dtype,osamt);
+        float glitchrate = params[PAR_GLITCHRATE].getValue();
+        glitchrate += inputs[IN_CV_GLITCHRATE].getVoltage()*params[PAR_ATTN_GLITCHRATE].getValue()/10.0f;
+        glitchrate = clamp(glitchrate,0.0f,1.0f);
+        float processed = m_engines[0].process(insample,args.sampleRate,srdiv,bits,drivegain,dtype,osamt,
+            glitchrate);
         outputs[OUT_AUDIO].setVoltage(processed*5.0f);
     }
 private:
@@ -202,6 +303,10 @@ public:
         addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 240), m, XLOFI::PAR_OVERSAMPLE));
         addInput(createInputCentered<PJ301MPort>(Vec(45, 240), m, XLOFI::IN_CV_OVERSAMPLE));
         addParam(createParamCentered<Trimpot>(Vec(70.00, 240), m, XLOFI::PAR_ATTN_OVERSAMPLE));
+
+        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 280), m, XLOFI::PAR_GLITCHRATE));
+        addInput(createInputCentered<PJ301MPort>(Vec(45, 280), m, XLOFI::IN_CV_GLITCHRATE));
+        addParam(createParamCentered<Trimpot>(Vec(70.00, 280), m, XLOFI::PAR_ATTN_GLITCHRATE));
     }
     void draw(const DrawArgs &args)
     {
@@ -213,7 +318,7 @@ public:
         nvgRect(args.vg,0.0f,0.0f,w,h);
         nvgFill(args.vg);
         
-        if (m_lofi)
+        if (m_lofi && 6==3)
         {
             int w = 78*2;
             float srdiv = m_lofi->params[XLOFI::PAR_RATEDIV].getValue();
@@ -234,7 +339,7 @@ public:
             for (int i=0;i<w;++i)
             {
                 float s = std::sin(2*3.141592653/w*i*2.0f);
-                s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f);
+                s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f,0.5f);
                 float ycor = rescale(s,-1.0f,1.0f,270.0,320.0f);
                 float xcor = rescale(i,0,w,0.0,80.0);
                 nvgMoveTo(args.vg,xcor,295.0f);
