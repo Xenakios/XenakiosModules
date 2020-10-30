@@ -43,6 +43,10 @@ Reduce 8 inputs to a single output with a selectable algorithm.
 - Difference : Cumulatively calculate absolute differences between the inputs and scale to -10.0 - 10.0 volts
 - Round robin : Step through inputs at audio rate
 
+## LOFI
+
+Sound mangler with distortion and sample rate/bit depth reduction. Distortion types (soft clip, hard clip, foldback and wrap-around) can be smoothly crossfaded from one to another. The distortion also has an oversampled signal path and crossfades can be done between that and the non-oversampled version.
+
 ## Image Synth
 
 **HIGHLY EXPERIMENTAL AND WORK-IN-PROGRESS**
