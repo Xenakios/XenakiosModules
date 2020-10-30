@@ -64,6 +64,11 @@ public:
                 std::uniform_real_distribution<float> replendist(0.01,0.08);
                 m_repeatLen = samplerate*replendist(m_gen);
             }
+            if (m_curglitch == GLT_RINGMOD)
+            {
+                std::uniform_real_distribution<float> fdist(20.0f,7000.0);
+                m_ringmodfreq = fdist(m_gen);
+            }
             m_glitchphase = 0;
             m_phase = 0;
             
@@ -104,7 +109,7 @@ public:
         }
         else if (m_curglitch == GLT_RINGMOD)
         {
-            out = in * std::sin(2*3.141592653/samplerate*m_glitchphase*2000.0f);
+            out = in * std::sin(2*3.141592653/samplerate*m_glitchphase*m_ringmodfreq);
             ++m_glitchphase;
             if (m_glitchphase>=m_glitchlen)
                 m_curglitch = GLT_LAST;
@@ -135,6 +140,7 @@ private:
     int m_glitchphase = 0;
     int m_glitchlen = 0;
     float m_curdensity = 0.5f;
+    float m_ringmodfreq = 1.0f;
     GLITCHES m_curglitch = GLT_LAST;
     std::mt19937 m_gen;
     std::vector<float> m_repeatBuf;
