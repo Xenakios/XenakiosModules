@@ -36,23 +36,38 @@ public:
         GLT_KILOSINE,
         GLT_RINGMOD,
         GLT_NOISE,
+        GLT_REPEAT,
         GLT_LAST,
     };
     GlitchGenerator()
     {
         m_gen = std::mt19937((size_t)this);
+        m_repeatBuf.resize(65536);
     }
     float process(float in, float samplerate, float density)
     {
+        if (m_curglitch!=GLT_REPEAT)
+        {
+            m_repeatBuf[m_repeatWritePos] = in;
+            ++m_repeatWritePos;
+            if (m_repeatWritePos>=m_repeatLen)
+                m_repeatWritePos = 0;
+        }
         
         if (m_phase>=m_nextglitchpos)
         {
             std::uniform_int_distribution<int> dist(0,GLT_LAST-1);
             m_curglitch = (GLITCHES)dist(m_gen);
+            if (m_curglitch==GLT_REPEAT)
+            {
+                m_repeatReadPos = 0;
+                std::uniform_real_distribution<float> replendist(0.01,0.08);
+                m_repeatLen = samplerate*replendist(m_gen);
+            }
             m_glitchphase = 0;
             m_phase = 0;
             
-            std::uniform_real_distribution<float> lendist(0.001,0.010);
+            std::uniform_real_distribution<float> lendist(0.001,0.08);
             m_glitchlen = lendist(m_gen)*samplerate;
             if (density<0.45)
             {
@@ -60,9 +75,9 @@ public:
                 m_nextglitchpos = rate*samplerate;
             } else if (density>0.55)
             {
-                float rate = rescale(density,0.55f,1.00f,1.0f,1.0f/16);
+                float rate = rescale(density,0.55f,1.00f,2.0f,1.0f/16);
                 float exprand = -log(random::uniform())/(1.0/rate);
-                exprand = clamp(exprand,0.001,2.0f);
+                exprand = clamp(exprand,0.001,5.0f);
                 m_nextglitchpos = exprand*samplerate;
             }
         }
@@ -101,6 +116,16 @@ public:
             if (m_glitchphase>=m_glitchlen)
                 m_curglitch = GLT_LAST;
         }
+        else if (m_curglitch == GLT_REPEAT)
+        {
+            out = m_repeatBuf[m_repeatReadPos];
+            ++m_repeatReadPos;
+            if (m_repeatReadPos>=m_repeatLen)
+                m_repeatReadPos = 0;
+            ++m_glitchphase;
+            if (m_glitchphase>=m_glitchlen)
+                m_curglitch = GLT_LAST;
+        }
         ++m_phase;
         return out;
     }
@@ -112,6 +137,10 @@ private:
     float m_curdensity = 0.5f;
     GLITCHES m_curglitch = GLT_LAST;
     std::mt19937 m_gen;
+    std::vector<float> m_repeatBuf;
+    int m_repeatReadPos = 0;
+    int m_repeatWritePos = 0;
+    int m_repeatLen = 0;
 };
 
 inline float distort(float in, float th, float type)
