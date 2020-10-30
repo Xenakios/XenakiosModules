@@ -302,6 +302,46 @@ private:
     LOFIEngine m_engines[16];
 };
 
+extern std::shared_ptr<Font> g_font;
+
+struct LabelEntry
+{
+    LabelEntry() {}
+    LabelEntry(std::string t, float x, float y) : text(t), xpos(x), ypos(y) {}
+    std::string text;
+    float xpos = 0.0f;
+    float ypos = 0.0f;
+};
+
+class LabelsWidget : public TransparentWidget
+{
+public:
+    explicit LabelsWidget(std::vector<LabelEntry> entries, std::shared_ptr<rack::Font> f, 
+        float fontsize, NVGcolor color) :
+        m_entries(entries), m_font(f), m_fontsize(fontsize), m_color(color)
+    {
+
+    }
+    void draw(const DrawArgs &args) override
+    {
+        nvgSave(args.vg);
+        nvgFontSize(args.vg, m_fontsize);
+        nvgFontFaceId(args.vg, m_font->handle);
+        nvgTextLetterSpacing(args.vg, -1);
+        nvgFillColor(args.vg, m_color);
+        for (auto& e: m_entries)
+        {
+            nvgText(args.vg, e.xpos , e.ypos, e.text.c_str(), NULL);
+        }
+        nvgRestore(args.vg);
+    }
+private:
+    std::vector<LabelEntry> m_entries;
+    std::shared_ptr<rack::Font> m_font;
+    NVGcolor m_color;
+    float m_fontsize = 0.0f;
+};
+
 class XLOFIWidget : public ModuleWidget
 {
 public:
@@ -311,45 +351,58 @@ public:
     {
         setModule(m);
         m_lofi = m;
-        box.size.x = 80;
+        box.size.x = 130;
+        auto font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
         
-        addInput(createInputCentered<PJ301MPort>(Vec(30, 30), m, XLOFI::IN_AUDIO));
-        
-        addOutput(createOutputCentered<PJ301MPort>(Vec(60, 30), m, XLOFI::IN_AUDIO));
-        
-        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 80), m, XLOFI::PAR_RATEDIV));
-        addInput(createInputCentered<PJ301MPort>(Vec(45, 80), m, XLOFI::IN_CV_RATEDIV));
-        addParam(createParamCentered<Trimpot>(Vec(70.00, 80), m, XLOFI::PAR_ATTN_RATEDIV));
-        
-        
-        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 120), m, XLOFI::PAR_BITDIV));
-        addInput(createInputCentered<PJ301MPort>(Vec(45, 120), m, XLOFI::IN_CV_BITDIV));
-        addParam(createParamCentered<Trimpot>(Vec(70.00, 120), m, XLOFI::PAR_ATTN_BITDIV));
 
-        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 160), m, XLOFI::PAR_DRIVE));
-        addInput(createInputCentered<PJ301MPort>(Vec(45, 160), m, XLOFI::IN_CV_DRIVE));
-        addParam(createParamCentered<Trimpot>(Vec(70.00, 160), m, XLOFI::PAR_ATTN_DRIVE));
+        addInput(createInputCentered<PJ301MPort>(Vec(35, 45), m, XLOFI::IN_AUDIO));
         
-        RoundBlackKnob* knob = nullptr;
-        addParam(knob = createParamCentered<RoundBlackKnob>(Vec(15.00, 200), m, XLOFI::PAR_DISTORTTYPE));
-        addInput(createInputCentered<PJ301MPort>(Vec(45, 200), m, XLOFI::IN_CV_DISTTYPE));
-        addParam(createParamCentered<Trimpot>(Vec(70.00, 200), m, XLOFI::PAR_ATTN_DISTYPE));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(90, 45), m, XLOFI::IN_AUDIO));
+        
+        auto addparfunc=[this,m](float xc, float yc, XLOFI::PARAMS par, XLOFI::INPUTS cvin, XLOFI::PARAMS cvpar)
+        {
+            addParam(createParam<RoundBlackKnob>(Vec(xc, yc), m, par));
+            addInput(createInput<PJ301MPort>(Vec(xc+33.0f, yc+3), m, cvin));
+            addParam(createParam<Trimpot>(Vec(xc+60.00, yc+6), m, cvpar));
+        };
 
-        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 240), m, XLOFI::PAR_OVERSAMPLE));
-        addInput(createInputCentered<PJ301MPort>(Vec(45, 240), m, XLOFI::IN_CV_OVERSAMPLE));
-        addParam(createParamCentered<Trimpot>(Vec(70.00, 240), m, XLOFI::PAR_ATTN_OVERSAMPLE));
+        float ydiff = 45.0f;
+        float yoffs = 78.0;
 
-        addParam(createParamCentered<RoundBlackKnob>(Vec(15.00, 280), m, XLOFI::PAR_GLITCHRATE));
-        addInput(createInputCentered<PJ301MPort>(Vec(45, 280), m, XLOFI::IN_CV_GLITCHRATE));
-        addParam(createParamCentered<Trimpot>(Vec(70.00, 280), m, XLOFI::PAR_ATTN_GLITCHRATE));
+        addparfunc(1.0,yoffs,XLOFI::PAR_RATEDIV,XLOFI::IN_CV_RATEDIV,XLOFI::PAR_ATTN_RATEDIV);
+        yoffs+=ydiff;
+        addparfunc(1.0,yoffs,XLOFI::PAR_BITDIV,XLOFI::IN_CV_BITDIV,XLOFI::PAR_ATTN_BITDIV);
+        yoffs+=ydiff;
+        addparfunc(1.0,yoffs,XLOFI::PAR_DRIVE,XLOFI::IN_CV_DRIVE,XLOFI::PAR_ATTN_DRIVE);
+        yoffs+=ydiff;
+        addparfunc(1.0,yoffs,XLOFI::PAR_DISTORTTYPE,XLOFI::IN_CV_DISTTYPE,XLOFI::PAR_ATTN_DISTYPE);
+        yoffs+=ydiff;
+        addparfunc(1.0,yoffs,XLOFI::PAR_OVERSAMPLE,XLOFI::IN_CV_OVERSAMPLE,XLOFI::PAR_ATTN_OVERSAMPLE);
+        yoffs+=ydiff;
+        addparfunc(1.0,yoffs,XLOFI::PAR_GLITCHRATE,XLOFI::IN_CV_GLITCHRATE,XLOFI::PAR_ATTN_GLITCHRATE);
+        yoffs+=ydiff;
+        std::vector<LabelEntry> labentries;
+        labentries.emplace_back("LOFI",1,15);
+        labentries.emplace_back("Xenakios",1,375);
+        labentries.emplace_back("AUDIO IN",10,30);
+        labentries.emplace_back("AUDIO OUT",80,30);
+        std::vector<std::string> parnames{"SAMPLERATE REDUCTION","BIT DEPTH REDUCTION","INPUT DRIVE","DISTORTION TYPE",
+        "OVERSAMPLE MIX","GLITCH RATE"};
+        yoffs = 75.0f;
+        for (auto& e : parnames)
+        {
+            labentries.emplace_back(e,1,yoffs);
+            yoffs+=ydiff;
+        }
+        addChild(new LabelsWidget{labentries,font, 10.0f, nvgRGBA(0xff, 0xff, 0xff, 0xff)});
     }
-    void draw(const DrawArgs &args)
+    void draw(const DrawArgs &args) override
     {
         nvgSave(args.vg);
         float w = box.size.x;
         float h = box.size.y;
         nvgBeginPath(args.vg);
-        nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+        nvgFillColor(args.vg, nvgRGBA(0x50, 0x50, 0x50, 0xff));
         nvgRect(args.vg,0.0f,0.0f,w,h);
         nvgFill(args.vg);
         
