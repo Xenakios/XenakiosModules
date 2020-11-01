@@ -256,6 +256,7 @@ public:
     {
         OUT_AUDIO,
         OUT_GLITCH_TRIG,
+        OUT_SIGNALCOMPLEXITY,
         LAST_OUTPUT
     };
     XLOFI()
@@ -273,13 +274,38 @@ public:
         configParam(PAR_ATTN_OVERSAMPLE,-1.0f,1.0f,0.0,"Distortion oversampling mix CV");
         configParam(PAR_GLITCHRATE,0.0f,1.0f,0.5,"Glitch rate");
         configParam(PAR_ATTN_GLITCHRATE,-1.0f,1.0f,0.0,"Glitch rate CV");
+        m_fftbuffer.resize(256);
     }
     
     
     void process(const ProcessArgs& args) override
     {
         float insample = inputs[IN_AUDIO].getVoltageSum()/5.0f;
-        
+        if (outputs[OUT_SIGNALCOMPLEXITY].isConnected())
+        {
+            m_fftbuffer[m_fftcounter] = insample;
+            ++m_fftcounter;
+            if (m_fftcounter>=128)
+            {
+                m_fftcounter = 0;
+                dsp::hannWindow(m_fftbuffer.data(),128);
+                m_fft.rfft(m_fftbuffer.data(),m_fftbuffer.data());
+                m_fft.scale(m_fftbuffer.data());
+                int activebins = 0;
+                for (int i=0;i<m_fft.length/2;++i)
+                {
+                    float re = m_fftbuffer[i*2];
+                    float im = m_fftbuffer[i*2+1];
+                    float mag = sqrt(re*re+im*im);
+                    if (mag>0.01)
+                        ++activebins;
+                }
+                float complexity = rescale((float)activebins,0,64,0.0f,1.0f);
+                complexity = clamp(complexity,0.0f,1.0f);
+                complexity = 1.0f-std::pow(1.0f-complexity,2.0f);
+                outputs[OUT_SIGNALCOMPLEXITY].setVoltage(complexity*10.0f);
+            }
+        }
         float drivegain = params[PAR_DRIVE].getValue();
         drivegain += inputs[IN_CV_DRIVE].getVoltage()*params[PAR_ATTN_DRIVE].getValue()/10.0f;
         drivegain = clamp(drivegain,0.0f,1.0f);
@@ -316,6 +342,9 @@ public:
 private:
     
     LOFIEngine m_engines[16];
+    dsp::RealFFT m_fft{128};
+    std::vector<float> m_fftbuffer;
+    int m_fftcounter = 0;
 };
 
 extern std::shared_ptr<Font> g_font;
@@ -388,7 +417,7 @@ public:
         
 
         addInput(createInputCentered<PJ301MPort>(Vec(35, 45), m, XLOFI::IN_AUDIO));
-        
+        addOutput(createOutputCentered<PJ301MPort>(Vec(60, 45), m, XLOFI::OUT_SIGNALCOMPLEXITY));
         addOutput(createOutputCentered<PJ301MPort>(Vec(90, 45), m, XLOFI::OUT_AUDIO));
         
         auto addparfunc=[this,m](float xc, float yc, XLOFI::PARAMS par, XLOFI::INPUTS cvin, XLOFI::PARAMS cvpar)
