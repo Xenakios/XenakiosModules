@@ -1,0 +1,17 @@
+digraph G {
+
+  "audio in" -> "complexity analyzer"
+  "complexity analyzer" -> "complexity CV output"
+  "audio in" -> "distortion 1"
+  "audio in" -> "upsampler"
+  "upsampler" -> "distortion 2"
+  "distortion 2" -> "downsampler"
+  "downsampler" -> "mix"
+  "distortion 1" -> "mix"
+  "mix" -> "samplerate reduction"
+  "samplerate reduction" -> "bit depth reduction"
+  "bit depth reduction" -> "glitch generator"
+  "glitch generator" -> "safety clipper"
+  "safety clipper" -> "audio out"
+  "glitch generator" -> "glitch active gate CV output"
+}
