@@ -350,9 +350,11 @@ public:
                 complexity = 1.0f-std::pow(1.0f-complexity,2.0f);
                 
             }
+            float smoothed = m_smoother.process(complexity);
+            outputs[OUT_SIGNALCOMPLEXITY].setVoltage(smoothed*10.0f);
         }
-        float smoothed = m_smoother.process(complexity);
-        outputs[OUT_SIGNALCOMPLEXITY].setVoltage(smoothed*10.0f);
+        if (!outputs[OUT_AUDIO].isConnected())
+            return;
         float drivegain = params[PAR_DRIVE].getValue();
         drivegain += inputs[IN_CV_DRIVE].getVoltage()*params[PAR_ATTN_DRIVE].getValue()/10.0f;
         drivegain = clamp(drivegain,0.0f,1.0f);
@@ -510,6 +512,7 @@ public:
         }
         addChild(new LabelsWidget{labentries,font, 10.0f, nvgRGBA(0xff, 0xff, 0xff, 0xff)});
     }
+    int negCount = 0;
     void draw(const DrawArgs &args) override
     {
         nvgSave(args.vg);
@@ -527,6 +530,8 @@ public:
             for (int i=0;i<fftlen;++i)
             {
                 float s = m_lofi->m_mag_array[i]*4.0f;
+                if (s<0.0f)
+                    ++negCount;
                 float ycor = rescale(s,-1.0f,1.0f,400.0,330.0f);
                 float xcor = rescale(i,0,fftlen,1.0,129.0);
                 if (i == 0)
@@ -536,7 +541,7 @@ public:
             }
             nvgStroke(args.vg);
             char buf[100];
-            sprintf(buf,"%d",m_lofi->m_numPeaks);
+            sprintf(buf,"%d %d",m_lofi->m_numPeaks, negCount);
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, m_font->handle);
             nvgTextLetterSpacing(args.vg, -1);
