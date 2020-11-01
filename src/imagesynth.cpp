@@ -87,27 +87,7 @@ inline float harmonics4(float xin)
         0.15*std::sin(xin*7);
 }
 
-class OnePoleFilter
-{
-public:
-    OnePoleFilter() {}
-    void setAmount(float x)
-    {
-        a = x;
-        b = 1.0f-a;
-    }
-    inline __attribute__((always_inline)) float process(float x)
-    {
-        float temp = (x * b) + (z * a);
-        z = temp;
-        return temp;
-    }
-private:
-    float z = 0.0f;
-    float a = 0.99f;
-    float b = 1.0f-a;
 
-};
 
 class ImgWaveOscillator
 {

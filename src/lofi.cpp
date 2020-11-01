@@ -162,7 +162,7 @@ inline float distort(float in, float th, float type)
     distsamples[1] = clamp(in,-th,th);
     distsamples[2] = reflect_value(-th,in,th);
     distsamples[3] = wrap_value(-th,in,th);
-    distsamples[4] = sin_dist(in);
+    distsamples[4] = distsamples[3] ; //sin_dist(in);
     distsamples[5] = distsamples[4];
     int index0 = std::floor(type);
     int index1 = index0+1;
@@ -274,12 +274,13 @@ public:
         configParam(PAR_ATTN_OVERSAMPLE,-1.0f,1.0f,0.0,"Distortion oversampling mix CV");
         configParam(PAR_GLITCHRATE,0.0f,1.0f,0.5,"Glitch rate");
         configParam(PAR_ATTN_GLITCHRATE,-1.0f,1.0f,0.0,"Glitch rate CV");
-        m_fftbuffer.resize(2048);
-        m_mag_array.resize(2048);
-        m_slew.setRiseFall(5000,5000);
+        m_fftbuffer.resize(4096);
+        m_mag_array.resize(4096);
+        m_smoother.setAmount(0.9995);
     }
     
     float complexity = 0.0f;
+    int m_numPeaks = 0;
     void process(const ProcessArgs& args) override
     {
         float insample = inputs[IN_AUDIO].getVoltageSum()/5.0f;
@@ -299,7 +300,7 @@ public:
                 {
                     float re = m_fftbuffer[i*2];
                     float im = m_fftbuffer[i*2+1];
-                    float mag = sqrt(re*re+im*im);
+                    float mag = (sqrt(re*re+im*im));
                     if (mag>0.001)
                         m_mag_array[i]=mag;
                     else m_mag_array[i]=0.0f;
@@ -312,13 +313,14 @@ public:
                     if (s1>s0 && s1>s2)
                         ++numpeaks;
                 }
-                complexity = rescale((float)numpeaks,0,32,0.0f,1.0f);
+                m_numPeaks = numpeaks;
+                complexity = rescale((float)numpeaks,0,200,0.0f,1.0f);
                 complexity = clamp(complexity,0.0f,1.0f);
-                //complexity = 1.0f-std::pow(1.0f-complexity,2.0f);
+                complexity = 1.0f-std::pow(1.0f-complexity,2.0f);
                 
             }
         }
-        float smoothed = m_slew.process(args.sampleTime, complexity);
+        float smoothed = m_smoother.process(complexity);
         outputs[OUT_SIGNALCOMPLEXITY].setVoltage(smoothed*10.0f);
         float drivegain = params[PAR_DRIVE].getValue();
         drivegain += inputs[IN_CV_DRIVE].getVoltage()*params[PAR_ATTN_DRIVE].getValue()/10.0f;
@@ -353,14 +355,16 @@ public:
                 outputs[OUT_GLITCH_TRIG].setVoltage(0.0f);
         }
     }
+    std::vector<float> m_mag_array;
+    dsp::RealFFT m_fft{1024};
 private:
     
     LOFIEngine m_engines[16];
-    dsp::RealFFT m_fft{512};
+    
     std::vector<float> m_fftbuffer;
-    std::vector<float> m_mag_array;
+    
     int m_fftcounter = 0;
-    dsp::SlewLimiter m_slew;
+    OnePoleFilter m_smoother;
 };
 
 extern std::shared_ptr<Font> g_font;
@@ -424,13 +428,14 @@ class XLOFIWidget : public ModuleWidget
 public:
     XLOFI* m_lofi = nullptr;
     LOFIEngine m_eng;
+    std::shared_ptr<rack::Font> m_font;
     XLOFIWidget(XLOFI* m)
     {
         setModule(m);
         m_lofi = m;
         box.size.x = 130;
         auto font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
-        
+        m_font = font;
 
         addInput(createInputCentered<PJ301MPort>(Vec(35, 45), m, XLOFI::IN_AUDIO));
         addOutput(createOutputCentered<PJ301MPort>(Vec(60, 45), m, XLOFI::OUT_SIGNALCOMPLEXITY));
@@ -483,7 +488,32 @@ public:
         nvgFillColor(args.vg, nvgRGBA(0x50, 0x50, 0x50, 0xff));
         nvgRect(args.vg,0.0f,0.0f,w,h);
         nvgFill(args.vg);
-        
+        if (m_lofi)
+        {
+            nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            nvgBeginPath(args.vg);
+            int fftlen = m_lofi->m_fft.length/2;
+            for (int i=0;i<fftlen;++i)
+            {
+                float s = m_lofi->m_mag_array[i]*4.0f;
+                float ycor = rescale(s,-1.0f,1.0f,400.0,330.0f);
+                float xcor = rescale(i,0,fftlen,1.0,129.0);
+                if (i == 0)
+                    nvgMoveTo(args.vg,xcor,375.0f);
+                nvgLineTo(args.vg,xcor,ycor);
+                
+            }
+            nvgStroke(args.vg);
+            char buf[100];
+            sprintf(buf,"%d",m_lofi->m_numPeaks);
+            nvgFontSize(args.vg, 15);
+            nvgFontFaceId(args.vg, m_font->handle);
+            nvgTextLetterSpacing(args.vg, -1);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            
+            nvgText(args.vg, 90 , 375, buf, NULL);
+            
+        }
         if (m_lofi && 6==3)
         {
             int w = 78*2;
