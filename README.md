@@ -45,7 +45,12 @@ Reduce 8 inputs to a single output with a selectable algorithm.
 
 ## LOFI
 
-Sound mangler with distortion and sample rate/bit depth reduction. Distortion types (soft clip, hard clip, foldback and wrap-around) can be smoothly crossfaded from one to another. The distortion also has an oversampled signal path and crossfades can be done between that and the non-oversampled version.
+Sound mangler with input distortion, sample rate/bit depth reduction and glitch generator. Distortion types (soft clip, hard clip, foldback,wrap-around etc) can be smoothly crossfaded from one to another. The distortion also has an oversampled signal path and crossfades can be done between that and the non-oversampled version.
+
+The glitch generator has a gate output that is high when the glitch is active.
+
+The input has a "signal complexity" analyzer that outputs a unipolar voltage. This may be interesting for example to self patch into the module's drive and sample rate reduction CV inputs. The analysis is just a simple approximation done by making a spectrum analysis of the input and counting the number of peaks present in the spectrum.
+
 
 ## Image Synth
 
