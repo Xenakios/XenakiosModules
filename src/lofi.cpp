@@ -157,16 +157,47 @@ inline float sin_dist(float in)
 
 inline float distort(float in, float th, float type)
 {
+    int index0 = std::floor(type);
+    int index1 = index0+1;
+    float frac = type-index0;
     float distsamples[6];
+    /*
     distsamples[0] = soft_clip(in);
     distsamples[1] = clamp(in,-th,th);
     distsamples[2] = reflect_value(-th,in,th);
     distsamples[3] = wrap_value(-th,in,th);
-    distsamples[4] = distsamples[3] ; //sin_dist(in);
+    distsamples[4] = sin_dist(in);
     distsamples[5] = distsamples[4];
-    int index0 = std::floor(type);
-    int index1 = index0+1;
-    float frac = type-index0;
+    */
+    if (index0 == 0)
+    {
+        distsamples[0] = soft_clip(in);
+        distsamples[1] = clamp(in,-th,th);
+    }
+    else if (index0 == 1)
+    {
+        distsamples[1] = clamp(in,-th,th);
+        distsamples[2] = reflect_value(-th,in,th);
+    }
+    else if (index0 == 2)
+    {
+        distsamples[2] = reflect_value(-th,in,th);
+        distsamples[3] = wrap_value(-th,in,th);
+    }
+    else if (index0 == 3)
+    {
+        distsamples[3] = wrap_value(-th,in,th);
+        if (frac>0.0f) 
+            distsamples[4] = sin_dist(in);
+        else
+            distsamples[4] = distsamples[3];
+    } 
+    else if (index0 == 4)
+    {
+        distsamples[4] = sin_dist(in);
+        distsamples[5] = distsamples[4];
+    }
+    
     float y0 = distsamples[index0];
     float y1 = distsamples[index1];
     return y0+(y1-y0)*frac;
