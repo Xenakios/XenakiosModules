@@ -134,6 +134,7 @@ public:
         ++m_phase;
         return out;
     }
+    bool glitchActive() { return m_curglitch!=GLT_LAST; }
 private:
     int m_nextglitchpos = 0;
     int m_phase = 0;
@@ -149,14 +150,20 @@ private:
     int m_repeatLen = 0;
 };
 
+inline float sin_dist(float in)
+{
+    return std::sin(3.141592653*2*in);
+}
+
 inline float distort(float in, float th, float type)
 {
-    float distsamples[5];
+    float distsamples[6];
     distsamples[0] = soft_clip(in);
     distsamples[1] = clamp(in,-th,th);
     distsamples[2] = reflect_value(-th,in,th);
     distsamples[3] = wrap_value(-th,in,th);
-    distsamples[4] = distsamples[3];
+    distsamples[4] = sin_dist(in);
+    distsamples[5] = distsamples[4];
     int index0 = std::floor(type);
     int index1 = index0+1;
     float frac = type-index0;
@@ -207,6 +214,7 @@ public:
         float glitch = m_glitcher.process(crushed,insamplerate,glitchrate);
         return clamp(glitch,-1.0f,1.0f);
     }
+    bool glitchActive() { return m_glitcher.glitchActive(); }
 private:
     SampleRateReducer m_reducer;
     dsp::Upsampler<8,2> m_upsampler;
@@ -247,6 +255,7 @@ public:
     enum OUTPUTS
     {
         OUT_AUDIO,
+        OUT_GLITCH_TRIG,
         LAST_OUTPUT
     };
     XLOFI()
@@ -255,7 +264,7 @@ public:
         configParam(PAR_RATEDIV,0.0,1.0,0.0,"Sample rate reduction");
         configParam(PAR_BITDIV,0.0,1.0,1.0,"Bit depth");
         configParam(PAR_DRIVE,0.0,1.0,0.15,"Drive");
-        configParam(PAR_DISTORTTYPE,0,3,0,"Distortion type");
+        configParam(PAR_DISTORTTYPE,0,4,0,"Distortion type");
         configParam(PAR_ATTN_RATEDIV,-1.0f,1.0f,0.0,"Sample rate reduction CV");
         configParam(PAR_ATTN_BITDIV,-1.0f,1.0f,0.0,"Bit depth CV");
         configParam(PAR_ATTN_DRIVE,-1.0f,1.0f,0.0,"Drive CV");
@@ -278,7 +287,7 @@ public:
         drivegain = dsp::dbToAmplitude(drivegain);
         float dtype = params[PAR_DISTORTTYPE].getValue();
         dtype += inputs[IN_CV_DISTTYPE].getVoltage()*params[PAR_ATTN_DISTYPE].getValue()/3.0f;
-        dtype = clamp(dtype,0.0f,3.0f);
+        dtype = clamp(dtype,0.0f,4.0f);
         float srdiv = params[PAR_RATEDIV].getValue(); 
         srdiv += inputs[IN_CV_RATEDIV].getVoltage()*params[PAR_ATTN_RATEDIV].getValue()/10.0f;
         srdiv = clamp(srdiv,0.0f,1.0f);
@@ -296,6 +305,13 @@ public:
         float processed = m_engines[0].process(insample,args.sampleRate,srdiv,bits,drivegain,dtype,osamt,
             glitchrate);
         outputs[OUT_AUDIO].setVoltage(processed*5.0f);
+        if (outputs[OUT_GLITCH_TRIG].isConnected())
+        {
+            if (m_engines[0].glitchActive())
+                outputs[OUT_GLITCH_TRIG].setVoltage(5.0f);
+            else 
+                outputs[OUT_GLITCH_TRIG].setVoltage(0.0f);
+        }
     }
 private:
     
@@ -342,6 +358,22 @@ private:
     float m_fontsize = 0.0f;
 };
 
+class KnobInAttnWidget : public TransparentWidget
+{
+public:
+    KnobInAttnWidget(ModuleWidget* parent, std::string param_desc,
+        int mainparamid, int cvin_id, int attnparamid, float xc, float yc)
+    {
+        labeltext = param_desc;
+        box.size = Vec(80,40);
+        parent->addParam(createParam<RoundBlackKnob>(Vec(xc, yc), parent->module, mainparamid));
+        parent->addInput(createInput<PJ301MPort>(Vec(xc+33.0f, yc+3), parent->module, cvin_id));
+        parent->addParam(createParam<Trimpot>(Vec(xc+60.00, yc+6), parent->module, attnparamid));
+
+    }
+    std::string labeltext;
+};
+
 class XLOFIWidget : public ModuleWidget
 {
 public:
@@ -357,7 +389,7 @@ public:
 
         addInput(createInputCentered<PJ301MPort>(Vec(35, 45), m, XLOFI::IN_AUDIO));
         
-        addOutput(createOutputCentered<PJ301MPort>(Vec(90, 45), m, XLOFI::IN_AUDIO));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(90, 45), m, XLOFI::OUT_AUDIO));
         
         auto addparfunc=[this,m](float xc, float yc, XLOFI::PARAMS par, XLOFI::INPUTS cvin, XLOFI::PARAMS cvpar)
         {
@@ -380,6 +412,7 @@ public:
         addparfunc(1.0,yoffs,XLOFI::PAR_OVERSAMPLE,XLOFI::IN_CV_OVERSAMPLE,XLOFI::PAR_ATTN_OVERSAMPLE);
         yoffs+=ydiff;
         addparfunc(1.0,yoffs,XLOFI::PAR_GLITCHRATE,XLOFI::IN_CV_GLITCHRATE,XLOFI::PAR_ATTN_GLITCHRATE);
+        addOutput(createOutput<PJ301MPort>(Vec(90,yoffs), m, XLOFI::OUT_GLITCH_TRIG));
         yoffs+=ydiff;
         std::vector<LabelEntry> labentries;
         labentries.emplace_back("LOFI",1,15);
