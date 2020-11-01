@@ -345,7 +345,7 @@ public:
                         ++numpeaks;
                 }
                 m_numPeaks = numpeaks;
-                complexity = rescale((float)numpeaks,0,200,0.0f,1.0f);
+                complexity = rescale((float)numpeaks,0,300,0.0f,1.0f);
                 complexity = clamp(complexity,0.0f,1.0f);
                 complexity = 1.0f-std::pow(1.0f-complexity,2.0f);
                 
@@ -387,7 +387,7 @@ public:
         }
     }
     std::vector<float> m_mag_array;
-    dsp::RealFFT m_fft{1024};
+    dsp::RealFFT m_fft{2048};
 private:
     
     LOFIEngine m_engines[16];
