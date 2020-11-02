@@ -222,6 +222,7 @@ public:
     float process(float in, float insamplerate, float srdiv, float bits, 
         float drive, float dtype, float oversample, float glitchrate, float dcoffs)
     {
+        in+=dcoffs;
         float driven = drive*in;
         float oversampledriven = 0.0f;
         if (oversample>0.0f) // only oversample when oversampled signal is going to be mixed in
@@ -239,10 +240,11 @@ public:
         float reduced = m_reducer.process(drivemix);
         bits = getBitDepthFromNormalized(bits);
         float bitlevels = std::pow(2.0f,bits)/2.0f;
-        float crushed = reduced+dcoffs; //*32767.0;
+        float crushed = reduced; //*32767.0;
         crushed = std::round(crushed*bitlevels)/bitlevels;
         //crushed /= 32767.0;
         float glitch = m_glitcher.process(crushed,insamplerate,glitchrate);
+        // glitch-=dcoffs;
         return clamp(glitch,-1.0f,1.0f);
     }
     bool glitchActive() { return m_glitcher.glitchActive(); }
@@ -374,16 +376,19 @@ public:
         {
             bits += inputs[IN_CV_BITDIV].getVoltage()*params[PAR_ATTN_BITDIV].getValue()/10.0f;
             bits = clamp(bits,0.0f,1.0f);
-        } else
-        {
-            dcoffs = 0.1f*params[PAR_ATTN_BITDIV].getValue();
         }
         
-        
-        
         float osamt = params[PAR_OVERSAMPLE].getValue();
-        osamt += inputs[IN_CV_OVERSAMPLE].getVoltage()*params[PAR_ATTN_OVERSAMPLE].getValue()/10.0f;
-        osamt = clamp(osamt,0.0f,1.0f);
+        if (inputs[IN_CV_OVERSAMPLE].isConnected())
+        {
+            osamt += inputs[IN_CV_OVERSAMPLE].getVoltage()*params[PAR_ATTN_OVERSAMPLE].getValue()/10.0f;
+            osamt = clamp(osamt,0.0f,1.0f);
+        } else
+        {
+            dcoffs = 0.5f*params[PAR_ATTN_OVERSAMPLE].getValue();
+        }
+
+        
         float glitchrate = params[PAR_GLITCHRATE].getValue();
         glitchrate += inputs[IN_CV_GLITCHRATE].getVoltage()*params[PAR_ATTN_GLITCHRATE].getValue()/10.0f;
         glitchrate = clamp(glitchrate,0.0f,1.0f);

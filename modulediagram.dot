@@ -2,8 +2,9 @@ digraph G {
 
   "audio in" -> "complexity analyzer"
   "complexity analyzer" -> "complexity CV output"
-  "audio in" -> "distortion 1"
-  "audio in" -> "upsampler"
+  "audio in" -> "+DC offset"
+  "+DC offset" -> "distortion 1"
+  "+DC offset" -> "upsampler"
   "upsampler" -> "distortion 2"
   "distortion 2" -> "downsampler"
   "downsampler" -> "mix"
