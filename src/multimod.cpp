@@ -8,7 +8,7 @@ inline float adjustable_triangle(float in, float peakpos)
     return rescale(in,peakpos,1.0f,1.0f,0.0f);
 }
 
-const int msnumtables = 4;
+const int msnumtables = 7;
 const int mstablesize = 1024;
 
 class ModulationShaper
@@ -20,9 +20,12 @@ public:
         {
             float norm = 1.0/(mstablesize-1)*i;
             m_tables[0][i] = std::pow(norm,5.0f);
-            m_tables[1][i] = norm;
-            m_tables[2][i] = 1.0f-std::pow(1.0f-norm,5.0f);
-            m_tables[3][i] = clamp(norm+random::normal()*0.1,0.0,1.0f);
+            m_tables[1][i] = std::pow(norm,2.0f);
+            m_tables[2][i] = norm;
+            m_tables[3][i] = 0.5-0.5*std::sin(3.141592653*(0.5+norm));
+            m_tables[4][i] = 1.0f-std::pow(1.0f-norm,5.0f);
+            m_tables[5][i] = clamp(norm+random::normal()*0.1,0.0,1.0f);
+            m_tables[6][i] = std::round(norm*7)/7;
         }
         // fill guard point by repeating value
         for (int i=0;i<msnumtables;++i)
