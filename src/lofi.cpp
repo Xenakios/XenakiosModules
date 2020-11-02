@@ -238,10 +238,10 @@ public:
         m_reducer.setRates(insamplerate,insamplerate/srdiv);
         float reduced = m_reducer.process(drivemix);
         bits = getBitDepthFromNormalized(bits);
-        float bitlevels = std::round(std::pow(2.0f,17.0-bits))-1.0f;
-        float crushed = reduced*32767.0;
-        crushed = std::round(crushed/bitlevels)*bitlevels;
-        crushed /= 32767.0;
+        float bitlevels = std::pow(2.0f,bits)/2.0f;
+        float crushed = reduced; //*32767.0;
+        crushed = std::round(crushed*bitlevels)/bitlevels;
+        //crushed /= 32767.0;
         float glitch = m_glitcher.process(crushed,insamplerate,glitchrate);
         return clamp(glitch,-1.0f,1.0f);
     }
