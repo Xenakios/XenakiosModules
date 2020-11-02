@@ -164,6 +164,14 @@
       "tags": [
         "Effect"
       ]
+    },
+    {
+      "slug": "XMultiMod",
+      "name": "MultiMod",
+      "description": "16 output LFO",
+      "tags": [
+        "LFO"
+      ]
     }
     
 

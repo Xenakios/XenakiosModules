@@ -299,4 +299,5 @@ void init(Plugin *p) {
 	p->addModel(modelXStochastic);
 	p->addModel(modelXImageSynth);
 	p->addModel(modelXLOFI);
+	p->addModel(modelXMultiMod);
 }
