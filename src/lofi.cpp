@@ -140,7 +140,6 @@ private:
     int m_phase = 0;
     int m_glitchphase = 0;
     int m_glitchlen = 0;
-    float m_curdensity = 0.5f;
     float m_ringmodfreq = 1.0f;
     GLITCHES m_curglitch = GLT_LAST;
     std::mt19937 m_gen;
@@ -431,7 +430,7 @@ class LabelsWidget : public TransparentWidget
 public:
     explicit LabelsWidget(std::vector<LabelEntry> entries, std::shared_ptr<rack::Font> f, 
         float fontsize, NVGcolor color) :
-        m_entries(entries), m_font(f), m_fontsize(fontsize), m_color(color)
+        m_entries(entries), m_font(f), m_color(color), m_fontsize(fontsize) 
     {
 
     }

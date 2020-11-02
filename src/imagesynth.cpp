@@ -819,8 +819,6 @@ public:
         {
             float hannpos = 1.0/(m_grainSize-1)*i;
             //hannpos = fmod(hannpos+m_storedOffset,1.0f);
-            
-            int outbufpos = (i+m_offset) % m_grainSize;
             float win = getWindow(hannpos,1); 
             for (int j=0;j<m_chans;++j)
             {
@@ -873,14 +871,11 @@ private:
     
     int m_outpos = 0;
     int m_grainSize = 2048;
-    int m_offset = 0;
-    double m_srcpos{0.0};
     float m_sr = 44100.0f;
     int m_chans = 2;
     WDL_Resampler m_resampler;
     std::vector<double> m_grainOutBuffer;
-    float m_storedOffset = 0.0f;
-    float m_random_amt = 0.1f;
+    
 };
 
 class GrainMixer
@@ -889,7 +884,7 @@ public:
     ImgSynth* m_syn = nullptr;
     GrainMixer(ImgSynth* s) : m_syn(s)
     {
-        for (int i=0;i<m_grains.size();++i)
+        for (int i=0;i<(int)m_grains.size();++i)
         {
             m_grains[i].m_syn = s;
         }
@@ -906,7 +901,7 @@ public:
             float srcpostouse = m_srcpos+posrand;
             m_grains[m_grainCounter].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch);
             ++m_grainCounter;
-            if (m_grainCounter==m_grains.size())
+            if (m_grainCounter==(int)m_grains.size())
                 m_grainCounter = 0;
             m_nextGrainPos+=m_sr*(m_grainDensity);
             m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed;
@@ -915,7 +910,7 @@ public:
             else if (m_srcpos<0.0f)
                 m_srcpos = m_looplen*m_inputdur;
         }
-        for (int i=0;i<m_grains.size();++i)
+        for (int i=0;i<(int)m_grains.size();++i)
         {
             if (m_grains[i].playState==1)
             {

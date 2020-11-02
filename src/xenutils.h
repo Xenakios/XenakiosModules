@@ -91,7 +91,7 @@ public:
                     params[INLOW+i].getValue(),params[INHIGH+i].getValue(),
                     0.0f,1.0f);
                 float par_a = params[TRANSFORMPARA+i].getValue();
-                float par_b = params[TRANSFORMPARB+i].getValue();
+                //float par_b = params[TRANSFORMPARB+i].getValue();
                 int ttype = params[TRANSFORMTYPE+i].getValue();
                 if (ttype==Steps)
                 {

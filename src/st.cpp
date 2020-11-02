@@ -25,11 +25,13 @@ const int EnvelopeTable[44][4] =
     {3,1,3,1}, // ppp < f > ppp
 };
 
+/*
 const float EnvelopeScalers[2][4] =
 {
     {1.0f/7*1,1.0f/7*3,1.0f/7*6,1.0f},
     {0.0,1.0f/3*1,1.0f/3*2,1.0f}
 };
+*/
 
 class STEnvelope
 {

@@ -13,6 +13,9 @@ CFLAGS +=
 # CFLAGS += -g
 # CXXFLAGS += -g
 
+# CFLAGS+= -Werror
+# CXXFLAGS+= -Werror
+
 # CXXFLAGS += -DUSE_KISSFFT
 # CXXFLAGS += -DUSE_SPEEX
 

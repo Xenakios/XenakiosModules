@@ -154,7 +154,7 @@ void GendynWidget::draw(const DrawArgs &args)
     nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
     if (module)
     {
-        for (int i=0;i<module->paramQuantities.size();++i)
+        for (int i=0;i<(int)module->paramQuantities.size();++i)
         {
             int xpos = i / 11;
             int ypos = i % 11;

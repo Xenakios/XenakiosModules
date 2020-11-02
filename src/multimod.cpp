@@ -92,7 +92,7 @@ public:
         m_shape = s;
     }
 private:
-    double m_phase = 0.0f;
+    // double m_phase = 0.0f;
     double m_freqmultip = 1.0f;
     double m_offset = 0.0f;
     float m_slope = 0.5f;

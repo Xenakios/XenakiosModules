@@ -53,7 +53,7 @@ struct JohnsonTrotterState_
         for (int r = (int)values_.size(); r > 0; --r)
         {
             const int loc = positions_[r] + (directions_[r] ? 1 : -1);
-            if (loc >= 0 && loc < values_.size() && values_[loc] < r)
+            if (loc >= 0 && loc < (int)values_.size() && values_[loc] < r)
                 return r;
         }
         return 0;
@@ -134,7 +134,7 @@ public:
             rsInBuf[k] = sample;
             //buffer.setSample(0, k, sample*0.25);
             ++segmentCounter;
-            if (segmentCounter >= seg.data.size())
+            if (segmentCounter >= (int)seg.data.size())
             {
                 segmentCounter = 0;
                 ++elementCounter;

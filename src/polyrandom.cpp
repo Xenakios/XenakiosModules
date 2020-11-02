@@ -36,7 +36,7 @@ struct Random : Module {
 	std::array<float,16> values{};
 	std::array<float,16> clockPhases{};
 	std::array<int,16> trigFrame{};
-	std::array<int,16> lastTrigFrames{INT_MAX};
+	std::array<int,16> lastTrigFrames{{INT_MAX}}; // does this really init all the array elements...?
 
 	int curnumoutchans = 0;
 
