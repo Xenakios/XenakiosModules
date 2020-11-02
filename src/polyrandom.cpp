@@ -1,6 +1,7 @@
 #include "plugin.hpp"
 #include <array>
 #include <random>
+#include <algorithm>
 
 struct Random : Module {
 	enum ParamIds {
@@ -36,7 +37,7 @@ struct Random : Module {
 	std::array<float,16> values{};
 	std::array<float,16> clockPhases{};
 	std::array<int,16> trigFrame{};
-	std::array<int,16> lastTrigFrames{{INT_MAX}}; // does this really init all the array elements...?
+	std::array<int,16> lastTrigFrames; //{{INT_MAX}}; // does this really init all the array elements...?
 
 	int curnumoutchans = 0;
 
@@ -51,6 +52,7 @@ struct Random : Module {
 		configParam(MODE_PARAM, 0.f, 1.f, 1.f, "Relative/absolute randomness");
 		configParam(NUMVOICES_PARAM, 1.f, 16.f, 1.f, "Num poly voices");
 		chancountdiv.setDivision(512);
+		std::fill(lastTrigFrames.begin(),lastTrigFrames.end(),INT_MAX);
 	}
 
 	void trigger(int numchan) {
