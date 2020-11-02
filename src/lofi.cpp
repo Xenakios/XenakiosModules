@@ -220,7 +220,7 @@ public:
     LOFIEngine()
     {}
     float process(float in, float insamplerate, float srdiv, float bits, 
-        float drive, float dtype, float oversample, float glitchrate)
+        float drive, float dtype, float oversample, float glitchrate, float dcoffs)
     {
         float driven = drive*in;
         float oversampledriven = 0.0f;
@@ -239,7 +239,7 @@ public:
         float reduced = m_reducer.process(drivemix);
         bits = getBitDepthFromNormalized(bits);
         float bitlevels = std::pow(2.0f,bits)/2.0f;
-        float crushed = reduced; //*32767.0;
+        float crushed = reduced+dcoffs; //*32767.0;
         crushed = std::round(crushed*bitlevels)/bitlevels;
         //crushed /= 32767.0;
         float glitch = m_glitcher.process(crushed,insamplerate,glitchrate);
@@ -369,8 +369,18 @@ public:
         srdiv = std::pow(srdiv,2.0f);
         srdiv = 1.0+srdiv*99.0;
         float bits = params[PAR_BITDIV].getValue();
-        bits += inputs[IN_CV_BITDIV].getVoltage()*params[PAR_ATTN_BITDIV].getValue()/10.0f;
-        bits = clamp(bits,0.0f,1.0f);
+        float dcoffs = 0.0f;
+        if (inputs[IN_CV_BITDIV].isConnected())
+        {
+            bits += inputs[IN_CV_BITDIV].getVoltage()*params[PAR_ATTN_BITDIV].getValue()/10.0f;
+            bits = clamp(bits,0.0f,1.0f);
+        } else
+        {
+            dcoffs = 0.1f*params[PAR_ATTN_BITDIV].getValue();
+        }
+        
+        
+        
         float osamt = params[PAR_OVERSAMPLE].getValue();
         osamt += inputs[IN_CV_OVERSAMPLE].getVoltage()*params[PAR_ATTN_OVERSAMPLE].getValue()/10.0f;
         osamt = clamp(osamt,0.0f,1.0f);
@@ -378,7 +388,7 @@ public:
         glitchrate += inputs[IN_CV_GLITCHRATE].getVoltage()*params[PAR_ATTN_GLITCHRATE].getValue()/10.0f;
         glitchrate = clamp(glitchrate,0.0f,1.0f);
         float processed = m_engines[0].process(insample,args.sampleRate,srdiv,bits,drivegain,dtype,osamt,
-            glitchrate);
+            glitchrate,dcoffs);
         outputs[OUT_AUDIO].setVoltage(processed*5.0f);
         if (outputs[OUT_GLITCH_TRIG].isConnected())
         {
@@ -571,7 +581,7 @@ public:
             for (int i=0;i<w;++i)
             {
                 float s = std::sin(2*3.141592653/w*i*2.0f);
-                s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f,0.5f);
+                s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f,0.5f,0.0f);
                 float ycor = rescale(s,-1.0f,1.0f,270.0,320.0f);
                 float xcor = rescale(i,0,w,0.0,80.0);
                 nvgMoveTo(args.vg,xcor,295.0f);
