@@ -39,12 +39,18 @@ public:
         float z = morph*(msnumtables-1);
         int xindex0 = morph*(msnumtables-1);
         int xindex1 = xindex0+1;
-        float fract=z-(int)z;
-        float morphfact1=1.0-fract;
-        float morphfact2=fract;
-        int indextoshapetable=input*mstablesize;
-        float result=m_tables[xindex0][indextoshapetable]*morphfact1+m_tables[xindex1][indextoshapetable]*morphfact2;
-        return result;
+        int yindex0 = input*(mstablesize-1);
+        int yindex1 = yindex0+1;
+        float x_a0 = m_tables[xindex0][yindex0];
+        float x_a1 = m_tables[xindex0][yindex1];
+        float x_b0 = m_tables[xindex1][yindex0];
+        float x_b1 = m_tables[xindex1][yindex0];
+        float xfrac = (input*mstablesize)-yindex0;
+        float x_interp0 = x_a0+(x_a1-x_a0) * xfrac;
+        float x_interp1 = x_b0+(x_b1-x_b0) * xfrac;
+        float yfrac=z-(int)z;
+        return x_interp0+(x_interp1-x_interp0) * yfrac;
+        
     }
 private:
     
