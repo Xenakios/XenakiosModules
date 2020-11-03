@@ -467,7 +467,7 @@ public:
     {
         setModule(m);
         m_lofi = m;
-        box.size.x = 130;
+        box.size.x = 87;
         auto font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
         m_font = font;
 
@@ -490,30 +490,30 @@ public:
 
         float ydiff = 45.0f;
         yoffs = port->box.pos.y+port->box.size.y+3;
-
+        xoffs = 3.0f;
         addChild(new KnobInAttnWidget(this,"SAMPLERATE DIV",
-            XLOFI::PAR_RATEDIV,XLOFI::IN_CV_RATEDIV,XLOFI::PAR_ATTN_RATEDIV,1.0f,yoffs));
+            XLOFI::PAR_RATEDIV,XLOFI::IN_CV_RATEDIV,XLOFI::PAR_ATTN_RATEDIV,xoffs,yoffs));
         
         yoffs+=ydiff;
         addChild(new KnobInAttnWidget(this,"BIT DEPTH",
-            XLOFI::PAR_BITDIV,XLOFI::IN_CV_BITDIV,XLOFI::PAR_ATTN_BITDIV,1.0f,yoffs));
+            XLOFI::PAR_BITDIV,XLOFI::IN_CV_BITDIV,XLOFI::PAR_ATTN_BITDIV,xoffs,yoffs));
         yoffs+=ydiff;
         addChild(new KnobInAttnWidget(this,"INPUT DRIVE",
-            XLOFI::PAR_DRIVE,XLOFI::IN_CV_DRIVE,XLOFI::PAR_ATTN_DRIVE,1.0f,yoffs));
+            XLOFI::PAR_DRIVE,XLOFI::IN_CV_DRIVE,XLOFI::PAR_ATTN_DRIVE,xoffs,yoffs));
         yoffs+=ydiff;
         addChild(new KnobInAttnWidget(this,"DISTORTION TYPE",
-            XLOFI::PAR_DISTORTTYPE,XLOFI::IN_CV_DISTTYPE,XLOFI::PAR_ATTN_DISTYPE,1.0f,yoffs));
+            XLOFI::PAR_DISTORTTYPE,XLOFI::IN_CV_DISTTYPE,XLOFI::PAR_ATTN_DISTYPE,xoffs,yoffs));
         yoffs+=ydiff;
         addChild(new KnobInAttnWidget(this,"DIST OS MIX",
-            XLOFI::PAR_OVERSAMPLE,XLOFI::IN_CV_OVERSAMPLE,XLOFI::PAR_ATTN_OVERSAMPLE,1.0f,yoffs));
+            XLOFI::PAR_OVERSAMPLE,XLOFI::IN_CV_OVERSAMPLE,XLOFI::PAR_ATTN_OVERSAMPLE,xoffs,yoffs));
         yoffs+=ydiff;
         addChild(new KnobInAttnWidget(this,"GLITCH RATE",
-            XLOFI::PAR_GLITCHRATE,XLOFI::IN_CV_GLITCHRATE,XLOFI::PAR_ATTN_GLITCHRATE,1.0f,yoffs));
+            XLOFI::PAR_GLITCHRATE,XLOFI::IN_CV_GLITCHRATE,XLOFI::PAR_ATTN_GLITCHRATE,xoffs,yoffs));
         
         
 
-        addChild(new LabelWidget({{1,6},{130,1}}, "LOFI",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
-        
+        addChild(new LabelWidget({{1,6},{box.size.x,1}}, "LOFI",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
+        addChild(new LabelWidget({{1,189},{box.size.x-4.0f,1}}, "Xenakios",10,nvgRGB(255,255,255),LabelWidget::J_RIGHT));
     }
     int negCount = 0;
     void draw(const DrawArgs &args) override
