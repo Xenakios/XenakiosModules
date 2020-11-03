@@ -125,6 +125,7 @@ public:
         PAR_SHAPE,
         PAR_VALUEOFFSET,
         PAR_SMOOTHING,
+        PAR_ATTN_RATE,
         PAR_LAST
     };
     enum INPUTS
@@ -141,7 +142,7 @@ public:
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
-        // configParam(FREQ_PARAM, -8.f, 10.f, 1.f, "Frequency", " Hz", 2, 1);
+        configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Base rate CV");
         configParam(PAR_NUMOUTPUTS,1,16,4.0,"Number of outputs");
         configParam(PAR_OFFSET,0.0f,1.0f,0.0f,"Outputs phase offset");
         configParam(PAR_FREQMULTIP,-1.0f,1.0f,0.0f,"Outputs frequency multiplication");
@@ -194,7 +195,7 @@ public:
                 float gain = 1.0f-m_phase;
                 out = gain*std::sin(4.0*smoothing*out*3.141592);
             }
-            float voffset = rescale(i,0,numoutputs,-offsetpar,offsetpar);
+            float voffset = rescale(i,0,numoutputs,0.0f,offsetpar);
             out = clamp(out+voffset,-1.0f,1.0f);
             outputs[OUT_MODOUT].setVoltage(5.0f*out,i);
         }
@@ -220,17 +221,19 @@ public:
         box.size.x = 170;
         addOutput(createOutput<PJ301MPort>(Vec(3, 30), m, XMultiMod::OUT_MODOUT));
         RoundBlackKnob* knob = nullptr;
-        addChild(new KnobInAttnWidget(this,"FREQUENCY",XMultiMod::PAR_RATE,XMultiMod::IN_RATE_CV,-1,1,150));
-        addChild(new KnobInAttnWidget(this,"PHASE OFFSET",XMultiMod::PAR_OFFSET,-1,-1,82,150));
-        //addParam(createParam<RoundBlackKnob>(Vec(3, 60), m, XMultiMod::PAR_RATE));
-        //addParam(createParam<RoundBlackKnob>(Vec(43, 60), m, XMultiMod::PAR_OFFSET));
-        addParam(createParam<RoundBlackKnob>(Vec(83, 60), m, XMultiMod::PAR_FREQMULTIP));
-        addParam(createParam<RoundBlackKnob>(Vec(43, 95), m, XMultiMod::PAR_SLOPE));
-        addParam(createParam<RoundBlackKnob>(Vec(83, 95), m, XMultiMod::PAR_SHAPE));
-        addParam(knob = createParam<RoundBlackKnob>(Vec(3, 95), m, XMultiMod::PAR_NUMOUTPUTS));
-        knob->snap = true;
-        addParam(createParam<RoundBlackKnob>(Vec(3, 125), m, XMultiMod::PAR_VALUEOFFSET));
-        addParam(createParam<RoundBlackKnob>(Vec(43, 125), m, XMultiMod::PAR_SMOOTHING));
+        float yoffs = 60.0f;
+        addChild(new KnobInAttnWidget(this,"FREQUENCY",XMultiMod::PAR_RATE,XMultiMod::IN_RATE_CV,XMultiMod::PAR_ATTN_RATE,1,yoffs));
+        addChild(new KnobInAttnWidget(this,"PHASE OFFSET",XMultiMod::PAR_OFFSET,-1,-1,82,yoffs));
+        yoffs+=45.0f;
+        addChild(new KnobInAttnWidget(this,"SLOPE",XMultiMod::PAR_SLOPE,-1,-1,1,yoffs));
+        addChild(new KnobInAttnWidget(this,"SHAPE",XMultiMod::PAR_SHAPE,-1,-1,82,yoffs));
+        yoffs+=45.0f;
+        addChild(new KnobInAttnWidget(this,"FREQUENCY MULTIPLIER",XMultiMod::PAR_FREQMULTIP,-1,-1,1,yoffs));
+        addChild(new KnobInAttnWidget(this,"SMOOTHING",XMultiMod::PAR_SMOOTHING,-1,-1,82,yoffs));
+        yoffs+=45.0f;
+        addChild(new KnobInAttnWidget(this,"NUM OUTS",XMultiMod::PAR_NUMOUTPUTS,-1,-1,1,yoffs,true));
+        addChild(new KnobInAttnWidget(this,"OUTPUT OFFSET",XMultiMod::PAR_VALUEOFFSET,-1,-1,82,yoffs));
+        
     }
     void draw(const DrawArgs &args) override
     {
