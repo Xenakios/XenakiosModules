@@ -426,37 +426,6 @@ struct LabelEntry
     float ypos = 0.0f;
 };
 
-class LabelsWidget : public TransparentWidget
-{
-public:
-    explicit LabelsWidget(std::vector<LabelEntry> entries, std::shared_ptr<rack::Font> f, 
-        float fontsize, NVGcolor color) :
-        m_entries(entries), m_font(f), m_color(color), m_fontsize(fontsize) 
-    {
-
-    }
-    void draw(const DrawArgs &args) override
-    {
-        nvgSave(args.vg);
-        nvgFontSize(args.vg, m_fontsize);
-        nvgFontFaceId(args.vg, m_font->handle);
-        nvgTextLetterSpacing(args.vg, -1);
-        nvgFillColor(args.vg, m_color);
-        for (auto& e: m_entries)
-        {
-            nvgText(args.vg, e.xpos , e.ypos, e.text.c_str(), NULL);
-        }
-        nvgRestore(args.vg);
-    }
-private:
-    std::vector<LabelEntry> m_entries;
-    std::shared_ptr<rack::Font> m_font;
-    NVGcolor m_color;
-    float m_fontsize = 0.0f;
-};
-
-
-
 class XLOFIWidget : public ModuleWidget
 {
 public:
