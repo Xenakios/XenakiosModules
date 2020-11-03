@@ -251,9 +251,15 @@ inline std::shared_ptr<rack::Font> getDefaultFont(int which)
 class LabelWidget : public TransparentWidget
 {
 public:
-    LabelWidget(rack::Rect bounds,std::string txt, 
-        float fontsize, NVGcolor color) :
-        m_text(txt), m_color(color), m_fontsize(fontsize) 
+    enum Justification
+	{
+		J_LEFT,
+		J_RIGHT,
+		J_CENTER
+	};
+	LabelWidget(rack::Rect bounds,std::string txt, 
+        float fontsize, NVGcolor color, Justification j) :
+        m_text(txt), m_color(color), m_fontsize(fontsize), m_j(j)
     {
 		box.pos = bounds.pos;
 		box.size = bounds.size;
@@ -265,7 +271,19 @@ public:
         nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, m_color);
-        nvgText(args.vg, box.pos.x , box.pos.y, m_text.c_str(), NULL);
+        float textw = nvgTextBounds(args.vg,0.0f,0.0f,m_text.c_str(),nullptr,nullptr);
+		if (m_j == J_LEFT)
+			nvgText(args.vg, box.pos.x , box.pos.y, m_text.c_str(), NULL);
+		if (m_j == J_RIGHT)
+		{
+			float text_x = box.pos.x+(box.size.x-textw);
+			nvgText(args.vg, text_x , box.pos.y, m_text.c_str(), NULL);
+		}
+		if (m_j == J_CENTER)
+		{
+			float text_x = box.pos.x+(box.size.x/2-textw/2);
+			nvgText(args.vg, text_x , box.pos.y, m_text.c_str(), NULL);
+		}
         nvgRestore(args.vg);
     }
 private:
@@ -275,7 +293,10 @@ private:
     float m_fontsize = 0.0f;
 	float m_xcor = 0.0f;
 	float m_ycor = 0.0f;
+	Justification m_j;
 };
+
+
 
 class KnobInAttnWidget : public TransparentWidget
 {

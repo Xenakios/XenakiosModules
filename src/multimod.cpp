@@ -1,4 +1,5 @@
 #include "plugin.hpp"
+#include "helperwidgets.h"
 
 inline float adjustable_triangle(float in, float peakpos)
 {
@@ -219,7 +220,7 @@ public:
     {
         setModule(m);
         box.size.x = 170;
-        addOutput(createOutput<PJ301MPort>(Vec(3, 30), m, XMultiMod::OUT_MODOUT));
+        
         RoundBlackKnob* knob = nullptr;
         float yoffs = 60.0f;
         addChild(new KnobInAttnWidget(this,"FREQUENCY",XMultiMod::PAR_RATE,XMultiMod::IN_RATE_CV,XMultiMod::PAR_ATTN_RATE,1,yoffs));
@@ -234,8 +235,9 @@ public:
         addChild(new KnobInAttnWidget(this,"NUM OUTS",XMultiMod::PAR_NUMOUTPUTS,-1,-1,1,yoffs,true));
         addChild(new KnobInAttnWidget(this,"OUTPUT OFFSET",XMultiMod::PAR_VALUEOFFSET,-1,-1,82,yoffs));
         yoffs+=45.0f;
-        addChild(new LabelWidget({{40,187},{80,1}}, "Xenakios",15,nvgRGB(255,255,255)));
-        addChild(new LabelWidget({{10,6},{80,1}}, "MODULATION SWARM",15,nvgRGB(255,255,255)));
+        addOutput(createOutput<OutPortWithBackGround<PJ301MPort>>(Vec(4, yoffs+1), m, XMultiMod::OUT_MODOUT));
+        addChild(new LabelWidget({{1,187},{166,1}}, "Xenakios",10,nvgRGB(255,255,255),LabelWidget::J_RIGHT));
+        addChild(new LabelWidget({{1,6},{170,1}}, "MODULATION SWARM",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         
     }
     void draw(const DrawArgs &args) override
