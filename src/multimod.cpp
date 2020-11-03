@@ -129,6 +129,7 @@ public:
     };
     enum INPUTS
     {
+        IN_RATE_CV,
         IN_LAST
     };
     enum OUTPUTS
@@ -216,11 +217,13 @@ public:
     XMultiModWidget(XMultiMod* m)
     {
         setModule(m);
-        box.size.x = 120;
+        box.size.x = 170;
         addOutput(createOutput<PJ301MPort>(Vec(3, 30), m, XMultiMod::OUT_MODOUT));
         RoundBlackKnob* knob = nullptr;
-        addParam(createParam<RoundBlackKnob>(Vec(3, 60), m, XMultiMod::PAR_RATE));
-        addParam(createParam<RoundBlackKnob>(Vec(43, 60), m, XMultiMod::PAR_OFFSET));
+        addChild(new KnobInAttnWidget(this,"FREQUENCY",XMultiMod::PAR_RATE,XMultiMod::IN_RATE_CV,-1,1,150));
+        addChild(new KnobInAttnWidget(this,"PHASE OFFSET",XMultiMod::PAR_OFFSET,-1,-1,82,150));
+        //addParam(createParam<RoundBlackKnob>(Vec(3, 60), m, XMultiMod::PAR_RATE));
+        //addParam(createParam<RoundBlackKnob>(Vec(43, 60), m, XMultiMod::PAR_OFFSET));
         addParam(createParam<RoundBlackKnob>(Vec(83, 60), m, XMultiMod::PAR_FREQMULTIP));
         addParam(createParam<RoundBlackKnob>(Vec(43, 95), m, XMultiMod::PAR_SLOPE));
         addParam(createParam<RoundBlackKnob>(Vec(83, 95), m, XMultiMod::PAR_SHAPE));

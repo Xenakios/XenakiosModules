@@ -454,21 +454,7 @@ private:
     float m_fontsize = 0.0f;
 };
 
-class KnobInAttnWidget : public TransparentWidget
-{
-public:
-    KnobInAttnWidget(ModuleWidget* parent, std::string param_desc,
-        int mainparamid, int cvin_id, int attnparamid, float xc, float yc)
-    {
-        labeltext = param_desc;
-        box.size = Vec(80,40);
-        parent->addParam(createParam<RoundBlackKnob>(Vec(xc, yc), parent->module, mainparamid));
-        parent->addInput(createInput<PJ301MPort>(Vec(xc+33.0f, yc+3), parent->module, cvin_id));
-        parent->addParam(createParam<Trimpot>(Vec(xc+60.00, yc+6), parent->module, attnparamid));
 
-    }
-    std::string labeltext;
-};
 
 class XLOFIWidget : public ModuleWidget
 {

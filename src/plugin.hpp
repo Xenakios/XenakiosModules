@@ -232,6 +232,25 @@ struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
 	}
 };
 
+inline std::shared_ptr<rack::Font> getDefaultFont()
+{
+	static std::shared_ptr<rack::Font> s_f;
+	if (s_f==nullptr)
+		s_f = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
+	return s_f;
+}
+
+class KnobInAttnWidget : public TransparentWidget
+{
+public:
+    KnobInAttnWidget(ModuleWidget* parent, std::string param_desc,
+        int mainparamid, int cvin_id, int attnparamid, float xc, float yc);
+	void draw(const DrawArgs &args) override;
+    std::string m_labeltext;
+	float m_xcor = 0.0f;
+	float m_ycor = 0.0f;
+};
+
 inline float soft_clip(float x)
 {
     if (x<-1.0f)
