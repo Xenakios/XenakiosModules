@@ -131,6 +131,7 @@ public:
     };
     enum INPUTS
     {
+        IN_RESET,
         IN_RATE_CV,
         IN_LAST
     };
@@ -235,7 +236,15 @@ public:
         addChild(new KnobInAttnWidget(this,"NUM OUTS",XMultiMod::PAR_NUMOUTPUTS,-1,-1,1,yoffs,true));
         addChild(new KnobInAttnWidget(this,"OUTPUT OFFSET",XMultiMod::PAR_VALUEOFFSET,-1,-1,82,yoffs));
         yoffs+=45.0f;
-        addOutput(createOutput<OutPortWithBackGround<PJ301MPort>>(Vec(4, yoffs+1), m, XMultiMod::OUT_MODOUT));
+        
+        PortWithBackGround<PJ301MPort>* port = nullptr;
+        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(4, yoffs+15), m, XMultiMod::OUT_MODOUT));
+        port->m_text = "MOD OUT";
+        
+        addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(40, yoffs+15), m, XMultiMod::IN_RESET));
+        port->m_text = "RST";
+        port->m_is_out = false;
+
         addChild(new LabelWidget({{1,187},{166,1}}, "Xenakios",10,nvgRGB(255,255,255),LabelWidget::J_RIGHT));
         addChild(new LabelWidget({{1,6},{170,1}}, "MODULATION SWARM",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         
