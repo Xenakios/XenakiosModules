@@ -117,6 +117,7 @@ public:
         PAR_FREQMULTIP,
         PAR_SLOPE,
         PAR_SHAPE,
+        PAR_VALUEOFFSET,
         PAR_LAST
     };
     enum INPUTS
@@ -138,7 +139,7 @@ public:
         configParam(PAR_FREQMULTIP,-1.0f,1.0f,0.0f,"Outputs frequency multiplication");
         configParam(PAR_SLOPE,0.0f,1.0f,0.5f,"Slope");
         configParam(PAR_SHAPE,0.0f,1.0f,0.5f,"Shape");
-        
+        configParam(PAR_VALUEOFFSET,-1.0f,1.0f,0.0f,"Value offset");
     }
     void updateLFORateMultipliers(int numoutputs, float masterMultip)
     {
@@ -167,6 +168,7 @@ public:
         int numoutputs = params[PAR_NUMOUTPUTS].getValue();
         numoutputs = clamp(numoutputs,1,16);
         outputs[OUT_MODOUT].setChannels(numoutputs);
+        float offsetpar = params[PAR_VALUEOFFSET].getValue();
         if (m_phase == 0.0)
             updateLFORateMultipliers(numoutputs,fmult);
         for (int i=0;i<numoutputs;++i)
@@ -175,6 +177,8 @@ public:
             m_lfos[i].setShape(shape);
             m_lfos[i].setOffset(offset*(1.0/numoutputs*i));
             float out = m_lfos[i].process(m_phase);
+            float voffset = rescale(i,0,numoutputs,-offsetpar,offsetpar);
+            out = clamp(out+voffset,-1.0f,1.0f);
             outputs[OUT_MODOUT].setVoltage(5.0f*out,i);
         }
         m_phase+=args.sampleTime*rate;
@@ -206,6 +210,7 @@ public:
         addParam(createParam<RoundBlackKnob>(Vec(83, 95), m, XMultiMod::PAR_SHAPE));
         addParam(knob = createParam<RoundBlackKnob>(Vec(3, 95), m, XMultiMod::PAR_NUMOUTPUTS));
         knob->snap = true;
+        addParam(createParam<RoundBlackKnob>(Vec(3, 125), m, XMultiMod::PAR_VALUEOFFSET));
     }
     void draw(const DrawArgs &args) override
     {
