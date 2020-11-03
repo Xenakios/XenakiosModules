@@ -228,11 +228,14 @@ public:
         addChild(new KnobInAttnWidget(this,"SLOPE",XMultiMod::PAR_SLOPE,-1,-1,1,yoffs));
         addChild(new KnobInAttnWidget(this,"SHAPE",XMultiMod::PAR_SHAPE,-1,-1,82,yoffs));
         yoffs+=45.0f;
-        addChild(new KnobInAttnWidget(this,"FREQUENCY MULTIPLIER",XMultiMod::PAR_FREQMULTIP,-1,-1,1,yoffs));
+        addChild(new KnobInAttnWidget(this,"FREQ MULTIP",XMultiMod::PAR_FREQMULTIP,-1,-1,1,yoffs));
         addChild(new KnobInAttnWidget(this,"SMOOTHING",XMultiMod::PAR_SMOOTHING,-1,-1,82,yoffs));
         yoffs+=45.0f;
         addChild(new KnobInAttnWidget(this,"NUM OUTS",XMultiMod::PAR_NUMOUTPUTS,-1,-1,1,yoffs,true));
         addChild(new KnobInAttnWidget(this,"OUTPUT OFFSET",XMultiMod::PAR_VALUEOFFSET,-1,-1,82,yoffs));
+        yoffs+=45.0f;
+        addChild(new LabelWidget({{40,187},{80,1}}, "Xenakios",15,nvgRGB(255,255,255)));
+        addChild(new LabelWidget({{10,6},{80,1}}, "MODULATION SWARM",15,nvgRGB(255,255,255)));
         
     }
     void draw(const DrawArgs &args) override

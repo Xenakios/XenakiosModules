@@ -300,7 +300,7 @@ void KnobInAttnWidget::draw(const DrawArgs &args)
     nvgStrokeColor(args.vg, nvgRGBA(0x70, 0x70, 0x70, 0xff));
     nvgRect(args.vg,m_xcor,m_ycor,box.size.x-2,box.size.y-2);
     nvgStroke(args.vg);
-	auto font = getDefaultFont();
+	auto font = getDefaultFont(0);
 	nvgFontSize(args.vg, 10);
     nvgFontFaceId(args.vg, font->handle);
     nvgTextLetterSpacing(args.vg, -1);
