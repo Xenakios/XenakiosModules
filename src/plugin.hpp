@@ -298,16 +298,6 @@ private:
 
 
 
-class KnobInAttnWidget : public TransparentWidget
-{
-public:
-    KnobInAttnWidget(ModuleWidget* parent, std::string param_desc,
-        int mainparamid, int cvin_id, int attnparamid, float xc, float yc, bool knobsnap=false);
-	void draw(const DrawArgs &args) override;
-    std::string m_labeltext;
-	float m_xcor = 0.0f;
-	float m_ycor = 0.0f;
-};
 
 inline float soft_clip(float x)
 {

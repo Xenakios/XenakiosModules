@@ -1,4 +1,5 @@
 #include "plugin.hpp"
+#include "helperwidgets.h"
 #include <random>
 
 class SampleRateReducer
@@ -470,47 +471,49 @@ public:
         auto font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
         m_font = font;
 
-        addInput(createInputCentered<PJ301MPort>(Vec(35, 45), m, XLOFI::IN_AUDIO));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(60, 45), m, XLOFI::OUT_SIGNALCOMPLEXITY));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(90, 45), m, XLOFI::OUT_AUDIO));
+        PortWithBackGround<PJ301MPort>* port = nullptr;
+        addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(3, 34), m, XLOFI::IN_AUDIO));
+        port->m_text = "AUDIO IN";
+        port->m_is_out = false;
+        float xoffs = port->box.getRight()+5;
+        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(xoffs, 34), m, XLOFI::OUT_AUDIO));
+        port->m_text = "AUDIO OUT";
         
-        auto addparfunc=[this,m](float xc, float yc, XLOFI::PARAMS par, XLOFI::INPUTS cvin, XLOFI::PARAMS cvpar)
-        {
-            addParam(createParam<RoundBlackKnob>(Vec(xc, yc), m, par));
-            addInput(createInput<PJ301MPort>(Vec(xc+33.0f, yc+3), m, cvin));
-            addParam(createParam<Trimpot>(Vec(xc+60.00, yc+6), m, cvpar));
-        };
+        float yoffs = port->box.getBottom()+17;
+        xoffs = port->box.getRight()+1;
+        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(3, yoffs), m, XLOFI::OUT_SIGNALCOMPLEXITY));
+        port->box.size.x += 10;
+        port->m_text = "ANALYSIS OUT";
+        xoffs = port->box.getRight()+5;
+        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(xoffs, yoffs), m, XLOFI::OUT_GLITCH_TRIG));
+        port->m_text = "GLITCH ACTIVE";
 
         float ydiff = 45.0f;
-        float yoffs = 78.0;
+        yoffs = port->box.pos.y+port->box.size.y+3;
 
-        addparfunc(1.0,yoffs,XLOFI::PAR_RATEDIV,XLOFI::IN_CV_RATEDIV,XLOFI::PAR_ATTN_RATEDIV);
+        addChild(new KnobInAttnWidget(this,"SAMPLERATE DIV",
+            XLOFI::PAR_RATEDIV,XLOFI::IN_CV_RATEDIV,XLOFI::PAR_ATTN_RATEDIV,1.0f,yoffs));
+        
         yoffs+=ydiff;
-        addparfunc(1.0,yoffs,XLOFI::PAR_BITDIV,XLOFI::IN_CV_BITDIV,XLOFI::PAR_ATTN_BITDIV);
+        addChild(new KnobInAttnWidget(this,"BIT DEPTH",
+            XLOFI::PAR_BITDIV,XLOFI::IN_CV_BITDIV,XLOFI::PAR_ATTN_BITDIV,1.0f,yoffs));
         yoffs+=ydiff;
-        addparfunc(1.0,yoffs,XLOFI::PAR_DRIVE,XLOFI::IN_CV_DRIVE,XLOFI::PAR_ATTN_DRIVE);
+        addChild(new KnobInAttnWidget(this,"INPUT DRIVE",
+            XLOFI::PAR_DRIVE,XLOFI::IN_CV_DRIVE,XLOFI::PAR_ATTN_DRIVE,1.0f,yoffs));
         yoffs+=ydiff;
-        addparfunc(1.0,yoffs,XLOFI::PAR_DISTORTTYPE,XLOFI::IN_CV_DISTTYPE,XLOFI::PAR_ATTN_DISTYPE);
+        addChild(new KnobInAttnWidget(this,"DISTORTION TYPE",
+            XLOFI::PAR_DISTORTTYPE,XLOFI::IN_CV_DISTTYPE,XLOFI::PAR_ATTN_DISTYPE,1.0f,yoffs));
         yoffs+=ydiff;
-        addparfunc(1.0,yoffs,XLOFI::PAR_OVERSAMPLE,XLOFI::IN_CV_OVERSAMPLE,XLOFI::PAR_ATTN_OVERSAMPLE);
+        addChild(new KnobInAttnWidget(this,"DIST OS MIX",
+            XLOFI::PAR_OVERSAMPLE,XLOFI::IN_CV_OVERSAMPLE,XLOFI::PAR_ATTN_OVERSAMPLE,1.0f,yoffs));
         yoffs+=ydiff;
-        addparfunc(1.0,yoffs,XLOFI::PAR_GLITCHRATE,XLOFI::IN_CV_GLITCHRATE,XLOFI::PAR_ATTN_GLITCHRATE);
-        addOutput(createOutput<PJ301MPort>(Vec(90,yoffs), m, XLOFI::OUT_GLITCH_TRIG));
-        yoffs+=ydiff;
-        std::vector<LabelEntry> labentries;
-        labentries.emplace_back("LOFI",1,15);
-        labentries.emplace_back("Xenakios",1,375);
-        labentries.emplace_back("AUDIO IN",10,30);
-        labentries.emplace_back("AUDIO OUT",80,30);
-        std::vector<std::string> parnames{"SAMPLERATE REDUCTION","BIT DEPTH REDUCTION","INPUT DRIVE","DISTORTION TYPE",
-        "OVERSAMPLE MIX","GLITCH RATE"};
-        yoffs = 75.0f;
-        for (auto& e : parnames)
-        {
-            labentries.emplace_back(e,1,yoffs);
-            yoffs+=ydiff;
-        }
-        addChild(new LabelsWidget{labentries,font, 10.0f, nvgRGBA(0xff, 0xff, 0xff, 0xff)});
+        addChild(new KnobInAttnWidget(this,"GLITCH RATE",
+            XLOFI::PAR_GLITCHRATE,XLOFI::IN_CV_GLITCHRATE,XLOFI::PAR_ATTN_GLITCHRATE,1.0f,yoffs));
+        
+        
+
+        addChild(new LabelWidget({{1,6},{130,1}}, "LOFI",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
+        
     }
     int negCount = 0;
     void draw(const DrawArgs &args) override
@@ -522,7 +525,7 @@ public:
         nvgFillColor(args.vg, nvgRGBA(0x50, 0x50, 0x50, 0xff));
         nvgRect(args.vg,0.0f,0.0f,w,h);
         nvgFill(args.vg);
-        if (m_lofi)
+        if (m_lofi && 6==7)
         {
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             nvgBeginPath(args.vg);

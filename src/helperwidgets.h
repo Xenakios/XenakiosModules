@@ -3,6 +3,53 @@
 #include <rack.hpp>
 #include "plugin.hpp"
 
+
+class KnobInAttnWidget : public TransparentWidget
+{
+public:
+    KnobInAttnWidget(ModuleWidget* parent, std::string param_desc,
+        int mainparamid, int cvin_id, int attnparamid, float xc, float yc, bool knobsnap=false);
+	void draw(const DrawArgs &args) override;
+    std::string m_labeltext;
+	float m_xcor = 0.0f;
+	float m_ycor = 0.0f;
+};
+
+inline KnobInAttnWidget::KnobInAttnWidget(ModuleWidget* parent, std::string param_desc,
+        int mainparamid, int cvin_id, int attnparamid, float xc, float yc, bool knobsnap)
+{
+	m_xcor = xc;
+	m_ycor = yc;
+	m_labeltext = param_desc;
+	box.size = Vec(80,45);
+	RoundBlackKnob* knob = nullptr;
+	parent->addParam(knob=createParam<RoundBlackKnob>(Vec(xc, yc+13), parent->module, mainparamid));
+	knob->snap = knobsnap;
+	if (cvin_id>=0)
+		parent->addInput(createInput<PJ301MPort>(Vec(xc+31.0f, yc+16), parent->module, cvin_id));
+	if (attnparamid>=0)
+		parent->addParam(createParam<Trimpot>(Vec(xc+57.00, yc+19), parent->module, attnparamid));
+
+}
+
+inline void KnobInAttnWidget::draw(const DrawArgs &args)
+{
+	nvgSave(args.vg);
+	nvgBeginPath(args.vg);
+    nvgStrokeColor(args.vg, nvgRGBA(0x70, 0x70, 0x70, 0xff));
+    nvgRect(args.vg,m_xcor,m_ycor,box.size.x-2,box.size.y-2);
+    nvgStroke(args.vg);
+	auto font = getDefaultFont(0);
+	nvgFontSize(args.vg, 10);
+    nvgFontFaceId(args.vg, font->handle);
+    nvgTextLetterSpacing(args.vg, -1);
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            
+    nvgText(args.vg, m_xcor + 1, m_ycor + 10, m_labeltext.c_str(), NULL);
+	nvgRestore(args.vg);
+}
+
+
 template<typename PortType>
 class PortWithBackGround : public PortType
 {
@@ -14,19 +61,23 @@ public:
 	void draw(const Widget::DrawArgs &args) override
     {
         nvgSave(args.vg);
-		if (m_is_out)
+		auto backgroundcolor = nvgRGB(210,210,210);
+        auto textcolor = nvgRGB(0,0,0);
+        if (m_is_out)
         {
-            nvgBeginPath(args.vg);
-    	    nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
-    	    nvgRoundedRect(args.vg,-1.0f,-15.0f,this->box.size.x+2.0f,this->box.size.y+15.0,3.0f);
-    	    nvgFill(args.vg);
+            backgroundcolor = nvgRGB(0,0,0);
+            textcolor = nvgRGB(255,255,255);
         }
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg, backgroundcolor);
+        nvgRoundedRect(args.vg,-1.0f,-15.0f,this->box.size.x+2.0f,this->box.size.y+15.0,3.0f);
+        nvgFill(args.vg);
         
-		auto font = getDefaultFont(0);
+        auto font = getDefaultFont(0);
         nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
         nvgFontSize(args.vg, 7.5f);
-        nvgTextLetterSpacing(args.vg, 1.0f);
-        nvgFillColor(args.vg, nvgRGB(255,255,255));
+        nvgTextLetterSpacing(args.vg, 0.0f);
+        nvgFillColor(args.vg, textcolor);
         nvgTextBox(args.vg,0.5f,-9.6f,this->box.size.x,m_text.c_str(),nullptr);
         nvgRestore(args.vg);
 		PortType::draw(args);
