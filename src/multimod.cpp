@@ -184,7 +184,8 @@ public:
             {
                 smoothing-=0.5f;
                 smoothing*=2.0f;
-                out = wrap_value(-1.0f,out*smoothing*16.0f,1.0f);
+                float gain = 1.0f-m_phase;
+                out = gain*std::sin(4.0*smoothing*out*3.141592);
             }
             float voffset = rescale(i,0,numoutputs,-offsetpar,offsetpar);
             out = clamp(out+voffset,-1.0f,1.0f);
