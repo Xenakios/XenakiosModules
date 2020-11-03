@@ -118,6 +118,7 @@ public:
         PAR_SLOPE,
         PAR_SHAPE,
         PAR_VALUEOFFSET,
+        PAR_SMOOTHING,
         PAR_LAST
     };
     enum INPUTS
@@ -140,6 +141,7 @@ public:
         configParam(PAR_SLOPE,0.0f,1.0f,0.5f,"Slope");
         configParam(PAR_SHAPE,0.0f,1.0f,0.5f,"Shape");
         configParam(PAR_VALUEOFFSET,-1.0f,1.0f,0.0f,"Value offset");
+        configParam(PAR_SMOOTHING,0.0f,1.0f,0.5f,"Smoothing");
     }
     void updateLFORateMultipliers(int numoutputs, float masterMultip)
     {
@@ -169,6 +171,7 @@ public:
         numoutputs = clamp(numoutputs,1,16);
         outputs[OUT_MODOUT].setChannels(numoutputs);
         float offsetpar = params[PAR_VALUEOFFSET].getValue();
+        float smoothing = params[PAR_SMOOTHING].getValue();
         if (m_phase == 0.0)
             updateLFORateMultipliers(numoutputs,fmult);
         for (int i=0;i<numoutputs;++i)
@@ -177,6 +180,12 @@ public:
             m_lfos[i].setShape(shape);
             m_lfos[i].setOffset(offset*(1.0/numoutputs*i));
             float out = m_lfos[i].process(m_phase);
+            if (smoothing>0.5f)
+            {
+                smoothing-=0.5f;
+                smoothing*=2.0f;
+                out = wrap_value(-1.0f,out*smoothing*16.0f,1.0f);
+            }
             float voffset = rescale(i,0,numoutputs,-offsetpar,offsetpar);
             out = clamp(out+voffset,-1.0f,1.0f);
             outputs[OUT_MODOUT].setVoltage(5.0f*out,i);
@@ -211,6 +220,7 @@ public:
         addParam(knob = createParam<RoundBlackKnob>(Vec(3, 95), m, XMultiMod::PAR_NUMOUTPUTS));
         knob->snap = true;
         addParam(createParam<RoundBlackKnob>(Vec(3, 125), m, XMultiMod::PAR_VALUEOFFSET));
+        addParam(createParam<RoundBlackKnob>(Vec(43, 125), m, XMultiMod::PAR_SMOOTHING));
     }
     void draw(const DrawArgs &args) override
     {
