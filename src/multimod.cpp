@@ -131,7 +131,8 @@ public:
     XMultiMod()
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
-        configParam(PAR_RATE,0.1f,32.0f,1.0f,"Base rate");
+        configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
+        // configParam(FREQ_PARAM, -8.f, 10.f, 1.f, "Frequency", " Hz", 2, 1);
         configParam(PAR_NUMOUTPUTS,1,16,4.0,"Number of outputs");
         configParam(PAR_OFFSET,0.0f,1.0f,0.0f,"Outputs phase offset");
         configParam(PAR_FREQMULTIP,-1.0f,1.0f,0.0f,"Outputs frequency multiplication");
@@ -157,7 +158,8 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
-        float rate = params[PAR_RATE].getValue();
+        float pitch = params[PAR_RATE].getValue()*12.0f;
+        float rate = std::pow(2.0,1.0/12*pitch);
         float offset = params[PAR_OFFSET].getValue();
         float fmult = params[PAR_FREQMULTIP].getValue();
         float slope = params[PAR_SLOPE].getValue();
