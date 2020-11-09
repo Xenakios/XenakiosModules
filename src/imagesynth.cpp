@@ -397,10 +397,11 @@ public:
         if (m!=m_outputChansMode)
         {
             m_outputChansMode = m;
+            m_numOutputChannels = g_panmodes[m_outputChansMode].numoutchans;
             startDirtyCountdown();
         }
     }
-
+    int m_numOutputChannels = 0;
     int getNumOutputChannels() 
     { 
         return g_panmodes[m_outputChansMode].numoutchans;
@@ -454,6 +455,35 @@ public:
         if (index>=0 && index<(int)m_renderBuf.size())
             return m_renderBuf[index];
         return 0.0f;
+    }
+    template<typename T>
+    void putSamplesToBuffer(T* dest, int numFrames, int startFrame)
+    {
+        if (m_BufferReady == false || m_numOutputSamples == 0)
+        {
+            for (int i=0;i<numFrames*m_numOutputChannels;++i)
+                dest[i]=T{0};
+            return;
+        }
+        //return;
+        int maxFrame = m_numOutputSamples;
+        for (int i=0;i<numFrames;++i)
+        {
+            int frameIndex = startFrame+i;
+            if (frameIndex<maxFrame)
+            {
+                for (int j=0;j<m_numOutputChannels;++j)
+                {
+                    dest[i*m_numOutputChannels+j] = m_renderBuf[frameIndex*m_numOutputChannels+j];
+                }
+            } else
+            {
+                for (int j=0;j<m_numOutputChannels;++j)
+                {
+                    dest[i*m_numOutputChannels+j] = T{0};
+                }
+            }
+        }    
     }
 private:
     std::vector<float> m_renderBuf;
@@ -804,6 +834,8 @@ public:
         int srcpossamples = startInSource;
         //srcpossamples+=rack::random::normal()*lensamples;
         srcpossamples = clamp((float)srcpossamples,(float)0,inputdur-1.0f);
+        m_syn->putSamplesToBuffer(rsinbuf,wanted,srcpossamples);
+        /*
         for (int i=0;i<wanted;++i)
         {
             for (int j=0;j<m_chans;++j)
@@ -814,6 +846,7 @@ public:
             }
             
         }
+        */
         m_resampler.ResampleOut(m_grainOutBuffer.data(),wanted,lensamples,m_chans);
         for (int i=0;i<lensamples;++i)
         {
