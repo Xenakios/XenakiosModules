@@ -121,7 +121,7 @@ public:
         }
         float ratio = pow(2.0,(pitch/12.0));
         rs.SetRates(ratio*srate, srate);
-        double* rsInBuf = nullptr;
+        float* rsInBuf = nullptr;
         int wanted = rs.ResamplePrepare(1, 1, &rsInBuf);
         float reflGain = fold;
         for (int k = 0; k < wanted; ++k)
@@ -160,7 +160,7 @@ private:
     int elementCounter = 0;
     int segmentCounter = 0;
     int numElements = 12;
-    std::vector<double> rsOutBuf;
+    std::vector<float> rsOutBuf;
 };
 
 class XPSynth : public rack::Module

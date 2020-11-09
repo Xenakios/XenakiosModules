@@ -6,8 +6,16 @@
 #include <functional>
 #include <thread> 
 #include <mutex>
+
 #include "wdl/resample.h"
 #include <chrono>
+
+class GrainAudioSource
+{
+public:
+    virtual ~GrainAudioSource() {}
+    virtual void putIntoBuffer(float* dest, int frames, int channels, int startInSource) = 0;
+};
 
 extern std::shared_ptr<Font> g_font;
 
@@ -214,7 +222,7 @@ public:
 
 class OscillatorBuilder;
 
-class ImgSynth
+class ImgSynth : public GrainAudioSource
 {
 public:
     std::mt19937 m_rng{ 99937 };
@@ -455,14 +463,13 @@ public:
             return m_renderBuf[index];
         return 0.0f;
     }
-    template<typename T>
-    void putSamplesToBuffer(T* dest, int numFrames, int startFrame)
+    void putIntoBuffer(float* dest, int numFrames, int numChannels, int startFrame) override
     {
         int outchanstouse = getNumOutputChannels();
         if (m_BufferReady == false || outchanstouse == 0 || m_numOutputSamples == 0)
         {
             for (int i=0;i<numFrames*outchanstouse;++i)
-                dest[i]=T{0};
+                dest[i]=0.0;
             return;
         }
         //return;
@@ -480,7 +487,7 @@ public:
             {
                 for (int j=0;j<outchanstouse;++j)
                 {
-                    dest[i*outchanstouse+j] = T{0};
+                    dest[i*outchanstouse+j] = 0.0;
                 }
             }
         }    
@@ -812,7 +819,6 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         m_percent_ready = 1.0;
     }
 
-template<typename SndSrcType>
 class ISGrain
 {
 public:
@@ -827,7 +833,7 @@ public:
         playState = 1;
         m_outpos = 0;
         m_resampler.SetRates(m_sr , m_sr / pow(2.0,1.0/12*pitch));
-        double* rsinbuf = nullptr;
+        float* rsinbuf = nullptr;
         int lensamples = m_sr*len;
         m_grainSize = lensamples;
         int wanted = m_resampler.ResamplePrepare(lensamples,m_chans,&rsinbuf);
@@ -835,7 +841,7 @@ public:
         int srcpossamples = startInSource;
         //srcpossamples+=rack::random::normal()*lensamples;
         srcpossamples = clamp((float)srcpossamples,(float)0,inputdur-1.0f);
-        m_syn->putSamplesToBuffer(rsinbuf,wanted,srcpossamples);
+        m_syn->putIntoBuffer(rsinbuf,wanted,m_chans,srcpossamples);
         /*
         for (int i=0;i<wanted;++i)
         {
@@ -900,7 +906,7 @@ public:
         }
         return 0.0f;
     }
-    SndSrcType* m_syn = nullptr;
+    GrainAudioSource* m_syn = nullptr;
 private:
     
     int m_outpos = 0;
@@ -908,7 +914,7 @@ private:
     float m_sr = 44100.0f;
     int m_chans = 2;
     WDL_Resampler m_resampler;
-    std::vector<double> m_grainOutBuffer;
+    std::vector<float> m_grainOutBuffer;
     
 };
 
@@ -969,7 +975,7 @@ public:
     int m_outcounter = 0;
     int m_nextGrainPos = 0;
     int m_grainCounter = 0;
-    std::array<ISGrain<ImgSynth>,2> m_grains;
+    std::array<ISGrain,2> m_grains;
 };
 
 class XImageSynth : public rack::Module
@@ -1029,7 +1035,7 @@ public:
     OscillatorBuilder m_oscBuilder{32};
     std::list<std::string> m_scala_scales;
     dsp::DoubleRingBuffer<dsp::Frame<5>, 256> outputBuffer;
-    std::vector<double> srcOutBuffer;
+    std::vector<float> srcOutBuffer;
     XImageSynth()
     {
         srcOutBuffer.resize(16*64);
@@ -1266,7 +1272,7 @@ public:
             m_bufferplaypos = loopstartsamps;
         float loop_phase = rescale(m_bufferplaypos,loopstartsamps,loopendsampls,0.0f,10.0f);
         outputs[OUT_LOOP_PHASE].setVoltage(loop_phase);
-        double* rsbuf = nullptr;
+        float* rsbuf = nullptr;
         int wanted = m_src.ResamplePrepare(blocksize,ochans,&rsbuf);
         for (int i=0;i<wanted;++i)
         {
