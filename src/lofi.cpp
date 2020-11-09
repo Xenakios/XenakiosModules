@@ -155,6 +155,18 @@ inline float sin_dist(float in)
     return std::sin(3.141592653*2*in);
 }
 
+inline float sign(float in)
+{
+    if (in<0.0f)
+        return -1.0f;
+    return 1.0f;
+}
+
+inline float sym_reflect(float in)
+{
+    return sign(in)*2.0f*std::fabs(in/2.0f-std::round(in/2.0f));
+}
+
 inline float distort(float in, float th, float type)
 {
     int index0 = std::floor(type);
@@ -177,11 +189,13 @@ inline float distort(float in, float th, float type)
     else if (index0 == 1)
     {
         distsamples[1] = clamp(in,-th,th);
-        distsamples[2] = reflect_value(-th,in,th);
+        //distsamples[2] = reflect_value(-th,in,th);
+        distsamples[2] = sym_reflect(in);
     }
     else if (index0 == 2)
     {
-        distsamples[2] = reflect_value(-th,in,th);
+        distsamples[2] = sym_reflect(in);
+        //distsamples[2] = reflect_value(-th,in,th);
         distsamples[3] = wrap_value(-th,in,th);
     }
     else if (index0 == 3)
