@@ -397,11 +397,10 @@ public:
         if (m!=m_outputChansMode)
         {
             m_outputChansMode = m;
-            m_numOutputChannels = g_panmodes[m_outputChansMode].numoutchans;
             startDirtyCountdown();
         }
     }
-    int m_numOutputChannels = 0;
+    
     int getNumOutputChannels() 
     { 
         return g_panmodes[m_outputChansMode].numoutchans;
@@ -459,9 +458,10 @@ public:
     template<typename T>
     void putSamplesToBuffer(T* dest, int numFrames, int startFrame)
     {
-        if (m_BufferReady == false || m_numOutputSamples == 0)
+        int outchanstouse = getNumOutputChannels();
+        if (m_BufferReady == false || outchanstouse == 0 || m_numOutputSamples == 0)
         {
-            for (int i=0;i<numFrames*m_numOutputChannels;++i)
+            for (int i=0;i<numFrames*outchanstouse;++i)
                 dest[i]=T{0};
             return;
         }
@@ -472,15 +472,15 @@ public:
             int frameIndex = startFrame+i;
             if (frameIndex<maxFrame)
             {
-                for (int j=0;j<m_numOutputChannels;++j)
+                for (int j=0;j<outchanstouse;++j)
                 {
-                    dest[i*m_numOutputChannels+j] = m_renderBuf[frameIndex*m_numOutputChannels+j];
+                    dest[i*outchanstouse+j] = m_renderBuf[frameIndex*outchanstouse+j];
                 }
             } else
             {
-                for (int j=0;j<m_numOutputChannels;++j)
+                for (int j=0;j<outchanstouse;++j)
                 {
-                    dest[i*m_numOutputChannels+j] = T{0};
+                    dest[i*outchanstouse+j] = T{0};
                 }
             }
         }    
@@ -812,6 +812,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         m_percent_ready = 1.0;
     }
 
+template<typename SndSrcType>
 class ISGrain
 {
 public:
@@ -899,7 +900,7 @@ public:
         }
         return 0.0f;
     }
-    ImgSynth* m_syn = nullptr;
+    SndSrcType* m_syn = nullptr;
 private:
     
     int m_outpos = 0;
@@ -968,7 +969,7 @@ public:
     int m_outcounter = 0;
     int m_nextGrainPos = 0;
     int m_grainCounter = 0;
-    std::array<ISGrain,2> m_grains;
+    std::array<ISGrain<ImgSynth>,2> m_grains;
 };
 
 class XImageSynth : public rack::Module
