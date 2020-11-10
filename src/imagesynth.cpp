@@ -826,10 +826,10 @@ public:
     {
         m_grainOutBuffer.resize(65536*m_chans*2);
     }
-    void initGrain(float inputdur, float startInSource,float len, float pitch)
+    bool initGrain(float inputdur, float startInSource,float len, float pitch)
     {
         if (playState == 1)
-            return;
+            return false;
         playState = 1;
         m_outpos = 0;
         m_resampler.SetRates(m_sr , m_sr / pow(2.0,1.0/12*pitch));
@@ -866,6 +866,7 @@ public:
             }
             
         }
+        return true;
     }
     void process(float* buf)
     {
