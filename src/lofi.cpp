@@ -472,7 +472,7 @@ public:
         float yoffs = port->box.getBottom()+17;
         xoffs = port->box.getRight()+1;
         addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(3, yoffs), m, XLOFI::OUT_SIGNALCOMPLEXITY));
-        port->box.size.x += 10;
+        //port->box.size.x += 10;
         port->m_text = "ANALYSIS OUT";
         xoffs = port->box.getRight()+5;
         addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(xoffs, yoffs), m, XLOFI::OUT_GLITCH_TRIG));
