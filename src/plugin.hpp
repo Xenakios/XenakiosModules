@@ -4,6 +4,8 @@
 using namespace rack;
 #include <fstream>
 
+const float g_pi = 3.14159265358979;
+
 inline float customlog(float base, float x)
 {
 	return std::log(x)/std::log(base);
