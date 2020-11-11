@@ -3,8 +3,24 @@
 #include <array>
 #include <vector>
 #include <cmath>
-#include "../plugin.hpp"
+#include <random>
+// #include "../plugin.hpp"
 #include "../wdl/resample.h"
+
+namespace xenakios
+{
+inline float clamp(float in, float low, float high)
+{
+    if (in<low)
+        return low;
+    if (in>high)
+        return high;
+    return in;
+}
+inline float rescale(float x, float xMin, float xMax, float yMin, float yMax) {
+	return yMin + (x - xMin) / (xMax - xMin) * (yMax - yMin);
+}
+}
 
 class GrainAudioSource
 {
@@ -33,24 +49,13 @@ public:
         float* rsinbuf = nullptr;
         int lensamples = m_sr*len;
         m_grainSize = lensamples;
+        m_resampler.Reset();
         int wanted = m_resampler.ResamplePrepare(lensamples,m_chans,&rsinbuf);
         
         int srcpossamples = startInSource;
         //srcpossamples+=rack::random::normal()*lensamples;
-        srcpossamples = clamp((float)srcpossamples,(float)0,inputdur-1.0f);
+        srcpossamples = xenakios::clamp((float)srcpossamples,(float)0,inputdur-1.0f);
         m_syn->putIntoBuffer(rsinbuf,wanted,m_chans,srcpossamples);
-        /*
-        for (int i=0;i<wanted;++i)
-        {
-            for (int j=0;j<m_chans;++j)
-            {
-                int bufferindex = (srcpossamples+i)*m_chans+j;
-                float src_sample = m_syn->getBufferSample(bufferindex);
-                rsinbuf[i*m_chans+j] = src_sample;
-            }
-            
-        }
-        */
         m_resampler.ResampleOut(m_grainOutBuffer.data(),wanted,lensamples,m_chans);
         for (int i=0;i<lensamples;++i)
         {
@@ -64,6 +69,10 @@ public:
             
         }
         return true;
+    }
+    void setNumOutChans(int chans)
+    {
+        m_chans = chans;
     }
     void process(float* buf)
     {
@@ -95,12 +104,12 @@ public:
         if (wtype == 0)
         {
             if (pos<0.5)
-                return rescale(pos,0.0,0.5,0.0,1.0);
-            return rescale(pos,0.5,1.0 ,1.0,0.0);
+                return xenakios::rescale(pos,0.0,0.5,0.0,1.0);
+            return xenakios::rescale(pos,0.5,1.0 ,1.0,0.0);
         }
         else if (wtype == 1)
         {
-            return 0.5f * (1.0f - std::cos(2.0f * g_pi * pos));
+            return 0.5f * (1.0f - std::cos(2.0f * 3.141592653 * pos));
         }
         return 0.0f;
     }
@@ -116,6 +125,8 @@ private:
     
 };
 
+
+
 class GrainMixer
 {
 public:
@@ -125,8 +136,11 @@ public:
         for (int i=0;i<(int)m_grains.size();++i)
         {
             m_grains[i].m_syn = s;
+            m_grains[i].setNumOutChans(2);
         }
     }
+    std::mt19937 m_randgen;
+    std::normal_distribution<float> m_gaussdist{0.0f,1.0f};
     void processAudio(float* buf)
     {
         if (m_inputdur<0.5f)
@@ -135,7 +149,7 @@ public:
         {
             float glen = m_grainDensity*2.0;
             float glensamples = m_sr*glen;
-            float posrand = random::normal()*m_posrandamt*glensamples;
+            float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
             float srcpostouse = m_srcpos+posrand;
             m_grains[m_grainCounter].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch);
             ++m_grainCounter;
@@ -165,11 +179,11 @@ public:
     float m_sr = 44100.0;
     float m_grainDensity = 0.1;
     float m_sourcePlaySpeed = 1.0f;
-    float m_pitch = 0.0f;
+    float m_pitch = 0.0f; // semitones
     float m_posrandamt = 0.0f;
-    float m_inputdur = 0.0f;
+    float m_inputdur = 0.0f; // samples!
     float m_loopstart = 0.0f;
-    float m_looplen = 0.0f;
+    float m_looplen = 1.0f;
     int m_outcounter = 0;
     int m_nextGrainPos = 0;
     int m_grainCounter = 0;

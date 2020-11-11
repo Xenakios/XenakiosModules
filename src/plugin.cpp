@@ -302,4 +302,5 @@ void init(Plugin *p) {
 	p->addModel(modelXImageSynth);
 	p->addModel(modelXLOFI);
 	p->addModel(modelXMultiMod);
+	p->addModel(modelXGranular);
 }

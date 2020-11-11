@@ -172,6 +172,14 @@
       "tags": [
         "LFO"
       ]
+    },
+    {
+      "slug": "XGranular",
+      "name": "Grain",
+      "description": "Granular sampler",
+      "tags": [
+        "Sampler","Granular"
+      ]
     }
     
 

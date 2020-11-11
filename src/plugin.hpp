@@ -226,6 +226,7 @@ extern Model* modelXStochastic;
 extern Model* modelXImageSynth;
 extern Model* modelXLOFI;
 extern Model* modelXMultiMod;
+extern Model* modelXGranular;
 
 template <typename TLightBase = RedLight>
 struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
