@@ -10,6 +10,9 @@ class GrainAudioSource
 {
 public:
     virtual ~GrainAudioSource() {}
+    virtual float getSourceSampleRate() { return 0.0f; };
+    virtual int getSourceNumSamples() { return 0; };
+    virtual int getSourceNumChannels() { return 0; };
     virtual void putIntoBuffer(float* dest, int frames, int channels, int startInSource) = 0;
 };
 
