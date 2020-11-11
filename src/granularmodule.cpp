@@ -125,7 +125,9 @@ public:
 
         m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen);
         outputs[OUT_AUDIO].setVoltage(buf[0]*5.0f);
+        graindebugcounter = m_eng.m_gm.debugCounter;
     }
+    int graindebugcounter = 0;
 private:
     GrainEngine m_eng;
 };
@@ -133,9 +135,11 @@ private:
 class XGranularWidget : public rack::ModuleWidget
 {
 public:
+    XGranularModule* m_gm = nullptr;
     XGranularWidget(XGranularModule* m)
     {
         setModule(m);
+        m_gm = m;
         box.size.x = 200;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "GRAINS",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         PortWithBackGround<PJ301MPort>* port = nullptr;
@@ -153,6 +157,20 @@ public:
         nvgFillColor(args.vg, nvgRGBA(0x50, 0x50, 0x50, 0xff));
         nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
         nvgFill(args.vg);
+        if (m_gm)
+        {
+            char buf[100];
+            sprintf(buf,"%d",m_gm->graindebugcounter);
+            nvgFontSize(args.vg, 15);
+            nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
+            nvgTextLetterSpacing(args.vg, -1);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            
+            nvgText(args.vg, 1 , 170, buf, NULL);
+        }
+        
+
+
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
     }

@@ -32,9 +32,33 @@ public:
     virtual void putIntoBuffer(float* dest, int frames, int channels, int startInSource) = 0;
 };
 
+class WindowLookup
+{
+public:
+    WindowLookup()
+    {
+        m_table.resize(m_size);
+        for (int i=0;i<m_size;++i)
+        {
+            float hannpos = 1.0/(m_size-1)*i;
+            m_table[i] = 0.5f * (1.0f - std::cos(2.0f * 3.141592653 * hannpos));
+        }
+    }
+    inline float getValue(float normpos)
+    {
+        int index = normpos*(m_size-1);
+        return m_table[index];
+    }
+private:
+    std::vector<float> m_table;
+    int m_size = 32768;
+};
+
+
 class ISGrain
 {
 public:
+    WindowLookup m_hannwind;
     ISGrain() 
     {
         m_grainOutBuffer.resize(65536*m_chans*2);
@@ -61,7 +85,9 @@ public:
         {
             float hannpos = 1.0/(m_grainSize-1)*i;
             //hannpos = fmod(hannpos+m_storedOffset,1.0f);
-            float win = getWindow(hannpos,1); 
+            //float win = getWindow(hannpos,1); 
+            //float win = 0.5f * (1.0f - std::cos(2.0f * 3.141592653 * hannpos));
+            float win = m_hannwind.getValue(hannpos);
             for (int j=0;j<m_chans;++j)
             {
                 m_grainOutBuffer[i*m_chans+j]*=win;
@@ -99,7 +125,7 @@ public:
     }
     
     
-    float getWindow(float pos, int wtype)
+    inline float getWindow(float pos, int wtype)
     {
         if (wtype == 0)
         {
@@ -141,12 +167,15 @@ public:
     }
     std::mt19937 m_randgen;
     std::normal_distribution<float> m_gaussdist{0.0f,1.0f};
+    int debugCounter = 0;
     void processAudio(float* buf)
     {
         if (m_inputdur<0.5f)
             return;
-        if (m_outcounter >= m_nextGrainPos)
+        if (m_outcounter == m_nextGrainPos)
         {
+            ++debugCounter;
+            m_outcounter = 0;
             float glen = m_grainDensity*2.0;
             float glensamples = m_sr*glen;
             float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
@@ -155,7 +184,7 @@ public:
             ++m_grainCounter;
             if (m_grainCounter==(int)m_grains.size())
                 m_grainCounter = 0;
-            m_nextGrainPos+=m_sr*(m_grainDensity);
+            m_nextGrainPos=m_sr*(m_grainDensity);
             m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed;
             if (m_srcpos>=m_looplen*m_inputdur)
                 m_srcpos = 0.0f;
