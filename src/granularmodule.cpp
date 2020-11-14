@@ -33,6 +33,11 @@ public:
                 dest[i]=0.0f;
             return;
         }
+        const int srcchanmap[2][2]=
+        {
+            {0,0},
+            {0,1}
+        };
         for (int i=0;i<frames;++i)
         {
             int index = i+startInSource;
@@ -40,7 +45,7 @@ public:
             {
                 for (int j=0;j<channels;++j)
                 {
-                    int actsrcchan = j % m_channels;
+                    int actsrcchan = srcchanmap[m_channels-1][j];
                     dest[i*channels+j] = m_pSampleData[index*m_channels+actsrcchan];
                 }
             } else
