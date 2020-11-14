@@ -15,7 +15,7 @@ public:
     {
         
         m_pSampleData = drwav_open_file_and_read_pcm_frames_f32(
-            "C:\\MusicAudio\\sourcesamples\\count.wav", 
+            "C:\\MusicAudio\\sourcesamples\\windchimes_c1.wav", 
             &m_channels, 
             &m_sampleRate, 
             &m_totalPCMFrameCount, 
@@ -33,10 +33,12 @@ public:
                 dest[i]=0.0f;
             return;
         }
-        const int srcchanmap[2][2]=
+        const int srcchanmap[4][4]=
         {
-            {0,0},
-            {0,1}
+            {0,0,0,0},
+            {0,1,0,1},
+            {0,1,2,0},
+            {0,1,2,3}
         };
         for (int i=0;i<frames;++i)
         {
@@ -74,9 +76,12 @@ public:
     {
 
     }
-    void process(float sr,float* buf, float playrate, float pitch, float loopstart, float looplen)
+    void process(float sr,float* buf, float playrate, float pitch, float loopstart, float looplen, float posrand)
     {
         buf[0] = 0.0f;
+        buf[1] = 0.0f;
+        buf[2] = 0.0f;
+        buf[3] = 0.0f;
         m_gm.m_sr = sr;
         m_gm.m_grainDensity = 0.05f;
         m_gm.m_inputdur = m_src.m_totalPCMFrameCount;
@@ -84,6 +89,7 @@ public:
         m_gm.m_looplen = looplen;
         m_gm.m_sourcePlaySpeed = playrate;
         m_gm.m_pitch = pitch;
+        m_gm.m_posrandamt = posrand;
         m_gm.processAudio(buf);
     }
     DrWavSource m_src;
@@ -101,6 +107,9 @@ public:
         PAR_PITCH,
         PAR_LOOPSTART,
         PAR_LOOPLEN,
+        PAR_ATTN_PLAYRATE,
+        PAR_ATTN_PITCH,
+        PAR_SRCPOSRANDOM,
         PAR_LAST
     };
     enum OUTPUTS
@@ -110,6 +119,8 @@ public:
     };
     enum INPUTS
     {
+        IN_CV_PLAYRATE,
+        IN_CV_PITCH,
         IN_LAST
     };
     XGranularModule()
@@ -119,16 +130,23 @@ public:
         configParam(PAR_PITCH,-24.0f,24.0f,0.0f,"Pitch");
         configParam(PAR_LOOPSTART,0.0f,1.0f,0.0f,"Loop start");
         configParam(PAR_LOOPLEN,0.0f,1.0f,1.0f,"Loop length");
+        configParam(PAR_ATTN_PLAYRATE,-1.0f,1.0f,0.0f,"Playrate CV ATTN");
+        configParam(PAR_ATTN_PITCH,-1.0f,1.0f,0.0f,"Pitch CV ATTN");
+        configParam(PAR_SRCPOSRANDOM,0.0f,1.0f,0.0f,"Source position randomization");
     }
     void process(const ProcessArgs& args) override
     {
-        float buf[1];
+        float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         float prate = params[PAR_PLAYRATE].getValue();
+        prate += inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()/10.0f;
+        prate = clamp(prate,-2.0f,2.0f);
         float pitch = params[PAR_PITCH].getValue();
+        pitch += inputs[IN_CV_PITCH].getVoltage()*params[PAR_ATTN_PITCH].getValue()*2.4f;
+        pitch = clamp(pitch,-24.0f,24.0f);
         float loopstart = params[PAR_LOOPSTART].getValue();
         float looplen = params[PAR_LOOPLEN].getValue();
-
-        m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen);
+        float posrnd = params[PAR_SRCPOSRANDOM].getValue();
+        m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd);
         outputs[OUT_AUDIO].setVoltage(buf[0]*5.0f);
         graindebugcounter = m_eng.m_gm.debugCounter;
     }
@@ -150,10 +168,14 @@ public:
         PortWithBackGround<PJ301MPort>* port = nullptr;
         addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(1, 34), m, XGranularModule::OUT_AUDIO));
         port->m_text = "AUDIO OUT";
-        addChild(new KnobInAttnWidget(this,"PLAYRATE",XGranularModule::PAR_PLAYRATE,-1,-1,1,60));
-        addChild(new KnobInAttnWidget(this,"PITCH",XGranularModule::PAR_PITCH,-1,-1,82,60));
+        addChild(new KnobInAttnWidget(this,
+            "PLAYRATE",XGranularModule::PAR_PLAYRATE,
+            XGranularModule::IN_CV_PLAYRATE,XGranularModule::PAR_ATTN_PLAYRATE,1,60));
+        addChild(new KnobInAttnWidget(this,
+            "PITCH",XGranularModule::PAR_PITCH,XGranularModule::IN_CV_PITCH,XGranularModule::PAR_ATTN_PITCH,82,60));
         addChild(new KnobInAttnWidget(this,"LOOP START",XGranularModule::PAR_LOOPSTART,-1,-1,1,101));
         addChild(new KnobInAttnWidget(this,"LOOP LENGTH",XGranularModule::PAR_LOOPLEN,-1,-1,82,101));
+        addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",XGranularModule::PAR_SRCPOSRANDOM,-1,-1,1,142));
     }
     void draw(const DrawArgs &args) override
     {
@@ -171,7 +193,7 @@ public:
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             
-            nvgText(args.vg, 1 , 170, buf, NULL);
+            nvgText(args.vg, 1 , 280, buf, NULL);
         }
         
 
