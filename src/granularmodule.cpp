@@ -14,12 +14,18 @@ public:
     DrWavSource()
     {
         
+#ifdef __APPLE__
+        std::string filename("/Users/teemu/AudioProjects/sourcesamples/db_guit01.wav");
+#else
+        std::string filename("C:\\MusicAudio\\sourcesamples\\windchimes_c1.wav");
+#endif
         m_pSampleData = drwav_open_file_and_read_pcm_frames_f32(
-            "C:\\MusicAudio\\sourcesamples\\windchimes_c1.wav", 
+            filename.c_str(), 
             &m_channels, 
             &m_sampleRate, 
             &m_totalPCMFrameCount, 
             NULL);
+
         if (m_pSampleData == NULL) {
             std::cout << "could not open wav with dr wav\n";
             return;
