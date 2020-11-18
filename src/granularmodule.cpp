@@ -147,7 +147,7 @@ public:
         prate += inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()/10.0f;
         prate = clamp(prate,-2.0f,2.0f);
         float pitch = params[PAR_PITCH].getValue();
-        pitch += inputs[IN_CV_PITCH].getVoltage()*params[PAR_ATTN_PITCH].getValue()*2.4f;
+        pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f;
         pitch = clamp(pitch,-24.0f,24.0f);
         float loopstart = params[PAR_LOOPSTART].getValue();
         float looplen = params[PAR_LOOPLEN].getValue();
@@ -178,7 +178,7 @@ public:
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,
             XGranularModule::IN_CV_PLAYRATE,XGranularModule::PAR_ATTN_PLAYRATE,1,60));
         addChild(new KnobInAttnWidget(this,
-            "PITCH",XGranularModule::PAR_PITCH,XGranularModule::IN_CV_PITCH,XGranularModule::PAR_ATTN_PITCH,82,60));
+            "PITCH",XGranularModule::PAR_PITCH,XGranularModule::IN_CV_PITCH,-1,82,60));
         addChild(new KnobInAttnWidget(this,"LOOP START",XGranularModule::PAR_LOOPSTART,-1,-1,1,101));
         addChild(new KnobInAttnWidget(this,"LOOP LENGTH",XGranularModule::PAR_LOOPLEN,-1,-1,82,101));
         addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",XGranularModule::PAR_SRCPOSRANDOM,-1,-1,1,142));
