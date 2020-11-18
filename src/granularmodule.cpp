@@ -60,7 +60,7 @@ public:
                 {
                     int index = sampleCounter*m_channels+i;
                     float sample = 0.0f;
-                    if (index<m_totalPCMFrameCount)
+                    if (index<m_totalPCMFrameCount*m_channels)
                         sample = m_pSampleData[index];
                     minsample = std::min(minsample,sample);
                     maxsample = std::max(maxsample,sample);
@@ -221,8 +221,9 @@ public:
         graindebugcounter = m_eng.m_gm.debugCounter;
     }
     int graindebugcounter = 0;
-private:
     GrainEngine m_eng;
+private:
+    
 };
 
 struct LoadFileItem : MenuItem
@@ -250,9 +251,8 @@ public:
     
 	void appendContextMenu(Menu *menu) override 
     {
-		XGranularModule *mod = dynamic_cast<XGranularModule*>(this->module);
-        auto loadItem = createMenuItem<LoadFileItem>("Import .wav file...");
-		loadItem->m_mod = mod;
+		auto loadItem = createMenuItem<LoadFileItem>("Import .wav file...");
+		loadItem->m_mod = m_gm;
 		menu->addChild(loadItem);
     }
     XGranularWidget(XGranularModule* m)
@@ -290,6 +290,33 @@ public:
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             
             nvgText(args.vg, 1 , 280, buf, NULL);
+
+            nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            auto& src = m_gm->m_eng.m_src;
+            int numpeaks = box.size.x - 2;
+            int numchans = src.m_channels;
+            float numsrcpeaks = src.peaksData[0].size();
+            float chanh = 100.0/numchans;
+            nvgBeginPath(args.vg);
+            for (int i=0;i<numchans;++i)
+            {
+                for (int j=0;j<numpeaks;++j)
+                {
+                    float index = rescale(j,0,numpeaks,0.0f,numsrcpeaks-1.0f);
+                    if (index<numsrcpeaks)
+                    {
+                        int index_i = index;
+                        float minp = src.peaksData[i][index_i].minpeak;
+                        float maxp = src.peaksData[i][index_i].maxpeak;
+                        float ycor0 = rescale(minp,-1.0f,1.0,0.0f,chanh);
+                        float ycor1 = rescale(maxp,-1.0f,1.0,0.0f,chanh);
+                        nvgMoveTo(args.vg,j,250.0+chanh*i+ycor0);
+                        nvgLineTo(args.vg,j,250.0+chanh*i+ycor1);
+                    }
+                    
+                }
+            }
+            nvgStroke(args.vg);
         }
         
 
