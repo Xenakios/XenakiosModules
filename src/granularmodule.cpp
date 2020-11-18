@@ -3,6 +3,9 @@
 #define DR_WAV_IMPLEMENTATION
 #include "grain_engine/dr_wav.h"
 #include "helperwidgets.h"
+#include <osdialog.h>
+#include <thread>
+#include <mutex>
 
 class DrWavSource : public GrainAudioSource
 {
@@ -11,6 +14,36 @@ public:
     unsigned int m_channels = 0;
     unsigned int m_sampleRate = 0;
     drwav_uint64 m_totalPCMFrameCount = 0;
+    std::mutex m_mut;
+    bool importFile(std::string filename)
+    {
+        float* pSampleData = nullptr;
+        unsigned int channels = 0;
+        unsigned int sampleRate = 0;
+        drwav_uint64 totalPCMFrameCount = 0;
+        pSampleData = drwav_open_file_and_read_pcm_frames_f32(
+            filename.c_str(), 
+            &channels, 
+            &sampleRate, 
+            &totalPCMFrameCount, 
+            NULL);
+
+        if (pSampleData == NULL) {
+            std::cout << "could not open wav with dr wav\n";
+            return false;
+        }
+        float* oldData = m_pSampleData;
+        m_mut.lock();
+        
+            m_channels = channels;
+            m_sampleRate = sampleRate;
+            m_totalPCMFrameCount = totalPCMFrameCount;
+            m_pSampleData = pSampleData;
+
+        m_mut.unlock();
+        drwav_free(oldData,nullptr);
+        return true;
+    }
     DrWavSource()
     {
         
@@ -19,20 +52,11 @@ public:
 #else
         std::string filename("C:\\MusicAudio\\sourcesamples\\windchimes_c1.wav");
 #endif
-        m_pSampleData = drwav_open_file_and_read_pcm_frames_f32(
-            filename.c_str(), 
-            &m_channels, 
-            &m_sampleRate, 
-            &m_totalPCMFrameCount, 
-            NULL);
-
-        if (m_pSampleData == NULL) {
-            std::cout << "could not open wav with dr wav\n";
-            return;
-        }
+        importFile(filename);
     }
     void putIntoBuffer(float* dest, int frames, int channels, int startInSource) override
     {
+        std::lock_guard<std::mutex> locker(m_mut);
         if (m_channels==0)
         {
             for (int i=0;i<frames*channels;++i)
@@ -140,6 +164,12 @@ public:
         configParam(PAR_ATTN_PITCH,-1.0f,1.0f,0.0f,"Pitch CV ATTN");
         configParam(PAR_SRCPOSRANDOM,0.0f,1.0f,0.0f,"Source position randomization");
     }
+    
+    void importFile(std::string filename)
+    {
+        m_eng.m_src.importFile(filename);
+    }
+
     void process(const ProcessArgs& args) override
     {
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
@@ -161,10 +191,36 @@ private:
     GrainEngine m_eng;
 };
 
+struct LoadFileItem : MenuItem
+{
+    XGranularModule* m_mod = nullptr;
+    void onAction(const event::Action &e) override
+    {
+        std::string dir = asset::plugin(pluginInstance, "/res");
+        osdialog_filters* filters = osdialog_filters_parse("WAV file:wav");
+        char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
+        osdialog_filters_free(filters);
+        if (!pathC) {
+            return;
+        }
+        std::string path = pathC;
+        std::free(pathC);
+        m_mod->importFile(path);
+    }
+};
+
 class XGranularWidget : public rack::ModuleWidget
 {
 public:
     XGranularModule* m_gm = nullptr;
+    
+	void appendContextMenu(Menu *menu) override 
+    {
+		XGranularModule *mod = dynamic_cast<XGranularModule*>(this->module);
+        auto loadItem = createMenuItem<LoadFileItem>("Import .wav file...");
+		loadItem->m_mod = mod;
+		menu->addChild(loadItem);
+    }
     XGranularWidget(XGranularModule* m)
     {
         setModule(m);
