@@ -42,8 +42,42 @@ public:
 
         m_mut.unlock();
         drwav_free(oldData,nullptr);
+        peaksData.resize(m_channels);
+        int samplesPerPeak = 128;
+        int numPeaks = m_totalPCMFrameCount/samplesPerPeak;
+        for (int i=0;i<m_channels;++i)
+        {
+            peaksData[i].resize(numPeaks);
+        }
+        for (int i=0;i<m_channels;++i)
+        {
+            int sampleCounter = 0;
+            for (int j=0;j<numPeaks;++j)
+            {
+                float minsample = std::numeric_limits<float>::max();
+                float maxsample = std::numeric_limits<float>::min();
+                for (int k=0;k<samplesPerPeak;++k)
+                {
+                    int index = sampleCounter*m_channels+i;
+                    float sample = 0.0f;
+                    if (index<m_totalPCMFrameCount)
+                        sample = m_pSampleData[index];
+                    minsample = std::min(minsample,sample);
+                    maxsample = std::max(maxsample,sample);
+                    ++sampleCounter;
+                }
+                peaksData[i][j].minpeak = minsample;
+                peaksData[i][j].maxpeak = maxsample;
+            }
+        }   
         return true;
     }
+    struct SamplePeaks
+    {
+        float minpeak = 0.0f;
+        float maxpeak = 0.0f;
+    };
+    std::vector<std::vector<SamplePeaks>> peaksData;
     DrWavSource()
     {
         
