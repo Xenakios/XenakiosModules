@@ -168,6 +168,15 @@ public:
     std::mt19937 m_randgen;
     std::normal_distribution<float> m_gaussdist{0.0f,1.0f};
     int debugCounter = 0;
+    int findFreeGain()
+    {
+        for (int i=0;i<m_grains.size();++i)
+        {
+            if (m_grains[i].playState==0)
+                return i;
+        }
+        return -1;
+    }
     void processAudio(float* buf)
     {
         if (m_inputdur<0.5f)
@@ -180,10 +189,11 @@ public:
             float glensamples = m_sr*glen;
             float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
             float srcpostouse = m_srcpos+posrand;
-            m_grains[m_grainCounter].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch);
-            ++m_grainCounter;
-            if (m_grainCounter==(int)m_grains.size())
-                m_grainCounter = 0;
+            int availgrain = findFreeGain();
+            if (availgrain>=0)
+            {
+                m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch);
+            }
             m_nextGrainPos=m_sr*(m_grainDensity);
             m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed;
             if (m_srcpos>=m_looplen*m_inputdur)
@@ -215,14 +225,14 @@ public:
     float m_looplen = 1.0f;
     int m_outcounter = 0;
     int m_nextGrainPos = 0;
-    int m_grainCounter = 0;
+    
     std::array<ISGrain,2> m_grains;
     void setDensity(float d)
     {
         if (d!=m_grainDensity)
         {
             m_grainDensity = d;
-            m_nextGrainPos = m_outcounter;
+            //m_nextGrainPos = m_outcounter;
         }
     }
 private:
