@@ -198,12 +198,31 @@ public:
         configParam(PAR_ATTN_PITCH,-1.0f,1.0f,0.0f,"Pitch CV ATTN");
         configParam(PAR_SRCPOSRANDOM,0.0f,1.0f,0.0f,"Source position randomization");
     }
-    
+    json_t* dataToJson() override
+    {
+        json_t* resultJ = json_object();
+        json_object_set(resultJ,"importedfile",json_string(m_currentFile.c_str()));
+        return resultJ;
+    }
+    void dataFromJson(json_t* root) override
+    {
+        json_t* filenameJ = json_object_get(root,"importedfile");
+        if (filenameJ)
+        {
+            std::string filename(json_string_value(filenameJ));
+            importFile(filename);
+        }
+    }
     void importFile(std::string filename)
     {
-        m_eng.m_src.importFile(filename);
+        if (filename.size()==0)
+            return;
+        if (m_eng.m_src.importFile(filename))
+        {
+            m_currentFile = filename;
+        }
     }
-
+    std::string m_currentFile;
     void process(const ProcessArgs& args) override
     {
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
