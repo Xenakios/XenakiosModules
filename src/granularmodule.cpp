@@ -174,6 +174,8 @@ public:
         PAR_ATTN_PLAYRATE,
         PAR_ATTN_PITCH,
         PAR_SRCPOSRANDOM,
+        PAR_ATTN_LOOPSTART,
+        PAR_ATTN_LOOPLEN,
         PAR_LAST
     };
     enum OUTPUTS
@@ -185,6 +187,8 @@ public:
     {
         IN_CV_PLAYRATE,
         IN_CV_PITCH,
+        IN_CV_LOOPSTART,
+        IN_CV_LOOPLEN,
         IN_LAST
     };
     XGranularModule()
@@ -197,6 +201,8 @@ public:
         configParam(PAR_ATTN_PLAYRATE,-1.0f,1.0f,0.0f,"Playrate CV ATTN");
         configParam(PAR_ATTN_PITCH,-1.0f,1.0f,0.0f,"Pitch CV ATTN");
         configParam(PAR_SRCPOSRANDOM,0.0f,1.0f,0.0f,"Source position randomization");
+        configParam(PAR_ATTN_LOOPSTART,-1.0f,1.0f,0.0f,"Loop start CV ATTN");
+        configParam(PAR_ATTN_LOOPLEN,-1.0f,1.0f,0.0f,"Loop len CV ATTN");
     }
     json_t* dataToJson() override
     {
@@ -233,7 +239,11 @@ public:
         pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f;
         pitch = clamp(pitch,-24.0f,24.0f);
         float loopstart = params[PAR_LOOPSTART].getValue();
+        loopstart += inputs[IN_CV_LOOPSTART].getVoltage()*params[PAR_ATTN_LOOPSTART].getValue()/10.0f;
+        loopstart = clamp(loopstart,0.0f,1.0f);
         float looplen = params[PAR_LOOPLEN].getValue();
+        looplen += inputs[IN_CV_LOOPLEN].getVoltage()*params[PAR_ATTN_LOOPLEN].getValue()/10.0f;
+        looplen = clamp(looplen,0.0f,1.0f);
         float posrnd = params[PAR_SRCPOSRANDOM].getValue();
         m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd);
         outputs[OUT_AUDIO].setVoltage(buf[0]*5.0f);
@@ -288,8 +298,10 @@ public:
             XGranularModule::IN_CV_PLAYRATE,XGranularModule::PAR_ATTN_PLAYRATE,1,60));
         addChild(new KnobInAttnWidget(this,
             "PITCH",XGranularModule::PAR_PITCH,XGranularModule::IN_CV_PITCH,-1,82,60));
-        addChild(new KnobInAttnWidget(this,"LOOP START",XGranularModule::PAR_LOOPSTART,-1,-1,1,101));
-        addChild(new KnobInAttnWidget(this,"LOOP LENGTH",XGranularModule::PAR_LOOPLEN,-1,-1,82,101));
+        addChild(new KnobInAttnWidget(this,"LOOP START",
+            XGranularModule::PAR_LOOPSTART,XGranularModule::IN_CV_LOOPSTART,XGranularModule::PAR_ATTN_LOOPSTART,1,101));
+        addChild(new KnobInAttnWidget(this,"LOOP LENGTH",
+            XGranularModule::PAR_LOOPLEN,XGranularModule::IN_CV_LOOPLEN,XGranularModule::PAR_ATTN_LOOPLEN,82,101));
         addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",XGranularModule::PAR_SRCPOSRANDOM,-1,-1,1,142));
     }
     void draw(const DrawArgs &args) override
