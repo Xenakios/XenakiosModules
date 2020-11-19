@@ -1048,7 +1048,7 @@ public:
             m_grainsmixer.m_pitch = pitch;
             m_grainsmixer.m_sourcePlaySpeed = pspeed;
             m_grainsmixer.m_posrandamt = grnd;
-            m_grainsmixer.m_grainDensity = gsize;
+            m_grainsmixer.setDensity(gsize);
             if (rewindTrigger.process(inputs[IN_RESET].getVoltage()))
                 m_grainsmixer.m_srcpos = 0.0f;
             m_grainsmixer.processAudio(grain1out);

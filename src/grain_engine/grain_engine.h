@@ -176,7 +176,7 @@ public:
         {
             ++debugCounter;
             m_outcounter = 0;
-            float glen = m_grainDensity*2.0;
+            float glen = m_grainDensity*1.9;
             float glensamples = m_sr*glen;
             float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
             float srcpostouse = m_srcpos+posrand;
@@ -206,7 +206,7 @@ public:
     }
     double m_srcpos = 0.0;
     float m_sr = 44100.0;
-    float m_grainDensity = 0.1;
+    
     float m_sourcePlaySpeed = 1.0f;
     float m_pitch = 0.0f; // semitones
     float m_posrandamt = 0.0f;
@@ -217,4 +217,14 @@ public:
     int m_nextGrainPos = 0;
     int m_grainCounter = 0;
     std::array<ISGrain,2> m_grains;
+    void setDensity(float d)
+    {
+        if (d!=m_grainDensity)
+        {
+            m_grainDensity = d;
+            m_nextGrainPos = m_outcounter;
+        }
+    }
+private:
+    float m_grainDensity = 0.1;
 };
