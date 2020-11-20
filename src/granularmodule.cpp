@@ -354,6 +354,22 @@ public:
                 }
             }
             nvgStroke(args.vg);
+            nvgBeginPath(args.vg);
+            nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0x80));
+            float loopstart = m_gm->m_eng.m_gm.m_actLoopstart;
+            float loopend = m_gm->m_eng.m_gm.m_actLoopend;
+            float loopw = rescale(loopend-loopstart,0.0f,1.0f,0.0f,box.size.x-2.0f);
+            float xcor = rescale(loopstart,0.0f,1.0f,0.0f,box.size.x-2.0f);
+            nvgRect(args.vg,xcor,250.0f,loopw,100.0f);
+            nvgFill(args.vg);
+            nvgBeginPath(args.vg);
+            nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            float ppos = m_gm->m_eng.m_gm.m_actSourcePos;
+            float srcdur = m_gm->m_eng.m_gm.m_inputdur;
+            xcor = rescale(ppos,0.0f,srcdur,0.0f,box.size.x-2.0f);
+            nvgMoveTo(args.vg,xcor,250.0f);
+            nvgLineTo(args.vg,xcor,250.0+100.0f);
+            nvgStroke(args.vg);
         }
         
 

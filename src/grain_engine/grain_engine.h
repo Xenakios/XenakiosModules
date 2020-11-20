@@ -177,6 +177,9 @@ public:
         }
         return -1;
     }
+    float m_actLoopstart = 0.0f;
+    float m_actLoopend = 1.0f;
+    float m_actSourcePos = 0.0f;
     void processAudio(float* buf)
     {
         if (m_inputdur<0.5f)
@@ -189,6 +192,7 @@ public:
             float glensamples = m_sr*glen;
             float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
             float srcpostouse = m_srcpos+posrand;
+            m_actSourcePos = srcpostouse+m_loopstart*m_inputdur;
             int availgrain = findFreeGain();
             if (availgrain>=0)
             {
@@ -196,10 +200,20 @@ public:
             }
             m_nextGrainPos=m_sr*(m_grainDensity);
             m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed;
-            if (m_srcpos>=m_looplen*m_inputdur)
+            float actlooplen = m_looplen;
+            float loopend = m_loopstart+actlooplen;
+            
+            if (loopend>1.0f)
+            {
+                actlooplen-=loopend-1.0f;
+            }
+            if (m_srcpos>=actlooplen*m_inputdur)
                 m_srcpos = 0.0f;
             else if (m_srcpos<0.0f)
-                m_srcpos = m_looplen*m_inputdur;
+                m_srcpos = actlooplen*m_inputdur;
+            m_actLoopstart = m_loopstart;
+            m_actLoopend = m_loopstart+actlooplen;
+
         }
         for (int i=0;i<(int)m_grains.size();++i)
         {
