@@ -326,7 +326,7 @@ public:
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             
-            nvgText(args.vg, 1 , 280, buf, NULL);
+            nvgText(args.vg, 1 , 230, buf, NULL);
 
             nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
             auto& src = m_gm->m_eng.m_src;
