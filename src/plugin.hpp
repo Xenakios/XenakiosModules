@@ -3,6 +3,7 @@
 
 using namespace rack;
 #include <fstream>
+#include <functional>
 
 const float g_pi = 3.14159265358979;
 
@@ -287,4 +288,23 @@ inline T reflect_value(const T& minval, const T& val, const T& maxval)
 			temp = maxval + (maxval - temp);
 	}
 	return temp;
+}
+
+struct LambdaItem : rack::MenuItem
+{
+	std::function<void(void)> ActionFunc;
+	void onAction(const event::Action &e) override
+	{
+		if (ActionFunc)
+			ActionFunc();
+	}
+};
+
+template <class Func>
+inline rack::MenuItem * createMenuItem(Func f, std::string text, std::string rightText = "") {
+	LambdaItem* o = new LambdaItem;
+	o->text = text;
+	o->rightText = rightText;
+	o->ActionFunc = f;
+	return o;
 }

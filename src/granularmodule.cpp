@@ -15,33 +15,25 @@ public:
     unsigned int m_sampleRate = 0;
     drwav_uint64 m_totalPCMFrameCount = 0;
     std::mutex m_mut;
-    bool importFile(std::string filename)
+    void normalize(float level)
     {
-        float* pSampleData = nullptr;
-        unsigned int channels = 0;
-        unsigned int sampleRate = 0;
-        drwav_uint64 totalPCMFrameCount = 0;
-        pSampleData = drwav_open_file_and_read_pcm_frames_f32(
-            filename.c_str(), 
-            &channels, 
-            &sampleRate, 
-            &totalPCMFrameCount, 
-            NULL);
-
-        if (pSampleData == NULL) {
-            std::cout << "could not open wav with dr wav\n";
-            return false;
+        if (!m_pSampleData)
+            return;
+        float peak = 0.0f;
+        for (int i=0;i<m_totalPCMFrameCount*m_channels;++i)
+        {
+            float s = std::fabs(m_pSampleData[i]);
+            peak = std::max(s,peak);
         }
-        float* oldData = m_pSampleData;
-        m_mut.lock();
-        
-            m_channels = channels;
-            m_sampleRate = sampleRate;
-            m_totalPCMFrameCount = totalPCMFrameCount;
-            m_pSampleData = pSampleData;
-
-        m_mut.unlock();
-        drwav_free(oldData,nullptr);
+        float normfactor = 1.0f;
+        if (peak>0.0f)
+            normfactor = level/peak;
+        for (int i=0;i<m_totalPCMFrameCount*m_channels;++i)
+            m_pSampleData[i]*=normfactor;
+        updatePeaks();
+    }
+    void updatePeaks()
+    {
         peaksData.resize(m_channels);
         int samplesPerPeak = 128;
         int numPeaks = m_totalPCMFrameCount/samplesPerPeak;
@@ -69,7 +61,36 @@ public:
                 peaksData[i][j].minpeak = minsample;
                 peaksData[i][j].maxpeak = maxsample;
             }
-        }   
+        } 
+    }
+    bool importFile(std::string filename)
+    {
+        float* pSampleData = nullptr;
+        unsigned int channels = 0;
+        unsigned int sampleRate = 0;
+        drwav_uint64 totalPCMFrameCount = 0;
+        pSampleData = drwav_open_file_and_read_pcm_frames_f32(
+            filename.c_str(), 
+            &channels, 
+            &sampleRate, 
+            &totalPCMFrameCount, 
+            NULL);
+
+        if (pSampleData == NULL) {
+            std::cout << "could not open wav with dr wav\n";
+            return false;
+        }
+        float* oldData = m_pSampleData;
+        m_mut.lock();
+        
+            m_channels = channels;
+            m_sampleRate = sampleRate;
+            m_totalPCMFrameCount = totalPCMFrameCount;
+            m_pSampleData = pSampleData;
+
+        m_mut.unlock();
+        drwav_free(oldData,nullptr);
+        updatePeaks();  
         return true;
     }
     struct SamplePeaks
@@ -288,6 +309,8 @@ public:
 		auto loadItem = createMenuItem<LoadFileItem>("Import .wav file...");
 		loadItem->m_mod = m_gm;
 		menu->addChild(loadItem);
+        auto normItem = createMenuItem([this](){  m_gm->m_eng.m_src.normalize(1.0f); },"Normalize buffer");
+        menu->addChild(normItem);
     }
     XGranularWidget(XGranularModule* m)
     {
