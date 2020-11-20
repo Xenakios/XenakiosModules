@@ -32,6 +32,19 @@ public:
             m_pSampleData[i]*=normfactor;
         updatePeaks();
     }
+    void reverse()
+    {
+        for (int i=0;i<m_totalPCMFrameCount/2;i++)
+        {
+            int index=(m_totalPCMFrameCount-i-1);
+            if (index<0 || index>=m_totalPCMFrameCount) break;
+            for (int j=0;j<m_channels;j++)
+            {
+                std::swap(m_pSampleData[i*m_channels+j],m_pSampleData[index*m_channels+j]);
+            }
+        }
+        updatePeaks();
+    }
     void updatePeaks()
     {
         peaksData.resize(m_channels);
@@ -311,6 +324,8 @@ public:
 		menu->addChild(loadItem);
         auto normItem = createMenuItem([this](){  m_gm->m_eng.m_src.normalize(1.0f); },"Normalize buffer");
         menu->addChild(normItem);
+        auto revItem = createMenuItem([this](){  m_gm->m_eng.m_src.reverse(); },"Reverse buffer");
+        menu->addChild(revItem);
     }
     XGranularWidget(XGranularModule* m)
     {
