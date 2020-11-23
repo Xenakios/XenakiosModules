@@ -7,6 +7,42 @@
 #include <thread>
 #include <mutex>
 
+class DrWavBuffer
+{
+public:
+    DrWavBuffer() {}
+    DrWavBuffer(float* src, drwav_uint64 numFrames)
+    {
+        m_buf = src;
+        m_sz = numFrames;
+    }
+    ~DrWavBuffer()
+    {
+        if (m_buf)
+            drwav_free(m_buf, nullptr);
+    }
+    DrWavBuffer(const DrWavBuffer&) = delete;
+    DrWavBuffer& operator=(const DrWavBuffer&) = delete;
+    DrWavBuffer(DrWavBuffer&& other)
+    {
+        m_buf = other.m_buf;
+        m_sz = other.m_sz;
+        other.m_buf = nullptr;
+        other.m_sz = 0;
+    }
+    DrWavBuffer& operator=(DrWavBuffer&& other)
+    {
+        std::swap(m_buf,other.m_buf);
+        std::swap(m_sz,other.m_sz);
+        return *this;
+    }
+    float* data() { return m_buf; }
+    drwav_uint64 size() { return m_sz; }
+private:
+    float* m_buf = nullptr;
+    drwav_uint64 m_sz = 0;
+};
+
 class DrWavSource : public GrainAudioSource
 {
 public:
@@ -34,6 +70,8 @@ public:
     }
     void reverse()
     {
+        if (!m_pSampleData)
+            return;
         for (int i=0;i<m_totalPCMFrameCount/2;i++)
         {
             int index=(m_totalPCMFrameCount-i-1);
@@ -104,6 +142,7 @@ public:
         m_mut.unlock();
         drwav_free(oldData,nullptr);
         updatePeaks();  
+        
         return true;
     }
     struct SamplePeaks
@@ -229,6 +268,8 @@ public:
     };
     XGranularModule()
     {
+        std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
+        rack::system::createDirectory(audioDir);
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_PLAYRATE,-2.0f,2.0f,1.0f,"Playrate");
         configParam(PAR_PITCH,-24.0f,24.0f,0.0f,"Pitch");
