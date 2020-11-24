@@ -177,16 +177,16 @@ struct RandShaper
     std::vector<float> m_shapefunc;
     RandShaper()
     {
-        m_shapefunc.resize(1024);
+        m_shapefunc.resize(4096);
         std::mt19937 gen(912477);
-        std::uniform_real_distribution<float> dist(-1.0f,1.0f);
+        std::uniform_int_distribution<int> dist(-30,30);
         for (int i=0;i<m_shapefunc.size();++i)
-            m_shapefunc[i]=dist(gen);
+            m_shapefunc[i]=rescale(dist(gen),-30,30,-1.0f,1.0f);
     }
     inline float process(float in)
     {
-        in = clamp(in,-16.0f,16.0f)+16.0f;
-        int index = in * (m_shapefunc.size()/32-1);
+        in = clamp(in,-32.0f,32.0f)+32.0f;
+        int index = in * (m_shapefunc.size()/64-1);
         index = clamp(index,0,m_shapefunc.size()-1);
         return m_shapefunc[index];    
     }
@@ -404,7 +404,7 @@ public:
         drivegain = dsp::dbToAmplitude(drivegain);
         float dtype = params[PAR_DISTORTTYPE].getValue();
         dtype += inputs[IN_CV_DISTTYPE].getVoltage()*params[PAR_ATTN_DISTYPE].getValue()/3.0f;
-        dtype = clamp(dtype,0.0f,4.0f);
+        dtype = clamp(dtype,0.0f,5.0f);
         float srdiv = params[PAR_RATEDIV].getValue(); 
         srdiv += inputs[IN_CV_RATEDIV].getVoltage()*params[PAR_ATTN_RATEDIV].getValue()/10.0f;
         srdiv = clamp(srdiv,0.0f,1.0f);
