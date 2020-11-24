@@ -172,20 +172,32 @@ inline float sym_wrap(float in)
     return 2.0f*(in/2.0f-std::round(in/2.0f));
 }
 
-inline float distort(float in, float th, float type)
+struct RandShaper
+{
+    std::vector<float> m_shapefunc;
+    RandShaper()
+    {
+        m_shapefunc.resize(1024);
+        std::mt19937 gen(912477);
+        std::uniform_real_distribution<float> dist(-1.0f,1.0f);
+        for (int i=0;i<m_shapefunc.size();++i)
+            m_shapefunc[i]=dist(gen);
+    }
+    inline float process(float in)
+    {
+        in = clamp(in,-16.0f,16.0f)+16.0f;
+        int index = in * (m_shapefunc.size()/32-1);
+        index = clamp(index,0,m_shapefunc.size()-1);
+        return m_shapefunc[index];    
+    }
+};
+
+inline float distort(float in, float th, float type, RandShaper& rshaper)
 {
     int index0 = std::floor(type);
     int index1 = index0+1;
     float frac = type-index0;
-    float distsamples[6];
-    /*
-    distsamples[0] = soft_clip(in);
-    distsamples[1] = clamp(in,-th,th);
-    distsamples[2] = reflect_value(-th,in,th);
-    distsamples[3] = wrap_value(-th,in,th);
-    distsamples[4] = sin_dist(in);
-    distsamples[5] = distsamples[4];
-    */
+    float distsamples[7];
     if (index0 == 0)
     {
         distsamples[0] = soft_clip(in);
@@ -194,15 +206,12 @@ inline float distort(float in, float th, float type)
     else if (index0 == 1)
     {
         distsamples[1] = clamp(in,-th,th);
-        //distsamples[2] = reflect_value(-th,in,th);
         distsamples[2] = sym_reflect(in);
     }
     else if (index0 == 2)
     {
         distsamples[2] = sym_reflect(in);
         distsamples[3] = sym_wrap(in);
-        //distsamples[2] = reflect_value(-th,in,th);
-        //distsamples[3] = wrap_value(-th,in,th);
     }
     else if (index0 == 3)
     {
@@ -216,7 +225,15 @@ inline float distort(float in, float th, float type)
     else if (index0 == 4)
     {
         distsamples[4] = sin_dist(in);
-        distsamples[5] = distsamples[4];
+        if (frac>0.0f)
+            distsamples[5] = rshaper.process(in);
+        else
+            distsamples[5] = distsamples[4];
+    }
+    else if (index0 == 5)
+    {
+        distsamples[5] = rshaper.process(in);
+        distsamples[6] = distsamples[5];
     }
     
     float y0 = distsamples[index0];
@@ -251,11 +268,11 @@ public:
             float osarr[8];
             m_upsampler.process(driven,osarr);
             for (int i=0;i<8;++i)
-                osarr[i] = distort(osarr[i],1.0f,dtype);
+                osarr[i] = distort(osarr[i],1.0f,dtype,m_randshaper);
             oversampledriven = 2.0f*m_downsampler.process(osarr);
         }
         
-        driven = distort(driven,1.0f,dtype);
+        driven = distort(driven,1.0f,dtype,m_randshaper);
         float drivemix = (1.0f-oversample) * driven + oversample * oversampledriven;
         m_reducer.setRates(insamplerate,insamplerate/srdiv);
         float reduced = m_reducer.process(drivemix);
@@ -269,11 +286,13 @@ public:
         return clamp(glitch,-1.0f,1.0f);
     }
     bool glitchActive() { return m_glitcher.glitchActive(); }
+    RandShaper m_randshaper;
 private:
     SampleRateReducer m_reducer;
     dsp::Upsampler<8,2> m_upsampler;
     dsp::Decimator<8,2> m_downsampler;
     GlitchGenerator m_glitcher;
+    
 };
 
 class XLOFI : public rack::Module
@@ -319,7 +338,7 @@ public:
         configParam(PAR_RATEDIV,0.0,1.0,0.0,"Sample rate reduction");
         configParam(PAR_BITDIV,0.0,1.0,1.0,"Bit depth");
         configParam(PAR_DRIVE,0.0,1.0,0.15,"Drive");
-        configParam(PAR_DISTORTTYPE,0,4,0,"Distortion type");
+        configParam(PAR_DISTORTTYPE,0,5,0,"Distortion type");
         configParam(PAR_ATTN_RATEDIV,-1.0f,1.0f,0.0,"Sample rate reduction CV");
         configParam(PAR_ATTN_BITDIV,-1.0f,1.0f,0.0,"Bit depth CV");
         configParam(PAR_ATTN_DRIVE,-1.0f,1.0f,0.0,"Drive CV");
