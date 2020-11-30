@@ -51,6 +51,7 @@ public:
     unsigned int m_sampleRate = 0;
     drwav_uint64 m_totalPCMFrameCount = 0;
     std::mutex m_mut;
+    std::string m_filename;
     void normalize(float level)
     {
         if (!m_pSampleData)
@@ -142,7 +143,7 @@ public:
         m_mut.unlock();
         drwav_free(oldData,nullptr);
         updatePeaks();  
-        
+        m_filename = filename;
         return true;
     }
     struct SamplePeaks
@@ -159,7 +160,7 @@ public:
 #else
         std::string filename("C:\\MusicAudio\\sourcesamples\\windchimes_c1.wav");
 #endif
-        importFile(filename);
+        //importFile(filename);
     }
     void putIntoBuffer(float* dest, int frames, int channels, int startInSource) override
     {
@@ -203,6 +204,12 @@ public:
     int getSourceNumChannels() override
     {
         return m_channels;
+    }
+    float getSourceSampleRate() override 
+    { 
+        if (!m_pSampleData)
+            return 44100.0f;
+        return m_sampleRate;
     }
 };
 
@@ -372,7 +379,7 @@ public:
     {
         setModule(m);
         m_gm = m;
-        box.size.x = 200;
+        box.size.x = 300;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "GRAINS",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         PortWithBackGround<PJ301MPort>* port = nullptr;
         addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(1, 34), m, XGranularModule::OUT_AUDIO));
@@ -409,46 +416,49 @@ public:
 
             nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
             auto& src = m_gm->m_eng.m_src;
-            int numpeaks = box.size.x - 2;
-            int numchans = src.m_channels;
-            float numsrcpeaks = src.peaksData[0].size();
-            float chanh = 100.0/numchans;
-            nvgBeginPath(args.vg);
-            for (int i=0;i<numchans;++i)
+            if (src.m_channels>0)
             {
-                for (int j=0;j<numpeaks;++j)
+                int numpeaks = box.size.x - 2;
+                int numchans = src.m_channels;
+                float numsrcpeaks = src.peaksData[0].size();
+                float chanh = 100.0/numchans;
+                nvgBeginPath(args.vg);
+                for (int i=0;i<numchans;++i)
                 {
-                    float index = rescale(j,0,numpeaks,0.0f,numsrcpeaks-1.0f);
-                    if (index<numsrcpeaks)
+                    for (int j=0;j<numpeaks;++j)
                     {
-                        int index_i = index;
-                        float minp = src.peaksData[i][index_i].minpeak;
-                        float maxp = src.peaksData[i][index_i].maxpeak;
-                        float ycor0 = rescale(minp,-1.0f,1.0,0.0f,chanh);
-                        float ycor1 = rescale(maxp,-1.0f,1.0,0.0f,chanh);
-                        nvgMoveTo(args.vg,j,250.0+chanh*i+ycor0);
-                        nvgLineTo(args.vg,j,250.0+chanh*i+ycor1);
+                        float index = rescale(j,0,numpeaks,0.0f,numsrcpeaks-1.0f);
+                        if (index<numsrcpeaks)
+                        {
+                            int index_i = index;
+                            float minp = src.peaksData[i][index_i].minpeak;
+                            float maxp = src.peaksData[i][index_i].maxpeak;
+                            float ycor0 = rescale(minp,-1.0f,1.0,0.0f,chanh);
+                            float ycor1 = rescale(maxp,-1.0f,1.0,0.0f,chanh);
+                            nvgMoveTo(args.vg,j,250.0+chanh*i+ycor0);
+                            nvgLineTo(args.vg,j,250.0+chanh*i+ycor1);
+                        }
+                        
                     }
-                    
                 }
+                nvgStroke(args.vg);
+                nvgBeginPath(args.vg);
+                nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0x80));
+                float loopstart = m_gm->m_eng.m_gm.m_actLoopstart;
+                float loopend = m_gm->m_eng.m_gm.m_actLoopend;
+                float loopw = rescale(loopend-loopstart,0.0f,1.0f,0.0f,box.size.x-2.0f);
+                float xcor = rescale(loopstart,0.0f,1.0f,0.0f,box.size.x-2.0f);
+                nvgRect(args.vg,xcor,250.0f,loopw,100.0f);
+                nvgFill(args.vg);
+                nvgBeginPath(args.vg);
+                nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+                float ppos = m_gm->m_eng.m_gm.m_actSourcePos;
+                float srcdur = m_gm->m_eng.m_gm.m_inputdur;
+                xcor = rescale(ppos,0.0f,srcdur,0.0f,box.size.x-2.0f);
+                nvgMoveTo(args.vg,xcor,250.0f);
+                nvgLineTo(args.vg,xcor,250.0+100.0f);
+                nvgStroke(args.vg);
             }
-            nvgStroke(args.vg);
-            nvgBeginPath(args.vg);
-            nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0x80));
-            float loopstart = m_gm->m_eng.m_gm.m_actLoopstart;
-            float loopend = m_gm->m_eng.m_gm.m_actLoopend;
-            float loopw = rescale(loopend-loopstart,0.0f,1.0f,0.0f,box.size.x-2.0f);
-            float xcor = rescale(loopstart,0.0f,1.0f,0.0f,box.size.x-2.0f);
-            nvgRect(args.vg,xcor,250.0f,loopw,100.0f);
-            nvgFill(args.vg);
-            nvgBeginPath(args.vg);
-            nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            float ppos = m_gm->m_eng.m_gm.m_actSourcePos;
-            float srcdur = m_gm->m_eng.m_gm.m_inputdur;
-            xcor = rescale(ppos,0.0f,srcdur,0.0f,box.size.x-2.0f);
-            nvgMoveTo(args.vg,xcor,250.0f);
-            nvgLineTo(args.vg,xcor,250.0+100.0f);
-            nvgStroke(args.vg);
         }
         
 

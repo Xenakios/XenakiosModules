@@ -63,15 +63,18 @@ public:
     {
         m_grainOutBuffer.resize(65536*m_chans*2);
     }
-    bool initGrain(float inputdur, float startInSource,float len, float pitch)
+    bool initGrain(float inputdur, float startInSource,float len, float pitch, float outsr)
     {
         if (playState == 1)
             return false;
         playState = 1;
         m_outpos = 0;
-        m_resampler.SetRates(m_sr , m_sr / std::pow(2.0,1.0/12*pitch));
+        float insr = m_syn->getSourceSampleRate();
+        float outratio = outsr/insr;
+        
+        m_resampler.SetRates(insr, insr * outratio / std::pow(2.0,1.0/12*pitch));
         float* rsinbuf = nullptr;
-        int lensamples = m_sr*len;
+        int lensamples = outsr*len;
         m_grainSize = lensamples;
         m_resampler.Reset();
         int wanted = m_resampler.ResamplePrepare(lensamples,m_chans,&rsinbuf);
@@ -119,12 +122,6 @@ public:
         
     }
     int playState = 0;
-    void setSampleRate(float sr)
-    {
-        m_sr = sr;
-    }
-    
-    
     inline float getWindow(float pos, int wtype)
     {
         if (wtype == 0)
@@ -144,7 +141,7 @@ private:
     
     int m_outpos = 0;
     int m_grainSize = 2048;
-    float m_sr = 44100.0f;
+    
     int m_chans = 2;
     WDL_Resampler m_resampler;
     std::vector<float> m_grainOutBuffer;
@@ -196,7 +193,7 @@ public:
             int availgrain = findFreeGain();
             if (availgrain>=0)
             {
-                m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch);
+                m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch,m_sr);
             }
             m_nextGrainPos=m_sr*(m_grainDensity);
             m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed;
