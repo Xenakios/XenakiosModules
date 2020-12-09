@@ -50,6 +50,11 @@ public:
     unsigned int m_channels = 0;
     unsigned int m_sampleRate = 0;
     drwav_uint64 m_totalPCMFrameCount = 0;
+    std::vector<float> m_recordBuffer;
+    int m_recordChannels = 0;
+    float m_recordSampleRate = 0.0f;
+    int m_recordState = 0;
+    int m_recordBufPos = 0;
     std::mutex m_mut;
     std::string m_filename;
     void normalize(float level)
@@ -84,8 +89,13 @@ public:
         }
         updatePeaks();
     }
+    std::mutex m_peaks_mut;
     void updatePeaks()
     {
+        std::lock_guard<std::mutex> locker(m_peaks_mut);
+        float* dataPtr = m_pSampleData;
+        if (m_recordState == 2)
+            dataPtr = m_recordBuffer.data();
         peaksData.resize(m_channels);
         int samplesPerPeak = 128;
         int numPeaks = m_totalPCMFrameCount/samplesPerPeak;
@@ -105,7 +115,7 @@ public:
                     int index = sampleCounter*m_channels+i;
                     float sample = 0.0f;
                     if (index<m_totalPCMFrameCount*m_channels)
-                        sample = m_pSampleData[index];
+                        sample = dataPtr[index];
                     minsample = std::min(minsample,sample);
                     maxsample = std::max(maxsample,sample);
                     ++sampleCounter;
@@ -139,7 +149,7 @@ public:
             m_sampleRate = sampleRate;
             m_totalPCMFrameCount = totalPCMFrameCount;
             m_pSampleData = pSampleData;
-
+            m_recordState = 0;
         m_mut.unlock();
         drwav_free(oldData,nullptr);
         updatePeaks();  
@@ -154,7 +164,7 @@ public:
     std::vector<std::vector<SamplePeaks>> peaksData;
     DrWavSource()
     {
-        
+        m_recordBuffer.resize(44100*20);
 #ifdef __APPLE__
         std::string filename("/Users/teemu/AudioProjects/sourcesamples/db_guit01.wav");
 #else
@@ -162,9 +172,37 @@ public:
 #endif
         //importFile(filename);
     }
+    void startRecording(int numchans, float sr)
+    {
+        m_recordChannels = numchans;
+        m_recordSampleRate = sr;
+        m_recordState = 1;
+        
+    }
+    void pushSamplesToRecordBuffer(float* samples)
+    {
+        for (int i=0;i<m_recordChannels;++i)
+        {
+            m_recordBuffer[m_recordBufPos] = samples[i];
+            ++m_recordBufPos;
+            if (m_recordBufPos>=m_recordBuffer.size())
+                m_recordBufPos = 0;
+        }
+    }
+    void stopRecording()
+    {
+        m_recordState = 2;
+        m_channels = m_recordChannels;
+        m_sampleRate = m_recordSampleRate;
+        m_totalPCMFrameCount = m_recordBuffer.size()/m_recordChannels;
+        updatePeaks();
+    }
     void putIntoBuffer(float* dest, int frames, int channels, int startInSource) override
     {
         std::lock_guard<std::mutex> locker(m_mut);
+        float* srcDataPtr = m_pSampleData;
+        if (m_recordState > 0)
+            srcDataPtr = m_recordBuffer.data();
         if (m_channels==0)
         {
             for (int i=0;i<frames*channels;++i)
@@ -186,7 +224,7 @@ public:
                 for (int j=0;j<channels;++j)
                 {
                     int actsrcchan = srcchanmap[m_channels-1][j];
-                    dest[i*channels+j] = m_pSampleData[index*m_channels+actsrcchan];
+                    dest[i*channels+j] = srcDataPtr[index*m_channels+actsrcchan];
                 }
             } else
             {
@@ -258,6 +296,7 @@ public:
         PAR_ATTN_LOOPSTART,
         PAR_ATTN_LOOPLEN,
         PAR_GRAINDENSITY,
+        PAR_RECORD_ACTIVE,
         PAR_LAST
     };
     enum OUTPUTS
@@ -271,8 +310,11 @@ public:
         IN_CV_PITCH,
         IN_CV_LOOPSTART,
         IN_CV_LOOPLEN,
+        IN_AUDIO,
         IN_LAST
     };
+    dsp::BooleanTrigger m_recordTrigger;
+    bool m_recordActive = false;
     XGranularModule()
     {
         std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
@@ -288,6 +330,7 @@ public:
         configParam(PAR_ATTN_LOOPSTART,-1.0f,1.0f,0.0f,"Loop start CV ATTN");
         configParam(PAR_ATTN_LOOPLEN,-1.0f,1.0f,0.0f,"Loop len CV ATTN");
         configParam(PAR_GRAINDENSITY,0.0f,1.0f,0.25f,"Grain rate");
+        configParam(PAR_RECORD_ACTIVE,0.0f,1.0f,0.0f,"Record active");
     }
     json_t* dataToJson() override
     {
@@ -332,6 +375,22 @@ public:
         float posrnd = params[PAR_SRCPOSRANDOM].getValue();
         float grate = params[PAR_GRAINDENSITY].getValue();
         grate = 0.01f+std::pow(grate,2.0f)*0.49;
+        if (m_recordTrigger.process(params[PAR_RECORD_ACTIVE].getValue()>0.5f))
+        {
+            if (m_recordActive==false)
+            {
+                m_recordActive = true;
+                m_eng.m_src.startRecording(1,args.sampleRate);
+            }
+            else
+            {
+                m_recordActive = false;
+                m_eng.m_src.stopRecording();
+            }
+        }
+        float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/5.0f,0.0f};
+        if (m_recordActive)
+            m_eng.m_src.pushSamplesToRecordBuffer(recbuf);
         m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate);
         outputs[OUT_AUDIO].setVoltage(buf[0]*5.0f);
         graindebugcounter = m_eng.m_gm.debugCounter;
@@ -382,8 +441,12 @@ public:
         box.size.x = 300;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "GRAINS",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         PortWithBackGround<PJ301MPort>* port = nullptr;
-        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(1, 34), m, XGranularModule::OUT_AUDIO));
+        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(31, 34), m, XGranularModule::OUT_AUDIO));
         port->m_text = "AUDIO OUT";
+        addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(1, 34), m, XGranularModule::IN_AUDIO));
+        port->m_text = "AUDIO IN";
+        port->m_is_out = false;
+        addParam(createParam<TL1105>(Vec(61,34),m,XGranularModule::PAR_RECORD_ACTIVE));
         addChild(new KnobInAttnWidget(this,
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,
             XGranularModule::IN_CV_PLAYRATE,XGranularModule::PAR_ATTN_PLAYRATE,1,60));
@@ -418,6 +481,7 @@ public:
             auto& src = m_gm->m_eng.m_src;
             if (src.m_channels>0)
             {
+                std::lock_guard<std::mutex> locker(src.m_peaks_mut);
                 int numpeaks = box.size.x - 2;
                 int numchans = src.m_channels;
                 float numsrcpeaks = src.peaksData[0].size();
