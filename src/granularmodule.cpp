@@ -94,7 +94,7 @@ public:
     {
         std::lock_guard<std::mutex> locker(m_peaks_mut);
         float* dataPtr = m_pSampleData;
-        if (m_recordState == 2)
+        if (m_recordState > 0)
             dataPtr = m_recordBuffer.data();
         peaksData.resize(m_channels);
         int samplesPerPeak = 128;
@@ -164,7 +164,7 @@ public:
     std::vector<std::vector<SamplePeaks>> peaksData;
     DrWavSource()
     {
-        m_recordBuffer.resize(44100*20);
+        m_recordBuffer.resize(44100*10);
 #ifdef __APPLE__
         std::string filename("/Users/teemu/AudioProjects/sourcesamples/db_guit01.wav");
 #else
@@ -188,6 +188,12 @@ public:
             if (m_recordBufPos>=m_recordBuffer.size())
                 m_recordBufPos = 0;
         }
+    }
+    float getRecordPosition()
+    {
+        if (m_recordState == 0)
+            return -1.0f;
+        return 1.0/m_recordBuffer.size()*m_recordBufPos;
     }
     void stopRecording()
     {
@@ -388,7 +394,7 @@ public:
                 m_eng.m_src.stopRecording();
             }
         }
-        float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/5.0f,0.0f};
+        float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/10.0f,0.0f};
         if (m_recordActive)
             m_eng.m_src.pushSamplesToRecordBuffer(recbuf);
         m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate);
@@ -522,6 +528,20 @@ public:
                 nvgMoveTo(args.vg,xcor,250.0f);
                 nvgLineTo(args.vg,xcor,250.0+100.0f);
                 nvgStroke(args.vg);
+
+                ppos = m_gm->m_eng.m_src.getRecordPosition();
+                if (ppos>=0.0)
+                {
+
+                
+                    nvgBeginPath(args.vg);
+                    nvgStrokeColor(args.vg,nvgRGBA(0xff, 0x00, 0x00, 0xff));
+                    
+                    xcor = rescale(ppos,0.0f,1.0f,0.0f,box.size.x-2.0f);
+                    nvgMoveTo(args.vg,xcor,250.0f);
+                    nvgLineTo(args.vg,xcor,250.0+10.0f);
+                    nvgStroke(args.vg);
+                }
             }
         }
         
