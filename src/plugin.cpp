@@ -303,4 +303,6 @@ void init(Plugin *p) {
 	p->addModel(modelXLOFI);
 	p->addModel(modelXMultiMod);
 	p->addModel(modelXGranular);
+	p->addModel(modelXEnvelope);
+	
 }

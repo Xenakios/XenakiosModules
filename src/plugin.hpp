@@ -5,6 +5,9 @@ using namespace rack;
 #include <fstream>
 #include <functional>
 
+// Declare the Plugin, defined in plugin.cpp
+extern Plugin *pluginInstance;
+
 const float g_pi = 3.14159265358979;
 
 inline float customlog(float base, float x)
@@ -214,21 +217,6 @@ inline double quantize_to_grid(T x, const Grid& g, double amount=1.0)
     return x+diff*amount;
 }
 
-// Declare the Plugin, defined in plugin.cpp
-extern Plugin *pluginInstance;
-
-// Declare each Model, defined in each module source file
-extern Model *modelRandom;
-
-extern Model *modelXQuantizer;
-extern Model* modelXPSynth;
-extern Model* modelInharmonics;
-extern Model* modelXStochastic;
-extern Model* modelXImageSynth;
-extern Model* modelXLOFI;
-extern Model* modelXMultiMod;
-extern Model* modelXGranular;
-
 template <typename TLightBase = RedLight>
 struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
 	LEDLightSliderFixed() {
@@ -308,3 +296,18 @@ inline rack::MenuItem * createMenuItem(Func f, std::string text, std::string rig
 	o->ActionFunc = f;
 	return o;
 }
+
+
+
+// Declare each Model, defined in each module source file
+extern Model *modelRandom;
+
+extern Model *modelXQuantizer;
+extern Model* modelXPSynth;
+extern Model* modelInharmonics;
+extern Model* modelXStochastic;
+extern Model* modelXImageSynth;
+extern Model* modelXLOFI;
+extern Model* modelXMultiMod;
+extern Model* modelXGranular;
+extern Model* modelXEnvelope;

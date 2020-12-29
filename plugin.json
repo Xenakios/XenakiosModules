@@ -180,6 +180,14 @@
       "tags": [
         "Sampler","Granular"
       ]
+    },
+    {
+      "slug": "XEnvelope",
+      "name": "Envelope",
+      "description": "Envelope",
+      "tags": [
+        "Envelope"
+      ]
     }
     
 
