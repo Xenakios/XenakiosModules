@@ -99,20 +99,32 @@ public:
                 
             }
             nvgStroke(args.vg);
-            nvgBeginPath(args.vg);
-            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xee));
+            
+            
             for (int i=0;i<env.GetNumPoints();++i)
             {
+                nvgBeginPath(args.vg);
                 auto& pt = env.GetNodeAtIndex(i);
                 float xcor = rescale(pt.pt_x,0.0f,1.0f,0.0f,box.size.x);
                 float ycor = rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f);
+                if (i != m_hotPoint)
+                    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xee));
+                else
+                    nvgFillColor(args.vg, nvgRGBA(0xff, 0x00, 0x00, 0xee));
                 nvgEllipse(args.vg,xcor,ycor,3.0f,3.0f);
+                nvgFill(args.vg);
             }
-            nvgFill(args.vg);
+            
         }
         
         nvgRestore(args.vg);
     }   
+    float clampPoint(breakpoint_envelope& env, int index, float input, float minval, float maxval)
+    {
+        float leftbound = env.getNodeLeftBound(index);
+        float rightbound = env.getNodeRightBound(index);
+        return clamp(input,leftbound,rightbound);
+    }
     int findPoint(float xcor, float ycor)
     {
         auto& env = m_envmod->m_env;
@@ -130,6 +142,10 @@ public:
         }
         return -1;
     } 
+    void onHover(const event::Hover& e) override 
+    {
+        m_hotPoint = findPoint(e.pos.x,e.pos.y);
+    }
     void onButton(const event::Button& e) override
     {
         int index = findPoint(e.pos.x,e.pos.y);
@@ -156,7 +172,7 @@ public:
         float newDragX = APP->scene->rack->mousePos.x;
         float newPosX = initX+(newDragX-dragX);
         float xp = rescale(newPosX,0.0f,box.size.x,0.0,1.0);
-        xp = clamp(xp,0.0f,1.0f);
+        xp = clampPoint(env,draggedValue_,xp,0.0f,1.0f);
         float newDragY = APP->scene->rack->mousePos.y;
         float newPosY = initY+(newDragY-dragY);
         float yp = rescale(newPosY,0.0f,box.size.y,1.0,0.0);
@@ -167,6 +183,7 @@ public:
         env.SetNode(draggedValue_,{xp,yp});
         //float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
     }
+    
 private:
     XEnvelopeModule* m_envmod = nullptr;
     float initX = 0.0f;
@@ -174,6 +191,7 @@ private:
     float dragX = 0.0f;
     float dragY = 0.0f;
     int draggedValue_ = -1;
+    int m_hotPoint = -1;
 };
 
 class XEnvelopeModuleWidget : public ModuleWidget
