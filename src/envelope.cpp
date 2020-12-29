@@ -121,8 +121,8 @@ public:
     }   
     float clampPoint(breakpoint_envelope& env, int index, float input, float minval, float maxval)
     {
-        float leftbound = env.getNodeLeftBound(index);
-        float rightbound = env.getNodeRightBound(index);
+        float leftbound = env.getNodeLeftBound(index,0.002);
+        float rightbound = env.getNodeRightBound(index,0.002);
         return clamp(input,leftbound,rightbound);
     }
     int findPoint(float xcor, float ycor)
