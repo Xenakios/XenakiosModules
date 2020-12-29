@@ -33,10 +33,10 @@ public:
         m_env.AddNode({2.5,0.0});
         */
         
-        for (int i=0;i<16;++i)
+        for (int i=0;i<5;++i)
         {
             float yval = clamp(0.5+0.25*random::normal(),0.0f,1.0f);
-            m_env.AddNode({1.0/15*i,yval});
+            m_env.AddNode({1.0/4*i,yval});
         }
         m_env_len = m_env.getLastPointTime();
         configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
@@ -45,15 +45,21 @@ public:
     }
     void updateEnvelope(nodes_t points)
     {
-        std::lock_guard<std::mutex> locker(m_mut);
         m_updatedPoints = points;
+        m_doUpdate = true;
     }
     void process(const ProcessArgs& args) override
     {
         if (m_env_update_div.process())
         {
-            std::lock_guard<std::mutex> locker(m_mut);
-            m_env.set_all_nodes(m_updatedPoints);
+            //std::lock_guard<std::mutex> locker(m_mut);
+            if (m_doUpdate)
+            {
+                m_env.set_all_nodes(m_updatedPoints);
+                m_env.SortNodes();
+                m_doUpdate = false;
+            }
+            
         }
         float pitch = params[PAR_RATE].getValue()*12.0f;
         float rate = std::pow(2.0,1.0/12*pitch);
@@ -77,7 +83,7 @@ public:
     nodes_t m_updatedPoints;
     dsp::ClockDivider m_env_update_div;
     std::mutex m_mut;
-    std::atomic<bool> m_doUpdate;
+    std::atomic<bool> m_doUpdate{false};
 };
 
 class EnvelopeWidget : public TransparentWidget
@@ -182,6 +188,14 @@ public:
             initX = e.pos.x;
             initY = e.pos.y;
             return;
+        }
+        if (index == -1)
+        {
+            float newX = rescale(e.pos.x,0,box.size.x,0.0f,1.0f);
+            float newY = rescale(e.pos.y,0,box.size.y,1.0f,0.0f);
+            auto nodes = m_envmod->m_env.get_all_nodes();
+            nodes.push_back({newX,newY});
+            m_envmod->updateEnvelope(nodes);
         }
     }
     void onDragStart(const event::DragStart& e) override
