@@ -24,12 +24,20 @@ public:
     XEnvelopeModule()
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
+        /*
         m_env.AddNode({0.0,0.0});
         m_env.AddNode({0.1,1.0});
         m_env.AddNode({0.2,0.7});
         m_env.AddNode({2.0,0.7});
         m_env.AddNode({2.1,1.0});
         m_env.AddNode({2.5,0.0});
+        */
+        
+        for (int i=0;i<16;++i)
+        {
+            float yval = clamp(0.5+0.25*random::normal(),0.0f,1.0f);
+            m_env.AddNode({1.0/15*i,yval});
+        }
         m_env_len = m_env.getLastPointTime();
         configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
     }
@@ -56,9 +64,63 @@ public:
     breakpoint_envelope m_env{"env"};
 };
 
+class EnvelopeWidget : public TransparentWidget
+{
+public:
+    EnvelopeWidget(XEnvelopeModule* m) : m_envmod(m)
+    {
+
+    }
+    void draw(const DrawArgs &args) override
+    {
+        nvgSave(args.vg);
+        
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
+        nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
+        nvgFill(args.vg);
+        if (m_envmod)
+        {
+            nvgBeginPath(args.vg);
+            
+            auto& env = m_envmod->m_env;
+            nvgStrokeColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
+            for (int i=0;i<env.GetNumPoints();++i)
+            {
+                auto& pt = env.GetNodeAtIndex(i);
+                float xcor = rescale(pt.pt_x,0.0f,1.0f,0.0f,box.size.x);
+                float ycor = rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f);
+                
+                if (i == 0)
+                    nvgMoveTo(args.vg,xcor,ycor);
+                else
+                    nvgLineTo(args.vg,xcor,ycor);
+                
+                
+            }
+            nvgStroke(args.vg);
+            nvgBeginPath(args.vg);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xee));
+            for (int i=0;i<env.GetNumPoints();++i)
+            {
+                auto& pt = env.GetNodeAtIndex(i);
+                float xcor = rescale(pt.pt_x,0.0f,1.0f,0.0f,box.size.x);
+                float ycor = rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f);
+                nvgEllipse(args.vg,xcor,ycor,3.0f,3.0f);
+            }
+            nvgFill(args.vg);
+        }
+        
+        nvgRestore(args.vg);
+    }    
+private:
+    XEnvelopeModule* m_envmod = nullptr;
+};
+
 class XEnvelopeModuleWidget : public ModuleWidget
 {
 public:
+    EnvelopeWidget* m_envwidget = nullptr;
     XEnvelopeModuleWidget(XEnvelopeModule* m)
     {
         setModule(m);
@@ -70,6 +132,10 @@ public:
         addChild(new KnobInAttnWidget(this,
             "RATE",XEnvelopeModule::PAR_RATE,
             XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,35,40));
+        m_envwidget = new EnvelopeWidget(m);
+        addChild(m_envwidget);
+        m_envwidget->box.pos = {0,90};
+        m_envwidget->box.size = {500,250};
     }
     void draw(const DrawArgs &args) override
     {
