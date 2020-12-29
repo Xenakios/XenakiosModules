@@ -40,9 +40,21 @@ public:
         }
         m_env_len = m_env.getLastPointTime();
         configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
+        m_env_update_div.setDivision(32768);
+        m_updatedPoints.reserve(65536);
+    }
+    void updateEnvelope(nodes_t points)
+    {
+        std::lock_guard<std::mutex> locker(m_mut);
+        m_updatedPoints = points;
     }
     void process(const ProcessArgs& args) override
     {
+        if (m_env_update_div.process())
+        {
+            std::lock_guard<std::mutex> locker(m_mut);
+            m_env.set_all_nodes(m_updatedPoints);
+        }
         float pitch = params[PAR_RATE].getValue()*12.0f;
         float rate = std::pow(2.0,1.0/12*pitch);
         float envlenscaled = m_env_len*rate;
@@ -62,6 +74,10 @@ public:
     double m_env_len = 0.0f;
     int m_out_range = 0;
     breakpoint_envelope m_env{"env"};
+    nodes_t m_updatedPoints;
+    dsp::ClockDivider m_env_update_div;
+    std::mutex m_mut;
+    std::atomic<bool> m_doUpdate;
 };
 
 class EnvelopeWidget : public TransparentWidget

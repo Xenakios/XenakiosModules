@@ -206,6 +206,7 @@ public:
         m_updateopinprogress=false;
         m_value_grid={0.0,0.25,0.5,0.75,1.0};
 		m_randbuf.resize(1024);
+        m_nodes.reserve(1024);
     }
 	std::unique_ptr<breakpoint_envelope> duplicate()
 	{
