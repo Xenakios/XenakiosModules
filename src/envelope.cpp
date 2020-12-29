@@ -81,6 +81,7 @@ public:
         nvgFill(args.vg);
         if (m_envmod)
         {
+            // draw envelope line
             nvgBeginPath(args.vg);
             
             auto& env = m_envmod->m_env;
@@ -100,7 +101,7 @@ public:
             }
             nvgStroke(args.vg);
             
-            
+            // draw envelope point handles
             for (int i=0;i<env.GetNumPoints();++i)
             {
                 nvgBeginPath(args.vg);
@@ -114,7 +115,15 @@ public:
                 nvgEllipse(args.vg,xcor,ycor,3.0f,3.0f);
                 nvgFill(args.vg);
             }
-            
+            // draw envelope play position
+            nvgBeginPath(args.vg);
+            nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xdd));
+            float ppos = m_envmod->m_phase;
+            float envlen = m_envmod->m_env_len;
+            float xcor = rescale(ppos,0.0f,envlen,0.0f,box.size.x);
+            nvgMoveTo(args.vg,xcor,0.0f);
+            nvgLineTo(args.vg,xcor,box.size.y);
+            nvgStroke(args.vg);
         }
         
         nvgRestore(args.vg);
