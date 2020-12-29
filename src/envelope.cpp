@@ -112,9 +112,68 @@ public:
         }
         
         nvgRestore(args.vg);
-    }    
+    }   
+    int findPoint(float xcor, float ycor)
+    {
+        auto& env = m_envmod->m_env;
+        for (int i=0;i<env.GetNumPoints();++i)
+        {
+            auto& pt = env.GetNodeAtIndex(i);
+            Rect r(rescale(pt.pt_x,0.0f,1.0f,0.0,box.size.x)-3.0f,
+                   rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f)-3.0f,
+                    6.0f,6.0f);
+                
+            if (r.contains({xcor,ycor}))
+            {
+                return i;
+            }
+        }
+        return -1;
+    } 
+    void onButton(const event::Button& e) override
+    {
+        int index = findPoint(e.pos.x,e.pos.y);
+        //auto v = qmod->quantizers[which_].getVoltages();
+        if (index>=0 && !(e.mods & GLFW_MOD_SHIFT))
+        {
+            e.consume(this);
+            draggedValue_ = index;
+            initX = e.pos.x;
+            initY = e.pos.y;
+            return;
+        }
+    }
+    void onDragStart(const event::DragStart& e) override
+    {
+        dragX = APP->scene->rack->mousePos.x;
+        dragY = APP->scene->rack->mousePos.y;
+    }
+    void onDragMove(const event::DragMove& e) override
+    {
+        if (draggedValue_==-1)
+            return;
+        auto& env = m_envmod->m_env;
+        float newDragX = APP->scene->rack->mousePos.x;
+        float newPosX = initX+(newDragX-dragX);
+        float xp = rescale(newPosX,0.0f,box.size.x,0.0,1.0);
+        xp = clamp(xp,0.0f,1.0f);
+        float newDragY = APP->scene->rack->mousePos.y;
+        float newPosY = initY+(newDragY-dragY);
+        float yp = rescale(newPosY,0.0f,box.size.y,1.0,0.0);
+        yp = clamp(yp,0.0f,1.0f);
+        //valX = clampValue(quant,draggedValue_,val,-5.0f,5.0f);
+        //qmod->updateSingleQuantizerValue(which_,draggedValue_,val);
+        //dirty = true;
+        env.SetNode(draggedValue_,{xp,yp});
+        //float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
+    }
 private:
     XEnvelopeModule* m_envmod = nullptr;
+    float initX = 0.0f;
+    float initY = 0.0f;
+    float dragX = 0.0f;
+    float dragY = 0.0f;
+    int draggedValue_ = -1;
 };
 
 class XEnvelopeModuleWidget : public ModuleWidget
@@ -128,7 +187,7 @@ public:
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "ENVELOPE",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         PortWithBackGround<PJ301MPort>* port = nullptr;
         addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(3, 40), m, XEnvelopeModule::OUT_ENV));
-        port->m_text = "AUDIO OUT";
+        port->m_text = "ENV OUT";
         addChild(new KnobInAttnWidget(this,
             "RATE",XEnvelopeModule::PAR_RATE,
             XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,35,40));
