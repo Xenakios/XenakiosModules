@@ -40,7 +40,7 @@ public:
         }
         m_env_len = m_env.getLastPointTime();
         configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
-        m_env_update_div.setDivision(32768);
+        m_env_update_div.setDivision(8192);
         m_updatedPoints.reserve(65536);
     }
     void updateEnvelope(nodes_t points)
@@ -179,6 +179,11 @@ public:
     }
     void onButton(const event::Button& e) override
     {
+        if (e.action == GLFW_RELEASE)
+        {
+            draggedValue_ = -1;
+            return;
+        }
         int index = findPoint(e.pos.x,e.pos.y);
         //auto v = qmod->quantizers[which_].getVoltages();
         if (index>=0 && !(e.mods & GLFW_MOD_SHIFT))
@@ -187,6 +192,15 @@ public:
             draggedValue_ = index;
             initX = e.pos.x;
             initY = e.pos.y;
+            return;
+        }
+        if (index>=0 && (e.mods & GLFW_MOD_SHIFT))
+        {
+            e.consume(this);
+            draggedValue_ = -1;
+            auto nodes = m_envmod->m_env.get_all_nodes();
+            nodes.erase(nodes.begin()+index);
+            m_envmod->updateEnvelope(nodes);
             return;
         }
         if (index == -1)
