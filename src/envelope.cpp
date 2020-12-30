@@ -1,6 +1,8 @@
 #include "plugin.hpp"
 #include "helperwidgets.h"
 #include "jcdp_envelope.h"
+#include <atomic>
+#include <mutex>
 
 const int g_ptsize = 5;
 
