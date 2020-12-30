@@ -2,6 +2,8 @@
 #include "helperwidgets.h"
 #include "jcdp_envelope.h"
 
+const int g_ptsize = 5;
+
 class XEnvelopeModule : public rack::Module
 {
 public:
@@ -134,7 +136,7 @@ public:
                     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xee));
                 else
                     nvgFillColor(args.vg, nvgRGBA(0xff, 0x00, 0x00, 0xee));
-                nvgEllipse(args.vg,xcor,ycor,3.0f,3.0f);
+                nvgEllipse(args.vg,xcor,ycor,g_ptsize,g_ptsize);
                 nvgFill(args.vg);
             }
             // draw envelope play position
@@ -162,9 +164,9 @@ public:
         for (int i=0;i<env.GetNumPoints();++i)
         {
             auto& pt = env.GetNodeAtIndex(i);
-            Rect r(rescale(pt.pt_x,0.0f,1.0f,0.0,box.size.x)-3.0f,
-                   rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f)-3.0f,
-                    6.0f,6.0f);
+            Rect r(rescale(pt.pt_x,0.0f,1.0f,0.0,box.size.x)-(g_ptsize/2.0f),
+                   rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f)-(g_ptsize/2.0f),
+                    g_ptsize,g_ptsize);
                 
             if (r.contains({xcor,ycor}))
             {
