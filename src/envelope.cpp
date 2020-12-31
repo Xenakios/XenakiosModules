@@ -18,6 +18,7 @@ public:
     enum INPUTS
     {
         IN_CV_RATE,
+        IN_TRIGGER,
         IN_LAST
     };
     enum OUTPUTS
@@ -70,9 +71,17 @@ public:
         float envlenscaled = m_env_len*rate;
         float output = m_env.GetInterpolatedEnvelopeValue(m_phase);
         m_phase += args.sampleTime*rate;
+        if (inputs[IN_TRIGGER].isConnected()==false)
+        {
+            if (m_phase>=m_env_len)
+                m_phase-=m_env_len;
+        } else
+        {
+            if (resetTrigger.process(inputs[IN_TRIGGER].getVoltage()))
+                m_phase = 0.0f;
+        }
+
         
-        if (m_phase>=m_env_len)
-            m_phase-=m_env_len;
         if (m_out_range == 0)
             output = rescale(output,0.0f,1.0f,-5.0f,5.0f);
         else if (m_out_range == 1)
@@ -88,6 +97,24 @@ public:
     dsp::ClockDivider m_env_update_div;
     std::mutex m_mut;
     std::atomic<bool> m_doUpdate{false};
+    rack::dsp::SchmittTrigger resetTrigger;
+};
+
+struct OutputRangeItem : MenuItem
+{
+    XEnvelopeModule* em = nullptr;
+    OutputRangeItem(XEnvelopeModule* m) : em(m) {}
+    Menu *createChildMenu() override 
+    {
+        Menu *submenu = new Menu();
+        auto item = createMenuItem([this](){ em->m_out_range = 0; },"-5 to 5 volts");
+        submenu->addChild(item);
+        item = createMenuItem([this](){ em->m_out_range = 1; },"0 to 10 volts");
+        submenu->addChild(item);
+        
+        return submenu;
+    }
+
 };
 
 class EnvelopeWidget : public TransparentWidget
@@ -255,21 +282,34 @@ class XEnvelopeModuleWidget : public ModuleWidget
 {
 public:
     EnvelopeWidget* m_envwidget = nullptr;
+    XEnvelopeModule* m_emod = nullptr;
     XEnvelopeModuleWidget(XEnvelopeModule* m)
     {
         setModule(m);
+        m_emod = m;
         box.size.x = 500;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "ENVELOPE",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         PortWithBackGround<PJ301MPort>* port = nullptr;
-        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(3, 40), m, XEnvelopeModule::OUT_ENV));
+        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(5, 40), m, XEnvelopeModule::OUT_ENV));
         port->m_text = "ENV OUT";
+        addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(35, 40), m, XEnvelopeModule::IN_TRIGGER));
+        port->m_text = "RST";
+        port->m_is_out = false;
         addChild(new KnobInAttnWidget(this,
             "RATE",XEnvelopeModule::PAR_RATE,
-            XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,35,40));
+            XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,70,40));
         m_envwidget = new EnvelopeWidget(m);
         addChild(m_envwidget);
         m_envwidget->box.pos = {0,90};
         m_envwidget->box.size = {500,250};
+    }
+    void appendContextMenu(Menu *menu) override 
+    {
+        menu->addChild(new MenuEntry);
+        OutputRangeItem* it = new OutputRangeItem(m_emod);
+        it->em = m_emod;
+        it->text = "Output range";
+        menu->addChild(it);
     }
     void draw(const DrawArgs &args) override
     {
