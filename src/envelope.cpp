@@ -179,17 +179,33 @@ public:
             
             auto& env = m_envmod->m_env;
             nvgStrokeColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
-            for (int i=0;i<env.GetNumPoints();++i)
+            int numpts = env.GetNumPoints();
+            for (int i=0;i<numpts;++i)
             {
                 auto& pt = env.GetNodeAtIndex(i);
                 float xcor = rescale(pt.pt_x,0.0f,1.0f,0.0f,box.size.x);
                 float ycor = rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f);
                 
                 if (i == 0)
-                    nvgMoveTo(args.vg,xcor,ycor);
+                {
+                    if (xcor>0.0f)
+                    {
+                        nvgMoveTo(args.vg,0.0f,ycor);
+                        nvgLineTo(args.vg,xcor,ycor);    
+                    }
+                        
+                    else
+                        nvgMoveTo(args.vg,xcor,ycor);
+                }
                 else
+                {
                     nvgLineTo(args.vg,xcor,ycor);
-                
+                }
+                    
+                if (i == numpts-1 && xcor<box.size.x)
+                {
+                    nvgLineTo(args.vg,box.size.x,ycor);
+                }
                 
             }
             nvgStroke(args.vg);
