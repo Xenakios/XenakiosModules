@@ -53,6 +53,46 @@ public:
         m_updatedPoints = points;
         m_doUpdate = true;
     }
+    json_t* dataToJson() override
+    {
+        json_t* resultJ = json_object();
+        json_t* arrayJ = json_array();
+        for (int i=0;i<m_env.GetNumPoints();++i)
+        {
+            json_t* ptJ = json_object();
+            auto& pt = m_env.GetNodeAtIndex(i);
+            json_object_set(ptJ,"x",json_real(pt.pt_x));
+            json_object_set(ptJ,"y",json_real(pt.pt_y));
+            json_array_append(arrayJ,ptJ);
+        }
+        json_object_set(resultJ,"envelope_v1",arrayJ);
+        return resultJ;
+    }
+    void dataFromJson(json_t* root) override
+    {
+        json_t* arrayJ = json_object_get(root,"envelope_v1");
+        if (arrayJ)
+        {
+            int numpoints = json_array_size(arrayJ);
+            nodes_t points;
+            for (int i=0;i<numpoints;++i)
+            {
+                json_t* ptJ = json_array_get(arrayJ,i);
+                if (ptJ)
+                {
+                    json_t* ptxj = json_object_get(ptJ,"x");
+                    json_t* ptyj = json_object_get(ptJ,"y");
+                    float ptx = json_number_value(ptxj);
+                    float pty = json_number_value(ptyj);
+                    points.push_back({ptx,pty});
+                }
+            }
+            if (points.size()>0)
+            {
+                updateEnvelope(points);
+            }
+        }
+    }
     void process(const ProcessArgs& args) override
     {
         if (m_env_update_div.process())
@@ -227,11 +267,15 @@ public:
         }
         if (index>=0 && (e.mods & GLFW_MOD_SHIFT))
         {
-            e.consume(this);
-            draggedValue_ = -1;
-            auto nodes = m_envmod->m_env.get_all_nodes();
-            nodes.erase(nodes.begin()+index);
-            m_envmod->updateEnvelope(nodes);
+            if (m_envmod->m_env.GetNumPoints()>1)
+            {
+                e.consume(this);
+                draggedValue_ = -1;
+                auto nodes = m_envmod->m_env.get_all_nodes();
+                nodes.erase(nodes.begin()+index);
+                m_envmod->updateEnvelope(nodes);
+            }
+            
             return;
         }
         if (index == -1)
