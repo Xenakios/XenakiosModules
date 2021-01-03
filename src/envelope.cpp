@@ -66,11 +66,15 @@ public:
             json_array_append(arrayJ,ptJ);
         }
         json_object_set(resultJ,"envelope_v1",arrayJ);
+        json_object_set(resultJ,"outputrange",json_integer(m_out_range));
         return resultJ;
     }
     void dataFromJson(json_t* root) override
     {
         json_t* arrayJ = json_object_get(root,"envelope_v1");
+        json_t* outrngJ = json_object_get(root,"outputrange");
+        if (outrngJ)
+            m_out_range = json_integer_value(outrngJ);
         if (arrayJ)
         {
             int numpoints = json_array_size(arrayJ);
