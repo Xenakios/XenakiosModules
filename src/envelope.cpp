@@ -29,22 +29,11 @@ public:
     XEnvelopeModule()
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
-        /*
-        m_env.AddNode({0.0,0.0});
-        m_env.AddNode({0.1,1.0});
-        m_env.AddNode({0.2,0.7});
-        m_env.AddNode({2.0,0.7});
-        m_env.AddNode({2.1,1.0});
-        m_env.AddNode({2.5,0.0});
-        */
-        
-        for (int i=0;i<5;++i)
-        {
-            float yval = clamp(0.5+0.25*random::normal(),0.0f,1.0f);
-            m_env.AddNode({1.0/4*i,yval});
-        }
+        m_env.AddNode({0.0,0.5});
+        m_env.AddNode({1.0,0.5});
         m_env_len = m_env.getLastPointTime();
         configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
+        configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Base rate CV level");
         m_env_update_div.setDivision(8192);
         m_updatedPoints.reserve(65536);
     }
@@ -351,7 +340,7 @@ public:
     {
         setModule(m);
         m_emod = m;
-        box.size.x = 500;
+        box.size.x = 506.5;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "ENVELOPE",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         PortWithBackGround<PJ301MPort>* port = nullptr;
         addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(5, 40), m, XEnvelopeModule::OUT_ENV));
