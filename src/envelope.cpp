@@ -253,9 +253,9 @@ public:
         for (int i=0;i<env.GetNumPoints();++i)
         {
             auto& pt = env.GetNodeAtIndex(i);
-            Rect r(rescale(pt.pt_x,0.0f,1.0f,0.0,box.size.x)-(g_ptsize/2.0f),
-                   rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f)-(g_ptsize/2.0f),
-                    g_ptsize,g_ptsize);
+            Rect r(rescale(pt.pt_x,0.0f,1.0f,0.0,box.size.x)-(g_ptsize),
+                   rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f)-(g_ptsize),
+                    g_ptsize*2,g_ptsize*2);
                 
             if (r.contains({xcor,ycor}))
             {
