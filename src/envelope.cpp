@@ -20,6 +20,7 @@ public:
     {
         IN_CV_RATE,
         IN_TRIGGER,
+        IN_POSITION,
         IN_LAST
     };
     enum OUTPUTS
@@ -104,7 +105,11 @@ public:
         float pitch = params[PAR_RATE].getValue()*12.0f;
         float rate = std::pow(2.0,1.0/12*pitch);
         float envlenscaled = m_env_len*rate;
-        float output = m_env.GetInterpolatedEnvelopeValue(m_phase);
+        double phasetouse = m_phase;
+        if (inputs[IN_POSITION].isConnected())
+            phasetouse = rescale(inputs[IN_POSITION].getVoltage(),-5.0f,5.0f,0.0f,1.0f);
+        m_phase_used = phasetouse;
+        float output = m_env.GetInterpolatedEnvelopeValue(phasetouse);
         m_phase += args.sampleTime*rate;
         int playmode = params[PAR_PLAYMODE].getValue();
         if (playmode == 1)
@@ -122,7 +127,8 @@ public:
         outputs[OUT_ENV].setVoltage(output);
         //outputs[OUT_ENV].setVoltage(m_phase*5.0f);
     }
-    double m_phase = 0.0f;
+    double m_phase = 0.0;
+    double m_phase_used = 0.0;
     double m_env_len = 0.0f;
     int m_out_range = 0;
     breakpoint_envelope m_env{"env"};
@@ -220,7 +226,7 @@ public:
             // draw envelope play position
             nvgBeginPath(args.vg);
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xdd));
-            float ppos = m_envmod->m_phase;
+            float ppos = clamp(m_envmod->m_phase_used,0.0f,1.0f);
             float envlen = m_envmod->m_env_len;
             float xcor = rescale(ppos,0.0f,envlen,0.0f,box.size.x);
             nvgMoveTo(args.vg,xcor,0.0f);
@@ -347,6 +353,9 @@ public:
         port->m_text = "ENV OUT";
         addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(35, 40), m, XEnvelopeModule::IN_TRIGGER));
         port->m_text = "RST";
+        port->m_is_out = false;
+        addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(65, 40), m, XEnvelopeModule::IN_POSITION));
+        port->m_text = "POS";
         port->m_is_out = false;
         addChild(new KnobInAttnWidget(this,
             "RATE",XEnvelopeModule::PAR_RATE,
