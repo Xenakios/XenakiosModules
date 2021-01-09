@@ -103,6 +103,7 @@ public:
             
         }
         float pitch = params[PAR_RATE].getValue()*12.0f;
+        pitch += inputs[IN_CV_RATE].getVoltage()*params[PAR_ATTN_RATE].getValue()*12.0f;
         float rate = std::pow(2.0,1.0/12*pitch);
         float envlenscaled = m_env_len*rate;
         double phasetouse = m_phase;
