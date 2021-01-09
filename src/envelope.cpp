@@ -13,6 +13,7 @@ public:
     {
         PAR_RATE,
         PAR_ATTN_RATE,
+        PAR_PLAYMODE,
         PAR_LAST
     };
     enum INPUTS
@@ -34,6 +35,7 @@ public:
         m_env_len = m_env.getLastPointTime();
         configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
         configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Base rate CV level");
+        configParam(PAR_PLAYMODE,0.0f,1.0f,0.0f,"Play mode");
         m_env_update_div.setDivision(8192);
         m_updatedPoints.reserve(65536);
     }
@@ -104,16 +106,14 @@ public:
         float envlenscaled = m_env_len*rate;
         float output = m_env.GetInterpolatedEnvelopeValue(m_phase);
         m_phase += args.sampleTime*rate;
-        if (inputs[IN_TRIGGER].isConnected()==false)
+        int playmode = params[PAR_PLAYMODE].getValue();
+        if (playmode == 1)
         {
             if (m_phase>=m_env_len)
                 m_phase-=m_env_len;
-        } else
-        {
-            if (resetTrigger.process(inputs[IN_TRIGGER].getVoltage()))
-                m_phase = 0.0f;
-        }
-
+        } 
+        if (resetTrigger.process(inputs[IN_TRIGGER].getVoltage()))
+            m_phase = 0.0f;
         
         if (m_out_range == 0)
             output = rescale(output,0.0f,1.0f,-5.0f,5.0f);
@@ -350,10 +350,13 @@ public:
         port->m_is_out = false;
         addChild(new KnobInAttnWidget(this,
             "RATE",XEnvelopeModule::PAR_RATE,
-            XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,70,40));
+            XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,2,70));
+        addChild(new KnobInAttnWidget(this,
+            "PLAY MODE",XEnvelopeModule::PAR_PLAYMODE,
+            -1,-1,84,70,true));
         m_envwidget = new EnvelopeWidget(m);
         addChild(m_envwidget);
-        m_envwidget->box.pos = {0,90};
+        m_envwidget->box.pos = {0,120};
         m_envwidget->box.size = {500,250};
     }
     void appendContextMenu(Menu *menu) override 
