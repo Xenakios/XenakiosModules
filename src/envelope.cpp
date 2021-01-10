@@ -14,6 +14,8 @@ public:
         PAR_RATE,
         PAR_ATTN_RATE,
         PAR_PLAYMODE,
+        PAR_ACTIVE_ENVELOPE,
+        PAR_ATTN_ACTENV,
         PAR_LAST
     };
     enum INPUTS
@@ -21,6 +23,7 @@ public:
         IN_CV_RATE,
         IN_TRIGGER,
         IN_POSITION,
+        IN_ACTENV,
         IN_LAST
     };
     enum OUTPUTS
@@ -31,12 +34,20 @@ public:
     XEnvelopeModule()
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
-        m_env.AddNode({0.0,0.5});
-        m_env.AddNode({1.0,0.5});
-        m_env_len = m_env.getLastPointTime();
+        for (int i=0;i<16;++i)
+        {
+            std::unique_ptr<breakpoint_envelope> env(new breakpoint_envelope("envelope"+std::to_string(i+1)));
+            env->AddNode({0.0,0.5});
+            env->AddNode({1.0,0.5});
+            m_envelopes.push_back(std::move(env));
+        }
+        
+        m_env_len = 1.0f;
         configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
         configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Base rate CV level");
         configParam(PAR_PLAYMODE,0.0f,1.0f,0.0f,"Play mode");
+        configParam(PAR_ACTIVE_ENVELOPE,0.0f,15.0f,0.0f,"Envelope select");
+        configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Envelope select CV level");
         m_env_update_div.setDivision(8192);
         m_updatedPoints.reserve(65536);
     }
@@ -49,14 +60,16 @@ public:
     {
         json_t* resultJ = json_object();
         json_t* arrayJ = json_array();
-        for (int i=0;i<m_env.GetNumPoints();++i)
+        
+        for (int i=0;i<m_envelopes[0]->GetNumPoints();++i)
         {
             json_t* ptJ = json_object();
-            auto& pt = m_env.GetNodeAtIndex(i);
+            auto& pt = m_envelopes[0]->GetNodeAtIndex(i);
             json_object_set(ptJ,"x",json_real(pt.pt_x));
             json_object_set(ptJ,"y",json_real(pt.pt_y));
             json_array_append(arrayJ,ptJ);
         }
+        
         json_object_set(resultJ,"envelope_v1",arrayJ);
         json_object_set(resultJ,"outputrange",json_integer(m_out_range));
         return resultJ;
@@ -91,13 +104,14 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
+        int actenv = params[PAR_ACTIVE_ENVELOPE].getValue();
         if (m_env_update_div.process())
         {
             //std::lock_guard<std::mutex> locker(m_mut);
             if (m_doUpdate)
             {
-                m_env.set_all_nodes(m_updatedPoints);
-                m_env.SortNodes();
+                m_envelopes[actenv]->set_all_nodes(m_updatedPoints);
+                m_envelopes[actenv]->SortNodes();
                 m_doUpdate = false;
             }
             
@@ -110,7 +124,7 @@ public:
         if (inputs[IN_POSITION].isConnected())
             phasetouse = rescale(inputs[IN_POSITION].getVoltage(),-5.0f,5.0f,0.0f,1.0f);
         m_phase_used = phasetouse;
-        float output = m_env.GetInterpolatedEnvelopeValue(phasetouse);
+        float output = m_envelopes[actenv]->GetInterpolatedEnvelopeValue(phasetouse);
         m_phase += args.sampleTime*rate;
         int playmode = params[PAR_PLAYMODE].getValue();
         if (playmode == 1)
@@ -133,12 +147,18 @@ public:
     double m_env_len = 0.0f;
     int m_out_range = 0;
     float m_last_value = 0.0f;
-    breakpoint_envelope m_env{"env"};
+    
     nodes_t m_updatedPoints;
     dsp::ClockDivider m_env_update_div;
     std::mutex m_mut;
     std::atomic<bool> m_doUpdate{false};
     rack::dsp::SchmittTrigger resetTrigger;
+    breakpoint_envelope& getActiveEnvelope()
+    {
+        return *m_envelopes[(int)params[PAR_ACTIVE_ENVELOPE].getValue()];
+    }
+private:
+    std::vector<std::unique_ptr<breakpoint_envelope>> m_envelopes;
 };
 
 struct OutputRangeItem : MenuItem
@@ -178,7 +198,7 @@ public:
             // draw envelope line
             nvgBeginPath(args.vg);
             
-            auto& env = m_envmod->m_env;
+            auto& env = m_envmod->getActiveEnvelope();
             nvgStrokeColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
             int numpts = env.GetNumPoints();
             for (int i=0;i<numpts;++i)
@@ -257,7 +277,7 @@ public:
     }
     int findPoint(float xcor, float ycor)
     {
-        auto& env = m_envmod->m_env;
+        auto& env = m_envmod->getActiveEnvelope();
         for (int i=0;i<env.GetNumPoints();++i)
         {
             auto& pt = env.GetNodeAtIndex(i);
@@ -293,13 +313,15 @@ public:
             initY = e.pos.y;
             return;
         }
+        auto& env = m_envmod->getActiveEnvelope();
         if (index>=0 && (e.mods & GLFW_MOD_SHIFT))
         {
-            if (m_envmod->m_env.GetNumPoints()>1)
+            
+            if (env.GetNumPoints()>1)
             {
                 e.consume(this);
                 draggedValue_ = -1;
-                auto nodes = m_envmod->m_env.get_all_nodes();
+                auto nodes = env.get_all_nodes();
                 nodes.erase(nodes.begin()+index);
                 m_envmod->updateEnvelope(nodes);
             }
@@ -310,7 +332,7 @@ public:
         {
             float newX = rescale(e.pos.x,0,box.size.x,0.0f,1.0f);
             float newY = rescale(e.pos.y,0,box.size.y,1.0f,0.0f);
-            auto nodes = m_envmod->m_env.get_all_nodes();
+            auto nodes = env.get_all_nodes();
             nodes.push_back({newX,newY});
             m_envmod->updateEnvelope(nodes);
         }
@@ -324,7 +346,7 @@ public:
     {
         if (draggedValue_==-1)
             return;
-        auto& env = m_envmod->m_env;
+        auto& env = m_envmod->getActiveEnvelope();
         float newDragX = APP->scene->rack->mousePos.x;
         float newPosX = initX+(newDragX-dragX);
         float xp = rescale(newPosX,0.0f,box.size.x,0.0,1.0);
@@ -376,6 +398,9 @@ public:
         addChild(new KnobInAttnWidget(this,
             "PLAY MODE",XEnvelopeModule::PAR_PLAYMODE,
             -1,-1,84,70,true));
+        addChild(new KnobInAttnWidget(this,
+            "ENVELOPE SEL",XEnvelopeModule::PAR_ACTIVE_ENVELOPE,
+            XEnvelopeModule::IN_ACTENV,XEnvelopeModule::PAR_ATTN_ACTENV,166,70,true));
         m_envwidget = new EnvelopeWidget(m);
         addChild(m_envwidget);
         m_envwidget->box.pos = {0,120};
