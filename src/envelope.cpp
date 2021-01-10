@@ -6,6 +6,38 @@
 
 const int g_ptsize = 5;
 
+// taken from https://rigtorp.se/spinlock/
+
+struct spinlock {
+  std::atomic<bool> lock_ = {0};
+
+  void lock() noexcept {
+    for (;;) {
+      // Optimistically assume the lock is free on the first try
+      if (!lock_.exchange(true, std::memory_order_acquire)) {
+        return;
+      }
+      // Wait for lock to be released without generating cache misses
+      while (lock_.load(std::memory_order_relaxed)) {
+        // Issue X86 PAUSE or ARM YIELD instruction to reduce contention between
+        // hyper-threads
+        __builtin_ia32_pause();
+      }
+    }
+  }
+
+  bool try_lock() noexcept {
+    // First do a relaxed load to check if lock is free in order to prevent
+    // unnecessary cache misses if someone does while(!try_lock())
+    return !lock_.load(std::memory_order_relaxed) &&
+           !lock_.exchange(true, std::memory_order_acquire);
+  }
+
+  void unlock() noexcept {
+    lock_.store(false, std::memory_order_release);
+  }
+};
+
 class XEnvelopeModule : public rack::Module
 {
 public:
@@ -186,7 +218,7 @@ public:
         else if (m_out_range == 1)
             output = rescale(output,0.0f,1.0f,0.0f,10.0f);
         outputs[OUT_ENV].setVoltage(output);
-        //outputs[OUT_ENV].setVoltage(m_phase*5.0f);
+        
         m_mut.unlock();
         }
     }
@@ -198,7 +230,7 @@ public:
     
     nodes_t m_updatedPoints;
     dsp::ClockDivider m_env_update_div;
-    std::mutex m_mut;
+    spinlock m_mut;
     std::atomic<bool> m_doUpdate{false};
     rack::dsp::SchmittTrigger resetTrigger;
     breakpoint_envelope& getActiveEnvelope()
