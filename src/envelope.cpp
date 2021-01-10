@@ -86,8 +86,13 @@ public:
     }
     void updateEnvelope(nodes_t points)
     {
-        m_updatedPoints = points;
-        m_doUpdate = true;
+        //m_updatedPoints = points;
+        //m_doUpdate = true;
+        m_mut.lock();
+        auto& env = getActiveEnvelope();
+        env.set_all_nodes(points);
+        env.SortNodes();
+        m_mut.unlock();
     }
     json_t* dataToJson() override
     {
@@ -140,7 +145,7 @@ public:
                 }
                 if (points.size()>0)
                 {
-                    // very nasty, but will have to do for now
+                    // OK, this *looks* a bit nasty, but might not have that much impact after all...
                     m_mut.lock();
                     m_envelopes[i]->set_all_nodes(points);
                     m_mut.unlock();
@@ -152,7 +157,8 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
-        if (m_mut.try_lock()==false) // incredibly nasty, but will have to do for now
+        // OK, this locking scheme *looks* a bit nasty, but might not have that much impact after all...
+        if (m_mut.try_lock()==false)
             return;
         else
         {
@@ -166,9 +172,9 @@ public:
             //std::lock_guard<std::mutex> locker(m_mut);
             if (m_doUpdate)
             {
-                m_envelopes[update_env]->set_all_nodes(m_updatedPoints);
-                m_envelopes[update_env]->SortNodes();
-                m_doUpdate = false;
+                //m_envelopes[update_env]->set_all_nodes(m_updatedPoints);
+                //m_envelopes[update_env]->SortNodes();
+                //m_doUpdate = false;
             }
             
         }
