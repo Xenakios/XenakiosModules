@@ -60,51 +60,70 @@ public:
     json_t* dataToJson() override
     {
         json_t* resultJ = json_object();
-        json_t* arrayJ = json_array();
-        
-        for (int i=0;i<m_envelopes[0]->GetNumPoints();++i)
+        json_t* envelopesArrayJ = json_array();
+        for (int j=0;j<m_envelopes.size();++j)
         {
-            json_t* ptJ = json_object();
-            auto& pt = m_envelopes[0]->GetNodeAtIndex(i);
-            json_object_set(ptJ,"x",json_real(pt.pt_x));
-            json_object_set(ptJ,"y",json_real(pt.pt_y));
-            json_array_append(arrayJ,ptJ);
+            json_t* pointsarrayJ = json_array();
+        
+            for (int i=0;i<m_envelopes[j]->GetNumPoints();++i)
+            {
+                json_t* ptJ = json_object();
+                auto& pt = m_envelopes[j]->GetNodeAtIndex(i);
+                json_object_set(ptJ,"x",json_real(pt.pt_x));
+                json_object_set(ptJ,"y",json_real(pt.pt_y));
+                json_array_append(pointsarrayJ,ptJ);
+            }
+            json_array_append(envelopesArrayJ,pointsarrayJ);
         }
         
-        json_object_set(resultJ,"envelope_v1",arrayJ);
+        json_object_set(resultJ,"envelopes_v1",envelopesArrayJ);
         json_object_set(resultJ,"outputrange",json_integer(m_out_range));
         return resultJ;
     }
     void dataFromJson(json_t* root) override
     {
-        json_t* arrayJ = json_object_get(root,"envelope_v1");
+        json_t* envelopesarrayJ = json_object_get(root,"envelopes_v1");
         json_t* outrngJ = json_object_get(root,"outputrange");
         if (outrngJ)
             m_out_range = json_integer_value(outrngJ);
-        if (arrayJ)
+        if (envelopesarrayJ)
         {
-            int numpoints = json_array_size(arrayJ);
-            nodes_t points;
-            for (int i=0;i<numpoints;++i)
+            int numEnvelopes = json_array_size(envelopesarrayJ);
+            for (int i=0;i<numEnvelopes;++i)
             {
-                json_t* ptJ = json_array_get(arrayJ,i);
-                if (ptJ)
+                json_t* pointsArrayJ = json_array_get(envelopesarrayJ,i);
+                int numpoints = json_array_size(pointsArrayJ);
+                nodes_t points;
+                for (int j=0;j<numpoints;++j)
                 {
-                    json_t* ptxj = json_object_get(ptJ,"x");
-                    json_t* ptyj = json_object_get(ptJ,"y");
-                    float ptx = json_number_value(ptxj);
-                    float pty = json_number_value(ptyj);
-                    points.push_back({ptx,pty});
+                    json_t* ptJ = json_array_get(pointsArrayJ,j);
+                    if (ptJ)
+                    {
+                        json_t* ptxj = json_object_get(ptJ,"x");
+                        json_t* ptyj = json_object_get(ptJ,"y");
+                        float ptx = json_number_value(ptxj);
+                        float pty = json_number_value(ptyj);
+                        points.push_back({ptx,pty});
+                    }
+                }
+                if (points.size()>0)
+                {
+                    // very nasty, but will have to do for now
+                    m_mut.lock();
+                    m_envelopes[i]->set_all_nodes(points);
+                    m_mut.unlock();
                 }
             }
-            if (points.size()>0)
-            {
-                updateEnvelope(points);
-            }
+            
+            
         }
     }
     void process(const ProcessArgs& args) override
     {
+        if (m_mut.try_lock()==false) // incredibly nasty, but will have to do for now
+            return;
+        else
+        {
         float actenvf = params[PAR_ACTIVE_ENVELOPE].getValue();
         int update_env = actenvf;
         actenvf += inputs[IN_ACTENV].getVoltage()*params[PAR_ATTN_ACTENV].getValue()*3.2f;
@@ -168,6 +187,8 @@ public:
             output = rescale(output,0.0f,1.0f,0.0f,10.0f);
         outputs[OUT_ENV].setVoltage(output);
         //outputs[OUT_ENV].setVoltage(m_phase*5.0f);
+        m_mut.unlock();
+        }
     }
     double m_phase = 0.0;
     double m_phase_used = 0.0;
