@@ -29,6 +29,7 @@ public:
     enum OUTPUTS
     {
         OUT_ENV,
+        OUT_EOC,
         OUT_LAST
     };
     XEnvelopeModule()
@@ -131,11 +132,33 @@ public:
         float output = m_envelopes[actenv]->GetInterpolatedEnvelopeValue(phasetouse);
         m_phase += args.sampleTime*rate;
         int playmode = params[PAR_PLAYMODE].getValue();
+        bool cycle = false;
         if (playmode == 1)
         {
             if (m_phase>=m_env_len)
+            {
                 m_phase-=m_env_len;
-        } 
+                cycle = true;
+            }
+                
+        } else
+        {
+            if (m_phase>=m_env_len)
+            {
+                cycle = true;
+            }
+        }
+        if (cycle)
+        {
+            eocPulse.trigger();
+        }
+        if (outputs[OUT_EOC].isConnected())
+        {
+            if (eocPulse.process(args.sampleTime))
+                outputs[OUT_EOC].setVoltage(10.0f);
+            else
+                outputs[OUT_EOC].setVoltage(0.0f);
+        }
         if (resetTrigger.process(inputs[IN_TRIGGER].getVoltage()))
             m_phase = 0.0f;
         m_last_value = output;
@@ -161,6 +184,7 @@ public:
     {
         return *m_envelopes[(int)params[PAR_ACTIVE_ENVELOPE].getValue()];
     }
+    rack::dsp::PulseGenerator eocPulse;
 private:
     std::vector<std::unique_ptr<breakpoint_envelope>> m_envelopes;
 };
@@ -396,6 +420,8 @@ public:
         addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(65, 40), m, XEnvelopeModule::IN_POSITION));
         port->m_text = "POS";
         port->m_is_out = false;
+        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(95, 40), m, XEnvelopeModule::OUT_EOC));
+        port->m_text = "EOC";
         addChild(new KnobInAttnWidget(this,
             "RATE",XEnvelopeModule::PAR_RATE,
             XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,2,70));
