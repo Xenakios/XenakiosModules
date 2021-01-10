@@ -47,7 +47,7 @@ public:
         configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Base rate CV level");
         configParam(PAR_PLAYMODE,0.0f,1.0f,0.0f,"Play mode");
         configParam(PAR_ACTIVE_ENVELOPE,0.0f,15.0f,0.0f,"Envelope select");
-        configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Envelope select CV level");
+        configParam(PAR_ATTN_ACTENV,-1.0f,1.0f,0.0f,"Envelope select CV level");
         m_env_update_div.setDivision(8192);
         m_updatedPoints.reserve(65536);
     }
@@ -104,14 +104,18 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
-        int actenv = params[PAR_ACTIVE_ENVELOPE].getValue();
+        float actenvf = params[PAR_ACTIVE_ENVELOPE].getValue();
+        int update_env = actenvf;
+        actenvf += inputs[IN_ACTENV].getVoltage()*params[PAR_ATTN_ACTENV].getValue()*3.2f;
+        actenvf = clamp(actenvf,0.0f,15.0f);
+        int actenv = actenvf;
         if (m_env_update_div.process())
         {
             //std::lock_guard<std::mutex> locker(m_mut);
             if (m_doUpdate)
             {
-                m_envelopes[actenv]->set_all_nodes(m_updatedPoints);
-                m_envelopes[actenv]->SortNodes();
+                m_envelopes[update_env]->set_all_nodes(m_updatedPoints);
+                m_envelopes[update_env]->SortNodes();
                 m_doUpdate = false;
             }
             
