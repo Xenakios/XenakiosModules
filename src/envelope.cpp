@@ -120,7 +120,7 @@ public:
         } 
         if (resetTrigger.process(inputs[IN_TRIGGER].getVoltage()))
             m_phase = 0.0f;
-        
+        m_last_value = output;
         if (m_out_range == 0)
             output = rescale(output,0.0f,1.0f,-5.0f,5.0f);
         else if (m_out_range == 1)
@@ -132,6 +132,7 @@ public:
     double m_phase_used = 0.0;
     double m_env_len = 0.0f;
     int m_out_range = 0;
+    float m_last_value = 0.0f;
     breakpoint_envelope m_env{"env"};
     nodes_t m_updatedPoints;
     dsp::ClockDivider m_env_update_div;
@@ -225,6 +226,7 @@ public:
                 nvgFill(args.vg);
             }
             // draw envelope play position
+            /*
             nvgBeginPath(args.vg);
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xdd));
             float ppos = clamp(m_envmod->m_phase_used,0.0f,1.0f);
@@ -233,6 +235,16 @@ public:
             nvgMoveTo(args.vg,xcor,0.0f);
             nvgLineTo(args.vg,xcor,box.size.y);
             nvgStroke(args.vg);
+            */
+            nvgBeginPath(args.vg);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xee));
+            float ppos = clamp(m_envmod->m_phase_used,0.0f,1.0f);
+            float envlen = m_envmod->m_env_len;
+            float xcor = rescale(ppos,0.0f,envlen,0.0f,box.size.x);
+            float pval = m_envmod->m_last_value;
+            float ycor = rescale(pval,0.0f,1.0f,box.size.y,0.0f);
+            nvgEllipse(args.vg,xcor,ycor,2.5f,2.5f);
+            nvgFill(args.vg);
         }
         
         nvgRestore(args.vg);
