@@ -48,6 +48,7 @@ public:
         PAR_PLAYMODE,
         PAR_ACTIVE_ENVELOPE,
         PAR_ATTN_ACTENV,
+        PAR_NUM_OUTPUTS,
         PAR_LAST
     };
     enum INPUTS
@@ -81,6 +82,7 @@ public:
         configParam(PAR_PLAYMODE,0.0f,1.0f,0.0f,"Play mode");
         configParam(PAR_ACTIVE_ENVELOPE,0.0f,15.0f,0.0f,"Envelope select");
         configParam(PAR_ATTN_ACTENV,-1.0f,1.0f,0.0f,"Envelope select CV level");
+        configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Number of outputs");
         m_env_update_div.setDivision(8192);
         m_updatedPoints.reserve(65536);
     }
@@ -186,7 +188,21 @@ public:
         if (inputs[IN_POSITION].isConnected())
             phasetouse = rescale(inputs[IN_POSITION].getVoltage(),-5.0f,5.0f,0.0f,1.0f);
         m_phase_used = phasetouse;
-        float output = m_envelopes[actenv]->GetInterpolatedEnvelopeValue(phasetouse);
+        int numouts = params[PAR_NUM_OUTPUTS].getValue();
+        if (outputs[OUT_ENV].getChannels()!=numouts)
+            outputs[OUT_ENV].setChannels(numouts);
+        for (int i=0;i<numouts;++i)
+        {
+            int envindex = (actenv+i) & 15;
+            float output = m_envelopes[envindex]->GetInterpolatedEnvelopeValue(phasetouse);
+            if (m_out_range == 0)
+                output = rescale(output,0.0f,1.0f,-5.0f,5.0f);
+            else if (m_out_range == 1)
+                output = rescale(output,0.0f,1.0f,0.0f,10.0f);
+            outputs[OUT_ENV].setVoltage(output,i);
+        }
+        
+        
         m_phase += args.sampleTime*rate;
         int playmode = params[PAR_PLAYMODE].getValue();
         bool cycle = false;
@@ -218,12 +234,8 @@ public:
         }
         if (resetTrigger.process(inputs[IN_TRIGGER].getVoltage()))
             m_phase = 0.0f;
-        m_last_value = output;
-        if (m_out_range == 0)
-            output = rescale(output,0.0f,1.0f,-5.0f,5.0f);
-        else if (m_out_range == 1)
-            output = rescale(output,0.0f,1.0f,0.0f,10.0f);
-        outputs[OUT_ENV].setVoltage(output);
+        m_last_value = 0.0f;
+        
         
         m_mut.unlock();
         }
@@ -490,6 +502,9 @@ public:
         addChild(new KnobInAttnWidget(this,
             "ENVELOPE SEL",XEnvelopeModule::PAR_ACTIVE_ENVELOPE,
             XEnvelopeModule::IN_ACTENV,XEnvelopeModule::PAR_ATTN_ACTENV,166,70,true));
+        addChild(new KnobInAttnWidget(this,
+            "NUM OUTS",XEnvelopeModule::PAR_NUM_OUTPUTS,
+            -1,-1,248,70,true));
         m_envwidget = new EnvelopeWidget(m);
         addChild(m_envwidget);
         m_envwidget->box.pos = {0,120};
