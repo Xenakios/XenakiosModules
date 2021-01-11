@@ -297,6 +297,65 @@ inline rack::MenuItem * createMenuItem(Func f, std::string text, std::string rig
 	return o;
 }
 
+const int msnumtables = 8;
+const int mstablesize = 1024;
+
+class ModulationShaper
+{
+public:
+    ModulationShaper()
+    {
+        float randvalues[1024];
+        for (int i=0;i<1024;++i)
+            randvalues[i]=random::normal()*0.1f;
+        for (int i=0;i<mstablesize;++i)
+        {
+            float norm = 1.0/(mstablesize-1)*i;
+            m_tables[0][i] = std::pow(norm,5.0f);
+            m_tables[1][i] = std::pow(norm,2.0f);
+            m_tables[2][i] = norm;
+            m_tables[3][i] = 0.5-0.5*std::sin(3.141592653*(0.5+norm));
+            m_tables[4][i] = 1.0f-std::pow(1.0f-norm,5.0f);
+            float smoothrand = interpolateLinear(randvalues,norm*32.0f);
+            m_tables[5][i] = clamp(norm+smoothrand,0.0,1.0f);
+            smoothrand = interpolateLinear(randvalues,32.0f+norm*48.0f);
+            m_tables[6][i] = clamp(norm+smoothrand,0.0,1.0f);
+            m_tables[7][i] = std::round(norm*7)/7;
+        }
+        // fill guard point by repeating value
+        for (int i=0;i<msnumtables;++i)
+            m_tables[i][mstablesize] = m_tables[i][mstablesize-1];
+        // fill guard table by repeating table
+        for (int i=0;i<mstablesize;++i)
+            m_tables[msnumtables][i]=m_tables[msnumtables-1][i];
+    }
+	float processNonMorph(int tableindex, float input)
+	{
+		return interpolateLinear(m_tables[tableindex],input*mstablesize);
+	}
+    float process(float morph, float input)
+    {
+        float z = morph*(msnumtables-1);
+        int xindex0 = morph*(msnumtables-1);
+        int xindex1 = xindex0+1;
+        int yindex0 = input*(mstablesize-1);
+        int yindex1 = yindex0+1;
+        float x_a0 = m_tables[xindex0][yindex0];
+        float x_a1 = m_tables[xindex0][yindex1];
+        float x_b0 = m_tables[xindex1][yindex0];
+        float x_b1 = m_tables[xindex1][yindex0];
+        float xfrac = (input*mstablesize)-yindex0;
+        float x_interp0 = x_a0+(x_a1-x_a0) * xfrac;
+        float x_interp1 = x_b0+(x_b1-x_b0) * xfrac;
+        float yfrac=z-(int)z;
+        return x_interp0+(x_interp1-x_interp0) * yfrac;
+        
+    }
+private:
+    
+    float m_tables[msnumtables+1][mstablesize+1];
+
+};
 
 
 // Declare each Model, defined in each module source file

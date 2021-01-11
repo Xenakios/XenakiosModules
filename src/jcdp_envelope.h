@@ -21,6 +21,7 @@ www.gnu.org/licenses
 #include <algorithm>
 #include <random>
 #include <rack.hpp>
+#include "plugin.hpp"
 
 struct envelope_point
 {
@@ -181,13 +182,15 @@ inline double GetInterpolatedEnvelopeValue(const nodes_t& m_nodes, double atime,
 
 }
 
-inline double interpolate_foo(double atime,double t0, double v0, double t1, double v1, double p1, double p2)
+inline double interpolate_foo(double atime,double t0, double v0, 
+    double t1, double v1, double p1, double p2, int pshape, ModulationShaper* ms)
 {
     double tdelta=t1-t0;
     if (tdelta<0.00001)
         tdelta=0.00001;
     double vdelta=v1-v0;
-    return v0+vdelta*get_shaped_value(((1.0/tdelta*(atime-t0))),0,p1,p2);
+    //return v0+vdelta*get_shaped_value(((1.0/tdelta*(atime-t0))),0,p1,p2);
+    return v0+vdelta*ms->processNonMorph(pshape,((1.0/tdelta*(atime-t0))));
 }
 
 class breakpoint_envelope
@@ -374,7 +377,7 @@ public:
     }
 
 
-    double GetInterpolatedEnvelopeValue(double atime) const
+    double GetInterpolatedEnvelopeValue(double atime) 
     {
         double t0=0.0;
         double t1=0.0;
@@ -432,8 +435,9 @@ public:
         ++it; // next envelope point
         t1=it->pt_x;
         v1=it->pt_y;
-        return interpolate_foo(atime,t0,v0,t1,v1,p1,p2);
+        return interpolate_foo(atime,t0,v0,t1,v1,p1,p2,it->Shape,&m_shaper);
     }
+    ModulationShaper m_shaper;
     double getLastPointTime() const
     {
         return m_nodes.back().pt_x;
