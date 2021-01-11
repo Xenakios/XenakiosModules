@@ -409,7 +409,7 @@ public:
         }
         auto& env = m_envmod->getActiveEnvelope();
         int index = findPoint(e.pos.x,e.pos.y);
-        //auto v = qmod->quantizers[which_].getVoltages();
+        
         if (index>=0 && !(e.mods & GLFW_MOD_SHIFT) && e.button == GLFW_MOUSE_BUTTON_LEFT)
         {
             e.consume(this);
@@ -420,16 +420,16 @@ public:
         }
         if (index>=0 && !(e.mods & GLFW_MOD_SHIFT) && e.button == GLFW_MOUSE_BUTTON_RIGHT)
         {
-            auto& envpt = env.GetNodeAtIndex(index);
+            
             ui::Menu *menu = createMenu();
             MenuLabel *mastSetLabel = new MenuLabel();
 			mastSetLabel->text = "Envelope point right click menu";
 			menu->addChild(mastSetLabel);
-            auto item = createMenuItem([&envpt](){ envpt.Shape = 0; },"Set shape to power 1");
+            auto item = createMenuItem([this,index](){ setPointShape(index,0); },"Set shape to power 1");
             menu->addChild(item);
-            item = createMenuItem([&envpt](){ envpt.Shape = 2; },"Set shape to linear");
+            item = createMenuItem([this,index](){ setPointShape(index,2); },"Set shape to linear");
             menu->addChild(item);
-            item = createMenuItem([&envpt](){ envpt.Shape = 5; },"Set shape to random 1");
+            item = createMenuItem([this,index](){ setPointShape(index,5); },"Set shape to random 1");
             menu->addChild(item);
             e.consume(this);
             rightClickInProgress = true;
@@ -458,6 +458,12 @@ public:
             nodes.push_back({newX,newY,2});
             m_envmod->updateEnvelope(nodes);
         }
+    }
+    void setPointShape(int index, int sh)
+    {
+        auto& env = m_envmod->getActiveEnvelope();
+        auto& pt = env.GetNodeAtIndex(index);
+        pt.Shape = sh;
     }
     void onDragStart(const event::DragStart& e) override
     {
