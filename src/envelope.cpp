@@ -110,6 +110,7 @@ public:
                 auto& pt = m_envelopes[j]->GetNodeAtIndex(i);
                 json_object_set(ptJ,"x",json_real(pt.pt_x));
                 json_object_set(ptJ,"y",json_real(pt.pt_y));
+                json_object_set(ptJ,"sh",json_integer(pt.Shape));
                 json_array_append(pointsarrayJ,ptJ);
             }
             json_array_append(envelopesArrayJ,pointsarrayJ);
@@ -140,9 +141,11 @@ public:
                     {
                         json_t* ptxj = json_object_get(ptJ,"x");
                         json_t* ptyj = json_object_get(ptJ,"y");
+                        json_t* ptshj = json_object_get(ptJ,"sh");
                         float ptx = json_number_value(ptxj);
                         float pty = json_number_value(ptyj);
-                        points.push_back({ptx,pty,2});
+                        int ptsh = json_integer_value(ptshj);
+                        points.push_back({ptx,pty,ptsh});
                     }
                 }
                 if (points.size()>0)
@@ -395,11 +398,13 @@ public:
     {
         m_hotPoint = findPoint(e.pos.x,e.pos.y);
     }
+    bool rightClickInProgress = false;
     void onButton(const event::Button& e) override
     {
-        if (e.action == GLFW_RELEASE)
+        if (e.action == GLFW_RELEASE) // || rightClickInProgress)
         {
             draggedValue_ = -1;
+            rightClickInProgress = false;
             return;
         }
         auto& env = m_envmod->getActiveEnvelope();
@@ -427,6 +432,8 @@ public:
             item = createMenuItem([&envpt](){ envpt.Shape = 5; },"Set shape to random 1");
             menu->addChild(item);
             e.consume(this);
+            rightClickInProgress = true;
+            draggedValue_ = -1;
             return;
         }
         if (index>=0 && (e.mods & GLFW_MOD_SHIFT) && e.button == GLFW_MOUSE_BUTTON_LEFT)
@@ -473,7 +480,8 @@ public:
         //valX = clampValue(quant,draggedValue_,val,-5.0f,5.0f);
         //qmod->updateSingleQuantizerValue(which_,draggedValue_,val);
         //dirty = true;
-        env.SetNode(draggedValue_,{xp,yp});
+        int ptsh = env.GetNodeAtIndex(draggedValue_).Shape;
+        env.SetNode(draggedValue_,{xp,yp,ptsh});
         //float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
     }
     
