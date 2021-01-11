@@ -29,6 +29,8 @@ struct envelope_point
         : pt_x(0.0), pt_y(0.0), ShapeParam1(0.5), ShapeParam2(0.5) {}
     envelope_point(double x, double y, double p1=0.5, double p2=0.5)
         : pt_x(x), pt_y(y),ShapeParam1(p1),ShapeParam2(p2) {}
+    envelope_point(double x, double y, int sh) 
+        : pt_x(x), pt_y(y), Shape(sh) {}
     double pt_x;
     double pt_y;
     int Shape = 0;

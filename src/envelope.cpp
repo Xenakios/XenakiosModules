@@ -71,8 +71,8 @@ public:
         for (int i=0;i<16;++i)
         {
             std::unique_ptr<breakpoint_envelope> env(new breakpoint_envelope("envelope"+std::to_string(i+1)));
-            env->AddNode({0.0,0.5});
-            env->AddNode({1.0,0.5});
+            env->AddNode({0.0,0.5,2});
+            env->AddNode({1.0,0.5,2});
             m_envelopes.push_back(std::move(env));
         }
         
@@ -142,7 +142,7 @@ public:
                         json_t* ptyj = json_object_get(ptJ,"y");
                         float ptx = json_number_value(ptxj);
                         float pty = json_number_value(ptyj);
-                        points.push_back({ptx,pty});
+                        points.push_back({ptx,pty,2});
                     }
                 }
                 if (points.size()>0)
@@ -402,9 +402,10 @@ public:
             draggedValue_ = -1;
             return;
         }
+        auto& env = m_envmod->getActiveEnvelope();
         int index = findPoint(e.pos.x,e.pos.y);
         //auto v = qmod->quantizers[which_].getVoltages();
-        if (index>=0 && !(e.mods & GLFW_MOD_SHIFT))
+        if (index>=0 && !(e.mods & GLFW_MOD_SHIFT) && e.button == GLFW_MOUSE_BUTTON_LEFT)
         {
             e.consume(this);
             draggedValue_ = index;
@@ -412,8 +413,23 @@ public:
             initY = e.pos.y;
             return;
         }
-        auto& env = m_envmod->getActiveEnvelope();
-        if (index>=0 && (e.mods & GLFW_MOD_SHIFT))
+        if (index>=0 && !(e.mods & GLFW_MOD_SHIFT) && e.button == GLFW_MOUSE_BUTTON_RIGHT)
+        {
+            auto& envpt = env.GetNodeAtIndex(index);
+            ui::Menu *menu = createMenu();
+            MenuLabel *mastSetLabel = new MenuLabel();
+			mastSetLabel->text = "Envelope point right click menu";
+			menu->addChild(mastSetLabel);
+            auto item = createMenuItem([&envpt](){ envpt.Shape = 0; },"Set shape to power 1");
+            menu->addChild(item);
+            item = createMenuItem([&envpt](){ envpt.Shape = 2; },"Set shape to linear");
+            menu->addChild(item);
+            item = createMenuItem([&envpt](){ envpt.Shape = 5; },"Set shape to random 1");
+            menu->addChild(item);
+            e.consume(this);
+            return;
+        }
+        if (index>=0 && (e.mods & GLFW_MOD_SHIFT) && e.button == GLFW_MOUSE_BUTTON_LEFT)
         {
             
             if (env.GetNumPoints()>1)
@@ -432,7 +448,7 @@ public:
             float newX = rescale(e.pos.x,0,box.size.x,0.0f,1.0f);
             float newY = rescale(e.pos.y,0,box.size.y,1.0f,0.0f);
             auto nodes = env.get_all_nodes();
-            nodes.push_back({newX,newY});
+            nodes.push_back({newX,newY,2});
             m_envmod->updateEnvelope(nodes);
         }
     }
