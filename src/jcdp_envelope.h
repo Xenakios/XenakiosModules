@@ -362,6 +362,10 @@ public:
         if (indx>(int)m_nodes.size()-1) i=(int)m_nodes.size()-1;
         m_nodes[i].Status=nstatus;
     }
+    void SetNodeShape(int indx, int shape)
+    {
+        m_nodes[indx].Shape = shape;
+    }
     void SetNode(int indx, envelope_point anode)
     {
         int i=indx;
@@ -434,10 +438,11 @@ public:
         v0=it->pt_y;
         p1=it->ShapeParam1;
         p2=it->ShapeParam2;
+        int sh = it->Shape;
         ++it; // next envelope point
         t1=it->pt_x;
         v1=it->pt_y;
-        return interpolate_foo(atime,t0,v0,t1,v1,p1,p2,it->Shape,&m_shaper);
+        return interpolate_foo(atime,t0,v0,t1,v1,p1,p2,sh,&m_shaper);
     }
     ModulationShaper m_shaper;
     double getLastPointTime() const

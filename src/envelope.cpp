@@ -367,6 +367,14 @@ public:
             float ycor = rescale(pval,0.0f,1.0f,box.size.y,0.0f);
             nvgEllipse(args.vg,xcor,ycor,2.5f,2.5f);
             nvgFill(args.vg);
+            // debug texts
+            nvgFontSize(args.vg, 15);
+            nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
+            nvgTextLetterSpacing(args.vg, -1);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            char buf[100];
+            sprintf(buf,"setshape target %d",shapePointIndex);
+            nvgText(args.vg, 3 , 10, buf, NULL);
         }
         
         nvgRestore(args.vg);
@@ -399,8 +407,10 @@ public:
         m_hotPoint = findPoint(e.pos.x,e.pos.y);
     }
     bool rightClickInProgress = false;
+    int shapePointIndex = -1;
     void onButton(const event::Button& e) override
     {
+        shapePointIndex = -1;
         if (e.action == GLFW_RELEASE) // || rightClickInProgress)
         {
             draggedValue_ = -1;
@@ -420,7 +430,7 @@ public:
         }
         if (index>=0 && !(e.mods & GLFW_MOD_SHIFT) && e.button == GLFW_MOUSE_BUTTON_RIGHT)
         {
-            
+            shapePointIndex = index;
             ui::Menu *menu = createMenu();
             MenuLabel *mastSetLabel = new MenuLabel();
 			mastSetLabel->text = "Envelope point right click menu";
@@ -462,8 +472,9 @@ public:
     void setPointShape(int index, int sh)
     {
         auto& env = m_envmod->getActiveEnvelope();
-        auto& pt = env.GetNodeAtIndex(index);
-        pt.Shape = sh;
+        env.SetNodeShape(index,sh);
+        //auto& pt = env.GetNodeAtIndex(index);
+        //pt.Shape = sh;
     }
     void onDragStart(const event::DragStart& e) override
     {
