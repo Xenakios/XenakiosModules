@@ -581,7 +581,7 @@ public:
     {
         setModule(m);
         m_emod = m;
-        box.size.x = 506.5;
+        box.size.x = 40 * 15;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "ENVELOPE",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         PortWithBackGround<PJ301MPort>* port = nullptr;
         addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(5, 40), m, XEnvelopeModule::OUT_ENV));
@@ -608,8 +608,8 @@ public:
             -1,-1,248,70,true));
         m_envwidget = new EnvelopeWidget(m);
         addChild(m_envwidget);
-        m_envwidget->box.pos = {0,120};
-        m_envwidget->box.size = {500,250};
+        m_envwidget->box.pos = {1,120};
+        m_envwidget->box.size = {598,250};
     }
     void appendContextMenu(Menu *menu) override 
     {
