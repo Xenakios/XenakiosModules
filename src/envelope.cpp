@@ -303,6 +303,7 @@ public:
             auto& env = m_envmod->getActiveEnvelope();
             nvgStrokeColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
             int numpts = env.GetNumPoints();
+            /*
             for (int i=0;i<numpts;++i)
             {
                 auto& pt = env.GetNodeAtIndex(i);
@@ -332,7 +333,23 @@ public:
                 
             }
             nvgStroke(args.vg);
-            
+            */
+            int envw = box.size.x;
+            for (int i=0;i<envw;i+=2)
+            {
+                float xcor = i;
+                float normtime = rescale((float)i,0.0f,envw,0.0f,1.0f);
+                float envval = env.GetInterpolatedEnvelopeValue(normtime);
+                float ycor = rescale(envval,0.0f,1.0f,box.size.y,0.0f);
+                if (i == 0)
+                {
+                    nvgMoveTo(args.vg,xcor,ycor);   
+                } else
+                {
+                    nvgLineTo(args.vg,xcor,ycor);
+                }
+            }
+            nvgStroke(args.vg);
             // draw envelope point handles
             for (int i=0;i<env.GetNumPoints();++i)
             {
