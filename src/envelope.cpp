@@ -411,6 +411,20 @@ public:
         float rightbound = env.getNodeRightBound(index,0.002);
         return clamp(input,leftbound,rightbound);
     }
+    float snapPointTime(breakpoint_envelope& env, int index, float xpos)
+    {
+        float quantized = std::round(xpos*4)/4.0;
+        if (std::fabs(quantized-xpos)<0.05)
+            return quantized;
+        return xpos;
+    }
+    float snapPointValue(breakpoint_envelope& env, int index, float ypos)
+    {
+        //float quantized = std::round(xpos*4)/4.0;
+        if (std::fabs(0.5f-ypos)<0.05)
+            return 0.5f;
+        return ypos;
+    }
     int findPoint(float xcor, float ycor)
     {
         auto& env = m_envmod->getActiveEnvelope();
@@ -530,10 +544,12 @@ public:
         float newPosX = initX+(newDragX-dragX);
         float xp = rescale(newPosX,0.0f,box.size.x,0.0,1.0);
         xp = clampPoint(env,draggedValue_,xp,0.0f,1.0f);
+        xp = snapPointTime(env,draggedValue_,xp);
         float newDragY = APP->scene->rack->mousePos.y;
         float newPosY = initY+(newDragY-dragY);
         float yp = rescale(newPosY,0.0f,box.size.y,1.0,0.0);
         yp = clamp(yp,0.0f,1.0f);
+        yp = snapPointValue(env,0,yp);
         //valX = clampValue(quant,draggedValue_,val,-5.0f,5.0f);
         //qmod->updateSingleQuantizerValue(which_,draggedValue_,val);
         //dirty = true;
