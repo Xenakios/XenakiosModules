@@ -495,6 +495,10 @@ public:
             menu->addChild(item);
             item = createMenuItem([this,index](){ setPointShape(index,8); },"Quantized 2");
             menu->addChild(item);
+            item = createMenuItem([this,index](){ setPointShape(index,10); },"ZigZag 1");
+            menu->addChild(item);
+            item = createMenuItem([this,index](){ setPointShape(index,11); },"ZigZag 2");
+            menu->addChild(item);
             e.consume(this);
             rightClickInProgress = true;
             draggedValue_ = -1;

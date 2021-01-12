@@ -297,7 +297,15 @@ inline rack::MenuItem * createMenuItem(Func f, std::string text, std::string rig
 	return o;
 }
 
-const int msnumtables = 10;
+inline float adjustable_triangle(float in, float peakpos)
+{
+    in = fmod(in,1.0f);
+    if (in<peakpos)
+        return rescale(in,0.0f,peakpos,0.0f,1.0f);
+    return rescale(in,peakpos,1.0f,1.0f,0.0f);
+}
+
+const int msnumtables = 12;
 const int mstablesize = 1024;
 
 class ModulationShaper
@@ -324,6 +332,16 @@ public:
 			m_tables[8][i] = std::round(norm*10)/10;
 			int indexx = 128.0+19.0*norm;
 			m_tables[9][i] = clamp(norm+randvalues[indexx]*2.0f,0.0f,1.0f);
+			float y0 = norm;
+			float y1 = rescale(norm,0.0f,1.0f,0.5f,1.0f);
+			float y2 = adjustable_triangle(norm*16.0,0.5f);
+			float y3 = rescale(y2,0.0f,1.0f,y0,y1);
+			m_tables[10][i] = y3;
+			y0 = rescale(norm,0.0f,1.0f,0.0f,0.5f);
+			y1 = rescale(norm,0.0f,1.0f,0.5f,1.0f);
+			y2 = adjustable_triangle(norm*12.0,0.5f);
+			y3 = rescale(y2,0.0f,1.0f,y0,y1);
+			m_tables[11][i] = y3;
         }
         // fill guard point by repeating value
         for (int i=0;i<msnumtables;++i)

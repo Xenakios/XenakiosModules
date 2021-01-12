@@ -1,13 +1,7 @@
 #include "plugin.hpp"
 #include "helperwidgets.h"
 
-inline float adjustable_triangle(float in, float peakpos)
-{
-    in = fmod(in,1.0f);
-    if (in<peakpos)
-        return rescale(in,0.0f,peakpos,0.0f,1.0f);
-    return rescale(in,peakpos,1.0f,1.0f,0.0f);
-}
+
 
 ModulationShaper g_shaper;
 
