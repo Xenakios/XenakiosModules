@@ -75,6 +75,7 @@ public:
             env->AddNode({1.0,0.5,2});
             m_envelopes.push_back(std::move(env));
             currentEnvPoints[i]=-1;
+            m_last_values[i] = 0.0f;
         }
         
         m_env_len = 1.0f;
@@ -203,6 +204,7 @@ public:
             float output = m_envelopes[envindex]->GetInterpolatedEnvelopeValue(phasetouse,&currentEnvPoints[envindex]);
             output += m_global_rand_offset;
             output = clamp(output,0.0f,1.0f);
+            m_last_values[envindex] = output;
             if (m_out_range == 0)
                 output = rescale(output,0.0f,1.0f,-5.0f,5.0f);
             else if (m_out_range == 1)
@@ -247,7 +249,7 @@ public:
             m_phase = 0.0f;
             updateGlobalRandomOffset();
         }
-        m_last_value = 0.0f;
+        
         
         
         m_mut.unlock();
@@ -263,7 +265,7 @@ public:
     double m_env_len = 0.0f;
     float m_global_rand_offset = 0.0f;
     int m_out_range = 0;
-    float m_last_value = 0.0f;
+    float m_last_values[16];
     
     nodes_t m_updatedPoints;
     dsp::ClockDivider m_env_update_div;
@@ -278,6 +280,11 @@ public:
     {
         int index = params[PAR_ACTIVE_ENVELOPE].getValue();
         return currentEnvPoints[index];
+    }
+    float getPlayValue()
+    {
+        int index = params[PAR_ACTIVE_ENVELOPE].getValue();
+        return m_last_values[index];
     }
     rack::dsp::PulseGenerator eocPulse;
 private:
@@ -401,7 +408,7 @@ public:
             float ppos = clamp(m_envmod->m_phase_used,0.0f,1.0f);
             float envlen = m_envmod->m_env_len;
             float xcor = rescale(ppos,0.0f,envlen,0.0f,box.size.x);
-            float pval = m_envmod->m_last_value;
+            float pval = m_envmod->getPlayValue();
             float ycor = rescale(pval,0.0f,1.0f,box.size.y,0.0f);
             nvgEllipse(args.vg,xcor,ycor,2.5f,2.5f);
             nvgFill(args.vg);
