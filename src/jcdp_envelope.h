@@ -382,8 +382,12 @@ public:
         if (setValue) m_nodes[i].pt_y=avalue;
     }
 
-
-    double GetInterpolatedEnvelopeValue(double atime) 
+    inline void setIfNotNull(int* dest, int val)
+    {
+        if (dest)
+            *dest = val;
+    }
+    double GetInterpolatedEnvelopeValue(double atime, int* curpoint=nullptr) 
     {
         double t0=0.0;
         double t1=0.0;
@@ -395,7 +399,10 @@ public:
         if (m_nodes.size()==0)
             return m_defvalue;
         if (m_nodes.size()==1)
+        {
+            setIfNotNull(curpoint,0);
             return m_nodes[0].pt_y;
+        }
         if (atime<=m_nodes[0].pt_x)
         {
 #ifdef INTERPOLATING_ENVELOPE_BORDERS
@@ -407,7 +414,9 @@ public:
             v1=m_nodes[0].Value;
             return interpolate_foo(atime,t0,v0,t1,v1,p1,p2);
 #else
+            setIfNotNull(curpoint,-1);
             return m_nodes[0].pt_y;
+            
 #endif
         }
         if (atime>m_nodes[maxnodeind].pt_x)
@@ -421,6 +430,7 @@ public:
             p2=m_nodes[maxnodeind].ShapeParam2;
             return interpolate_foo(atime,t0,v0,t1,v1,p1,p2);
 #else
+            setIfNotNull(curpoint,-1);
             return m_nodes.back().pt_y;
 #endif
         }
@@ -439,6 +449,7 @@ public:
         p1=it->ShapeParam1;
         p2=it->ShapeParam2;
         int sh = it->Shape;
+        setIfNotNull(curpoint,std::distance(m_nodes.begin(),it));
         ++it; // next envelope point
         t1=it->pt_x;
         v1=it->pt_y;

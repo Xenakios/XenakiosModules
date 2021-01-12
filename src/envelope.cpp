@@ -74,6 +74,7 @@ public:
             env->AddNode({0.0,0.5,2});
             env->AddNode({1.0,0.5,2});
             m_envelopes.push_back(std::move(env));
+            currentEnvPoints[i]=-1;
         }
         
         m_env_len = 1.0f;
@@ -85,6 +86,7 @@ public:
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Number of outputs");
         m_env_update_div.setDivision(8192);
         m_updatedPoints.reserve(65536);
+        
     }
     void updateEnvelope(nodes_t points)
     {
@@ -160,6 +162,7 @@ public:
             
         }
     }
+    int currentEnvPoints[16];
     void process(const ProcessArgs& args) override
     {
         // OK, this locking scheme *looks* a bit nasty, but might not have that much impact after all...
@@ -197,7 +200,7 @@ public:
         for (int i=0;i<numouts;++i)
         {
             int envindex = (actenv+i) & 15;
-            float output = m_envelopes[envindex]->GetInterpolatedEnvelopeValue(phasetouse);
+            float output = m_envelopes[envindex]->GetInterpolatedEnvelopeValue(phasetouse,&currentEnvPoints[envindex]);
             if (m_out_range == 0)
                 output = rescale(output,0.0f,1.0f,-5.0f,5.0f);
             else if (m_out_range == 1)
@@ -257,6 +260,11 @@ public:
     breakpoint_envelope& getActiveEnvelope()
     {
         return *m_envelopes[(int)params[PAR_ACTIVE_ENVELOPE].getValue()];
+    }
+    int getPlayingPoint()
+    {
+        int index = params[PAR_ACTIVE_ENVELOPE].getValue();
+        return currentEnvPoints[index];
     }
     rack::dsp::PulseGenerator eocPulse;
 private:
@@ -390,7 +398,8 @@ public:
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             char buf[100];
-            sprintf(buf,"setshape target %d",shapePointIndex);
+            int ptindex = m_envmod->getPlayingPoint();
+            sprintf(buf,"playing point %d",ptindex);
             nvgText(args.vg, 3 , 10, buf, NULL);
         }
         
