@@ -201,6 +201,8 @@ public:
         {
             int envindex = (actenv+i) & 15;
             float output = m_envelopes[envindex]->GetInterpolatedEnvelopeValue(phasetouse,&currentEnvPoints[envindex]);
+            output += m_global_rand_offset;
+            output = clamp(output,0.0f,1.0f);
             if (m_out_range == 0)
                 output = rescale(output,0.0f,1.0f,-5.0f,5.0f);
             else if (m_out_range == 1)
@@ -218,6 +220,7 @@ public:
             {
                 m_phase-=m_env_len;
                 cycle = true;
+                updateGlobalRandomOffset();
             }
                 
         } else
@@ -225,6 +228,7 @@ public:
             if (m_phase>=m_env_len)
             {
                 cycle = true;
+                updateGlobalRandomOffset();
             }
         }
         if (cycle)
@@ -239,16 +243,25 @@ public:
                 outputs[OUT_EOC].setVoltage(0.0f);
         }
         if (resetTrigger.process(inputs[IN_TRIGGER].getVoltage()))
+        {
             m_phase = 0.0f;
+            updateGlobalRandomOffset();
+        }
         m_last_value = 0.0f;
         
         
         m_mut.unlock();
         }
     }
+    void updateGlobalRandomOffset()
+    {
+        float delta = random::normal()*0.05f;
+        m_global_rand_offset = delta;
+    }
     double m_phase = 0.0;
     double m_phase_used = 0.0;
     double m_env_len = 0.0f;
+    float m_global_rand_offset = 0.0f;
     int m_out_range = 0;
     float m_last_value = 0.0f;
     
