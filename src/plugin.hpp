@@ -297,7 +297,7 @@ inline rack::MenuItem * createMenuItem(Func f, std::string text, std::string rig
 	return o;
 }
 
-const int msnumtables = 8;
+const int msnumtables = 10;
 const int mstablesize = 1024;
 
 class ModulationShaper
@@ -319,8 +319,11 @@ public:
             float smoothrand = interpolateLinear(randvalues,norm*32.0f);
             m_tables[5][i] = clamp(norm+smoothrand,0.0,1.0f);
             smoothrand = interpolateLinear(randvalues,32.0f+norm*48.0f);
-            m_tables[6][i] = clamp(norm+smoothrand,0.0,1.0f);
+            m_tables[6][i] = clamp(norm+smoothrand*5.0f,0.0,1.0f);
             m_tables[7][i] = std::round(norm*7)/7;
+			m_tables[8][i] = std::round(norm*10)/10;
+			int indexx = 128.0+19.0*norm;
+			m_tables[9][i] = clamp(norm+randvalues[indexx]*2.0f,0.0f,1.0f);
         }
         // fill guard point by repeating value
         for (int i=0;i<msnumtables;++i)
