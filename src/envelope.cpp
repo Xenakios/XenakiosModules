@@ -518,14 +518,22 @@ public:
             
             return;
         }
-        if (index == -1)
+        if (e.button == GLFW_MOUSE_BUTTON_LEFT && (e.mods & GLFW_MOD_CONTROL))
+        {
+            m_envmod->m_phase = rescale(e.pos.x,0.0f,box.size.x,0.0f,1.0f);
+            e.consume(this);
+            return;
+        }
+        if (index == -1 && e.button == GLFW_MOUSE_BUTTON_LEFT)
         {
             float newX = rescale(e.pos.x,0,box.size.x,0.0f,1.0f);
             float newY = rescale(e.pos.y,0,box.size.y,1.0f,0.0f);
             auto nodes = env.get_all_nodes();
             nodes.push_back({newX,newY,2});
             m_envmod->updateEnvelope(nodes);
+            return;
         }
+        
     }
     void setPointShape(int index, int sh)
     {

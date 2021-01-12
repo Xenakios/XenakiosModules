@@ -22,6 +22,7 @@ www.gnu.org/licenses
 #include <random>
 #include <rack.hpp>
 #include "plugin.hpp"
+#include "modulationshaper.h"
 
 struct envelope_point
 {
