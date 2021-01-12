@@ -413,16 +413,16 @@ public:
     }
     float snapPointTime(breakpoint_envelope& env, int index, float xpos)
     {
-        float quantized = std::round(xpos*4)/4.0;
-        if (std::fabs(quantized-xpos)<0.05)
+        float quantized = std::round(xpos*8)/8.0;
+        if (std::fabs(quantized-xpos)<0.01)
             return quantized;
         return xpos;
     }
     float snapPointValue(breakpoint_envelope& env, int index, float ypos)
     {
-        //float quantized = std::round(xpos*4)/4.0;
-        if (std::fabs(0.5f-ypos)<0.05)
-            return 0.5f;
+        float quantized = std::round(ypos*10)/10.0f;
+        if (std::fabs(quantized-ypos)<0.01)
+            return quantized;
         return ypos;
     }
     int findPoint(float xcor, float ycor)
