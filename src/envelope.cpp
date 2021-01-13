@@ -289,8 +289,14 @@ public:
     }
     float getPlayValue()
     {
-        int index = params[PAR_SEL_ENV_PLAYBACK].getValue();
+        int index = params[PAR_SEL_ENV_EDIT].getValue();
         return m_last_values[index];
+    }
+    bool editAndPlayMatch()
+    {
+        int a = params[PAR_SEL_ENV_PLAYBACK].getValue();
+        int b = params[PAR_SEL_ENV_EDIT].getValue();
+        return a==b;
     }
     rack::dsp::PulseGenerator eocPulse;
 private:
@@ -409,15 +415,19 @@ public:
             nvgLineTo(args.vg,xcor,box.size.y);
             nvgStroke(args.vg);
             */
-            nvgBeginPath(args.vg);
-            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xee));
-            float ppos = clamp(m_envmod->m_phase_used,0.0f,1.0f);
-            float envlen = m_envmod->m_env_len;
-            float xcor = rescale(ppos,0.0f,envlen,0.0f,box.size.x);
-            float pval = m_envmod->getPlayValue();
-            float ycor = rescale(pval,0.0f,1.0f,box.size.y,0.0f);
-            nvgEllipse(args.vg,xcor,ycor,2.5f,2.5f);
-            nvgFill(args.vg);
+            //if (m_envmod->editAndPlayMatch())
+            {
+                nvgBeginPath(args.vg);
+                nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xee));
+                float ppos = clamp(m_envmod->m_phase_used,0.0f,1.0f);
+                float envlen = m_envmod->m_env_len;
+                float xcor = rescale(ppos,0.0f,envlen,0.0f,box.size.x);
+                float pval = m_envmod->getPlayValue();
+                float ycor = rescale(pval,0.0f,1.0f,box.size.y,0.0f);
+                nvgEllipse(args.vg,xcor,ycor,2.5f,2.5f);
+                nvgFill(args.vg);    
+            }
+            
             // debug texts
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
