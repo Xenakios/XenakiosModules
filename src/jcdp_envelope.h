@@ -199,6 +199,7 @@ inline double interpolate_foo(double atime,double t0, double v0,
 class breakpoint_envelope
 {
 public:
+    int outputChannel = 0;
     breakpoint_envelope() : m_name("Untitled") 
 	{
 		m_randbuf.resize(1024);

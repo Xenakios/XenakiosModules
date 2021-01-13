@@ -46,9 +46,10 @@ public:
         PAR_RATE,
         PAR_ATTN_RATE,
         PAR_PLAYMODE,
-        PAR_ACTIVE_ENVELOPE,
+        PAR_SEL_ENV_PLAYBACK,
         PAR_ATTN_ACTENV,
         PAR_NUM_OUTPUTS,
+        PAR_SEL_ENV_EDIT,
         PAR_LAST
     };
     enum INPUTS
@@ -82,9 +83,10 @@ public:
         configParam(PAR_RATE,-8.0f,10.0f,1.0f,"Base rate", " Hz",2,1);
         configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Base rate CV level");
         configParam(PAR_PLAYMODE,0.0f,1.0f,0.0f,"Play mode");
-        configParam(PAR_ACTIVE_ENVELOPE,0.0f,15.0f,0.0f,"Envelope select");
+        configParam(PAR_SEL_ENV_PLAYBACK,0.0f,15.0f,0.0f,"Envelope select");
         configParam(PAR_ATTN_ACTENV,-1.0f,1.0f,0.0f,"Envelope select CV level");
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Number of outputs");
+        configParam(PAR_SEL_ENV_EDIT,0.0f,15.0f,0.0f,"Envelope edit select");
         m_env_update_div.setDivision(8192);
         m_updatedPoints.reserve(65536);
         
@@ -94,7 +96,7 @@ public:
         //m_updatedPoints = points;
         //m_doUpdate = true;
         m_mut.lock();
-        auto& env = getActiveEnvelope();
+        auto& env = getEditEnvelope();
         env.set_all_nodes(points);
         env.SortNodes();
         m_mut.unlock();
@@ -171,7 +173,7 @@ public:
             return;
         else
         {
-        float actenvf = params[PAR_ACTIVE_ENVELOPE].getValue();
+        float actenvf = params[PAR_SEL_ENV_PLAYBACK].getValue();
         int update_env = actenvf;
         actenvf += inputs[IN_ACTENV].getVoltage()*params[PAR_ATTN_ACTENV].getValue()*3.2f;
         actenvf = clamp(actenvf,0.0f,15.0f);
@@ -274,16 +276,20 @@ public:
     rack::dsp::SchmittTrigger resetTrigger;
     breakpoint_envelope& getActiveEnvelope()
     {
-        return *m_envelopes[(int)params[PAR_ACTIVE_ENVELOPE].getValue()];
+        return *m_envelopes[(int)params[PAR_SEL_ENV_PLAYBACK].getValue()];
+    }
+    breakpoint_envelope& getEditEnvelope()
+    {
+        return *m_envelopes[(int)params[PAR_SEL_ENV_EDIT].getValue()];
     }
     int getPlayingPoint()
     {
-        int index = params[PAR_ACTIVE_ENVELOPE].getValue();
+        int index = params[PAR_SEL_ENV_PLAYBACK].getValue();
         return currentEnvPoints[index];
     }
     float getPlayValue()
     {
-        int index = params[PAR_ACTIVE_ENVELOPE].getValue();
+        int index = params[PAR_SEL_ENV_PLAYBACK].getValue();
         return m_last_values[index];
     }
     rack::dsp::PulseGenerator eocPulse;
@@ -328,7 +334,7 @@ public:
             // draw envelope line
             nvgBeginPath(args.vg);
             
-            auto& env = m_envmod->getActiveEnvelope();
+            auto& env = m_envmod->getEditEnvelope();
             nvgStrokeColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
             int numpts = env.GetNumPoints();
             /*
@@ -447,7 +453,7 @@ public:
     }
     int findPoint(float xcor, float ycor)
     {
-        auto& env = m_envmod->getActiveEnvelope();
+        auto& env = m_envmod->getEditEnvelope();
         for (int i=0;i<env.GetNumPoints();++i)
         {
             auto& pt = env.GetNodeAtIndex(i);
@@ -477,7 +483,7 @@ public:
             rightClickInProgress = false;
             return;
         }
-        auto& env = m_envmod->getActiveEnvelope();
+        auto& env = m_envmod->getEditEnvelope();
         int index = findPoint(e.pos.x,e.pos.y);
         
         if (index>=0 && !(e.mods & GLFW_MOD_SHIFT) && e.button == GLFW_MOUSE_BUTTON_LEFT)
@@ -557,7 +563,7 @@ public:
     }
     void setPointShape(int index, int sh)
     {
-        auto& env = m_envmod->getActiveEnvelope();
+        auto& env = m_envmod->getEditEnvelope();
         env.SetNodeShape(index,sh);
         //auto& pt = env.GetNodeAtIndex(index);
         //pt.Shape = sh;
@@ -571,7 +577,7 @@ public:
     {
         if (draggedValue_==-1)
             return;
-        auto& env = m_envmod->getActiveEnvelope();
+        auto& env = m_envmod->getEditEnvelope();
         float newDragX = APP->scene->rack->mousePos.x;
         float newPosX = initX+(newDragX-dragX);
         float xp = rescale(newPosX,0.0f,box.size.x,0.0,1.0);
@@ -629,11 +635,14 @@ public:
             "PLAY MODE",XEnvelopeModule::PAR_PLAYMODE,
             -1,-1,84,70,true));
         addChild(new KnobInAttnWidget(this,
-            "ENVELOPE SEL",XEnvelopeModule::PAR_ACTIVE_ENVELOPE,
+            "ENVELOPE SEL",XEnvelopeModule::PAR_SEL_ENV_PLAYBACK,
             XEnvelopeModule::IN_ACTENV,XEnvelopeModule::PAR_ATTN_ACTENV,166,70,true));
         addChild(new KnobInAttnWidget(this,
             "NUM OUTS",XEnvelopeModule::PAR_NUM_OUTPUTS,
             -1,-1,248,70,true));
+        addChild(new KnobInAttnWidget(this,
+            "EDIT ENVELOPE",XEnvelopeModule::PAR_SEL_ENV_EDIT,
+            -1,-1,248+82,70,true));
         m_envwidget = new EnvelopeWidget(m);
         addChild(m_envwidget);
         m_envwidget->box.pos = {1,120};
