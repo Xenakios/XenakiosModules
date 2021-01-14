@@ -50,6 +50,7 @@ public:
         PAR_ATTN_ACTENV,
         PAR_NUM_OUTPUTS,
         PAR_SEL_ENV_EDIT,
+        ENUMS(PAR_ENVSOURCE, 16),
         PAR_LAST
     };
     enum INPUTS
@@ -87,6 +88,10 @@ public:
         configParam(PAR_ATTN_ACTENV,-1.0f,1.0f,0.0f,"Envelope select CV level");
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Number of outputs");
         configParam(PAR_SEL_ENV_EDIT,0.0f,15.0f,0.0f,"Envelope edit select");
+        for (int i=0;i<16;++i)
+        {
+            configParam(PAR_ENVSOURCE+i,-1.0f,15.0f,0.0f,"Output "+std::to_string(i+1)+" source envelope");
+        }
         m_env_update_div.setDivision(8192);
         m_updatedPoints.reserve(65536);
         
@@ -166,6 +171,7 @@ public:
         }
     }
     int currentEnvPoints[16];
+    int m_numOuts = 1;
     void process(const ProcessArgs& args) override
     {
         // OK, this locking scheme *looks* a bit nasty, but might not have that much impact after all...
@@ -180,14 +186,17 @@ public:
         int actenv = actenvf;
         if (m_env_update_div.process())
         {
-            //std::lock_guard<std::mutex> locker(m_mut);
-            if (m_doUpdate)
+            int maxout = -1;
+            for (int i=0;i<16;++i)
             {
-                //m_envelopes[update_env]->set_all_nodes(m_updatedPoints);
-                //m_envelopes[update_env]->SortNodes();
-                //m_doUpdate = false;
+                int srcindex = params[PAR_ENVSOURCE+i].getValue();
+                if (srcindex>=0)
+                    maxout = i;
             }
-            
+            if (maxout<0)
+                maxout = 0;
+            m_numOuts = maxout+1;
+            outputs[OUT_ENV].setChannels(m_numOuts);
         }
         float pitch = params[PAR_RATE].getValue()*12.0f;
         pitch += inputs[IN_CV_RATE].getVoltage()*params[PAR_ATTN_RATE].getValue()*12.0f;
@@ -197,9 +206,12 @@ public:
         if (inputs[IN_POSITION].isConnected())
             phasetouse = rescale(inputs[IN_POSITION].getVoltage(),-5.0f,5.0f,0.0f,1.0f);
         m_phase_used = phasetouse;
-        int numouts = params[PAR_NUM_OUTPUTS].getValue();
-        if (outputs[OUT_ENV].getChannels()!=numouts)
-            outputs[OUT_ENV].setChannels(numouts);
+        int numouts = m_numOuts;
+        //int numouts = params[PAR_NUM_OUTPUTS].getValue();
+        //if (outputs[OUT_ENV].getChannels()!=numouts)
+        //    outputs[OUT_ENV].setChannels(numouts);
+        
+        /*
         for (int i=0;i<numouts;++i)
         {
             int envindex = (actenv+i) & 15;
@@ -213,7 +225,27 @@ public:
                 output = rescale(output,0.0f,1.0f,0.0f,10.0f);
             outputs[OUT_ENV].setVoltage(output,i);
         }
+        */
         
+        for (int i=0;i<m_numOuts;++i)
+        {
+            int envindex = (actenv+i) & 15;
+            int srcindex = params[PAR_ENVSOURCE+i].getValue();
+            if (srcindex>=0)
+            {
+                float output = m_envelopes[srcindex]->GetInterpolatedEnvelopeValue(phasetouse,&currentEnvPoints[envindex]);
+                output += m_global_rand_offset;
+                output = clamp(output,0.0f,1.0f);
+                m_last_values[envindex] = output;
+                if (m_out_range == 0)
+                    output = rescale(output,0.0f,1.0f,-5.0f,5.0f);
+                else if (m_out_range == 1)
+                    output = rescale(output,0.0f,1.0f,0.0f,10.0f);
+                
+                outputs[OUT_ENV].setVoltage(output,i);
+            }
+            
+        }
         
         m_phase += args.sampleTime*rate;
         int playmode = params[PAR_PLAYMODE].getValue();
@@ -433,9 +465,9 @@ public:
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            char buf[100];
+            char buf[200];
             int ptindex = m_envmod->getPlayingPoint();
-            sprintf(buf,"playing point %d",ptindex);
+            sprintf(buf,"playing point %d num outputs %d",ptindex,m_envmod->m_numOuts);
             nvgText(args.vg, 3 , 10, buf, NULL);
         }
         
@@ -653,10 +685,17 @@ public:
         addChild(new KnobInAttnWidget(this,
             "EDIT ENVELOPE",XEnvelopeModule::PAR_SEL_ENV_EDIT,
             -1,-1,248+82,70,true));
+        // 120
+        for (int i=0;i<16;++i)
+        {
+            RoundSmallBlackKnob* pot;
+            addParam(pot = createParam<RoundSmallBlackKnob>(Vec(1+30*i, 120), module, XEnvelopeModule::PAR_ENVSOURCE+i));
+            pot->snap = true;
+        }
         m_envwidget = new EnvelopeWidget(m);
         addChild(m_envwidget);
-        m_envwidget->box.pos = {1,120};
-        m_envwidget->box.size = {598,250};
+        m_envwidget->box.pos = {1,150};
+        m_envwidget->box.size = {598,220};
     }
     void appendContextMenu(Menu *menu) override 
     {
