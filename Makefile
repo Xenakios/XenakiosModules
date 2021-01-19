@@ -29,6 +29,8 @@ LDFLAGS +=
 SOURCES += $(wildcard src/*.cpp)
 SOURCES += $(wildcard src/wdl/*.cpp)
 
+TMPVAR := $(SOURCES)
+SOURCES = $(filter-out src/polyrandom.cpp, $(TMPVAR))
 # SOURCES += $(wildcard dep/rubberband/src/*.cpp)
 # SOURCES += $(wildcard dep/rubberband/src/audiocurves/*.cpp)
 # SOURCES += $(wildcard dep/rubberband/src/base/*.cpp)

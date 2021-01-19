@@ -5,11 +5,16 @@
 
 struct Random : Module {
 	enum ParamIds {
-		RATE_PARAM,
-		SHAPE_PARAM,
-		OFFSET_PARAM,
-		MODE_PARAM,
-		NUMVOICES_PARAM,
+		PAR_MASTER_RATE,
+		ENUMS(PAR_RATE_MULTIP, 8),
+		ENUMS(PAR_SHAPEMODE, 8),
+		ENUMS(PAR_SHAPE, 8),
+		ENUMS(PAR_OUTRANGE, 8),
+		ENUMS(PAR_RANDDIST, 8),
+		ENUMS(PAR_RANDDISTCENTER, 8),
+		ENUMS(PAR_RANDDISTSPREAD, 8),
+		ENUMS(PAR_RANDLIMITMODE, 8),
+		ENUMS(PAR_RANDMODE, 8), // direct or random walk
 		NUM_PARAMS
 	};
 	enum InputIds {
@@ -20,10 +25,8 @@ struct Random : Module {
 		NUM_INPUTS
 	};
 	enum OutputIds {
-		STEPPED_OUTPUT,
-		LINEAR_OUTPUT,
-		SMOOTH_OUTPUT,
-		EXPONENTIAL_OUTPUT,
+		ENUMS(OUTPUT, 8),
+		
 		NUM_OUTPUTS
 	};
 	enum LightIds {
@@ -43,14 +46,24 @@ struct Random : Module {
 
 	dsp::ClockDivider chancountdiv;
 	std::minstd_rand randgen;
-	std::uniform_real_distribution<float> randdist{0.0f,1.0f};
+	std::uniform_real_distribution<float> randdist_uni{0.0f,1.0f};
+	std::cauchy_distribution<float> randdist_cauchy{0.0,1.0f};
 	Random() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-		configParam(RATE_PARAM, std::log2(0.002f), std::log2(2000.f), std::log2(2.f), "Rate", " Hz", 2);
-		configParam(SHAPE_PARAM, 0.f, 1.f, 0.5f, "Shape", "%", 0, 100);
-		configParam(OFFSET_PARAM, 0.f, 1.f, 1.f, "Bipolar/unipolar");
-		configParam(MODE_PARAM, 0.f, 1.f, 1.f, "Relative/absolute randomness");
-		configParam(NUMVOICES_PARAM, 1.f, 16.f, 1.f, "Num poly voices");
+		configParam(PAR_MASTER_RATE, std::log2(0.002f), std::log2(2000.f), std::log2(2.f), "Rate", " Hz", 2);
+		for (int i=0;i<8;++i)
+		{
+			configParam(PAR_RATE_MULTIP+i, 0.01f, 10.f, 1.f, "Rate multiplier");
+			configParam(PAR_SHAPE+i, 0.f, 1.f, 0.5f, "Shape", "%", 0, 100);
+			configParam(PAR_OUTRANGE+i, 0.f, 1.f, 1.f, "Bipolar/unipolar");
+			configParam(PAR_RANDMODE+i, 0.f, 1.f, 1.f, "Relative/absolute randomness");	
+			configParam(PAR_SHAPEMODE+i, 0.f, 3.f, 0.0f, "Shape (step/linear/smooth/exp)");
+			configParam(PAR_RANDDIST+i, 0.f, 2.f, 0.0f, "Random distribution (uniform/normal/Cauchy)");
+			configParam(PAR_RANDLIMITMODE+i, 0.f, 3.f, 1.0f, "Random limit mode (try again/clip/reflect/wrap)");
+			configParam(PAR_RANDDISTCENTER+i, -1.f, 1.f, 0.0f, "Random distribution center");
+			configParam(PAR_RANDDISTSPREAD+i, 0.f, 1.f, 0.2f, "Random distribution spread");
+
+		}
 		chancountdiv.setDivision(512);
 		std::fill(lastTrigFrames.begin(),lastTrigFrames.end(),INT_MAX);
 	}
@@ -66,7 +79,7 @@ struct Random : Module {
 			bool uni = params[OFFSET_PARAM].getValue() > 0.f;
 			if (absolute) {
 				//values[numchan] = random::uniform();
-				values[numchan] = randdist(randgen);
+				values[numchan] = randdist_uni(randgen);
 				if (!uni)
 					values[numchan] -= 0.5f;
 			}
@@ -213,8 +226,8 @@ struct Random : Module {
 struct RandomWidget : ModuleWidget {
 	RandomWidget(Random* module) {
 		setModule(module);
-		setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/Random.svg")));
-
+		//setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/Random.svg")));
+		box.size.x = 15*20;
 		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
 		addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
 		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
