@@ -188,6 +188,15 @@
       "tags": [
         "Envelope"
       ]
+    },
+    {
+      "slug": "XCVShaper",
+      "name": "CVShaper",
+      "description": "CV shaper/quantizer",
+      "tags": [
+        "Shaper",
+        "Quantizer"
+      ]
     }
     
 
