@@ -623,7 +623,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         std::uniform_real_distribution<float> dist(0.0, g_pi);
         auto t0 = std::chrono::steady_clock::now();
         const float cut_th = rack::dsp::dbToAmplitude(-72.0f);
-        m_maxGain = 0.0f;
+        //m_maxGain = 0.0f;
         m_percent_ready = 0.0f;
         m_BufferReady = false;
         int ochanstouse = g_panmodes[m_outputChansMode].numoutchans;
@@ -903,7 +903,7 @@ public:
         configParam(PAR_GRAIN_SIZE,0.005,0.25,0.05,"Grain size");
         configParam(PAR_GRAIN_RANDOM,0.0,0.1,0.05,"Grain random");
         configParam(PAR_PLAYBACKMODE,0,1,0,"Playback mode");
-        gainSmoother.setAmount(0.995);
+        gainSmoother.setAmount(0.9999);
     }
     void onAdd() override
     {
@@ -1178,7 +1178,10 @@ public:
             outputBuffer.endIncr(1);
         }
         }
-        
+        float adjustgain = 1.0f;
+        if (m_syn.m_maxGain>0.0f)
+            adjustgain = 1.0f/m_syn.m_maxGain;
+        adjustgain = gainSmoother.process(adjustgain);
         if (!outputBuffer.empty())
         {
             if (ochans>1)
@@ -1187,7 +1190,7 @@ public:
                 auto outFrame = outputBuffer.shift();
                 for (int i=0;i<ochans;++i)
                 {
-                    float outsample = outFrame.samples[i];
+                    float outsample = outFrame.samples[i]*adjustgain;
                     //outsample = soft_clip(outsample);
                     outputs[OUT_AUDIO].setVoltage(outsample*5.0,i);
                 }
@@ -1196,7 +1199,7 @@ public:
             } else if (ochans == 1)
             {
                 auto outFrame = outputBuffer.shift();
-                float outsample = outFrame.samples[0];
+                float outsample = outFrame.samples[0]*adjustgain;
                 outputs[OUT_AUDIO].setVoltage(outsample*5.0,0);
                 outputs[OUT_AUDIO].setVoltage(outsample*5.0,1);
                 outputs[OUT_LOOP_SWITCH].setVoltage(outFrame.samples[4]);
