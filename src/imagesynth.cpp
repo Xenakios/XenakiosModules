@@ -623,7 +623,7 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         std::uniform_real_distribution<float> dist(0.0, g_pi);
         auto t0 = std::chrono::steady_clock::now();
         const float cut_th = rack::dsp::dbToAmplitude(-72.0f);
-        //m_maxGain = 0.0f;
+        m_maxGain = 1.0f;
         m_percent_ready = 0.0f;
         m_BufferReady = false;
         int ochanstouse = g_panmodes[m_outputChansMode].numoutchans;
@@ -857,6 +857,7 @@ public:
         PAR_GRAIN_SIZE,
         PAR_GRAIN_RANDOM,
         PAR_PLAYBACKMODE,
+        PAR_OUTLIMITMODE,
         PAR_LAST
     };
     int m_comp = 0;
@@ -903,6 +904,7 @@ public:
         configParam(PAR_GRAIN_SIZE,0.005,0.25,0.05,"Grain size");
         configParam(PAR_GRAIN_RANDOM,0.0,0.1,0.05,"Grain random");
         configParam(PAR_PLAYBACKMODE,0,1,0,"Playback mode");
+        configParam(PAR_OUTLIMITMODE,0,3,0,"Output volume limit mode");
         gainSmoother.setAmount(0.9999);
     }
     void onAdd() override
@@ -1178,8 +1180,9 @@ public:
             outputBuffer.endIncr(1);
         }
         }
+        int olimmode = params[PAR_OUTLIMITMODE].getValue();
         float adjustgain = 1.0f;
-        if (m_syn.m_maxGain>0.0f)
+        if (olimmode == 1 && m_syn.m_maxGain>0.0f)
             adjustgain = 1.0f/m_syn.m_maxGain;
         adjustgain = gainSmoother.process(adjustgain);
         if (!outputBuffer.empty())
@@ -1191,7 +1194,10 @@ public:
                 for (int i=0;i<ochans;++i)
                 {
                     float outsample = outFrame.samples[i]*adjustgain;
-                    //outsample = soft_clip(outsample);
+                    if (olimmode == 2)
+                        outsample = clamp(outsample,-1.0f,1.0f);
+                    else if (olimmode == 3)
+                        outsample = std::tanh(outsample);
                     outputs[OUT_AUDIO].setVoltage(outsample*5.0,i);
                 }
                 outputs[OUT_LOOP_SWITCH].setVoltage(outFrame.samples[4]);
@@ -1200,6 +1206,10 @@ public:
             {
                 auto outFrame = outputBuffer.shift();
                 float outsample = outFrame.samples[0]*adjustgain;
+                if (olimmode == 2)
+                    outsample = clamp(outsample,-1.0f,1.0f);
+                else if (olimmode == 3)
+                    outsample = std::tanh(outsample);
                 outputs[OUT_AUDIO].setVoltage(outsample*5.0,0);
                 outputs[OUT_AUDIO].setVoltage(outsample*5.0,1);
                 outputs[OUT_LOOP_SWITCH].setVoltage(outFrame.samples[4]);
@@ -1435,6 +1445,8 @@ public:
         knob->snap = true;
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(450.00, 360), m, XImageSynth::PAR_GRAIN_SIZE));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(480.00, 330), m, XImageSynth::PAR_GRAIN_RANDOM));
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(480.00, 360), m, XImageSynth::PAR_OUTLIMITMODE));
+        knob->snap = true;
     }
     
     ~XImageSynthWidget()
