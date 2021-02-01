@@ -871,6 +871,7 @@ public:
     std::list<std::string> m_scala_scales;
     dsp::DoubleRingBuffer<dsp::Frame<5>, 256> outputBuffer;
     std::vector<float> srcOutBuffer;
+    OnePoleFilter gainSmoother;
     XImageSynth()
     {
         srcOutBuffer.resize(16*64);
@@ -902,6 +903,7 @@ public:
         configParam(PAR_GRAIN_SIZE,0.005,0.25,0.05,"Grain size");
         configParam(PAR_GRAIN_RANDOM,0.0,0.1,0.05,"Grain random");
         configParam(PAR_PLAYBACKMODE,0,1,0,"Playback mode");
+        gainSmoother.setAmount(0.995);
     }
     void onAdd() override
     {
