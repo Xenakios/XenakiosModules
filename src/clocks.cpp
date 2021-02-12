@@ -5,15 +5,15 @@ extern std::shared_ptr<Font> g_font;
 RandomClockModule::RandomClockModule()
 {
     config(17,1,16);
-    configParam(0,0.0f,1.0f,0.1); // master clock density
+    configParam(0,0.0f,1.0f,0.1,"Master density"); // master clock density
     float defmult = rescale(1.0f,0.1f,10.0f,0.0f,1.0f);
     for (int i=0;i<8;++i)
     {
-        configParam(i+1,0.0f,1.0f,defmult); // clock multiplier
+        configParam(i+1,0.0f,1.0f,defmult,"Density multiplier "+std::to_string(i+1)); // clock multiplier
         // gate len
         // >=0.0 && <=0.5 deterministic percentage 1% to 99% of clock interval
         // >0.5 && <=1.0 stochastic distribution favoring short and long values
-        configParam(i+9,0.0,1.0f,0.25f); 
+        configParam(i+9,0.0,1.0f,0.25f,"Gate length "+std::to_string(i+1)); 
     }
 }
 
