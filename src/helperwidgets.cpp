@@ -25,10 +25,13 @@ int ZoomScrollWidget::findDragObject(float xcor,float ycor)
     Rect leftEdgeBox(x0,0.0f,10.0f,box.size.y);
     if (leftEdgeBox.contains({xcor,ycor}))
         return 1;
-    x0 = rescale(m_range_end,0.0f,1.0f,0.0f,box.size.x);
-    Rect rightEdgeBox(x0-10.0f,0.0f,10.0f,box.size.y);
+    float x1 = rescale(m_range_end,0.0f,1.0f,0.0f,box.size.x);
+    Rect rightEdgeBox(x1-10.0f,0.0f,10.0f,box.size.y);
     if (rightEdgeBox.contains({xcor,ycor}))
         return 2;
+    Rect middleBox(x0+10.0f,0.0f,(x1-x0)-20.0f,box.size.y);
+    if (middleBox.contains({xcor,ycor}))
+        return 3;
     return 0;
 }
 
@@ -68,6 +71,18 @@ void ZoomScrollWidget::onDragMove(const event::DragMove& e)
         m_range_start = xp;
     if (dragObject == 2)
         m_range_end = xp;
+    if (dragObject == 3)
+    {
+        float range = m_range_end-m_range_start;
+        float newStart = xp;
+        float newEnd = newStart+range;
+        if (newStart>=0.0 && newEnd<=1.0f)
+        {
+            m_range_start = newStart;
+            m_range_end = newEnd;
+        }
+        
+    }
     if (OnRangeChange)
         OnRangeChange(m_range_start,m_range_end);
 }
