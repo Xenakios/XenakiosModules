@@ -132,3 +132,24 @@ public:
     std::string m_text;
     bool m_is_out = true;
 };
+
+class ZoomScrollWidget : public rack::TransparentWidget
+{
+public:
+    ZoomScrollWidget()
+    {
+
+    }
+    void draw(const Widget::DrawArgs &args) override;
+    void onDragStart(const event::DragStart& e) override;
+    void onDragMove(const event::DragMove& e) override;
+    void onButton(const event::Button& e) override;
+    std::function<void(float,float)> OnRangeChange;
+    int findDragObject(float xcor,float ycor);
+private:
+    float m_range_start = 0.2f;
+    float m_range_end = 0.8f;
+    float initX = 0.0f;
+    float dragX = 0.0f;
+    int dragObject = 0;
+};

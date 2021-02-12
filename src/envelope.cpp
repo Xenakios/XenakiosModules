@@ -410,7 +410,7 @@ public:
             for (int i=0;i<envw;i+=2)
             {
                 float xcor = i;
-                float normtime = rescale((float)i,0.0f,envw,0.0f,1.0f);
+                float normtime = rescale((float)i,0.0f,envw,m_horiz_start,m_horiz_end);
                 float envval = env.GetInterpolatedEnvelopeValue(normtime);
                 float ycor = rescale(envval,0.0f,1.0f,box.size.y,0.0f);
                 if (i == 0)
@@ -425,16 +425,21 @@ public:
             // draw envelope point handles
             for (int i=0;i<env.GetNumPoints();++i)
             {
-                nvgBeginPath(args.vg);
+                
                 auto& pt = env.GetNodeAtIndex(i);
-                float xcor = rescale(pt.pt_x,0.0f,1.0f,0.0f,box.size.x);
+                float xcor = rescale(pt.pt_x,m_horiz_start,m_horiz_end,0.0f,box.size.x);
                 float ycor = rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f);
-                if (i != m_hotPoint)
-                    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xee));
-                else
-                    nvgFillColor(args.vg, nvgRGBA(0xff, 0x00, 0x00, 0xee));
-                nvgEllipse(args.vg,xcor,ycor,g_ptsize,g_ptsize);
-                nvgFill(args.vg);
+                if (xcor>=0.0 && xcor<box.size.x)
+                {
+                    nvgBeginPath(args.vg);
+                    if (i != m_hotPoint)
+                        nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xee));
+                    else
+                        nvgFillColor(args.vg, nvgRGBA(0xff, 0x00, 0x00, 0xee));
+                    nvgEllipse(args.vg,xcor,ycor,g_ptsize,g_ptsize);
+                    nvgFill(args.vg);
+                }
+                
             }
             // draw envelope play position
             /*
@@ -637,7 +642,11 @@ public:
         env.SetNode(draggedValue_,{xp,yp,ptsh});
         //float newv = rescale(e.pos.x,0,box.size.x,-10.0f,10.0f);
     }
-    
+    void setHorizontalViewRange(float x0, float x1)
+    {
+        m_horiz_start = x0;
+        m_horiz_end = x1;
+    }
 private:
     XEnvelopeModule* m_envmod = nullptr;
     float initX = 0.0f;
@@ -646,6 +655,8 @@ private:
     float dragY = 0.0f;
     int draggedValue_ = -1;
     int m_hotPoint = -1;
+    float m_horiz_start = 0.0f;
+    float m_horiz_end = 1.0f;
 };
 
 class XEnvelopeModuleWidget : public ModuleWidget
@@ -695,7 +706,15 @@ public:
         m_envwidget = new EnvelopeWidget(m);
         addChild(m_envwidget);
         m_envwidget->box.pos = {1,150};
-        m_envwidget->box.size = {598,220};
+        m_envwidget->box.size = {598,217};
+        ZoomScrollWidget* zsw = new ZoomScrollWidget;
+        addChild(zsw);
+        zsw->box.pos = {1,367};
+        zsw->box.size = {598,10};
+        zsw->OnRangeChange=[this](float t0, float t1)
+        {
+            m_envwidget->setHorizontalViewRange(t0,t1);
+        };
     }
     void appendContextMenu(Menu *menu) override 
     {
