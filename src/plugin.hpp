@@ -224,21 +224,7 @@ struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
 	}
 };
 
-inline std::shared_ptr<rack::Font> getDefaultFont(int which)
-{
-	static std::map<int,std::shared_ptr<rack::Font>> s_fonts;
-	if (s_fonts.count(which)==0)
-	{
-		std::shared_ptr<rack::Font> font;
-		if (which == 0)
-			font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
-		else
-			font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
-		s_fonts[which] = font;
-	}
-		
-	return s_fonts[which];
-}
+std::shared_ptr<rack::Font> getDefaultFont(int which);
 
 inline float soft_clip(float x)
 {
