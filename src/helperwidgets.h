@@ -147,8 +147,8 @@ public:
     std::function<void(float,float)> OnRangeChange;
     int findDragObject(float xcor,float ycor);
 private:
-    float m_range_start = 0.2f;
-    float m_range_end = 0.8f;
+    float m_range_start = 0.0f;
+    float m_range_end = 1.0f;
     float initX = 0.0f;
     float dragX = 0.0f;
     int dragObject = 0;

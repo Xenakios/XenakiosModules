@@ -429,7 +429,7 @@ public:
                 auto& pt = env.GetNodeAtIndex(i);
                 float xcor = rescale(pt.pt_x,m_horiz_start,m_horiz_end,0.0f,box.size.x);
                 float ycor = rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f);
-                if (xcor>=0.0 && xcor<box.size.x)
+                //if (xcor>=0.0 && xcor<box.size.x)
                 {
                     nvgBeginPath(args.vg);
                     if (i != m_hotPoint)
@@ -504,7 +504,7 @@ public:
         for (int i=0;i<env.GetNumPoints();++i)
         {
             auto& pt = env.GetNodeAtIndex(i);
-            Rect r(rescale(pt.pt_x,0.0f,1.0f,0.0,box.size.x)-(g_ptsize),
+            Rect r(rescale(pt.pt_x,m_horiz_start,m_horiz_end,0.0,box.size.x)-(g_ptsize),
                    rescale(pt.pt_y,0.0f,1.0f,box.size.y,0.0f)-(g_ptsize),
                     g_ptsize*2,g_ptsize*2);
                 
@@ -599,7 +599,7 @@ public:
         }
         if (index == -1 && e.button == GLFW_MOUSE_BUTTON_LEFT)
         {
-            float newX = rescale(e.pos.x,0,box.size.x,0.0f,1.0f);
+            float newX = rescale(e.pos.x,0,box.size.x,m_horiz_start,m_horiz_end);
             float newY = rescale(e.pos.y,0,box.size.y,1.0f,0.0f);
             auto nodes = env.get_all_nodes();
             nodes.push_back({newX,newY,2});
@@ -627,7 +627,7 @@ public:
         auto& env = m_envmod->getEditEnvelope();
         float newDragX = APP->scene->rack->mousePos.x;
         float newPosX = initX+(newDragX-dragX);
-        float xp = rescale(newPosX,0.0f,box.size.x,0.0,1.0);
+        float xp = rescale(newPosX,0.0f,box.size.x,m_horiz_start,m_horiz_end);
         xp = clampPoint(env,draggedValue_,xp,0.0f,1.0f);
         xp = snapPointTime(env,draggedValue_,xp);
         float newDragY = APP->scene->rack->mousePos.y;
