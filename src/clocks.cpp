@@ -4,22 +4,22 @@ extern std::shared_ptr<Font> g_font;
 
 RandomClockModule::RandomClockModule()
 {
-    config(17,1,16);
+    config(PAR_LAST,1,16);
     configParam(0,0.0f,1.0f,0.1,"Master density"); // master clock density
     float defmult = rescale(1.0f,0.1f,10.0f,0.0f,1.0f);
     for (int i=0;i<8;++i)
     {
-        configParam(i+1,0.0f,1.0f,defmult,"Density multiplier "+std::to_string(i+1)); // clock multiplier
+        configParam(PAR_DENSITY_MULTIP+i,0.0f,1.0f,defmult,"Density multiplier "+std::to_string(i+1)); // clock multiplier
         // gate len
         // >=0.0 && <=0.5 deterministic percentage 1% to 99% of clock interval
         // >0.5 && <=1.0 stochastic distribution favoring short and long values
-        configParam(i+9,0.0,1.0f,0.25f,"Gate length "+std::to_string(i+1)); 
+        configParam(PAR_GATE_LEN+i,0.0,1.0f,0.25f,"Gate length "+std::to_string(i+1)); 
     }
 }
 
 void RandomClockModule::process(const ProcessArgs& args)
 {
-    float masterdensity = params[0].getValue();
+    float masterdensity = params[PAR_MASTER_DENSITY].getValue();
     if (masterdensity<0.5f)
     {
         masterdensity = rescale(masterdensity,0.0f,0.5f,0.0f,1.0f);
@@ -38,9 +38,9 @@ void RandomClockModule::process(const ProcessArgs& args)
     {
         if (outputs[i].isConnected())
         {
-            float multip = rescale(params[i+1].getValue(),0.0f,1.0f,0.1f,10.0f);
+            float multip = rescale(params[PAR_DENSITY_MULTIP+i].getValue(),0.0f,1.0f,0.1f,10.0f);
             m_clocks[i].setDensity(masterdensity*multip);
-            float glen = params[i+9].getValue();
+            float glen = params[PAR_GATE_LEN+i].getValue();
             m_clocks[i].setGateLen(glen);
             outputs[i].setVoltage(10.0f*m_clocks[i].process(args.sampleTime));    
         }
@@ -62,11 +62,11 @@ RandomClockWidget::RandomClockWidget(RandomClockModule* m)
     for (int i=0;i<8;++i)
     {
         addOutput(createOutput<PJ301MPort>(Vec(5,30+30*i), module, i));
-        addParam(createParam<RoundSmallBlackKnob>(Vec(35, 30+30*i), module, i+1)); 
-        addParam(createParam<RoundSmallBlackKnob>(Vec(65, 30+30*i), module, i+9)); 
+        addParam(createParam<RoundSmallBlackKnob>(Vec(35, 30+30*i), module, RandomClockModule::PAR_DENSITY_MULTIP+i)); 
+        addParam(createParam<RoundSmallBlackKnob>(Vec(65, 30+30*i), module, RandomClockModule::PAR_GATE_LEN+i)); 
         addOutput(createOutput<PJ301MPort>(Vec(95,30+30*i), module, i+8));
     }
-    addParam(createParam<RoundBlackKnob>(Vec(5, 30+30*8), module, 0));    
+    addParam(createParam<RoundBlackKnob>(Vec(5, 30+30*8), module, RandomClockModule::PAR_MASTER_DENSITY));    
     
 }
 

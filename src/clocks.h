@@ -91,6 +91,13 @@ private:
 class RandomClockModule : public rack::Module
 {
 public:
+    enum PARAMS
+    {
+        PAR_MASTER_DENSITY,
+        ENUMS(PAR_DENSITY_MULTIP, 8),
+        ENUMS(PAR_GATE_LEN, 8),
+        PAR_LAST
+    };
     RandomClockModule();
     void process(const ProcessArgs& args) override;
     float m_curDensity = 0.0f;
