@@ -49,8 +49,13 @@ void ZoomScrollWidget::onButton(const event::Button& e)
         e.consume(this);
         dragObject = index;
         initX = e.pos.x;
-        
+        float x0 = rescale(e.pos.x,0,box.size.x,0.0f,1.0f);
+        initDistanceFromBarStart = x0-m_range_start;
         return;
+    }
+    if (index == 0)
+    {
+        e.consume(this);
     }
 }
 
@@ -74,7 +79,7 @@ void ZoomScrollWidget::onDragMove(const event::DragMove& e)
     if (dragObject == 3)
     {
         float range = m_range_end-m_range_start;
-        float newStart = xp;
+        float newStart = xp-initDistanceFromBarStart;
         float newEnd = newStart+range;
         if (newStart>=0.0 && newEnd<=1.0f)
         {

@@ -151,5 +151,6 @@ private:
     float m_range_end = 1.0f;
     float initX = 0.0f;
     float dragX = 0.0f;
+    float initDistanceFromBarStart = 0.0f;
     int dragObject = 0;
 };
