@@ -7,11 +7,11 @@ void ZoomScrollWidget::draw(const Widget::DrawArgs &args)
     if (box.size.y>box.size.x)
         horiz = false;
     nvgBeginPath(args.vg);
-    nvgFillColor(args.vg, nvgRGB(0,0,0));
+    nvgFillColor(args.vg, nvgRGB(200,200,200));
     nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
     nvgFill(args.vg);
     nvgBeginPath(args.vg);
-    nvgFillColor(args.vg, nvgRGB(150,150,150));
+    nvgFillColor(args.vg, nvgRGB(120,120,120));
     float xcor0 = rescale(m_range_start,0.0f,1.0f,0.0f,box.size.x);
     float xcor1 = rescale(m_range_end,0.0f,1.0f,0.0f,box.size.x);
     nvgRoundedRect(args.vg,xcor0,0.0f,xcor1-xcor0,box.size.y,5.0f);
@@ -55,6 +55,7 @@ void ZoomScrollWidget::onButton(const event::Button& e)
     }
     if (index == 0)
     {
+        dragObject = 0;
         e.consume(this);
     }
 }
@@ -88,6 +89,8 @@ void ZoomScrollWidget::onDragMove(const event::DragMove& e)
         }
         
     }
+    if (m_range_end<m_range_start+0.05)
+        m_range_end = m_range_start+0.05;
     if (OnRangeChange)
         OnRangeChange(m_range_start,m_range_end);
 }
