@@ -94,3 +94,43 @@ void ZoomScrollWidget::onDragMove(const event::DragMove& e)
     if (OnRangeChange)
         OnRangeChange(m_range_start,m_range_end);
 }
+
+PortWithBackGround::PortWithBackGround(Module* m, ModuleWidget* mw, int portNumber, int xpos, int ypos,
+        std::string name,bool isOutput) : m_text(name),m_is_out(isOutput)
+{
+    box.pos.x = xpos;
+    box.pos.y = ypos;
+    box.size.x = 27;
+    box.size.y = 40;
+    mw->addChild(this);
+    if (isOutput)
+        mw->addOutput(createOutput<PJ301MPort>(Vec(xpos+0.5, ypos+14.5), m, portNumber));
+    else
+        mw->addInput(createInput<PJ301MPort>(Vec(xpos+0.5, ypos+14.5), m, portNumber));
+    
+}
+
+void PortWithBackGround::draw(const Widget::DrawArgs &args) 
+{
+    nvgSave(args.vg);
+    auto backgroundcolor = nvgRGB(210,210,210);
+    auto textcolor = nvgRGB(0,0,0);
+    if (m_is_out)
+    {
+        backgroundcolor = nvgRGB(0,0,0);
+        textcolor = nvgRGB(255,255,255);
+    }
+    nvgBeginPath(args.vg);
+    nvgFillColor(args.vg, backgroundcolor);
+    nvgRoundedRect(args.vg,0.0f,0.0f,box.size.x,box.size.y,3.0f);
+    nvgFill(args.vg);
+    
+    auto font = getDefaultFont(0);
+    nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
+    nvgFontSize(args.vg, 7.5f);
+    nvgTextLetterSpacing(args.vg, 0.0f);
+    nvgFillColor(args.vg, textcolor);
+    nvgTextBox(args.vg,1.0f,6.0,box.size.x,m_text.c_str(),nullptr);
+    nvgRestore(args.vg);
+    //PortType::draw(args);
+}

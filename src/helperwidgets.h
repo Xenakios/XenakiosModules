@@ -96,41 +96,16 @@ inline void KnobInAttnWidget::draw(const DrawArgs &args)
 	nvgRestore(args.vg);
 }
 
-
-template<typename PortType>
-class PortWithBackGround : public PortType
+class PortWithBackGround : public TransparentWidget
 {
 public:
-	PortWithBackGround() : PortType()
-	{
-
-	}
-	void draw(const Widget::DrawArgs &args) override
-    {
-        nvgSave(args.vg);
-		auto backgroundcolor = nvgRGB(210,210,210);
-        auto textcolor = nvgRGB(0,0,0);
-        if (m_is_out)
-        {
-            backgroundcolor = nvgRGB(0,0,0);
-            textcolor = nvgRGB(255,255,255);
-        }
-        nvgBeginPath(args.vg);
-        nvgFillColor(args.vg, backgroundcolor);
-        nvgRoundedRect(args.vg,-1.0f,-15.0f,this->box.size.x+2.0f,this->box.size.y+15.0,3.0f);
-        nvgFill(args.vg);
-        
-        auto font = getDefaultFont(0);
-        nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
-        nvgFontSize(args.vg, 7.5f);
-        nvgTextLetterSpacing(args.vg, 0.0f);
-        nvgFillColor(args.vg, textcolor);
-        nvgTextBox(args.vg,0.5f,-9.6f,this->box.size.x,m_text.c_str(),nullptr);
-        nvgRestore(args.vg);
-		PortType::draw(args);
-	}
+	PortWithBackGround(Module* m, ModuleWidget* mw, int portNumber, int xpos, int ypos,
+        std::string name,bool isOutput);
+	void draw(const Widget::DrawArgs &args) override;
+    
     std::string m_text;
     bool m_is_out = true;
+    PJ301MPort* portWidget = nullptr;
 };
 
 class ZoomScrollWidget : public rack::TransparentWidget

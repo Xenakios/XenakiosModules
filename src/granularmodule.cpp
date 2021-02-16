@@ -446,12 +446,14 @@ public:
         m_gm = m;
         box.size.x = 300;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "GRAINS",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
+        /*
         PortWithBackGround<PJ301MPort>* port = nullptr;
         addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(31, 34), m, XGranularModule::OUT_AUDIO));
         port->m_text = "AUDIO OUT";
         addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(1, 34), m, XGranularModule::IN_AUDIO));
         port->m_text = "AUDIO IN";
         port->m_is_out = false;
+        */
         addParam(createParam<TL1105>(Vec(61,34),m,XGranularModule::PAR_RECORD_ACTIVE));
         addChild(new KnobInAttnWidget(this,
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,

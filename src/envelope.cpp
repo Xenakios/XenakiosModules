@@ -670,17 +670,10 @@ public:
         m_emod = m;
         box.size.x = 40 * 15;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "ENVELOPE",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
-        PortWithBackGround<PJ301MPort>* port = nullptr;
-        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(5, 40), m, XEnvelopeModule::OUT_ENV));
-        port->m_text = "ENV OUT";
-        addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(35, 40), m, XEnvelopeModule::IN_TRIGGER));
-        port->m_text = "RST";
-        port->m_is_out = false;
-        addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(65, 40), m, XEnvelopeModule::IN_POSITION));
-        port->m_text = "POS";
-        port->m_is_out = false;
-        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(95, 40), m, XEnvelopeModule::OUT_EOC));
-        port->m_text = "EOC";
+        new PortWithBackGround(m,this,XEnvelopeModule::OUT_ENV,5,10,"ENV OUT",true);
+        new PortWithBackGround(m,this,XEnvelopeModule::IN_TRIGGER,35,10,"RST",false);
+        new PortWithBackGround(m,this,XEnvelopeModule::IN_POSITION,65,10,"POS",false);
+        new PortWithBackGround(m,this,XEnvelopeModule::OUT_EOC,95,10,"EOC",true);
         addChild(new KnobInAttnWidget(this,
             "RATE",XEnvelopeModule::PAR_RATE,
             XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,2,70));

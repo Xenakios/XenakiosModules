@@ -479,23 +479,16 @@ public:
         box.size.x = 87;
         auto font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
         m_font = font;
-
-        PortWithBackGround<PJ301MPort>* port = nullptr;
-        addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(3, 34), m, XLOFI::IN_AUDIO));
-        port->m_text = "AUDIO IN";
-        port->m_is_out = false;
+        PortWithBackGround* port = nullptr;
+        port = new PortWithBackGround(m,this,XLOFI::IN_AUDIO,3,10,"AUDIO IN",false);
         float xoffs = port->box.getRight()+5;
-        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(xoffs, 34), m, XLOFI::OUT_AUDIO));
-        port->m_text = "AUDIO OUT";
-        
+        port = new PortWithBackGround(m,this,XLOFI::OUT_AUDIO,xoffs,10,"AUDIO OUT",true);
         float yoffs = port->box.getBottom()+17;
         xoffs = port->box.getRight()+1;
-        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(3, yoffs), m, XLOFI::OUT_SIGNALCOMPLEXITY));
-        //port->box.size.x += 10;
-        port->m_text = "ANALYSIS OUT";
+        port = new PortWithBackGround(m,this,XLOFI::OUT_SIGNALCOMPLEXITY,xoffs,10,"ANALYSIS OUT",true);
         xoffs = port->box.getRight()+5;
-        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(xoffs, yoffs), m, XLOFI::OUT_GLITCH_TRIG));
-        port->m_text = "GLITCH ACTIVE";
+        port = new PortWithBackGround(m,this,XLOFI::OUT_SIGNALCOMPLEXITY,xoffs,yoffs,"GLITCH ACTIVE",true);
+        
 
         float ydiff = 45.0f;
         yoffs = port->box.pos.y+port->box.size.y+3;

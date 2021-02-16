@@ -99,12 +99,14 @@ public:
         addParam(pot = createParam<RoundSmallBlackKnob>(Vec(1, 50), module, CVShaper::PAR_QUAN_AMT));
         addParam(pot = createParam<RoundSmallBlackKnob>(Vec(31, 50), module, CVShaper::PAR_QUAN_OFFS));
         addParam(pot = createParam<RoundSmallBlackKnob>(Vec(61, 50), module, CVShaper::PAR_QUAN_STEPSIZE));
+        /*
         PortWithBackGround<PJ301MPort>* port = nullptr;
         addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(91, 50), mod, CVShaper::IN_CV));
         port->m_text = "INPUT";
         port->m_is_out = false;
         addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(121, 50), mod, CVShaper::OUT_CV));
         port->m_text = "OUT";
+        */
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "CV SHAPER",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
     }
     void draw(const DrawArgs &args) override
