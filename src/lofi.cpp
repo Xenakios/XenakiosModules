@@ -480,14 +480,14 @@ public:
         auto font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
         m_font = font;
         PortWithBackGround* port = nullptr;
-        port = new PortWithBackGround(m,this,XLOFI::IN_AUDIO,3,10,"AUDIO IN",false);
-        float xoffs = port->box.getRight()+5;
-        port = new PortWithBackGround(m,this,XLOFI::OUT_AUDIO,xoffs,10,"AUDIO OUT",true);
-        float yoffs = port->box.getBottom()+17;
-        xoffs = port->box.getRight()+1;
-        port = new PortWithBackGround(m,this,XLOFI::OUT_SIGNALCOMPLEXITY,xoffs,10,"ANALYSIS OUT",true);
-        xoffs = port->box.getRight()+5;
-        port = new PortWithBackGround(m,this,XLOFI::OUT_SIGNALCOMPLEXITY,xoffs,yoffs,"GLITCH ACTIVE",true);
+        port = new PortWithBackGround(m,this,XLOFI::IN_AUDIO,3,14,"AUDIO IN",false);
+        float xoffs = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,XLOFI::OUT_AUDIO,xoffs,14,"AUDIO OUT",true);
+        float yoffs = port->box.getBottom()+2;
+        xoffs = 3;
+        port = new PortWithBackGround(m,this,XLOFI::OUT_SIGNALCOMPLEXITY,xoffs,yoffs,"ANALYSIS OUT",true);
+        xoffs = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,XLOFI::OUT_GLITCH_TRIG,xoffs,yoffs,"GLITCH ACTIVE",true);
         
 
         float ydiff = 45.0f;
