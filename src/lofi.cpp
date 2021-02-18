@@ -2,6 +2,36 @@
 #include "helperwidgets.h"
 #include <random>
 
+inline float sign(float in)
+{
+    if (in<0.0f)
+        return -1.0f;
+    return 1.0f;
+}
+
+inline float powershape(float in, float shape)
+{
+    if (shape==0.0f)
+        return in;
+    float sgn = sign(in);
+    float av = std::fabs(in);
+    if (shape<0.0f)
+    {
+        if (av>1.0f)
+            av = 1.0f;
+        float g = std::fabs(shape);
+        float h = 1.0f-std::pow(1.0f-av,1.0f+g*4.0f);
+        return h*sgn;    
+    }
+    if (shape>0.0f)
+    {
+        float g = shape;
+        float h = std::pow(av,1.0f+g*4.0f);
+        return h*sgn;    
+    }
+    return in;
+}
+
 class SampleRateReducer
 {
 public:
@@ -155,13 +185,6 @@ inline float sin_dist(float in)
     return std::sin(3.141592653*2*in);
 }
 
-inline float sign(float in)
-{
-    if (in<0.0f)
-        return -1.0f;
-    return 1.0f;
-}
-
 inline float sym_reflect(float in)
 {
     return sign(in)*2.0f*std::fabs(in/2.0f-std::round(in/2.0f));
@@ -258,7 +281,7 @@ public:
     LOFIEngine()
     {}
     float process(float in, float insamplerate, float srdiv, float bits, 
-        float drive, float dtype, float oversample, float glitchrate, float dcoffs)
+        float drive, float dtype, float oversample, float glitchrate, float dcoffs, float shapepar)
     {
         in+=dcoffs;
         float driven = drive*in;
@@ -280,8 +303,8 @@ public:
         float bitlevels = std::pow(2.0f,bits)/2.0f;
         float crushed = reduced; //*32767.0;
         crushed = std::round(crushed*bitlevels)/bitlevels;
-        //crushed /= 32767.0;
-        float glitch = m_glitcher.process(crushed,insamplerate,glitchrate);
+        float levelshaped = powershape(crushed,shapepar);
+        float glitch = m_glitcher.process(levelshaped,insamplerate,glitchrate);
         // glitch-=dcoffs;
         return clamp(glitch,-1.0f,1.0f);
     }
@@ -312,6 +335,7 @@ public:
         PAR_ATTN_OVERSAMPLE,
         PAR_GLITCHRATE,
         PAR_ATTN_GLITCHRATE,
+        PAR_LEVELSHAPING,
         PAR_LAST
     };
     enum INPUTS
@@ -347,6 +371,7 @@ public:
         configParam(PAR_ATTN_OVERSAMPLE,-1.0f,1.0f,0.0,"Distortion oversampling mix CV");
         configParam(PAR_GLITCHRATE,0.0f,1.0f,0.5,"Glitch rate");
         configParam(PAR_ATTN_GLITCHRATE,-1.0f,1.0f,0.0,"Glitch rate CV");
+        configParam(PAR_LEVELSHAPING,-1.0f,1.0f,0.0,"Level shaping");
         m_fftbuffer.resize(4096);
         m_mag_array.resize(4096);
         m_smoother.setAmount(0.9995);
@@ -432,8 +457,9 @@ public:
         float glitchrate = params[PAR_GLITCHRATE].getValue();
         glitchrate += inputs[IN_CV_GLITCHRATE].getVoltage()*params[PAR_ATTN_GLITCHRATE].getValue()/10.0f;
         glitchrate = clamp(glitchrate,0.0f,1.0f);
+        float shaping = params[PAR_LEVELSHAPING].getValue();
         float processed = m_engines[0].process(insample,args.sampleRate,srdiv,bits,drivegain,dtype,osamt,
-            glitchrate,dcoffs);
+            glitchrate,dcoffs,shaping);
         outputs[OUT_AUDIO].setVoltage(processed*5.0f);
         if (outputs[OUT_GLITCH_TRIG].isConnected())
         {
@@ -476,7 +502,8 @@ public:
     {
         setModule(m);
         m_lofi = m;
-        box.size.x = 87;
+        box.size.x = 12*15;
+        
         auto font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
         m_font = font;
         PortWithBackGround* port = nullptr;
@@ -499,6 +526,8 @@ public:
         yoffs+=ydiff;
         addChild(new KnobInAttnWidget(this,"BIT DEPTH",
             XLOFI::PAR_BITDIV,XLOFI::IN_CV_BITDIV,XLOFI::PAR_ATTN_BITDIV,xoffs,yoffs));
+        addChild(new KnobInAttnWidget(this,"LEVEL SHAPING",
+            XLOFI::PAR_LEVELSHAPING,-1,-1,83,yoffs));
         yoffs+=ydiff;
         addChild(new KnobInAttnWidget(this,"INPUT DRIVE",
             XLOFI::PAR_DRIVE,XLOFI::IN_CV_DRIVE,XLOFI::PAR_ATTN_DRIVE,xoffs,yoffs));
@@ -576,7 +605,7 @@ public:
             for (int i=0;i<w;++i)
             {
                 float s = std::sin(2*3.141592653/w*i*2.0f);
-                s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f,0.5f,0.0f);
+                s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f,0.5f,0.0f,0.0f);
                 float ycor = rescale(s,-1.0f,1.0f,270.0,320.0f);
                 float xcor = rescale(i,0,w,0.0,80.0);
                 nvgMoveTo(args.vg,xcor,295.0f);

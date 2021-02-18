@@ -128,9 +128,9 @@ void PortWithBackGround::draw(const Widget::DrawArgs &args)
     auto font = getDefaultFont(0);
     nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
     nvgFontSize(args.vg, 7.5f);
-    nvgTextLetterSpacing(args.vg, 0.0f);
+    nvgTextLetterSpacing(args.vg, 0.1f);
     nvgFillColor(args.vg, textcolor);
-    nvgTextBox(args.vg,1.0f,6.0,box.size.x,m_text.c_str(),nullptr);
+    nvgTextBox(args.vg,1.0f,6.0,box.size.x-1.0f,m_text.c_str(),nullptr);
     nvgRestore(args.vg);
     //PortType::draw(args);
 }
