@@ -275,24 +275,56 @@ inline float getBitDepthFromNormalized(float x)
     return 16.0f;           
 }
 
+template<int Factor, int Qual>
+struct OverSampler
+{
+    OverSampler()
+    {
+        for (int i=0;i<Factor;++i)
+            buffer[i] = 0.0f;
+    }
+    float process(float in, float th, float type, RandShaper& shaper)
+    {
+        us.process(in,buffer);
+        for (int i=0;i<Factor;++i)
+            buffer[i] = distort(buffer[i],th,type,shaper);
+        return 2.0f*ds.process(buffer);
+    }
+    dsp::Upsampler<Factor,Qual> us;
+    dsp::Decimator<Factor,Qual> ds;
+    float buffer[Factor];
+};
+
 class LOFIEngine
 {
 public:
     LOFIEngine()
     {}
     float process(float in, float insamplerate, float srdiv, float bits, 
-        float drive, float dtype, float oversample, float glitchrate, float dcoffs, float shapepar)
+        float drive, float dtype, float oversample, 
+        float glitchrate, float dcoffs, float shapepar, int osquality)
     {
         in+=dcoffs;
         float driven = drive*in;
         float oversampledriven = 0.0f;
         if (oversample>0.0f) // only oversample when oversampled signal is going to be mixed in
         {
+            /*
             float osarr[8];
             m_upsampler.process(driven,osarr);
             for (int i=0;i<8;++i)
                 osarr[i] = distort(osarr[i],1.0f,dtype,m_randshaper);
             oversampledriven = 2.0f*m_downsampler.process(osarr);
+            */
+           switch(osquality) 
+           {
+                case 0:
+                    oversampledriven = m_oversampler1.process(driven,1.0f,dtype,m_randshaper);
+                    break;
+                case 1:
+                    oversampledriven = m_oversampler2.process(driven,1.0f,dtype,m_randshaper);
+                    break;
+           }
         }
         
         driven = distort(driven,1.0f,dtype,m_randshaper);
@@ -314,6 +346,10 @@ private:
     SampleRateReducer m_reducer;
     dsp::Upsampler<8,2> m_upsampler;
     dsp::Decimator<8,2> m_downsampler;
+    OverSampler<8,2> m_oversampler1;
+    OverSampler<8,4> m_oversampler2;
+    OverSampler<16,2> m_oversampler3;
+    OverSampler<16,4> m_oversampler4;
     GlitchGenerator m_glitcher;
     
 };
@@ -458,8 +494,9 @@ public:
         glitchrate += inputs[IN_CV_GLITCHRATE].getVoltage()*params[PAR_ATTN_GLITCHRATE].getValue()/10.0f;
         glitchrate = clamp(glitchrate,0.0f,1.0f);
         float shaping = params[PAR_LEVELSHAPING].getValue();
+        int osqual = 0;
         float processed = m_engines[0].process(insample,args.sampleRate,srdiv,bits,drivegain,dtype,osamt,
-            glitchrate,dcoffs,shaping);
+            glitchrate,dcoffs,shaping,osqual);
         outputs[OUT_AUDIO].setVoltage(processed*5.0f);
         if (outputs[OUT_GLITCH_TRIG].isConnected())
         {
@@ -605,7 +642,7 @@ public:
             for (int i=0;i<w;++i)
             {
                 float s = std::sin(2*3.141592653/w*i*2.0f);
-                s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f,0.5f,0.0f,0.0f);
+                s = m_eng.process(s,w*2.0f,srdiv,bitd,drive,dtype,0.0f,0.5f,0.0f,0.0f,0);
                 float ycor = rescale(s,-1.0f,1.0f,270.0,320.0f);
                 float xcor = rescale(i,0,w,0.0,80.0);
                 nvgMoveTo(args.vg,xcor,295.0f);
