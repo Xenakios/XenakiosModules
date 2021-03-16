@@ -89,7 +89,63 @@ inline float harmonics4(float xin)
         0.15*std::sin(xin*7);
 }
 
-
+class SIMDImgWaveOscillator
+{
+public:
+    void initialise(std::function<float(float)> f, 
+    int tablesize)
+    {
+        m_tablesize = tablesize;
+        m_table.resize(tablesize+1);
+        for (int i=0;i<tablesize;++i)
+            m_table[i] = f(rescale(i,0,tablesize-1,-g_pi,g_pi));
+        m_table[tablesize] = m_table[tablesize-1];
+    }
+    void setFrequency(simd::float_4 hz)
+    {
+        m_phaseincrement = m_tablesize*hz*(1.0/m_sr);
+        m_freq = hz;
+    }
+    simd::float_4 getFrequency()
+    {
+        return m_freq;
+    }
+    simd::float_4 processSample(float)
+    {
+        simd::int32_4 index0 = simd::floor(m_phase);
+        simd::int32_4 index1 = simd::floor(m_phase)+1;
+        simd::float_4 frac = m_phase - simd::float_4(index0);
+        simd::float_4 y0(m_table[index0[0]],m_table[index0[1]],m_table[index0[2]],m_table[index0[3]]);
+        simd::float_4 y1(m_table[index1[0]],m_table[index1[1]],m_table[index1[2]],m_table[index1[3]]);
+        simd::float_4 sample = y0+(y1-y0)*frac;
+        m_phase+=m_phaseincrement;
+        m_phase = (m_phase>=m_tablesize) & m_phase-m_tablesize;
+        //if (m_phase>=m_tablesize)
+        //    m_phase-=m_tablesize;
+        return sample;
+    }
+    void prepare(int numchans, float sr)
+    {
+        m_sr = sr;
+        setFrequency(m_freq);
+    }
+    void reset(float initphase)
+    {
+        m_phase = initphase;
+    }
+    void setTable(std::vector<float> tb)
+    {
+        m_tablesize = tb.size();
+        m_table = tb;
+    }
+private:
+    int m_tablesize = 0;
+    std::vector<float> m_table;
+    simd::float_4 m_phase = 0.0;
+    float m_sr = 44100.0f;
+    simd::float_4 m_phaseincrement = 0.0f;
+    simd::float_4 m_freq = 440.0f;
+};
 
 class ImgWaveOscillator
 {
@@ -180,6 +236,28 @@ public:
     {
         a = rescale(amt, 0.0f, 1.0f, 0.9f, 0.9999f);
         b = 1.0 - a;
+    }
+    void generateBuffer(float* outbuffer, float* outauxbuffer, int nsamples, float pix_mid_gain, float aux_value)
+    {
+        int gain_index = rescale(pix_mid_gain, 0.0f, 1.0f, 0, 255);
+        pix_mid_gain = m_gainCurve[gain_index];
+        for (int i=0;i<nsamples;++i)
+        {
+            float z = (pix_mid_gain * b) + (m_env_state * a);
+            if (z < m_cut_th)
+                z = 0.0;
+            m_env_state = z;
+            float pan_z = (aux_value*b)+(m_pan_env_state*a);
+            outauxbuffer[i] = pan_z;
+            m_pan_env_state = pan_z;
+            if (z > 0.00)
+            {
+                outbuffer[i] = z * m_osc.processSample(0.0f);
+            }
+            else
+                outbuffer[i] = 0.0f;
+            }
+        
     }
     void generate(float pix_mid_gain, float aux_value)
     {
@@ -701,6 +779,8 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
         int outdursamples = sr * outdur;
         //m_renderBuf.clear();
         bool usecolors = g_panmodes[m_outputChansMode].usecolors;
+        std::vector<float> mainProcBuf(m_stepsize);
+        std::vector<float> panProcBuf(m_stepsize);
         for (int x = 0; x < outdursamples; x += m_stepsize)
         {
             if (m_shouldCancel)
@@ -748,13 +828,16 @@ void  ImgSynth::render(float outdur, float sr, OscillatorBuilder& oscBuilder)
                     for (int i=0;i<ochanstouse;++i)
                         pangains[i]=m_oscillators[y].m_pan_coeffs[i];
                 }
+                m_oscillators[y].generateBuffer(mainProcBuf.data(),panProcBuf.data(), m_stepsize, pix_mid_gain,aux_param);
                 for (int i = 0; i < m_stepsize; ++i)
                 {
-                    m_oscillators[y].generate(pix_mid_gain, aux_param);
-                    float sample = m_oscillators[y].outSample;
+                    //m_oscillators[y].generate(pix_mid_gain, aux_param);
+                    //float sample = m_oscillators[y].outSample;
+                    float sample = mainProcBuf[i];
                     if (fabs(sample) > 0.0f)
                     {
-                        float auxval = m_oscillators[y].outAuxValue;
+                        //float auxval = m_oscillators[y].outAuxValue;
+                        float auxval = panProcBuf[i];
                         if (usecolors)
                         {
                             if (ochanstouse == 2)
