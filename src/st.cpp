@@ -103,6 +103,11 @@ private:
 class XStochastic : public rack::Module
 {
 public:
+    enum INPUTS
+    {
+        IN_RESET,
+        IN_LAST
+    };
     enum OUTPUTS
     {
         ENUMS(OUT_GATE, 16),
@@ -137,7 +142,7 @@ public:
         m_amp_envelopes[4].AddNode({0.99,1.0,2});
         m_amp_envelopes[4].AddNode({1.00,0.0,2});
         
-        config(0,0,OUT_AUX2_LAST);
+        config(0,IN_LAST,OUT_AUX2_LAST);
     }
     void process(const ProcessArgs& args) override
     {
@@ -179,6 +184,11 @@ public:
             outputs[OUT_AUX1+i].setVoltage(par1);
             outputs[OUT_AUX2+i].setVoltage(par2);
         }
+        if (m_resetTrigger.process(rescale(inputs[IN_RESET].getVoltage(),0.0,10.0, 0.f, 1.f)))
+        {
+            m_nextEventPos = 0.0;
+            m_phase = 0.0;
+        }
         m_phase+=args.sampleTime;
     }
 private:
@@ -186,7 +196,8 @@ private:
     float m_nextEventPos = 0.0f;
     StocVoice m_voices[16];
     breakpoint_envelope m_amp_envelopes[6];
-    int m_maxVoices = 12;
+    int m_maxVoices = 6;
+    dsp::SchmittTrigger m_resetTrigger;
 };
 
 class XStochasticWidget : public ModuleWidget
@@ -197,6 +208,7 @@ public:
     {
         setModule(m);
         box.size.x = 600.0f;
+        
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         for (int i=0;i<12;++i)
@@ -207,6 +219,7 @@ public:
             addOutput(createOutput<PJ301MPort>(Vec(80, 20+i*25), module, XStochastic::OUT_AUX1+i));
             addOutput(createOutput<PJ301MPort>(Vec(105, 20+i*25), module, XStochastic::OUT_AUX2+i));
         }
+        addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
     }
     ~XStochasticWidget()
     {
