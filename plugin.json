@@ -139,7 +139,7 @@
       ]
     },
     {
-      "disabled": true,
+      "disabled": false,
       "slug": "XStochastic",
       "name": "ST",
       "description": "Generates voltages and gates following Iannis Xenakis ST-program",
