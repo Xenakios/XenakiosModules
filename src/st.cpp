@@ -32,52 +32,6 @@ const float EnvelopeScalers[2][4] =
 };
 */
 
-class STEnvelope
-{
-public:
-    void start(int envIndex, float sampleRate, float length, bool attackReleaseFades)
-    {
-        mActiveEnvelope = envIndex;
-        mSampleRate = sampleRate;
-        mLen = length;
-        mSamplePos = 0;
-        mEnvIndex = 0;
-        mNumEnvPoints = EnvelopeTable[envIndex][0];
-        mFadesActive = attackReleaseFades;
-    }
-    float process()
-    {
-        if (mActiveEnvelope == -1)
-            return 0.0f;
-        float envValue = 0.0f;
-        if (mNumEnvPoints == 1)
-        {
-            envValue = EnvelopeTable[mActiveEnvelope][1];
-        }
-        int envLenSamples = mSampleRate * mLen;
-        if (mFadesActive)
-        {
-            float fadeGain = 1.0f;
-            int fadeLenSamples = mSampleRate * mFadeLen;
-            if (mSamplePos<fadeLenSamples)
-                fadeGain = rescale(mSamplePos,0,fadeLenSamples,0.0f,1.0f);
-            if (mSamplePos>envLenSamples-fadeLenSamples)
-                fadeGain = rescale(mSamplePos,envLenSamples-fadeLenSamples,envLenSamples,1.0f,0.0f);
-            envValue *= fadeGain;
-        }
-        return envValue;
-    }
-private:
-    int mActiveEnvelope = -1;
-    int mNumEnvPoints = 0;
-    float mSampleRate = 0.0f;
-    float mLen = 0.0f;
-    bool mFadesActive = false;
-    int mSamplePos = 0;
-    int mEnvIndex = 0;
-    float mFadeLen = 0.01;
-};
-
 class StocVoice
 {
 public:
@@ -141,7 +95,7 @@ public:
         ENUMS(OUT_AUX1, 16),
         ENUMS(OUT_AUX2, 16)
     };
-    
+    int m_numAmpEnvs = 4;
     XStochastic()
     {
         m_amp_envelopes[0].AddNode({0.0,0.0,2});
@@ -151,28 +105,40 @@ public:
         m_amp_envelopes[1].AddNode({0.0,0.0,4});
         m_amp_envelopes[1].AddNode({0.01,1.0,4});
         m_amp_envelopes[1].AddNode({1.0,0.0});
+
+        m_amp_envelopes[2].AddNode({0.0,0.0,2});
+        m_amp_envelopes[2].AddNode({0.9,1.0,2});
+        m_amp_envelopes[2].AddNode({1.0,0.0});
+
+        m_amp_envelopes[3].AddNode({0.0,0.0,2});
+        m_amp_envelopes[3].AddNode({0.1,0.2,2});
+        m_amp_envelopes[3].AddNode({0.9,0.2,2});
+        m_amp_envelopes[3].AddNode({1.0,0.0,2});
         config(0,0,OUT_AUX2_LAST);
     }
     void process(const ProcessArgs& args) override
     {
         if (m_phase>=m_nextEventPos)
         {
-            for (int i=0;i<16;++i)
+            int i = 0;
+            while (i<m_maxVoices)
             {
-                if (m_voices[i].isAvailable())
+                int voiceIndex = random::u32() % m_maxVoices;
+                if (m_voices[voiceIndex].isAvailable())
                 {
-                    m_voices[i].m_startPos = m_nextEventPos;
+                    m_voices[voiceIndex].m_startPos = m_nextEventPos;
                     float evdur = 0.5f + random::normal();
                     evdur = clamp(evdur,0.1,5.0);
-                    int ampenv = random::u32() % 2;
-                    m_voices[i].start(evdur,-24.0f,24.0f,&m_amp_envelopes[ampenv]);
+                    int ampenv = random::u32() % m_numAmpEnvs;
+                    m_voices[voiceIndex].start(evdur,-24.0f,24.0f,&m_amp_envelopes[ampenv]);
                     break;
                 }
+                ++i;
             }
             float density = 5.0f;
             m_nextEventPos += -log(random::uniform())/density;
         }
-        for (int i=0;i<16;++i)
+        for (int i=0;i<m_maxVoices;++i)
         {
             float gate = 0.0f;
             float amp = 0.0f;
@@ -193,6 +159,7 @@ private:
     float m_nextEventPos = 0.0f;
     StocVoice m_voices[16];
     breakpoint_envelope m_amp_envelopes[6];
+    int m_maxVoices = 12;
 };
 
 class XStochasticWidget : public ModuleWidget
