@@ -72,8 +72,16 @@ public:
         m_phase = 0.0;
         m_len = dur;
         m_pitch = rescale(rack::random::uniform(),0.0f,1.0f,minpitch,maxpitch);
-        float glissdest = rescale(rack::random::uniform(),0.0f,1.0f,-24.0f,24.0f);
-        m_pitch_env.GetNodeAtIndex(1).pt_y = glissdest;
+        float glissdest = 0.0;
+        auto& pt0 = m_pitch_env.GetNodeAtIndex(0);
+        auto& pt1 = m_pitch_env.GetNodeAtIndex(1);
+        if (random::uniform()<0.5)
+        {
+            glissdest = rescale(rack::random::uniform(),0.0f,1.0f,-24.0f,24.0f);
+            pt0.Shape = random::u32() % 12;
+        }
+        
+        pt1.pt_y = glissdest;
         m_par1 = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
         float pardest = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
         m_par1_env.GetNodeAtIndex(1).pt_y = pardest;
