@@ -118,10 +118,9 @@ public:
         simd::float_4 y0(m_table[index0[0]],m_table[index0[1]],m_table[index0[2]],m_table[index0[3]]);
         simd::float_4 y1(m_table[index1[0]],m_table[index1[1]],m_table[index1[2]],m_table[index1[3]]);
         simd::float_4 sample = y0+(y1-y0)*frac;
+        
         m_phase+=m_phaseincrement;
         m_phase = (m_phase>=m_tablesize) & m_phase-m_tablesize;
-        //if (m_phase>=m_tablesize)
-        //    m_phase-=m_tablesize;
         return sample;
     }
     void prepare(int numchans, float sr)
