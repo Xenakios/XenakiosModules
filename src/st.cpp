@@ -83,8 +83,8 @@ class StocVoice
 public:
     StocVoice()
     {
-        m_pitch_env.AddNode({0.0f,0.0f});
-        m_pitch_env.AddNode({1.0f,0.0f});
+        m_pitch_env.AddNode({0.0f,0.0f,2});
+        m_pitch_env.AddNode({1.0f,0.0f,2});
     }
     void process(float deltatime, float* gate,float* pitch,float* amp,float* par1, float* par2)
     {
@@ -144,9 +144,13 @@ public:
     
     XStochastic()
     {
-        m_amp_envelopes[0].AddNode({0.0,0.0});
-        m_amp_envelopes[0].AddNode({0.5,1.0});
+        m_amp_envelopes[0].AddNode({0.0,0.0,2});
+        m_amp_envelopes[0].AddNode({0.5,1.0,2});
         m_amp_envelopes[0].AddNode({1.0,0.0});
+        
+        m_amp_envelopes[1].AddNode({0.0,0.0,4});
+        m_amp_envelopes[1].AddNode({0.01,1.0,4});
+        m_amp_envelopes[1].AddNode({1.0,0.0});
         config(0,0,OUT_AUX2_LAST);
     }
     void process(const ProcessArgs& args) override
@@ -160,7 +164,8 @@ public:
                     m_voices[i].m_startPos = m_nextEventPos;
                     float evdur = 0.5f + random::normal();
                     evdur = clamp(evdur,0.1,5.0);
-                    m_voices[i].start(evdur,-24.0f,24.0f,&m_amp_envelopes[0]);
+                    int ampenv = random::u32() % 2;
+                    m_voices[i].start(evdur,-24.0f,24.0f,&m_amp_envelopes[ampenv]);
                     break;
                 }
             }
