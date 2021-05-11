@@ -54,7 +54,7 @@ public:
         float gain = m_amp_env->GetInterpolatedEnvelopeValue(normphase);
         *amp = rescale(gain,0.0f,1.0f,0.0f,10.0f);
         *pitch = m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase);
-        *par1 = clamp(m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),-5.0f,5.0f);
+        *par1 = reflect_value<float>(-5.0f,m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         *par2 = reflect_value<float>(-5.0f,m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         m_phase += deltatime;
         if (m_phase>=m_len)
@@ -254,7 +254,7 @@ private:
     std::mt19937 m_rng{m_randSeed};
     StocVoice m_voices[16];
     breakpoint_envelope m_amp_envelopes[16];
-    int m_maxVoices = 6;
+    int m_maxVoices = 8;
     dsp::SchmittTrigger m_resetTrigger;
 };
 
