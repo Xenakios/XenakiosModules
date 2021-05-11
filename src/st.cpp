@@ -129,6 +129,7 @@ public:
     {
         PAR_MASTER_MEANDUR,
         PAR_MASTER_GLISSPROB,
+        PAR_MASTER_DENSITY,
         PAR_LAST
     };
     int m_numAmpEnvs = 7;
@@ -172,7 +173,7 @@ public:
         config(PAR_LAST,IN_LAST,OUT_AUX2_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
-
+        configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
     }
     void process(const ProcessArgs& args) override
     {
@@ -196,8 +197,10 @@ public:
                 }
                 ++i;
             }
-            float density = 5.0f;
-            m_nextEventPos += -log(random::uniform())/density;
+            float density = 0.1*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
+            float deltatime = -log(random::uniform())/density;
+            deltatime = clamp(deltatime,args.sampleTime+0.0001f,30.0f);
+            m_nextEventPos += deltatime;
         }
         for (int i=0;i<m_maxVoices;++i)
         {
@@ -253,8 +256,9 @@ public:
             addOutput(createOutput<PJ301MPort>(Vec(105, 20+i*25), module, XStochastic::OUT_AUX2+i));
         }
         addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(30, 330), module, XStochastic::PAR_MASTER_MEANDUR));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(60, 330), module, XStochastic::PAR_MASTER_GLISSPROB));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(55, 340), module, XStochastic::PAR_MASTER_MEANDUR));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(80, 340), module, XStochastic::PAR_MASTER_GLISSPROB));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(105, 340), module, XStochastic::PAR_MASTER_DENSITY));
     }
     ~XStochasticWidget()
     {
@@ -274,7 +278,7 @@ public:
         nvgFontFaceId(args.vg, g_font->handle);
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-        nvgText(args.vg, 3 , 10, "GenDyn", NULL);
+        nvgText(args.vg, 3 , 10, "ST(ochastic)", NULL);
         nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
