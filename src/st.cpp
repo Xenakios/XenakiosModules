@@ -69,29 +69,31 @@ public:
     void start(float dur, float minpitch,float maxpitch, breakpoint_envelope* ampenv,
         float glissprob)
     {
+        std::uniform_real_distribution<float> dist(0.0f,1.0f);
+        std::uniform_int_distribution<int> shapedist(0,11);
         m_amp_env = ampenv;
         m_phase = 0.0;
         m_len = dur;
-        m_pitch = rescale(rack::random::uniform(),0.0f,1.0f,minpitch,maxpitch);
+        m_pitch = rescale(dist(*m_rng),0.0f,1.0f,minpitch,maxpitch);
         float glissdest = 0.0;
         auto& pt0 = m_pitch_env.GetNodeAtIndex(0);
         auto& pt1 = m_pitch_env.GetNodeAtIndex(1);
-        if (random::uniform()<glissprob)
+        if (dist(*m_rng)<glissprob)
         {
-            glissdest = rescale(rack::random::uniform(),0.0f,1.0f,-24.0f,24.0f);
-            pt0.Shape = random::u32() % 12;
+            glissdest = rescale(dist(*m_rng),0.0f,1.0f,-24.0f,24.0f);
+            pt0.Shape = shapedist(*m_rng);
         }
         
         pt1.pt_y = glissdest;
-        m_par1 = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
-        float pardest = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
+        m_par1 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
+        float pardest = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
         m_par1_env.GetNodeAtIndex(1).pt_y = pardest;
-        m_par2 = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
+        m_par2 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
         
         // Kumaraswamy distribution, favor low and high values
         float k_a = 0.3f;
         float k_b = 0.5f;
-        float k_x = 1.0f-powf((1.0f-random::uniform()),1.0f/k_b);
+        float k_x = 1.0f-powf((1.0f-dist(*m_rng)),1.0f/k_b);
         k_x = powf(k_x,1.0f/k_a);
         pardest = rescale(k_x,0.0f,1.0f,-5.0f,5.0f);
         //pardest = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
@@ -101,6 +103,7 @@ public:
     }
     float m_playProb = 1.0f;
     float m_startPos = 0.0f;
+    std::mt19937* m_rng = nullptr;
 private:
     bool m_available = true;
     breakpoint_envelope m_pitch_env;
@@ -143,6 +146,10 @@ public:
     int m_numAmpEnvs = 7;
     XStochastic()
     {
+        for (int i=0;i<16;++i)
+        {
+            m_voices[i].m_rng = &m_rng;
+        }
         m_amp_envelopes[0].AddNode({0.0,0.0,2});
         m_amp_envelopes[0].AddNode({0.5,1.0,2});
         m_amp_envelopes[0].AddNode({1.0,0.0});
@@ -187,26 +194,30 @@ public:
     {
         if (m_phase>=m_nextEventPos)
         {
+            std::uniform_real_distribution<float> dist(0.0f,1.0f);
+            std::uniform_int_distribution<int> voicedist(0,m_maxVoices-1);
+            std::uniform_int_distribution<int> vcadist(0,m_numAmpEnvs-1);
+            std::normal_distribution<float> durdist(0.0f,1.0f);
             float glissprob = params[PAR_MASTER_GLISSPROB].getValue();
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
             int i = 0;
             while (i<m_maxVoices)
             {
-                int voiceIndex = random::u32() % m_maxVoices;
+                int voiceIndex = voicedist(m_rng);
                 if (m_voices[voiceIndex].isAvailable())
                 {
                     m_voices[voiceIndex].m_startPos = m_nextEventPos;
-                    float evdur = meandur + random::normal()*durdev;
+                    float evdur = meandur + durdist(m_rng)*durdev;
                     evdur = clamp(evdur,0.05,8.0);
-                    int ampenv = random::u32() % m_numAmpEnvs;
+                    int ampenv = vcadist(m_rng);
                     m_voices[voiceIndex].start(evdur,-24.0f,24.0f,&m_amp_envelopes[ampenv],glissprob);
                     break;
                 }
                 ++i;
             }
             float density = 0.1*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
-            float deltatime = -log(random::uniform())/density;
+            float deltatime = -log(dist(m_rng))/density;
             deltatime = clamp(deltatime,args.sampleTime+0.0001f,30.0f);
             m_nextEventPos += deltatime;
         }
@@ -232,12 +243,15 @@ public:
         {
             m_nextEventPos = 0.0;
             m_phase = 0.0;
+            // m_rng = std::mt19937{m_randSeed};
         }
         m_phase+=args.sampleTime;
     }
+    int m_randSeed = 1;
 private:
     float m_phase = 0.0f;
     float m_nextEventPos = 0.0f;
+    std::mt19937 m_rng{m_randSeed};
     StocVoice m_voices[16];
     breakpoint_envelope m_amp_envelopes[16];
     int m_maxVoices = 6;
