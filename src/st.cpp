@@ -66,7 +66,8 @@ public:
     {
         return m_available;
     }
-    void start(float dur, float minpitch,float maxpitch, breakpoint_envelope* ampenv)
+    void start(float dur, float minpitch,float maxpitch, breakpoint_envelope* ampenv,
+        float glissprob)
     {
         m_amp_env = ampenv;
         m_phase = 0.0;
@@ -75,7 +76,7 @@ public:
         float glissdest = 0.0;
         auto& pt0 = m_pitch_env.GetNodeAtIndex(0);
         auto& pt1 = m_pitch_env.GetNodeAtIndex(1);
-        if (random::uniform()<0.5)
+        if (random::uniform()<glissprob)
         {
             glissdest = rescale(rack::random::uniform(),0.0f,1.0f,-24.0f,24.0f);
             pt0.Shape = random::u32() % 12;
@@ -124,7 +125,13 @@ public:
         ENUMS(OUT_AUX1, 16),
         ENUMS(OUT_AUX2, 16)
     };
-    int m_numAmpEnvs = 5;
+    enum PARAMS
+    {
+        PAR_MASTER_MEANDUR,
+        PAR_MASTER_GLISSPROB,
+        PAR_LAST
+    };
+    int m_numAmpEnvs = 7;
     XStochastic()
     {
         m_amp_envelopes[0].AddNode({0.0,0.0,2});
@@ -150,12 +157,30 @@ public:
         m_amp_envelopes[4].AddNode({0.99,1.0,2});
         m_amp_envelopes[4].AddNode({1.00,0.0,2});
         
-        config(0,IN_LAST,OUT_AUX2_LAST);
+        m_amp_envelopes[5].AddNode({0.00,0.0,2});
+        m_amp_envelopes[5].AddNode({0.01,1.0,2});
+        m_amp_envelopes[5].AddNode({0.1,0.1,2});
+        m_amp_envelopes[5].AddNode({0.90,0.1,2});
+        m_amp_envelopes[5].AddNode({1.00,0.0,2});
+
+        m_amp_envelopes[6].AddNode({0.00,0.0,2});
+        m_amp_envelopes[6].AddNode({0.10,0.1,2});
+        m_amp_envelopes[6].AddNode({0.90,0.1,2});
+        m_amp_envelopes[6].AddNode({0.99,1.0,2});
+        m_amp_envelopes[6].AddNode({1.00,0.0,2});
+
+        config(PAR_LAST,IN_LAST,OUT_AUX2_LAST);
+        configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
+        configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
+
     }
     void process(const ProcessArgs& args) override
     {
         if (m_phase>=m_nextEventPos)
         {
+            float glissprob = params[PAR_MASTER_GLISSPROB].getValue();
+            float meandur = params[PAR_MASTER_MEANDUR].getValue();
+            float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
             int i = 0;
             while (i<m_maxVoices)
             {
@@ -163,10 +188,10 @@ public:
                 if (m_voices[voiceIndex].isAvailable())
                 {
                     m_voices[voiceIndex].m_startPos = m_nextEventPos;
-                    float evdur = 0.5f + random::normal();
-                    evdur = clamp(evdur,0.1,5.0);
+                    float evdur = meandur + random::normal()*durdev;
+                    evdur = clamp(evdur,0.05,8.0);
                     int ampenv = random::u32() % m_numAmpEnvs;
-                    m_voices[voiceIndex].start(evdur,-24.0f,24.0f,&m_amp_envelopes[ampenv]);
+                    m_voices[voiceIndex].start(evdur,-24.0f,24.0f,&m_amp_envelopes[ampenv],glissprob);
                     break;
                 }
                 ++i;
@@ -203,7 +228,7 @@ private:
     float m_phase = 0.0f;
     float m_nextEventPos = 0.0f;
     StocVoice m_voices[16];
-    breakpoint_envelope m_amp_envelopes[6];
+    breakpoint_envelope m_amp_envelopes[16];
     int m_maxVoices = 6;
     dsp::SchmittTrigger m_resetTrigger;
 };
@@ -228,6 +253,8 @@ public:
             addOutput(createOutput<PJ301MPort>(Vec(105, 20+i*25), module, XStochastic::OUT_AUX2+i));
         }
         addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(30, 330), module, XStochastic::PAR_MASTER_MEANDUR));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(60, 330), module, XStochastic::PAR_MASTER_GLISSPROB));
     }
     ~XStochasticWidget()
     {
