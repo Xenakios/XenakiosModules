@@ -50,13 +50,13 @@ public:
     {
         *gate = 10.0f;
         
-        m_phase += deltatime;
         float normphase = 1.0f/m_len*m_phase;
         float gain = m_amp_env->GetInterpolatedEnvelopeValue(normphase);
         *amp = rescale(gain,0.0f,1.0f,0.0f,10.0f);
         *pitch = m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase);
         *par1 = clamp(m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),-5.0f,5.0f);
         *par2 = clamp(m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),-5.0f,5.0f);
+        m_phase += deltatime;
         if (m_phase>=m_len)
         {
             m_available = true;
@@ -87,7 +87,15 @@ public:
         float pardest = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
         m_par1_env.GetNodeAtIndex(1).pt_y = pardest;
         m_par2 = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
-        pardest = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
+        
+        // Kumaraswamy distribution, favor low and high values
+        float k_a = 0.3f;
+        float k_b = 0.5f;
+        float k_x = 1.0f-powf((1.0f-random::uniform()),1.0f/k_b);
+        k_x = powf(k_x,1.0f/k_a);
+        pardest = rescale(k_x,0.0f,1.0f,-5.0f,5.0f);
+        //pardest = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
+        
         m_par2_env.GetNodeAtIndex(1).pt_y = pardest;
         m_available = false;
     }
