@@ -247,7 +247,7 @@ public:
         }
         m_phase+=args.sampleTime;
     }
-    int m_randSeed = 1;
+    unsigned int m_randSeed = 1;
 private:
     float m_phase = 0.0f;
     float m_nextEventPos = 0.0f;
