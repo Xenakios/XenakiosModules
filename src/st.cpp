@@ -70,7 +70,7 @@ public:
         float glissprob)
     {
         std::uniform_real_distribution<float> dist(0.0f,1.0f);
-        std::uniform_int_distribution<int> shapedist(0,12);
+        std::uniform_int_distribution<int> shapedist(0,msnumtables-1);
         m_amp_env = ampenv;
         m_phase = 0.0;
         m_len = dur;

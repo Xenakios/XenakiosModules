@@ -20,7 +20,38 @@ inline float squarewave(float in)
     return 1.0f;
 }
 
-const int msnumtables = 13;
+inline float easeOutBounce(float x)
+{
+    const float n1 = 7.5625;
+    const float d1 = 2.75;
+
+    if (x < 1 / d1) {
+        return n1 * x * x;
+    } else if (x < 2 / d1) {
+        return n1 * (x -= 1.5 / d1) * x + 0.75;
+    } else if (x < 2.5 / d1) {
+        return n1 * (x -= 2.25 / d1) * x + 0.9375;
+    } else {
+        return n1 * (x -= 2.625 / d1) * x + 0.984375;
+    }
+}
+
+inline float easeInBounce(float x) 
+{
+    return 1.0 - easeOutBounce(1.0 - x);
+}
+
+inline float easeInElastic(float x)
+{
+    const float c4 = (2 * 3.141592653) / 3.0;
+    if (x <= 0.0f)
+        return 0.0f;
+    if (x >= 1.0f)
+        return 1.0f;
+    return -pow(2, 10 * x - 10) * sin((x * 10 - 10.75) * c4);
+}
+
+const int msnumtables = 16;
 const int mstablesize = 1024;
 
 class ModulationShaper
@@ -58,6 +89,9 @@ public:
 			y3 = rescale(y2,0.0f,1.0f,y0,y1);
 			m_tables[11][i] = y3;
             m_tables[12][i] = squarewave(norm*5.0);
+            m_tables[13][i] = easeOutBounce(norm);
+            m_tables[14][i] = easeInBounce(norm);
+            m_tables[15][i] = easeInElastic(norm);
         }
         // fill guard point by repeating value
         for (int i=0;i<msnumtables;++i)
