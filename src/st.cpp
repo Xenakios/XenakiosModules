@@ -190,6 +190,7 @@ public:
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
         configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
     }
+    int m_NumUsedVoices = 0;
     void process(const ProcessArgs& args) override
     {
         if (m_phase>=m_nextEventPos)
@@ -201,6 +202,7 @@ public:
             float glissprob = params[PAR_MASTER_GLISSPROB].getValue();
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
+            float density = 0.1*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
             int i = 0;
             while (i<m_maxVoices)
             {
@@ -216,11 +218,11 @@ public:
                 }
                 ++i;
             }
-            float density = 0.1*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
             float deltatime = -log(dist(m_rng))/density;
             deltatime = clamp(deltatime,args.sampleTime+0.0001f,30.0f);
             m_nextEventPos += deltatime;
         }
+        m_NumUsedVoices = 0;
         for (int i=0;i<m_maxVoices;++i)
         {
             float gate = 0.0f;
@@ -231,6 +233,7 @@ public:
             if (m_voices[i].isAvailable()==false && m_phase>=m_voices[i].m_startPos)
             {
                 m_voices[i].process(args.sampleTime,&gate,&pitch,&amp,&par1,&par2);
+                ++m_NumUsedVoices;
             }
             outputs[OUT_GATE+i].setVoltage(gate);
             pitch = pitch*(1.0f/12);
@@ -245,7 +248,7 @@ public:
             m_phase = 0.0;
             // m_rng = std::mt19937{m_randSeed};
         }
-        m_phase+=args.sampleTime;
+        m_phase += args.sampleTime;
     }
     unsigned int m_randSeed = 1;
 private:
@@ -301,7 +304,12 @@ public:
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
         nvgText(args.vg, 3 , 10, "ST(ochastic)", NULL);
-        nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+        char buf[100];
+        XStochastic* sm = dynamic_cast<XStochastic*>(module);
+        if (sm)
+            sprintf(buf,"Xenakios %d voices used",sm->m_NumUsedVoices);
+        else sprintf(buf,"Xenakios");
+        nvgText(args.vg, 3 , h-11, buf, NULL);
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
     }
