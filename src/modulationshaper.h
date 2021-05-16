@@ -12,7 +12,15 @@ inline float adjustable_triangle(float in, float peakpos)
     return rescale(in,peakpos,1.0f,1.0f,0.0f);
 }
 
-const int msnumtables = 12;
+inline float squarewave(float in)
+{
+    in = fmod(in,1.0f);
+    if (in<0.5f)
+        return 0.0;
+    return 1.0f;
+}
+
+const int msnumtables = 13;
 const int mstablesize = 1024;
 
 class ModulationShaper
@@ -49,6 +57,7 @@ public:
 			y2 = adjustable_triangle(norm*12.0,0.5f);
 			y3 = rescale(y2,0.0f,1.0f,y0,y1);
 			m_tables[11][i] = y3;
+            m_tables[12][i] = squarewave(norm*5.0);
         }
         // fill guard point by repeating value
         for (int i=0;i<msnumtables;++i)
