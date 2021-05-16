@@ -268,7 +268,7 @@ public:
     XStochasticWidget(XStochastic* m)
     {
         setModule(m);
-        box.size.x = 600.0f;
+        box.size.x = RACK_GRID_WIDTH*20;
         
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
