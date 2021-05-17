@@ -101,6 +101,11 @@ public:
         m_par2_env.GetNodeAtIndex(1).pt_y = pardest;
         m_available = false;
     }
+    void reset()
+    {
+        m_available = true;
+        m_phase = 0.0;
+    }
     float m_playProb = 1.0f;
     float m_startPos = 0.0f;
     std::mt19937* m_rng = nullptr;
@@ -248,7 +253,11 @@ public:
         {
             m_nextEventPos = 0.0;
             m_phase = 0.0;
-            // m_rng = std::mt19937{m_randSeed};
+            m_rng = std::mt19937{m_randSeed};
+            for (int i=0;i<m_maxVoices;++i)
+            {
+                m_voices[i].reset();
+            }
         }
         m_phase += args.sampleTime;
     }
