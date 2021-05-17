@@ -191,10 +191,12 @@ public:
         configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
     }
     int m_NumUsedVoices = 0;
+    int m_eventCounter = 0;
     void process(const ProcessArgs& args) override
     {
-        if (m_phase>=m_nextEventPos)
+        if (m_phase >= m_nextEventPos)
         {
+            ++m_eventCounter;
             std::uniform_real_distribution<float> dist(0.0f,1.0f);
             std::uniform_int_distribution<int> voicedist(0,m_maxVoices-1);
             std::uniform_int_distribution<int> vcadist(0,m_numAmpEnvs-1);
@@ -218,8 +220,8 @@ public:
                 }
                 ++i;
             }
-            float deltatime = -log(dist(m_rng))/density;
-            deltatime = clamp(deltatime,args.sampleTime+0.0001f,30.0f);
+            double deltatime = -log(dist(m_rng))/density;
+            deltatime = clamp(deltatime,args.sampleTime,30.0f);
             m_nextEventPos += deltatime;
         }
         m_NumUsedVoices = 0;
@@ -252,8 +254,8 @@ public:
     }
     unsigned int m_randSeed = 1;
 private:
-    float m_phase = 0.0f;
-    float m_nextEventPos = 0.0f;
+    double m_phase = 0.0f;
+    double m_nextEventPos = 0.0f;
     std::mt19937 m_rng{m_randSeed};
     StocVoice m_voices[16];
     breakpoint_envelope m_amp_envelopes[16];
@@ -307,7 +309,7 @@ public:
         char buf[100];
         XStochastic* sm = dynamic_cast<XStochastic*>(module);
         if (sm)
-            sprintf(buf,"Xenakios %d voices used",sm->m_NumUsedVoices);
+            sprintf(buf,"Xenakios %d voices, %d events",sm->m_NumUsedVoices,sm->m_eventCounter);
         else sprintf(buf,"Xenakios");
         nvgText(args.vg, 3 , h-11, buf, NULL);
         nvgRestore(args.vg);
