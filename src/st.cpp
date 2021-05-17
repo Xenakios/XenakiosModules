@@ -146,6 +146,7 @@ public:
         PAR_MASTER_MEANDUR,
         PAR_MASTER_GLISSPROB,
         PAR_MASTER_DENSITY,
+        PAR_MASTER_RANDSEED,
         PAR_LAST
     };
     int m_numAmpEnvs = 7;
@@ -194,11 +195,20 @@ public:
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
         configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
+        configParam(PAR_MASTER_RANDSEED,0.0,512.0,256.0,"Master random seed");
+        m_rng = std::mt19937(256);
     }
+    int m_curRandSeed = 256;
     int m_NumUsedVoices = 0;
     int m_eventCounter = 0;
     void process(const ProcessArgs& args) override
     {
+        int rseed = params[PAR_MASTER_RANDSEED].getValue();
+        if (rseed!=m_curRandSeed)
+        {
+            m_curRandSeed = rseed;
+            
+        }
         if (m_phase >= m_nextEventPos)
         {
             ++m_eventCounter;
@@ -253,7 +263,7 @@ public:
         {
             m_nextEventPos = 0.0;
             m_phase = 0.0;
-            m_rng = std::mt19937{m_randSeed};
+            m_rng = std::mt19937(m_curRandSeed);
             for (int i=0;i<m_maxVoices;++i)
             {
                 m_voices[i].reset();
@@ -295,6 +305,7 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(55, 340), module, XStochastic::PAR_MASTER_MEANDUR));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(80, 340), module, XStochastic::PAR_MASTER_GLISSPROB));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(105, 340), module, XStochastic::PAR_MASTER_DENSITY));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(130, 340), module, XStochastic::PAR_MASTER_RANDSEED));
     }
     ~XStochasticWidget()
     {
