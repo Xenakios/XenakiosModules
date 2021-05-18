@@ -32,6 +32,14 @@ const float EnvelopeScalers[2][4] =
 };
 */
 
+inline float Kumaraswamy(float z)
+{
+    float k_a = 0.3f;
+    float k_b = 0.5f;
+    float k_x = 1.0f-powf((1.0f-z),1.0f/k_b);
+    return powf(k_x,1.0f/k_a);
+}
+
 class StocVoice
 {
 public:
@@ -67,10 +75,11 @@ public:
         return m_available;
     }
     void start(float dur, float minpitch,float maxpitch, breakpoint_envelope* ampenv,
-        float glissprob)
+        float glissprob, float gliss_spread)
     {
         std::uniform_real_distribution<float> dist(0.0f,1.0f);
         std::uniform_int_distribution<int> shapedist(0,msnumtables-1);
+        std::normal_distribution<float> normdist(0.0f,1.0f);
         m_amp_env = ampenv;
         m_phase = 0.0;
         m_len = dur;
@@ -80,7 +89,17 @@ public:
         auto& pt1 = m_pitch_env.GetNodeAtIndex(1);
         if (dist(*m_rng)<glissprob)
         {
-            glissdest = rescale(dist(*m_rng),0.0f,1.0f,-24.0f,24.0f);
+            if (gliss_spread<0.0f)
+            {
+                float kuma = Kumaraswamy(dist(*m_rng));
+                float spr = rescale(gliss_spread,-1.0f,0.0f,36.0f,0.0f);
+                glissdest = rescale(kuma,0.0f,1.0f,-spr,spr);
+            }
+            else
+            {
+                glissdest = normdist(*m_rng)*rescale(gliss_spread,0.0f,1.0f,0.0f,24.0f);
+            }
+            // glissdest = rescale(dist(*m_rng),0.0f,1.0f,-24.0f,24.0f);
             pt0.Shape = shapedist(*m_rng);
         }
         
@@ -90,12 +109,8 @@ public:
         m_par1_env.GetNodeAtIndex(1).pt_y = pardest;
         m_par2 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
         
-        // Kumaraswamy distribution, favor low and high values
-        float k_a = 0.3f;
-        float k_b = 0.5f;
-        float k_x = 1.0f-powf((1.0f-dist(*m_rng)),1.0f/k_b);
-        k_x = powf(k_x,1.0f/k_a);
-        pardest = rescale(k_x,0.0f,1.0f,-5.0f,5.0f);
+        float kuma = Kumaraswamy(dist(*m_rng));
+        pardest = rescale(kuma,0.0f,1.0f,-5.0f,5.0f);
         //pardest = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
         
         m_par2_env.GetNodeAtIndex(1).pt_y = pardest;
@@ -147,6 +162,7 @@ public:
         PAR_MASTER_GLISSPROB,
         PAR_MASTER_DENSITY,
         PAR_MASTER_RANDSEED,
+        PAR_MASTER_GLISS_SPREAD,
         PAR_LAST
     };
     int m_numAmpEnvs = 7;
@@ -196,6 +212,7 @@ public:
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
         configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
         configParam(PAR_MASTER_RANDSEED,0.0,512.0,256.0,"Master random seed");
+        configParam(PAR_MASTER_GLISS_SPREAD,-1.0,1.0,0.0,"Master glissando spread");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -217,6 +234,7 @@ public:
             std::uniform_int_distribution<int> vcadist(0,m_numAmpEnvs-1);
             std::normal_distribution<float> durdist(0.0f,1.0f);
             float glissprob = params[PAR_MASTER_GLISSPROB].getValue();
+            float gliss_spread = params[PAR_MASTER_GLISS_SPREAD].getValue();
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
             float density = 0.1*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
@@ -230,7 +248,8 @@ public:
                     float evdur = meandur + durdist(m_rng)*durdev;
                     evdur = clamp(evdur,0.05,8.0);
                     int ampenv = vcadist(m_rng);
-                    m_voices[voiceIndex].start(evdur,-24.0f,24.0f,&m_amp_envelopes[ampenv],glissprob);
+                    m_voices[voiceIndex].start(evdur,-24.0f,24.0f,
+                        &m_amp_envelopes[ampenv],glissprob,gliss_spread);
                     break;
                 }
                 ++i;
@@ -306,6 +325,7 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(80, 340), module, XStochastic::PAR_MASTER_GLISSPROB));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(105, 340), module, XStochastic::PAR_MASTER_DENSITY));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(130, 340), module, XStochastic::PAR_MASTER_RANDSEED));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(155, 340), module, XStochastic::PAR_MASTER_GLISS_SPREAD));
     }
     ~XStochasticWidget()
     {
