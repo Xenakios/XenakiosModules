@@ -95,9 +95,15 @@ public:
                 float spr = rescale(gliss_spread,-1.0f,0.0f,36.0f,0.0f);
                 glissdest = rescale(kuma,0.0f,1.0f,-spr,spr);
             }
-            else
+            else if (gliss_spread<0.99)
             {
                 glissdest = normdist(*m_rng)*rescale(gliss_spread,0.0f,1.0f,0.0f,24.0f);
+            }
+            else
+            {
+                float z = dist(*m_rng);
+                float cauchy = std::tan(M_PI*(z-0.5));
+                glissdest = clamp(cauchy,-36.0f,36.0f);
             }
             // glissdest = rescale(dist(*m_rng),0.0f,1.0f,-24.0f,24.0f);
             pt0.Shape = shapedist(*m_rng);
@@ -163,6 +169,8 @@ public:
         PAR_MASTER_DENSITY,
         PAR_MASTER_RANDSEED,
         PAR_MASTER_GLISS_SPREAD,
+        PAR_MASTER_MIN_PITCH,
+        PAR_MASTER_MAX_PITCH,
         PAR_LAST
     };
     int m_numAmpEnvs = 7;
@@ -213,6 +221,8 @@ public:
         configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
         configParam(PAR_MASTER_RANDSEED,0.0,512.0,256.0,"Master random seed");
         configParam(PAR_MASTER_GLISS_SPREAD,-1.0,1.0,0.0,"Master glissando spread");
+        configParam(PAR_MASTER_MIN_PITCH,-48.0,48.0,-24.0,"Master min pitch");
+        configParam(PAR_MASTER_MAX_PITCH,-48.0,48.0,24.0,"Master max pitch");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -238,6 +248,9 @@ public:
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
             float density = 0.1*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
+            float minpitch = params[PAR_MASTER_MIN_PITCH].getValue();
+            float maxpitch = params[PAR_MASTER_MAX_PITCH].getValue();
+            
             int i = 0;
             while (i<m_maxVoices)
             {
@@ -248,7 +261,7 @@ public:
                     float evdur = meandur + durdist(m_rng)*durdev;
                     evdur = clamp(evdur,0.05,8.0);
                     int ampenv = vcadist(m_rng);
-                    m_voices[voiceIndex].start(evdur,-24.0f,24.0f,
+                    m_voices[voiceIndex].start(evdur,minpitch,maxpitch,
                         &m_amp_envelopes[ampenv],glissprob,gliss_spread);
                     break;
                 }
@@ -326,6 +339,8 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(105, 340), module, XStochastic::PAR_MASTER_DENSITY));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(130, 340), module, XStochastic::PAR_MASTER_RANDSEED));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(155, 340), module, XStochastic::PAR_MASTER_GLISS_SPREAD));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(180, 340), module, XStochastic::PAR_MASTER_MIN_PITCH));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(205, 340), module, XStochastic::PAR_MASTER_MAX_PITCH));
     }
     ~XStochasticWidget()
     {
