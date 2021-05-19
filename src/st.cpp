@@ -253,8 +253,14 @@ public:
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
             float density = 0.2*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
             float centerpitch = params[PAR_MASTER_PITCH_CENTER].getValue();
-            centerpitch += inputs[IN_PITCH_CENTER].getVoltage()*12.0;
-            centerpitch = clamp(centerpitch,-48.0,48.0f);
+            int numpitchcvchans = inputs[IN_PITCH_CENTER].getChannels();
+            if (numpitchcvchans>0)
+            {
+                std::uniform_int_distribution<int> pitchdist(0,inputs[IN_PITCH_CENTER].getChannels()-1);
+                int indx = pitchdist(m_rng);
+                centerpitch += inputs[IN_PITCH_CENTER].getVoltage(indx)*12.0;
+                centerpitch = clamp(centerpitch,-48.0,48.0f);
+            }
             float spreadpitch = params[PAR_MASTER_PITCH_SPREAD].getValue();
             
             int i = 0;
