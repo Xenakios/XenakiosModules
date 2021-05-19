@@ -105,7 +105,6 @@ public:
                 float cauchy = std::tan(M_PI*(z-0.5));
                 glissdest = clamp(cauchy,-36.0f,36.0f);
             }
-            // glissdest = rescale(dist(*m_rng),0.0f,1.0f,-24.0f,24.0f);
             pt0.Shape = shapedist(*m_rng);
         }
         
@@ -117,9 +116,8 @@ public:
         
         float kuma = Kumaraswamy(dist(*m_rng));
         pardest = rescale(kuma,0.0f,1.0f,-5.0f,5.0f);
-        //pardest = rescale(rack::random::uniform(),0.0f,1.0f,-5.0f,5.0f);
-        
         m_par2_env.GetNodeAtIndex(1).pt_y = pardest;
+        
         m_available = false;
     }
     void reset()
@@ -174,7 +172,7 @@ public:
         PAR_MASTER_PITCH_SPREAD,
         PAR_LAST
     };
-    int m_numAmpEnvs = 7;
+    int m_numAmpEnvs = 8;
     XStochastic()
     {
         for (int i=0;i<16;++i)
@@ -216,6 +214,11 @@ public:
         m_amp_envelopes[6].AddNode({0.99,1.0,2});
         m_amp_envelopes[6].AddNode({1.00,0.0,2});
 
+        m_amp_envelopes[7].AddNode({0.00,0.0,2});
+        m_amp_envelopes[7].AddNode({0.50,0.5,2});
+        m_amp_envelopes[7].AddNode({0.90,0.5,2});
+        m_amp_envelopes[7].AddNode({1.00,0.0,2});
+
         config(PAR_LAST,IN_LAST,OUT_AUX2_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
@@ -248,7 +251,7 @@ public:
             float gliss_spread = params[PAR_MASTER_GLISS_SPREAD].getValue();
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
-            float density = 0.1*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
+            float density = 0.2*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
             float centerpitch = params[PAR_MASTER_PITCH_CENTER].getValue();
             centerpitch += inputs[IN_PITCH_CENTER].getVoltage()*12.0;
             centerpitch = clamp(centerpitch,-48.0,48.0f);
