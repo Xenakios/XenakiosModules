@@ -74,7 +74,7 @@ public:
     {
         return m_available;
     }
-    void start(float dur, float minpitch,float maxpitch, breakpoint_envelope* ampenv,
+    void start(float dur, float centerpitch,float spreadpitch, breakpoint_envelope* ampenv,
         float glissprob, float gliss_spread)
     {
         std::uniform_real_distribution<float> dist(0.0f,1.0f);
@@ -83,7 +83,7 @@ public:
         m_amp_env = ampenv;
         m_phase = 0.0;
         m_len = dur;
-        m_pitch = rescale(dist(*m_rng),0.0f,1.0f,minpitch,maxpitch);
+        m_pitch = rescale(dist(*m_rng),0.0f,1.0f,centerpitch-spreadpitch,centerpitch+spreadpitch);
         float glissdest = 0.0;
         auto& pt0 = m_pitch_env.GetNodeAtIndex(0);
         auto& pt1 = m_pitch_env.GetNodeAtIndex(1);
@@ -152,6 +152,7 @@ public:
     enum INPUTS
     {
         IN_RESET,
+        IN_PITCH_CENTER,
         IN_LAST
     };
     enum OUTPUTS
@@ -169,8 +170,8 @@ public:
         PAR_MASTER_DENSITY,
         PAR_MASTER_RANDSEED,
         PAR_MASTER_GLISS_SPREAD,
-        PAR_MASTER_MIN_PITCH,
-        PAR_MASTER_MAX_PITCH,
+        PAR_MASTER_PITCH_CENTER,
+        PAR_MASTER_PITCH_SPREAD,
         PAR_LAST
     };
     int m_numAmpEnvs = 7;
@@ -220,9 +221,9 @@ public:
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
         configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
         configParam(PAR_MASTER_RANDSEED,0.0,512.0,256.0,"Master random seed");
-        configParam(PAR_MASTER_GLISS_SPREAD,-1.0,1.0,0.0,"Master glissando spread");
-        configParam(PAR_MASTER_MIN_PITCH,-48.0,48.0,-24.0,"Master min pitch");
-        configParam(PAR_MASTER_MAX_PITCH,-48.0,48.0,24.0,"Master max pitch");
+        configParam(PAR_MASTER_GLISS_SPREAD,-1.0,1.0,0.2,"Master glissando spread");
+        configParam(PAR_MASTER_PITCH_CENTER,-48.0,48.0,0.0,"Master pitch center");
+        configParam(PAR_MASTER_PITCH_SPREAD,0,48.0,12.0,"Master pitch spread");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -248,8 +249,10 @@ public:
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
             float density = 0.1*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
-            float minpitch = params[PAR_MASTER_MIN_PITCH].getValue();
-            float maxpitch = params[PAR_MASTER_MAX_PITCH].getValue();
+            float centerpitch = params[PAR_MASTER_PITCH_CENTER].getValue();
+            centerpitch += inputs[IN_PITCH_CENTER].getVoltage()*12.0;
+            centerpitch = clamp(centerpitch,-48.0,48.0f);
+            float spreadpitch = params[PAR_MASTER_PITCH_SPREAD].getValue();
             
             int i = 0;
             while (i<m_maxVoices)
@@ -261,7 +264,7 @@ public:
                     float evdur = meandur + durdist(m_rng)*durdev;
                     evdur = clamp(evdur,0.05,8.0);
                     int ampenv = vcadist(m_rng);
-                    m_voices[voiceIndex].start(evdur,minpitch,maxpitch,
+                    m_voices[voiceIndex].start(evdur,centerpitch,spreadpitch,
                         &m_amp_envelopes[ampenv],glissprob,gliss_spread);
                     break;
                 }
@@ -325,7 +328,7 @@ public:
         
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
-        for (int i=0;i<12;++i)
+        for (int i=0;i<8;++i)
         {
             addOutput(createOutput<PJ301MPort>(Vec(5, 20+i*25), module, XStochastic::OUT_GATE+i));
             addOutput(createOutput<PJ301MPort>(Vec(30, 20+i*25), module, XStochastic::OUT_PITCH+i));
@@ -339,8 +342,9 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(105, 340), module, XStochastic::PAR_MASTER_DENSITY));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(130, 340), module, XStochastic::PAR_MASTER_RANDSEED));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(155, 340), module, XStochastic::PAR_MASTER_GLISS_SPREAD));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(180, 340), module, XStochastic::PAR_MASTER_MIN_PITCH));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(205, 340), module, XStochastic::PAR_MASTER_MAX_PITCH));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(180, 340), module, XStochastic::PAR_MASTER_PITCH_CENTER));
+        addInput(createInputCentered<PJ301MPort>(Vec(180, 315), module, XStochastic::IN_PITCH_CENTER));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(205, 340), module, XStochastic::PAR_MASTER_PITCH_SPREAD));
     }
     ~XStochasticWidget()
     {
