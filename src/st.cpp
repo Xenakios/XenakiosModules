@@ -155,11 +155,12 @@ public:
     };
     enum OUTPUTS
     {
-        ENUMS(OUT_GATE, 16),
-        ENUMS(OUT_PITCH, 16),
-        ENUMS(OUT_VCA, 16),
-        ENUMS(OUT_AUX1, 16),
-        ENUMS(OUT_AUX2, 16)
+        OUT_GATE,
+        OUT_PITCH,
+        OUT_VCA,
+        OUT_AUX1, 
+        OUT_AUX2,
+        OUT_LAST
     };
     enum PARAMS
     {
@@ -170,6 +171,7 @@ public:
         PAR_MASTER_GLISS_SPREAD,
         PAR_MASTER_PITCH_CENTER,
         PAR_MASTER_PITCH_SPREAD,
+        PAR_NUM_OUTPUTS,
         PAR_LAST
     };
     int m_numAmpEnvs = 8;
@@ -219,7 +221,7 @@ public:
         m_amp_envelopes[7].AddNode({0.90,0.5,2});
         m_amp_envelopes[7].AddNode({1.00,0.0,2});
 
-        config(PAR_LAST,IN_LAST,OUT_AUX2_LAST);
+        config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
         configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
@@ -227,6 +229,7 @@ public:
         configParam(PAR_MASTER_GLISS_SPREAD,-1.0,1.0,0.2,"Master glissando spread");
         configParam(PAR_MASTER_PITCH_CENTER,-48.0,48.0,0.0,"Master pitch center");
         configParam(PAR_MASTER_PITCH_SPREAD,0,48.0,12.0,"Master pitch spread");
+        configParam(PAR_NUM_OUTPUTS,1,16.0,8.0,"Number of outputs");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -240,11 +243,12 @@ public:
             m_curRandSeed = rseed;
             
         }
+        int numvoices = params[PAR_NUM_OUTPUTS].getValue();
         if (m_phase >= m_nextEventPos)
         {
             ++m_eventCounter;
             std::uniform_real_distribution<float> dist(0.0f,1.0f);
-            std::uniform_int_distribution<int> voicedist(0,m_maxVoices-1);
+            std::uniform_int_distribution<int> voicedist(0,numvoices-1);
             std::uniform_int_distribution<int> vcadist(0,m_numAmpEnvs-1);
             std::normal_distribution<float> durdist(0.0f,1.0f);
             float glissprob = params[PAR_MASTER_GLISSPROB].getValue();
@@ -264,7 +268,7 @@ public:
             float spreadpitch = params[PAR_MASTER_PITCH_SPREAD].getValue();
             
             int i = 0;
-            while (i<m_maxVoices)
+            while (i<numvoices)
             {
                 int voiceIndex = voicedist(m_rng);
                 if (m_voices[voiceIndex].isAvailable())
@@ -284,7 +288,12 @@ public:
             m_nextEventPos += deltatime;
         }
         m_NumUsedVoices = 0;
-        for (int i=0;i<m_maxVoices;++i)
+        outputs[OUT_PITCH].setChannels(numvoices);
+        outputs[OUT_GATE].setChannels(numvoices);
+        outputs[OUT_VCA].setChannels(numvoices);
+        outputs[OUT_AUX1].setChannels(numvoices);
+        outputs[OUT_AUX2].setChannels(numvoices);
+        for (int i=0;i<numvoices;++i)
         {
             float gate = 0.0f;
             float amp = 0.0f;
@@ -296,19 +305,19 @@ public:
                 m_voices[i].process(args.sampleTime,&gate,&pitch,&amp,&par1,&par2);
                 ++m_NumUsedVoices;
             }
-            outputs[OUT_GATE+i].setVoltage(gate);
+            outputs[OUT_GATE].setVoltage(gate,i);
             pitch = pitch*(1.0f/12);
-            outputs[OUT_PITCH+i].setVoltage(pitch);
-            outputs[OUT_VCA+i].setVoltage(amp);
-            outputs[OUT_AUX1+i].setVoltage(par1);
-            outputs[OUT_AUX2+i].setVoltage(par2);
+            outputs[OUT_PITCH].setVoltage(pitch,i);
+            outputs[OUT_VCA].setVoltage(amp,i);
+            outputs[OUT_AUX1].setVoltage(par1,i);
+            outputs[OUT_AUX2].setVoltage(par2,i);
         }
         if (m_resetTrigger.process(rescale(inputs[IN_RESET].getVoltage(),0.0,10.0, 0.f, 1.f)))
         {
             m_nextEventPos = 0.0;
             m_phase = 0.0;
             m_rng = std::mt19937(m_curRandSeed);
-            for (int i=0;i<m_maxVoices;++i)
+            for (int i=0;i<numvoices;++i)
             {
                 m_voices[i].reset();
             }
@@ -322,7 +331,7 @@ private:
     std::mt19937 m_rng{m_randSeed};
     StocVoice m_voices[16];
     breakpoint_envelope m_amp_envelopes[16];
-    int m_maxVoices = 8;
+    
     dsp::SchmittTrigger m_resetTrigger;
 };
 
@@ -337,14 +346,13 @@ public:
         
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
-        for (int i=0;i<8;++i)
-        {
-            addOutput(createOutput<PJ301MPort>(Vec(5, 20+i*25), module, XStochastic::OUT_GATE+i));
-            addOutput(createOutput<PJ301MPort>(Vec(30, 20+i*25), module, XStochastic::OUT_PITCH+i));
-            addOutput(createOutput<PJ301MPort>(Vec(55, 20+i*25), module, XStochastic::OUT_VCA+i));
-            addOutput(createOutput<PJ301MPort>(Vec(80, 20+i*25), module, XStochastic::OUT_AUX1+i));
-            addOutput(createOutput<PJ301MPort>(Vec(105, 20+i*25), module, XStochastic::OUT_AUX2+i));
-        }
+        
+        addOutput(createOutput<PJ301MPort>(Vec(5, 20), module, XStochastic::OUT_GATE));
+        addOutput(createOutput<PJ301MPort>(Vec(30, 20), module, XStochastic::OUT_PITCH));
+        addOutput(createOutput<PJ301MPort>(Vec(55, 20), module, XStochastic::OUT_VCA));
+        addOutput(createOutput<PJ301MPort>(Vec(80, 20), module, XStochastic::OUT_AUX1));
+        addOutput(createOutput<PJ301MPort>(Vec(105, 20), module, XStochastic::OUT_AUX2));
+        
         addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(55, 340), module, XStochastic::PAR_MASTER_MEANDUR));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(80, 340), module, XStochastic::PAR_MASTER_GLISSPROB));
@@ -354,6 +362,7 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(180, 340), module, XStochastic::PAR_MASTER_PITCH_CENTER));
         addInput(createInputCentered<PJ301MPort>(Vec(180, 315), module, XStochastic::IN_PITCH_CENTER));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(205, 340), module, XStochastic::PAR_MASTER_PITCH_SPREAD));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(230, 340), module, XStochastic::PAR_NUM_OUTPUTS));
     }
     ~XStochasticWidget()
     {
