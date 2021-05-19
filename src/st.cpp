@@ -61,7 +61,7 @@ public:
         float normphase = 1.0f/m_len*m_phase;
         float gain = m_amp_env->GetInterpolatedEnvelopeValue(normphase);
         *amp = rescale(gain,0.0f,1.0f,0.0f,10.0f);
-        *pitch = reflect_value<float>(m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase),-60.0f,60.0f);
+        *pitch = reflect_value<float>(-60.0f,m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase),60.0f);
         *par1 = reflect_value<float>(-5.0f,m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         *par2 = reflect_value<float>(-5.0f,m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         m_phase += deltatime;
