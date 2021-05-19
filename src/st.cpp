@@ -61,7 +61,7 @@ public:
         float normphase = 1.0f/m_len*m_phase;
         float gain = m_amp_env->GetInterpolatedEnvelopeValue(normphase);
         *amp = rescale(gain,0.0f,1.0f,0.0f,10.0f);
-        *pitch = m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase);
+        *pitch = reflect_value<float>(m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase),-60.0f,60.0f);
         *par1 = reflect_value<float>(-5.0f,m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         *par2 = reflect_value<float>(-5.0f,m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         m_phase += deltatime;
@@ -259,7 +259,7 @@ public:
                 std::uniform_int_distribution<int> pitchdist(0,inputs[IN_PITCH_CENTER].getChannels()-1);
                 int indx = pitchdist(m_rng);
                 centerpitch += inputs[IN_PITCH_CENTER].getVoltage(indx)*12.0;
-                centerpitch = clamp(centerpitch,-48.0,48.0f);
+                centerpitch = clamp(centerpitch,-60.0,60.0f);
             }
             float spreadpitch = params[PAR_MASTER_PITCH_SPREAD].getValue();
             
