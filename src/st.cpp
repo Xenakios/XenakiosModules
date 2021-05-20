@@ -174,7 +174,7 @@ public:
         PAR_NUM_OUTPUTS,
         PAR_LAST
     };
-    int m_numAmpEnvs = 8;
+    int m_numAmpEnvs = 11;
     XStochastic()
     {
         for (int i=0;i<16;++i)
@@ -220,6 +220,23 @@ public:
         m_amp_envelopes[7].AddNode({0.50,0.5,2});
         m_amp_envelopes[7].AddNode({0.90,0.5,2});
         m_amp_envelopes[7].AddNode({1.00,0.0,2});
+        auto envgen = [](int numiters, breakpoint_envelope& env)
+        {
+            float itlen = 1.0/numiters;
+            for (int i=0;i<numiters;++i)
+            {
+                float t = 1.0/numiters*i;
+                float g = 1.0-0.95/numiters*i;
+                env.AddNode({t+0.00,0.0,2});
+                env.AddNode({t+itlen*0.01,1.0*g,2});
+                env.AddNode({t+itlen*0.20,0.2*g,2});
+                env.AddNode({t+itlen*0.99,0.0,2});
+            }
+        };
+        
+        envgen(5,m_amp_envelopes[8]);
+        envgen(6,m_amp_envelopes[9]);
+        envgen(7,m_amp_envelopes[10]);
 
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
