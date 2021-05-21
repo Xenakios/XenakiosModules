@@ -75,7 +75,7 @@ public:
         return m_available;
     }
     void start(float dur, float centerpitch,float spreadpitch, breakpoint_envelope* ampenv,
-        float glissprob, float gliss_spread)
+        float glissprob, float gliss_spread, int penv)
     {
         std::uniform_real_distribution<float> dist(0.0f,1.0f);
         std::uniform_int_distribution<int> shapedist(0,msnumtables-1);
@@ -105,7 +105,11 @@ public:
                 float cauchy = std::tan(M_PI*(z-0.5));
                 glissdest = clamp(cauchy,-36.0f,36.0f);
             }
-            pt0.Shape = shapedist(*m_rng);
+            int shap = penv-1;
+            if (shap<0)
+                pt0.Shape = shapedist(*m_rng);
+            else
+                pt0.Shape = shap;
         }
         
         pt1.pt_y = glissdest;
@@ -172,6 +176,8 @@ public:
         PAR_MASTER_PITCH_CENTER,
         PAR_MASTER_PITCH_SPREAD,
         PAR_NUM_OUTPUTS,
+        PAR_MASTER_PITCH_ENV_TYPE,
+        PAR_MASTER_AMP_ENV_TYPE,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -247,6 +253,8 @@ public:
         configParam(PAR_MASTER_PITCH_CENTER,-48.0,48.0,0.0,"Master pitch center");
         configParam(PAR_MASTER_PITCH_SPREAD,0,48.0,12.0,"Master pitch spread");
         configParam(PAR_NUM_OUTPUTS,1,16.0,8.0,"Number of outputs");
+        configParam(PAR_MASTER_PITCH_ENV_TYPE,0,msnumtables,0.0,"Pitch envelope type");
+        configParam(PAR_MASTER_AMP_ENV_TYPE,0,m_numAmpEnvs,0.0,"VCA envelope type");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -283,7 +291,8 @@ public:
                 centerpitch = clamp(centerpitch,-60.0,60.0f);
             }
             float spreadpitch = params[PAR_MASTER_PITCH_SPREAD].getValue();
-            
+            int manual_amp_env = params[PAR_MASTER_AMP_ENV_TYPE].getValue();
+            int manual_pitch_env = params[PAR_MASTER_PITCH_ENV_TYPE].getValue();
             int i = 0;
             while (i<numvoices)
             {
@@ -293,9 +302,11 @@ public:
                     m_voices[voiceIndex].m_startPos = m_nextEventPos;
                     float evdur = meandur + durdist(m_rng)*durdev;
                     evdur = clamp(evdur,0.05,8.0);
-                    int ampenv = vcadist(m_rng);
+                    int ampenv = manual_amp_env - 1;
+                    if (ampenv < 0)
+                        ampenv = vcadist(m_rng);
                     m_voices[voiceIndex].start(evdur,centerpitch,spreadpitch,
-                        &m_amp_envelopes[ampenv],glissprob,gliss_spread);
+                        &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env);
                     break;
                 }
                 ++i;
@@ -379,7 +390,13 @@ public:
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(180, 340), module, XStochastic::PAR_MASTER_PITCH_CENTER));
         addInput(createInputCentered<PJ301MPort>(Vec(180, 315), module, XStochastic::IN_PITCH_CENTER));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(205, 340), module, XStochastic::PAR_MASTER_PITCH_SPREAD));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(230, 340), module, XStochastic::PAR_NUM_OUTPUTS));
+        RoundSmallBlackKnob* knob = nullptr;
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(230, 340), module, XStochastic::PAR_NUM_OUTPUTS));
+        knob->snap = true;
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(255, 340), module, XStochastic::PAR_MASTER_PITCH_ENV_TYPE));
+        knob->snap = true;
+        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(280, 340), module, XStochastic::PAR_MASTER_AMP_ENV_TYPE));
+        knob->snap = true;
     }
     ~XStochasticWidget()
     {
