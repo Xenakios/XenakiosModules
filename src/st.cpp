@@ -247,7 +247,8 @@ public:
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
-        configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
+        //configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
+        configParam(PAR_MASTER_DENSITY, -3.f, 5.f, 1.f, "Master density", " events per second", 2, 1);
         configParam(PAR_MASTER_RANDSEED,0.0,512.0,256.0,"Master random seed");
         configParam(PAR_MASTER_GLISS_SPREAD,-1.0,1.0,0.2,"Master glissando spread");
         configParam(PAR_MASTER_PITCH_CENTER,-48.0,48.0,0.0,"Master pitch center");
@@ -280,7 +281,7 @@ public:
             float gliss_spread = params[PAR_MASTER_GLISS_SPREAD].getValue();
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
-            float density = 0.2*std::exp(params[PAR_MASTER_DENSITY].getValue()*5.0);
+            float density = std::pow(2.0f,params[PAR_MASTER_DENSITY].getValue());
             float centerpitch = params[PAR_MASTER_PITCH_CENTER].getValue();
             int numpitchcvchans = inputs[IN_PITCH_CENTER].getChannels();
             if (numpitchcvchans>0)
