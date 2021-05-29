@@ -1,6 +1,7 @@
 #include "plugin.hpp"
 #include <random>
 #include "jcdp_envelope.h"
+#include "helperwidgets.h"
 
 extern std::shared_ptr<Font> g_font;
 
@@ -155,6 +156,7 @@ public:
     {
         IN_RESET,
         IN_PITCH_CENTER,
+        IN_RATE,
         IN_LAST
     };
     enum OUTPUTS
@@ -178,6 +180,7 @@ public:
         PAR_NUM_OUTPUTS,
         PAR_MASTER_PITCH_ENV_TYPE,
         PAR_MASTER_AMP_ENV_TYPE,
+        PAR_RATE_CV,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -256,6 +259,7 @@ public:
         configParam(PAR_NUM_OUTPUTS,1,16.0,8.0,"Number of outputs");
         configParam(PAR_MASTER_PITCH_ENV_TYPE,0,msnumtables,0.0,"Pitch envelope type");
         configParam(PAR_MASTER_AMP_ENV_TYPE,0,m_numAmpEnvs,0.0,"VCA envelope type");
+        configParam(PAR_RATE_CV,-1.0f,1.0f,0.0,"Master density CV ATTN");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -281,7 +285,10 @@ public:
             float gliss_spread = params[PAR_MASTER_GLISS_SPREAD].getValue();
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
-            float density = std::pow(2.0f,params[PAR_MASTER_DENSITY].getValue());
+            float density = params[PAR_MASTER_DENSITY].getValue();
+            density += inputs[IN_RATE].getVoltage()*params[PAR_RATE_CV].getValue();
+            density = clamp(density,-3.0f,5.0f);
+            density = std::pow(2.0f,density);
             float centerpitch = params[PAR_MASTER_PITCH_CENTER].getValue();
             int numpitchcvchans = inputs[IN_PITCH_CENTER].getChannels();
             if (numpitchcvchans>0)
@@ -371,7 +378,7 @@ public:
     XStochasticWidget(XStochastic* m)
     {
         setModule(m);
-        box.size.x = RACK_GRID_WIDTH*20;
+        box.size.x = RACK_GRID_WIDTH*22;
         
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
@@ -383,21 +390,40 @@ public:
         addOutput(createOutput<PJ301MPort>(Vec(105, 20), module, XStochastic::OUT_AUX2));
         
         addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(55, 340), module, XStochastic::PAR_MASTER_MEANDUR));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(80, 340), module, XStochastic::PAR_MASTER_GLISSPROB));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(105, 340), module, XStochastic::PAR_MASTER_DENSITY));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(130, 340), module, XStochastic::PAR_MASTER_RANDSEED));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(155, 340), module, XStochastic::PAR_MASTER_GLISS_SPREAD));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(180, 340), module, XStochastic::PAR_MASTER_PITCH_CENTER));
-        addInput(createInputCentered<PJ301MPort>(Vec(180, 315), module, XStochastic::IN_PITCH_CENTER));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(205, 340), module, XStochastic::PAR_MASTER_PITCH_SPREAD));
-        RoundSmallBlackKnob* knob = nullptr;
-        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(230, 340), module, XStochastic::PAR_NUM_OUTPUTS));
-        knob->snap = true;
-        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(255, 340), module, XStochastic::PAR_MASTER_PITCH_ENV_TYPE));
-        knob->snap = true;
-        addParam(knob = createParamCentered<RoundSmallBlackKnob>(Vec(280, 340), module, XStochastic::PAR_MASTER_AMP_ENV_TYPE));
-        knob->snap = true;
+        float xc = 2.0f;
+        float yc = 50.0f;
+        addChild(new KnobInAttnWidget(this,"RATE",XStochastic::PAR_MASTER_DENSITY,
+            XStochastic::IN_RATE,XStochastic::PAR_RATE_CV,xc,yc));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"MEAN DURATION",XStochastic::PAR_MASTER_MEANDUR,
+            -1,-1,xc,yc));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"MEAN PITCH",XStochastic::PAR_MASTER_PITCH_CENTER,
+            XStochastic::IN_PITCH_CENTER,-1,xc,yc));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"PITCH SPREAD",XStochastic::PAR_MASTER_PITCH_SPREAD,
+            -1,-1,xc,yc));
+        xc = 2;
+        yc += 47;
+        addChild(new KnobInAttnWidget(this,"GLISS PROBABILITY",XStochastic::PAR_MASTER_GLISSPROB,
+            -1,-1,xc,yc));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"GLISS SPREAD",XStochastic::PAR_MASTER_GLISS_SPREAD,
+            -1,-1,xc,yc));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"GLISS ENV TYPE",XStochastic::PAR_MASTER_PITCH_ENV_TYPE,
+            -1,-1,xc,yc,true));
+        xc += 82;            
+        addChild(new KnobInAttnWidget(this,"RANDOM SEED",XStochastic::PAR_MASTER_RANDSEED,
+            -1,-1,xc,yc,true));
+        xc = 2;
+        yc += 47;
+        addChild(new KnobInAttnWidget(this,"VCA ENV TYPE",XStochastic::PAR_MASTER_AMP_ENV_TYPE,
+            -1,-1,xc,yc,true));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"NUM POLY OUTS",XStochastic::PAR_NUM_OUTPUTS,
+            -1,-1,xc,yc,true));
+        
     }
     ~XStochasticWidget()
     {
@@ -409,7 +435,7 @@ public:
         float w = box.size.x;
         float h = box.size.y;
         nvgBeginPath(args.vg);
-        nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+        nvgFillColor(args.vg, nvgRGBA(0x50, 0x50, 0x50, 0xff));
         nvgRect(args.vg,0.0f,0.0f,w,h);
         nvgFill(args.vg);
 
