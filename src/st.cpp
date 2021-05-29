@@ -5,6 +5,10 @@
 
 extern std::shared_ptr<Font> g_font;
 
+inline double quantize(double x, double step, double amount)
+{
+    return std::round(x/step)*step;
+}
 /*
 voice minpitch maxpitch pitch maxdur gate  par1  par2  par3  par4
 1     24.0     48.0     [out] 3.0    [out] [out] [out] [out] [out]
@@ -181,6 +185,7 @@ public:
         PAR_MASTER_PITCH_ENV_TYPE,
         PAR_MASTER_AMP_ENV_TYPE,
         PAR_RATE_CV,
+        PAR_RATE_QUAN_STEP,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -260,6 +265,7 @@ public:
         configParam(PAR_MASTER_PITCH_ENV_TYPE,0,msnumtables,0.0,"Pitch envelope type");
         configParam(PAR_MASTER_AMP_ENV_TYPE,0,m_numAmpEnvs,0.0,"VCA envelope type");
         configParam(PAR_RATE_CV,-1.0f,1.0f,0.0,"Master density CV ATTN");
+        configParam(PAR_RATE_QUAN_STEP,0.001f,1.0f,0.001,"Rate quantization step");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -321,7 +327,12 @@ public:
             }
             double deltatime = -log(dist(m_rng))/density;
             deltatime = clamp(deltatime,args.sampleTime,30.0f);
-            m_nextEventPos += deltatime;
+            double evpos = m_nextEventPos + deltatime;
+            evpos = quantize(evpos,params[PAR_RATE_QUAN_STEP].getValue(),0.0);
+            if (evpos-m_nextEventPos<0.001)
+                evpos += 0.001;
+            m_nextEventPos = evpos;
+            //m_nextEventPos += deltatime;
         }
         m_NumUsedVoices = 0;
         outputs[OUT_PITCH].setChannels(numvoices);
@@ -423,7 +434,9 @@ public:
         xc += 82;
         addChild(new KnobInAttnWidget(this,"NUM POLY OUTS",XStochastic::PAR_NUM_OUTPUTS,
             -1,-1,xc,yc,true));
-        
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"TIME QUANT STEP",XStochastic::PAR_RATE_QUAN_STEP,
+            -1,-1,xc,yc));
     }
     ~XStochasticWidget()
     {
