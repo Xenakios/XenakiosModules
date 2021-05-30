@@ -273,7 +273,7 @@ public:
         configParam(PAR_MASTER_PITCH_ENV_TYPE,0,msnumtables,0.0,"Pitch envelope type");
         configParam(PAR_MASTER_AMP_ENV_TYPE,0,m_numAmpEnvs,0.0,"VCA envelope type");
         configParam(PAR_RATE_CV,-1.0f,1.0f,0.0,"Master density CV ATTN");
-        configParam(PAR_RATE_QUAN_STEP,0.001f,1.0f,0.001,"Rate quantization step");
+        configParam(PAR_RATE_QUAN_STEP,-2.0f,5.0f,2.0f,"Rate quantization step", "Hz",2,1);
         configParam(PAR_RATE_QUAN_AMOUNT,0.0f,1.0f,0.0,"Rate quantization amount");
         configParam(PAR_PITCHSPREAD_CV,-1.0f,1.0f,0.0,"Pitch spread CV ATTN");
         configParam(PAR_GLISSPROB_CV,-1.0f,1.0f,0.0,"Gliss probability CV ATTN");
@@ -345,7 +345,8 @@ public:
             double deltatime = -log(dist(m_rng))/density;
             deltatime = clamp(deltatime,args.sampleTime,30.0f);
             double evpos = m_nextEventPos + deltatime;
-            evpos = quantize(evpos,params[PAR_RATE_QUAN_STEP].getValue(),qamt);
+            float qstep = std::pow(2.0f,params[PAR_RATE_QUAN_STEP].getValue());
+            evpos = quantize(evpos,1.0f/qstep,qamt);
             if ((evpos-m_phase)<0.002)
             {
                 evpos = m_phase + 0.002;
