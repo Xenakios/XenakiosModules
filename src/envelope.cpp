@@ -676,19 +676,19 @@ public:
         new PortWithBackGround(m,this,XEnvelopeModule::OUT_EOC,95,10,"EOC",true);
         addChild(new KnobInAttnWidget(this,
             "RATE",XEnvelopeModule::PAR_RATE,
-            XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,2,70));
+            XEnvelopeModule::IN_CV_RATE,XEnvelopeModule::PAR_ATTN_RATE,2.0f,70.0f));
         addChild(new KnobInAttnWidget(this,
             "PLAY MODE",XEnvelopeModule::PAR_PLAYMODE,
-            -1,-1,84,70,true));
+            -1,-1,84.0f,70.0f,true));
         addChild(new KnobInAttnWidget(this,
             "ENVELOPE SEL",XEnvelopeModule::PAR_SEL_ENV_PLAYBACK,
-            XEnvelopeModule::IN_ACTENV,XEnvelopeModule::PAR_ATTN_ACTENV,166,70,true));
+            XEnvelopeModule::IN_ACTENV,XEnvelopeModule::PAR_ATTN_ACTENV,166.0f,70.0f,true));
         addChild(new KnobInAttnWidget(this,
             "NUM OUTS",XEnvelopeModule::PAR_NUM_OUTPUTS,
-            -1,-1,248,70,true));
+            -1,-1,248.0f,70.0f,true));
         addChild(new KnobInAttnWidget(this,
             "EDIT ENVELOPE",XEnvelopeModule::PAR_SEL_ENV_EDIT,
-            -1,-1,248+82,70,true));
+            -1,-1,248.0f+82,70.0f,true));
         // 120
         for (int i=0;i<16;++i)
         {

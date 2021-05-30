@@ -51,50 +51,18 @@ private:
 	Justification m_j;
 };
 
+
 class KnobInAttnWidget : public TransparentWidget
 {
 public:
     KnobInAttnWidget(ModuleWidget* parent, std::string param_desc,
-        int mainparamid, int cvin_id, int attnparamid, float xc, float yc, bool knobsnap=false);
+        int mainparamid, int cvin_id, int attnparamid, float xc, float yc, bool knobsnap=false, float labfontsize=10.0f);
 	void draw(const DrawArgs &args) override;
     std::string m_labeltext;
 	float m_xcor = 0.0f;
 	float m_ycor = 0.0f;
+    float m_labfontsize = 10.0f;
 };
-
-inline KnobInAttnWidget::KnobInAttnWidget(ModuleWidget* parent, std::string param_desc,
-        int mainparamid, int cvin_id, int attnparamid, float xc, float yc, bool knobsnap)
-{
-	m_xcor = xc;
-	m_ycor = yc;
-	m_labeltext = param_desc;
-	box.size = Vec(80,45);
-	RoundBlackKnob* knob = nullptr;
-	parent->addParam(knob=createParam<RoundBlackKnob>(Vec(xc, yc+13), parent->module, mainparamid));
-	knob->snap = knobsnap;
-	if (cvin_id>=0)
-		parent->addInput(createInput<PJ301MPort>(Vec(xc+31.0f, yc+16), parent->module, cvin_id));
-	if (attnparamid>=0)
-		parent->addParam(createParam<Trimpot>(Vec(xc+57.00, yc+19), parent->module, attnparamid));
-
-}
-
-inline void KnobInAttnWidget::draw(const DrawArgs &args)
-{
-	nvgSave(args.vg);
-	nvgBeginPath(args.vg);
-    nvgStrokeColor(args.vg, nvgRGBA(0x70, 0x70, 0x70, 0xff));
-    nvgRect(args.vg,m_xcor,m_ycor,box.size.x-2,box.size.y-2);
-    nvgStroke(args.vg);
-	auto font = getDefaultFont(0);
-	nvgFontSize(args.vg, 10);
-    nvgFontFaceId(args.vg, font->handle);
-    nvgTextLetterSpacing(args.vg, -1);
-    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            
-    nvgText(args.vg, m_xcor + 1, m_ycor + 10, m_labeltext.c_str(), NULL);
-	nvgRestore(args.vg);
-}
 
 class PortWithBackGround : public TransparentWidget
 {

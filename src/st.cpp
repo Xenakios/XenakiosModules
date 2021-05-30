@@ -413,10 +413,11 @@ public:
         addOutput(createOutput<PJ301MPort>(Vec(105, 20), module, XStochastic::OUT_AUX2));
         
         addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
+        float lfs = 9.0f;
         float xc = 2.0f;
         float yc = 50.0f;
         addChild(new KnobInAttnWidget(this,"RATE",XStochastic::PAR_MASTER_DENSITY,
-            XStochastic::IN_RATE,XStochastic::PAR_RATE_CV,xc,yc));
+            XStochastic::IN_RATE,XStochastic::PAR_RATE_CV,xc,yc,false,lfs));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"MEAN DURATION",XStochastic::PAR_MASTER_MEANDUR,
             -1,-1,xc,yc));
@@ -451,7 +452,7 @@ public:
             -1,-1,xc,yc));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"TIME QUANT AMOUNT",XStochastic::PAR_RATE_QUAN_AMOUNT,
-            -1,-1,xc,yc));
+            -1,-1,xc,yc,false,lfs));
     }
     ~XStochasticWidget()
     {
