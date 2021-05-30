@@ -326,6 +326,7 @@ public:
                         ampenv = vcadist(m_rng);
                     m_voices[voiceIndex].start(evdur,centerpitch,spreadpitch,
                         &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env);
+                    ++m_eventCounter;
                     break;
                 }
                 ++i;
@@ -337,8 +338,8 @@ public:
             evpos = quantize(evpos,params[PAR_RATE_QUAN_STEP].getValue(),qamt);
             if ((evpos-m_nextEventPos)<0.002)
             {
-                evpos = m_nextEventPos + 0.002;
-                ++m_eventCounter;
+                evpos = m_phase + 0.002;
+                //++m_eventCounter;
             }
             //++m_eventCounter;
             m_nextEventPos = evpos;
