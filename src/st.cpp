@@ -164,6 +164,7 @@ public:
         IN_RESET,
         IN_PITCH_CENTER,
         IN_RATE,
+        IN_PITCH_SPREAD,
         IN_LAST
     };
     enum OUTPUTS
@@ -190,6 +191,7 @@ public:
         PAR_RATE_CV,
         PAR_RATE_QUAN_STEP,
         PAR_RATE_QUAN_AMOUNT,
+        PAR_PITCHSPREAD_CV,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -271,6 +273,7 @@ public:
         configParam(PAR_RATE_CV,-1.0f,1.0f,0.0,"Master density CV ATTN");
         configParam(PAR_RATE_QUAN_STEP,0.001f,1.0f,0.001,"Rate quantization step");
         configParam(PAR_RATE_QUAN_AMOUNT,0.0f,1.0f,0.0,"Rate quantization amount");
+        configParam(PAR_PITCHSPREAD_CV,-1.0f,1.0f,0.0,"Pitch spread CV ATTN");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -310,6 +313,8 @@ public:
                 centerpitch = clamp(centerpitch,-60.0,60.0f);
             }
             float spreadpitch = params[PAR_MASTER_PITCH_SPREAD].getValue();
+            spreadpitch += inputs[IN_PITCH_SPREAD].getVoltage() * 4.8f * params[PAR_PITCHSPREAD_CV].getValue();
+            spreadpitch = clamp(spreadpitch,0.0f,48.0f);
             int manual_amp_env = params[PAR_MASTER_AMP_ENV_TYPE].getValue();
             int manual_pitch_env = params[PAR_MASTER_PITCH_ENV_TYPE].getValue();
             int i = 0;
@@ -426,7 +431,7 @@ public:
             XStochastic::IN_PITCH_CENTER,-1,xc,yc));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"PITCH SPREAD",XStochastic::PAR_MASTER_PITCH_SPREAD,
-            -1,-1,xc,yc));
+            XStochastic::IN_PITCH_SPREAD,XStochastic::PAR_PITCHSPREAD_CV,xc,yc));
         xc = 2;
         yc += 47;
         addChild(new KnobInAttnWidget(this,"GLISS PROBABILITY",XStochastic::PAR_MASTER_GLISSPROB,
