@@ -165,6 +165,7 @@ public:
         IN_PITCH_CENTER,
         IN_RATE,
         IN_PITCH_SPREAD,
+        IN_GLISS_PROB,
         IN_LAST
     };
     enum OUTPUTS
@@ -192,6 +193,7 @@ public:
         PAR_RATE_QUAN_STEP,
         PAR_RATE_QUAN_AMOUNT,
         PAR_PITCHSPREAD_CV,
+        PAR_GLISSPROB_CV,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -274,6 +276,7 @@ public:
         configParam(PAR_RATE_QUAN_STEP,0.001f,1.0f,0.001,"Rate quantization step");
         configParam(PAR_RATE_QUAN_AMOUNT,0.0f,1.0f,0.0,"Rate quantization amount");
         configParam(PAR_PITCHSPREAD_CV,-1.0f,1.0f,0.0,"Pitch spread CV ATTN");
+        configParam(PAR_GLISSPROB_CV,-1.0f,1.0f,0.0,"Gliss probability CV ATTN");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -296,6 +299,8 @@ public:
             std::uniform_int_distribution<int> vcadist(0,m_numAmpEnvs-1);
             std::normal_distribution<float> durdist(0.0f,1.0f);
             float glissprob = params[PAR_MASTER_GLISSPROB].getValue();
+            glissprob += inputs[IN_GLISS_PROB].getVoltage() * 0.1f * params[PAR_GLISSPROB_CV].getValue();
+            glissprob = clamp(glissprob,0.0f,1.0f);
             float gliss_spread = params[PAR_MASTER_GLISS_SPREAD].getValue();
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
             float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
@@ -435,7 +440,7 @@ public:
         xc = 2;
         yc += 47;
         addChild(new KnobInAttnWidget(this,"GLISS PROBABILITY",XStochastic::PAR_MASTER_GLISSPROB,
-            -1,-1,xc,yc));
+            XStochastic::IN_GLISS_PROB,XStochastic::PAR_GLISSPROB_CV,xc,yc));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"GLISS SPREAD",XStochastic::PAR_MASTER_GLISS_SPREAD,
             -1,-1,xc,yc));
