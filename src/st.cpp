@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include <random>
+#include <array>
 #include "jcdp_envelope.h"
 #include "helperwidgets.h"
 
@@ -61,17 +62,32 @@ public:
 
         m_par2_env.AddNode({0.0f,0.0f,2});
         m_par2_env.AddNode({1.0f,0.0f,2});
+        for (int i=0;i<m_activeOuts.size();++i)
+            m_activeOuts[i] = false;
     }
     void process(float deltatime, float* gate,float* pitch,float* amp,float* par1, float* par2)
     {
         *gate = 10.0f;
         
         float normphase = 1.0f/m_len*m_phase;
-        float gain = m_amp_env->GetInterpolatedEnvelopeValue(normphase);
-        *amp = rescale(gain,0.0f,1.0f,0.0f,10.0f);
-        *pitch = reflect_value<float>(-60.0f,m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase),60.0f);
-        *par1 = reflect_value<float>(-5.0f,m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
-        *par2 = reflect_value<float>(-5.0f,m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
+        if (m_activeOuts[2])
+        {
+            float gain = m_amp_env->GetInterpolatedEnvelopeValue(normphase);
+            *amp = rescale(gain,0.0f,1.0f,0.0f,10.0f);
+        }
+        if (m_activeOuts[1])
+        {
+            *pitch = reflect_value<float>(-60.0f,m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase),60.0f);
+        }
+        if (m_activeOuts[3])
+        {
+            *par1 = reflect_value<float>(-5.0f,m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
+        }
+        if (m_activeOuts[4])
+        {
+            *par2 = reflect_value<float>(-5.0f,m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
+        }
+        
         m_phase += deltatime;
         if (m_phase>=m_len)
         {
@@ -140,6 +156,7 @@ public:
     float m_playProb = 1.0f;
     float m_startPos = 0.0f;
     std::mt19937* m_rng = nullptr;
+    std::array<bool,5> m_activeOuts;
 private:
     bool m_available = true;
     breakpoint_envelope m_pitch_env;
@@ -341,6 +358,7 @@ public:
                 }
                 ++i;
             }
+            
             double qamt = params[PAR_RATE_QUAN_AMOUNT].getValue();
             double deltatime = -log(dist(m_rng))/density;
             deltatime = clamp(deltatime,args.sampleTime,30.0f);
@@ -354,6 +372,14 @@ public:
             }
             //++m_eventCounter;
             m_nextEventPos = evpos;
+            for (int i=0;i<numvoices;++i)
+            {
+                m_voices[i].m_activeOuts[0] = outputs[OUT_GATE].isConnected();
+                m_voices[i].m_activeOuts[1] = outputs[OUT_PITCH].isConnected();
+                m_voices[i].m_activeOuts[2] = outputs[OUT_VCA].isConnected();
+                m_voices[i].m_activeOuts[3] = outputs[OUT_AUX1].isConnected();
+                m_voices[i].m_activeOuts[4] = outputs[OUT_AUX2].isConnected();
+            }
             //m_nextEventPos += deltatime;
         }
         m_NumUsedVoices = 0;
@@ -364,6 +390,7 @@ public:
         outputs[OUT_AUX2].setChannels(numvoices);
         for (int i=0;i<numvoices;++i)
         {
+            
             float gate = 0.0f;
             float amp = 0.0f;
             float pitch = 0.0f;
