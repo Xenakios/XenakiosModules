@@ -336,7 +336,7 @@ public:
             deltatime = clamp(deltatime,args.sampleTime,30.0f);
             double evpos = m_nextEventPos + deltatime;
             evpos = quantize(evpos,params[PAR_RATE_QUAN_STEP].getValue(),qamt);
-            if ((evpos-m_nextEventPos)<0.002)
+            if ((evpos-m_phase)<0.002)
             {
                 evpos = m_phase + 0.002;
                 //++m_eventCounter;
@@ -452,7 +452,7 @@ public:
             -1,-1,xc,yc));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"TIME QUANT AMOUNT",XStochastic::PAR_RATE_QUAN_AMOUNT,
-            -1,-1,xc,yc,false,lfs));
+            -1,-1,xc,yc,false,8.0f));
     }
     ~XStochasticWidget()
     {
