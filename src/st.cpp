@@ -287,7 +287,7 @@ public:
         int numvoices = params[PAR_NUM_OUTPUTS].getValue();
         if (m_phase >= m_nextEventPos)
         {
-            ++m_eventCounter;
+            //++m_eventCounter;
             std::uniform_real_distribution<float> dist(0.0f,1.0f);
             std::uniform_int_distribution<int> voicedist(0,numvoices-1);
             std::uniform_int_distribution<int> vcadist(0,m_numAmpEnvs-1);
@@ -335,8 +335,12 @@ public:
             deltatime = clamp(deltatime,args.sampleTime,30.0f);
             double evpos = m_nextEventPos + deltatime;
             evpos = quantize(evpos,params[PAR_RATE_QUAN_STEP].getValue(),qamt);
-            if (evpos-m_nextEventPos<0.001)
-                evpos += 0.001;
+            if ((evpos-m_nextEventPos)<0.002)
+            {
+                evpos = m_nextEventPos + 0.002;
+                ++m_eventCounter;
+            }
+            //++m_eventCounter;
             m_nextEventPos = evpos;
             //m_nextEventPos += deltatime;
         }
@@ -369,6 +373,7 @@ public:
         {
             m_nextEventPos = 0.0;
             m_phase = 0.0;
+            m_eventCounter = 0;
             m_rng = std::mt19937(m_curRandSeed);
             for (int i=0;i<numvoices;++i)
             {
