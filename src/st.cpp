@@ -443,17 +443,24 @@ public:
         
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
+        float xc = 1;
+        float yc = 15;
+        PortWithBackGround* port = nullptr;
+        port = new PortWithBackGround(m,this,XStochastic::OUT_GATE,xc,yc,"GATE",true);
+        xc = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,XStochastic::OUT_PITCH,xc,yc,"PITCH",true);
+        xc = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,XStochastic::OUT_VCA,xc,yc,"GAIN",true);
+        xc = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,XStochastic::OUT_AUX1,xc,yc,"AUX 1",true);
+        xc = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,XStochastic::OUT_AUX2,xc,yc,"AUX 2",true);
         
-        addOutput(createOutput<PJ301MPort>(Vec(5, 20), module, XStochastic::OUT_GATE));
-        addOutput(createOutput<PJ301MPort>(Vec(30, 20), module, XStochastic::OUT_PITCH));
-        addOutput(createOutput<PJ301MPort>(Vec(55, 20), module, XStochastic::OUT_VCA));
-        addOutput(createOutput<PJ301MPort>(Vec(80, 20), module, XStochastic::OUT_AUX1));
-        addOutput(createOutput<PJ301MPort>(Vec(105, 20), module, XStochastic::OUT_AUX2));
         
         addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
         float lfs = 9.0f;
-        float xc = 2.0f;
-        float yc = 50.0f;
+        xc = 2.0f;
+        yc = 60.0f;
         addChild(new KnobInAttnWidget(this,"RATE",XStochastic::PAR_MASTER_DENSITY,
             XStochastic::IN_RATE,XStochastic::PAR_RATE_CV,xc,yc,false,lfs));
         xc += 82;
