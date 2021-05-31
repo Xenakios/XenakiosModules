@@ -96,7 +96,7 @@ public:
         {
             if (m_chaosphase>=(1.0/m_chaos_rate))
             {
-                double chaos_r = 3.0+0.99999*m_chaos_amt;
+                double chaos_r = 2.9+1.1*m_chaos_amt;
                 double chaos = chaos_r * (1.0-m_chaos) * m_chaos;
                 
                 m_chaos = chaos;
@@ -184,6 +184,7 @@ public:
     double m_chaos_amt = 0.0;
     double m_chaos_rate = 1.0;
     double m_chaos_smooth = 0.0;
+    double m_chaos = 0.417;
 private:
     bool m_available = true;
     breakpoint_envelope m_pitch_env;
@@ -200,7 +201,7 @@ private:
     float m_par1 = 0.0f;
     float m_par2 = 0.0f;
     float m_par3 = 0.0f;
-    double m_chaos = 0.5;
+    
     double m_chaosphase = 0;
     OnePoleFilter m_chaos_smoother;
 };
@@ -256,6 +257,7 @@ public:
         for (int i=0;i<16;++i)
         {
             m_voices[i].m_rng = &m_rng;
+            m_voices[i].m_chaos = 0.417+0.2/16*i;
         }
         m_amp_envelopes[0].AddNode({0.0,0.0,2});
         m_amp_envelopes[0].AddNode({0.5,1.0,2});
