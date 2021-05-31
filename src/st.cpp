@@ -169,7 +169,8 @@ public:
         pardest = rescale(trip,0.0f,1.0f,-5.0f,5.0f);
         m_par3_env.GetNodeAtIndex(1).pt_y = pardest;
         m_available = false;
-        m_chaos_smoother.setAmount(rescale(m_chaos_smooth,0.0f,1.0f,0.9f,0.9999f));
+        float spar = std::pow(m_chaos_smooth,0.3);
+        m_chaos_smoother.setAmount(rescale(spar,0.0f,1.0f,0.9f,0.9999f));
     }
     void reset()
     {
