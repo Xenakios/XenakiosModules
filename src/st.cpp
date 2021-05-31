@@ -103,7 +103,7 @@ public:
                 m_chaosphase = 0.0;
             }
             m_chaosphase += deltatime;
-            *par3 = rescale(m_chaos,0.0,1.0,-5.0f,5.0f);
+            *par3 = rescale(m_chaos_smoother.process(m_chaos),0.0,1.0,-5.0f,5.0f);
             //*par3 = reflect_value<float>(-5.0f,m_par3 + m_par3_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         }
         m_phase += deltatime;
@@ -169,6 +169,7 @@ public:
         pardest = rescale(trip,0.0f,1.0f,-5.0f,5.0f);
         m_par3_env.GetNodeAtIndex(1).pt_y = pardest;
         m_available = false;
+        m_chaos_smoother.setAmount(rescale(m_chaos_smooth,0.0f,1.0f,0.9f,0.9999f));
     }
     void reset()
     {
@@ -181,6 +182,7 @@ public:
     std::array<bool,6> m_activeOuts;
     double m_chaos_amt = 0.0;
     double m_chaos_rate = 1.0;
+    double m_chaos_smooth = 0.0;
 private:
     bool m_available = true;
     breakpoint_envelope m_pitch_env;
@@ -199,7 +201,7 @@ private:
     float m_par3 = 0.0f;
     double m_chaos = 0.5;
     double m_chaosphase = 0;
-    
+    OnePoleFilter m_chaos_smoother;
 };
 
 class XStochastic : public rack::Module
@@ -244,6 +246,7 @@ public:
         PAR_MASTER_DURDEV,
         PAR_AUX3_CHAOS,
         PAR_AUX3_CHAOS_RATE,
+        PAR_AUX3_CHAOS_SMOOTH,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -329,7 +332,8 @@ public:
         configParam(PAR_GLISSPROB_CV,-1.0f,1.0f,0.0,"Gliss probability CV ATTN");
         configParam(PAR_MASTER_DURDEV,0.0f,1.0f,1.0,"Duration spread");
         configParam(PAR_AUX3_CHAOS,0.0f,1.0f,0.0,"AUX3 chaos amount");
-        configParam(PAR_AUX3_CHAOS_RATE,-3.0f,6.0f,1.0,"AUX3 chaos rate", " Hz",2,1);
+        configParam(PAR_AUX3_CHAOS_RATE,-3.0f,10.0f,1.0,"AUX3 chaos rate", " Hz",2,1);
+        configParam(PAR_AUX3_CHAOS_SMOOTH,0.0f,1.0f,0.0,"AUX3 chaos smooth");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -387,6 +391,7 @@ public:
                     int ampenv = manual_amp_env - 1;
                     if (ampenv < 0)
                         ampenv = vcadist(m_rng);
+                    m_voices[voiceIndex].m_chaos_smooth = params[PAR_AUX3_CHAOS_SMOOTH].getValue();
                     m_voices[voiceIndex].start(evdur,centerpitch,spreadpitch,
                         &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env);
                     ++m_eventCounter;
@@ -504,6 +509,8 @@ public:
         xc = port->box.getRight()+2;
         addParam(createParam<Trimpot>(Vec(xc, yc), m, XStochastic::PAR_AUX3_CHAOS));    
         addParam(createParam<Trimpot>(Vec(xc, yc+21), m, XStochastic::PAR_AUX3_CHAOS_RATE));    
+        addParam(createParam<Trimpot>(Vec(xc+21, yc), m, XStochastic::PAR_AUX3_CHAOS_SMOOTH));    
+        
         addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
         float lfs = 9.0f;
         xc = 2.0f;
