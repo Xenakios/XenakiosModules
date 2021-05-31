@@ -211,6 +211,7 @@ public:
         PAR_RATE_QUAN_AMOUNT,
         PAR_PITCHSPREAD_CV,
         PAR_GLISSPROB_CV,
+        PAR_MASTER_DURDEV,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -294,6 +295,7 @@ public:
         configParam(PAR_RATE_QUAN_AMOUNT,0.0f,1.0f,0.0,"Rate quantization amount");
         configParam(PAR_PITCHSPREAD_CV,-1.0f,1.0f,0.0,"Pitch spread CV ATTN");
         configParam(PAR_GLISSPROB_CV,-1.0f,1.0f,0.0,"Gliss probability CV ATTN");
+        configParam(PAR_MASTER_DURDEV,0.0f,1.0f,1.0,"Duration spread");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -320,11 +322,11 @@ public:
             glissprob = clamp(glissprob,0.0f,1.0f);
             float gliss_spread = params[PAR_MASTER_GLISS_SPREAD].getValue();
             float meandur = params[PAR_MASTER_MEANDUR].getValue();
-            float durdev = rescale(meandur,0.1,2.0,0.1,1.0);
             float density = params[PAR_MASTER_DENSITY].getValue();
             density += inputs[IN_RATE].getVoltage()*params[PAR_RATE_CV].getValue();
             density = clamp(density,-3.0f,5.0f);
             density = std::pow(2.0f,density);
+            float durdev = params[PAR_MASTER_DURDEV].getValue()*(1.0f/density);
             float centerpitch = params[PAR_MASTER_PITCH_CENTER].getValue();
             int numpitchcvchans = inputs[IN_PITCH_CENTER].getChannels();
             if (numpitchcvchans>0)
@@ -497,6 +499,10 @@ public:
             -1,-1,xc,yc));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"TIME QUANT AMOUNT",XStochastic::PAR_RATE_QUAN_AMOUNT,
+            -1,-1,xc,yc,false,8.0f));
+        xc = 2;
+        yc += 47;
+        addChild(new KnobInAttnWidget(this,"DURATION SPREAD",XStochastic::PAR_MASTER_DURDEV,
             -1,-1,xc,yc,false,8.0f));
     }
     ~XStochasticWidget()
