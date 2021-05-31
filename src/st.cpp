@@ -94,7 +94,17 @@ public:
         }
         if (m_activeOuts[5])
         {
-            *par3 = reflect_value<float>(-5.0f,m_par3 + m_par3_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
+            if (m_chaosphase>=(1.0/m_chaos_rate))
+            {
+                double chaos_r = 3.0+0.99999*m_chaos_amt;
+                double chaos = chaos_r * (1.0-m_chaos) * m_chaos;
+                
+                m_chaos = chaos;
+                m_chaosphase = 0.0;
+            }
+            m_chaosphase += deltatime*m_chaos_rate;
+            *par3 = rescale(m_chaos,0.0,1.0,-5.0f,5.0f);
+            //*par3 = reflect_value<float>(-5.0f,m_par3 + m_par3_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         }
         m_phase += deltatime;
         if (m_phase>=m_len)
@@ -169,6 +179,8 @@ public:
     float m_startPos = 0.0f;
     std::mt19937* m_rng = nullptr;
     std::array<bool,6> m_activeOuts;
+    double m_chaos_amt = 0.0;
+    double m_chaos_rate = 1.0;
 private:
     bool m_available = true;
     breakpoint_envelope m_pitch_env;
@@ -185,6 +197,9 @@ private:
     float m_par1 = 0.0f;
     float m_par2 = 0.0f;
     float m_par3 = 0.0f;
+    double m_chaos = 0.5;
+    double m_chaosphase = 0;
+    
 };
 
 class XStochastic : public rack::Module
@@ -227,6 +242,8 @@ public:
         PAR_PITCHSPREAD_CV,
         PAR_GLISSPROB_CV,
         PAR_MASTER_DURDEV,
+        PAR_AUX3_CHAOS,
+        PAR_AUX3_CHAOS_RATE,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -306,11 +323,13 @@ public:
         configParam(PAR_MASTER_PITCH_ENV_TYPE,0,msnumtables,0.0,"Pitch envelope type");
         configParam(PAR_MASTER_AMP_ENV_TYPE,0,m_numAmpEnvs,0.0,"VCA envelope type");
         configParam(PAR_RATE_CV,-1.0f,1.0f,0.0,"Master density CV ATTN");
-        configParam(PAR_RATE_QUAN_STEP,-2.0f,5.0f,2.0f,"Rate quantization step", "Hz",2,1);
+        configParam(PAR_RATE_QUAN_STEP,-2.0f,5.0f,2.0f,"Rate quantization step", " Hz",2,1);
         configParam(PAR_RATE_QUAN_AMOUNT,0.0f,1.0f,0.0,"Rate quantization amount");
         configParam(PAR_PITCHSPREAD_CV,-1.0f,1.0f,0.0,"Pitch spread CV ATTN");
         configParam(PAR_GLISSPROB_CV,-1.0f,1.0f,0.0,"Gliss probability CV ATTN");
         configParam(PAR_MASTER_DURDEV,0.0f,1.0f,1.0,"Duration spread");
+        configParam(PAR_AUX3_CHAOS,0.0f,1.0f,0.0,"AUX3 chaos amount");
+        configParam(PAR_AUX3_CHAOS_RATE,-3.0f,6.0f,1.0,"AUX3 chaos rate", " Hz",2,1);
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -407,6 +426,8 @@ public:
         outputs[OUT_AUX1].setChannels(numvoices);
         outputs[OUT_AUX2].setChannels(numvoices);
         outputs[OUT_AUX3].setChannels(numvoices);
+        double chaos_amt = params[PAR_AUX3_CHAOS].getValue();
+        double chaos_rate = std::pow(2.0,params[PAR_AUX3_CHAOS_RATE].getValue());
         for (int i=0;i<numvoices;++i)
         {
             
@@ -418,6 +439,8 @@ public:
             float par3 = 0.0f;
             if (m_voices[i].isAvailable()==false && m_phase>=m_voices[i].m_startPos)
             {
+                m_voices[i].m_chaos_amt = chaos_amt;
+                m_voices[i].m_chaos_rate = chaos_rate;
                 m_voices[i].process(args.sampleTime,&gate,&pitch,&amp,&par1,&par2,&par3);
                 ++m_NumUsedVoices;
             }
@@ -478,7 +501,9 @@ public:
         port = new PortWithBackGround(m,this,XStochastic::OUT_AUX2,xc,yc,"AUX 2",true);
         xc = port->box.getRight()+2;
         port = new PortWithBackGround(m,this,XStochastic::OUT_AUX3,xc,yc,"AUX 3",true);
-        
+        xc = port->box.getRight()+2;
+        addParam(createParam<Trimpot>(Vec(xc, yc), m, XStochastic::PAR_AUX3_CHAOS));    
+        addParam(createParam<Trimpot>(Vec(xc, yc+21), m, XStochastic::PAR_AUX3_CHAOS_RATE));    
         addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
         float lfs = 9.0f;
         xc = 2.0f;
