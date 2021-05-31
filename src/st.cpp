@@ -62,10 +62,15 @@ public:
 
         m_par2_env.AddNode({0.0f,0.0f,2});
         m_par2_env.AddNode({1.0f,0.0f,2});
+
+        m_par3_env.AddNode({0.0f,0.0f,2});
+        m_par3_env.AddNode({1.0f,0.0f,2});
+
         for (int i=0;i<m_activeOuts.size();++i)
             m_activeOuts[i] = false;
     }
-    void process(float deltatime, float* gate,float* pitch,float* amp,float* par1, float* par2)
+    void process(float deltatime, float* gate,float* pitch,float* amp,
+        float* par1, float* par2, float* par3)
     {
         *gate = 10.0f;
         
@@ -87,7 +92,10 @@ public:
         {
             *par2 = reflect_value<float>(-5.0f,m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         }
-        
+        if (m_activeOuts[5])
+        {
+            *par3 = reflect_value<float>(-5.0f,m_par3 + m_par3_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
+        }
         m_phase += deltatime;
         if (m_phase>=m_len)
         {
@@ -145,7 +153,11 @@ public:
         float kuma = Kumaraswamy(dist(*m_rng));
         pardest = rescale(kuma,0.0f,1.0f,-5.0f,5.0f);
         m_par2_env.GetNodeAtIndex(1).pt_y = pardest;
-        
+        m_par3 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
+        float trip = dist(*m_rng);
+        trip = quantize(trip,1.0/3,1.0f);
+        pardest = rescale(trip,0.0f,1.0f,-5.0f,5.0f);
+        m_par3_env.GetNodeAtIndex(1).pt_y = pardest;
         m_available = false;
     }
     void reset()
@@ -156,13 +168,14 @@ public:
     float m_playProb = 1.0f;
     float m_startPos = 0.0f;
     std::mt19937* m_rng = nullptr;
-    std::array<bool,5> m_activeOuts;
+    std::array<bool,6> m_activeOuts;
 private:
     bool m_available = true;
     breakpoint_envelope m_pitch_env;
     breakpoint_envelope* m_amp_env = nullptr;
     breakpoint_envelope m_par1_env;
     breakpoint_envelope m_par2_env;
+    breakpoint_envelope m_par3_env;
     double m_phase = 0.0;
     double m_len = 0.5;
     float m_min_pitch = -24.0f;
@@ -171,6 +184,7 @@ private:
     float m_glissrange = 0.0f;
     float m_par1 = 0.0f;
     float m_par2 = 0.0f;
+    float m_par3 = 0.0f;
 };
 
 class XStochastic : public rack::Module
@@ -192,6 +206,7 @@ public:
         OUT_VCA,
         OUT_AUX1, 
         OUT_AUX2,
+        OUT_AUX3,
         OUT_LAST
     };
     enum PARAMS
@@ -381,6 +396,7 @@ public:
                 m_voices[i].m_activeOuts[2] = outputs[OUT_VCA].isConnected();
                 m_voices[i].m_activeOuts[3] = outputs[OUT_AUX1].isConnected();
                 m_voices[i].m_activeOuts[4] = outputs[OUT_AUX2].isConnected();
+                m_voices[i].m_activeOuts[5] = outputs[OUT_AUX3].isConnected();
             }
             //m_nextEventPos += deltatime;
         }
@@ -390,6 +406,7 @@ public:
         outputs[OUT_VCA].setChannels(numvoices);
         outputs[OUT_AUX1].setChannels(numvoices);
         outputs[OUT_AUX2].setChannels(numvoices);
+        outputs[OUT_AUX3].setChannels(numvoices);
         for (int i=0;i<numvoices;++i)
         {
             
@@ -398,9 +415,10 @@ public:
             float pitch = 0.0f;
             float par1 = 0.0f;
             float par2 = 0.0f;
+            float par3 = 0.0f;
             if (m_voices[i].isAvailable()==false && m_phase>=m_voices[i].m_startPos)
             {
-                m_voices[i].process(args.sampleTime,&gate,&pitch,&amp,&par1,&par2);
+                m_voices[i].process(args.sampleTime,&gate,&pitch,&amp,&par1,&par2,&par3);
                 ++m_NumUsedVoices;
             }
             outputs[OUT_GATE].setVoltage(gate,i);
@@ -409,6 +427,7 @@ public:
             outputs[OUT_VCA].setVoltage(amp,i);
             outputs[OUT_AUX1].setVoltage(par1,i);
             outputs[OUT_AUX2].setVoltage(par2,i);
+            outputs[OUT_AUX3].setVoltage(par3,i);
         }
         if (m_resetTrigger.process(rescale(inputs[IN_RESET].getVoltage(),0.0,10.0, 0.f, 1.f)))
         {
@@ -457,7 +476,8 @@ public:
         port = new PortWithBackGround(m,this,XStochastic::OUT_AUX1,xc,yc,"AUX 1",true);
         xc = port->box.getRight()+2;
         port = new PortWithBackGround(m,this,XStochastic::OUT_AUX2,xc,yc,"AUX 2",true);
-        
+        xc = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,XStochastic::OUT_AUX3,xc,yc,"AUX 3",true);
         
         addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
         float lfs = 9.0f;
