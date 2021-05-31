@@ -102,7 +102,7 @@ public:
                 m_chaos = chaos;
                 m_chaosphase = 0.0;
             }
-            m_chaosphase += deltatime*m_chaos_rate;
+            m_chaosphase += deltatime;
             *par3 = rescale(m_chaos,0.0,1.0,-5.0f,5.0f);
             //*par3 = reflect_value<float>(-5.0f,m_par3 + m_par3_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         }
