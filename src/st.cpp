@@ -319,8 +319,7 @@ public:
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
-        //configParam(PAR_MASTER_DENSITY,0.0,1.0,0.25,"Master density");
-        configParam(PAR_MASTER_DENSITY, -3.f, 5.f, 1.f, "Master density", " events per second", 2, 1);
+        configParam(PAR_MASTER_DENSITY, -2.f, 6.f, 1.f, "Master density", " events per second", 2, 1);
         configParam(PAR_MASTER_RANDSEED,0.0,512.0,256.0,"Master random seed");
         configParam(PAR_MASTER_GLISS_SPREAD,-1.0,1.0,0.2,"Master glissando spread");
         configParam(PAR_MASTER_PITCH_CENTER,-48.0,48.0,0.0,"Master pitch center");
