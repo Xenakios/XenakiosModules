@@ -67,30 +67,31 @@ public:
         m_par3_env.AddNode({1.0f,0.0f,2});
 
         for (int i=0;i<m_activeOuts.size();++i)
+        {
             m_activeOuts[i] = false;
+            m_Outs[i] = 0.0f;
+        }
     }
-    void process(float deltatime, float* gate,float* pitch,float* amp,
-        float* par1, float* par2, float* par3)
+    void process(float deltatime)
     {
-        *gate = 10.0f;
-        
+        m_Outs[0] = 10.0f;
         float normphase = 1.0f/m_len*m_phase;
         if (m_activeOuts[2])
         {
             float gain = m_amp_env->GetInterpolatedEnvelopeValue(normphase);
-            *amp = rescale(gain,0.0f,1.0f,0.0f,10.0f);
+            m_Outs[2] = rescale(gain,0.0f,1.0f,0.0f,10.0f);
         }
         if (m_activeOuts[1])
         {
-            *pitch = reflect_value<float>(-60.0f,m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase),60.0f);
+            m_Outs[1] = reflect_value<float>(-60.0f,m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase),60.0f);
         }
         if (m_activeOuts[3])
         {
-            *par1 = reflect_value<float>(-5.0f,m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
+            m_Outs[3] = reflect_value<float>(-5.0f,m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         }
         if (m_activeOuts[4])
         {
-            *par2 = reflect_value<float>(-5.0f,m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
+            m_Outs[4] = reflect_value<float>(-5.0f,m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
         }
         if (m_activeOuts[5])
         {
@@ -103,8 +104,7 @@ public:
                 m_chaosphase = 0.0;
             }
             m_chaosphase += deltatime;
-            *par3 = rescale(m_chaos_smoother.process(m_chaos),0.0,1.0,-5.0f,5.0f);
-            //*par3 = reflect_value<float>(-5.0f,m_par3 + m_par3_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
+            m_Outs[5] = rescale(m_chaos_smoother.process(m_chaos),0.0,1.0,-5.0f,5.0f);
         }
         m_phase += deltatime;
         if (m_phase>=m_len)
@@ -181,6 +181,7 @@ public:
     float m_startPos = 0.0f;
     std::mt19937* m_rng = nullptr;
     std::array<bool,6> m_activeOuts;
+    std::array<float,6> m_Outs;
     double m_chaos_amt = 0.0;
     double m_chaos_rate = 1.0;
     double m_chaos_smooth = 0.0;
@@ -437,20 +438,16 @@ public:
         double chaos_rate = std::pow(2.0,params[PAR_AUX3_CHAOS_RATE].getValue());
         for (int i=0;i<numvoices;++i)
         {
-            
-            float gate = 0.0f;
-            float amp = 0.0f;
-            float pitch = 0.0f;
-            float par1 = 0.0f;
-            float par2 = 0.0f;
-            float par3 = 0.0f;
+            std::array<float,6> vouts{0.0f,0.0f,0.0f,0.0f,0.0f,0.0f};
             if (m_voices[i].isAvailable()==false && m_phase>=m_voices[i].m_startPos)
             {
                 m_voices[i].m_chaos_amt = chaos_amt;
                 m_voices[i].m_chaos_rate = chaos_rate;
-                m_voices[i].process(args.sampleTime,&gate,&pitch,&amp,&par1,&par2,&par3);
+                m_voices[i].process(args.sampleTime);
+                vouts = m_voices[i].m_Outs;
                 ++m_NumUsedVoices;
             }
+            /*
             outputs[OUT_GATE].setVoltage(gate,i);
             pitch = pitch*(1.0f/12);
             outputs[OUT_PITCH].setVoltage(pitch,i);
@@ -458,6 +455,13 @@ public:
             outputs[OUT_AUX1].setVoltage(par1,i);
             outputs[OUT_AUX2].setVoltage(par2,i);
             outputs[OUT_AUX3].setVoltage(par3,i);
+            */
+            outputs[OUT_GATE].setVoltage(vouts[0],i);
+            outputs[OUT_PITCH].setVoltage(vouts[1]*(1.0f/12),i);
+            outputs[OUT_VCA].setVoltage(vouts[2],i);
+            outputs[OUT_AUX1].setVoltage(vouts[3],i);
+            outputs[OUT_AUX2].setVoltage(vouts[4],i);
+            outputs[OUT_AUX3].setVoltage(vouts[5],i);
         }
         if (m_resetTrigger.process(rescale(inputs[IN_RESET].getVoltage(),0.0,10.0, 0.f, 1.f)))
         {
