@@ -54,6 +54,8 @@ class StocVoice
 public:
     StocVoice()
     {
+        m_amp_resp_smoother.setAmount(0.95);
+        
         m_pitch_env.AddNode({0.0f,0.0f,2});
         m_pitch_env.AddNode({1.0f,0.0f,2});
 
@@ -186,6 +188,7 @@ public:
     double m_chaos_rate = 1.0;
     double m_chaos_smooth = 0.0;
     double m_chaos = 0.417;
+    OnePoleFilter m_amp_resp_smoother;
 private:
     bool m_available = true;
     breakpoint_envelope m_pitch_env;
@@ -319,6 +322,10 @@ public:
 
         m_pitch_amp_response.AddNode({-48.0f,0.0f,2});
         m_pitch_amp_response.AddNode({-36.0f,1.0f,2});
+        m_pitch_amp_response.AddNode({0.0f,1.0f,2});
+        m_pitch_amp_response.AddNode({1.0f,0.1f,2});
+        m_pitch_amp_response.AddNode({12.0f,0.1f,2});
+        m_pitch_amp_response.AddNode({13.0f,1.0f,2});
         m_pitch_amp_response.AddNode({48.0f,0.0f,2});
 
         config(PAR_LAST,IN_LAST,OUT_LAST);
@@ -449,7 +456,8 @@ public:
                 m_voices[i].m_chaos_rate = chaos_rate;
                 m_voices[i].process(args.sampleTime);
                 vouts = m_voices[i].m_Outs;
-                vouts[2] *= m_pitch_amp_response.GetInterpolatedEnvelopeValue(vouts[1]); 
+                float aresp = m_pitch_amp_response.GetInterpolatedEnvelopeValue(vouts[1]); 
+                vouts[2] *= m_voices[i].m_amp_resp_smoother.process(aresp); 
                 ++m_NumUsedVoices;
             }
             outputs[OUT_GATE].setVoltage(vouts[0],i);
