@@ -317,6 +317,10 @@ public:
         envgen(6,m_amp_envelopes[9]);
         envgen(7,m_amp_envelopes[10]);
 
+        m_pitch_amp_response.AddNode({-48.0f,0.0f,2});
+        m_pitch_amp_response.AddNode({-36.0f,1.0f,2});
+        m_pitch_amp_response.AddNode({48.0f,0.0f,2});
+
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
         configParam(PAR_MASTER_GLISSPROB,0.0,1.0,0.5,"Master glissando probability");
@@ -445,17 +449,9 @@ public:
                 m_voices[i].m_chaos_rate = chaos_rate;
                 m_voices[i].process(args.sampleTime);
                 vouts = m_voices[i].m_Outs;
+                vouts[2] *= m_pitch_amp_response.GetInterpolatedEnvelopeValue(vouts[1]); 
                 ++m_NumUsedVoices;
             }
-            /*
-            outputs[OUT_GATE].setVoltage(gate,i);
-            pitch = pitch*(1.0f/12);
-            outputs[OUT_PITCH].setVoltage(pitch,i);
-            outputs[OUT_VCA].setVoltage(amp,i);
-            outputs[OUT_AUX1].setVoltage(par1,i);
-            outputs[OUT_AUX2].setVoltage(par2,i);
-            outputs[OUT_AUX3].setVoltage(par3,i);
-            */
             outputs[OUT_GATE].setVoltage(vouts[0],i);
             outputs[OUT_PITCH].setVoltage(vouts[1]*(1.0f/12),i);
             outputs[OUT_VCA].setVoltage(vouts[2],i);
@@ -483,7 +479,7 @@ private:
     std::mt19937 m_rng{m_randSeed};
     StocVoice m_voices[16];
     breakpoint_envelope m_amp_envelopes[16];
-    
+    breakpoint_envelope m_pitch_amp_response;
     dsp::SchmittTrigger m_resetTrigger;
 };
 
