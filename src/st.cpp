@@ -80,7 +80,12 @@ public:
         float normphase = 1.0f/m_len*m_phase;
         if (m_activeOuts[2])
         {
-            float gain = m_amp_env->GetInterpolatedEnvelopeValue(normphase);
+            float aenvphase = normphase;
+            if (m_amp_env_warp<0.0f)
+                aenvphase = 1.0f-std::pow(1.0f-normphase,rescale(m_amp_env_warp,-1.0f,0.0f,1.0f,4.0f));
+            else
+                aenvphase = std::pow(normphase,rescale(m_amp_env_warp,0.0f,1.0f,1.0f,4.0f));
+            float gain = m_amp_env->GetInterpolatedEnvelopeValue(aenvphase);
             m_Outs[2] = rescale(gain,0.0f,1.0f,0.0f,10.0f);
         }
         if (m_activeOuts[1])
@@ -119,7 +124,7 @@ public:
         return m_available;
     }
     void start(float dur, float centerpitch,float spreadpitch, breakpoint_envelope* ampenv,
-        float glissprob, float gliss_spread, int penv)
+        float glissprob, float gliss_spread, int penv, float aenvwspr)
     {
         std::uniform_real_distribution<float> dist(0.0f,1.0f);
         std::uniform_int_distribution<int> shapedist(0,msnumtables-1);
@@ -173,6 +178,8 @@ public:
         m_available = false;
         float spar = std::pow(m_chaos_smooth,0.3);
         m_chaos_smoother.setAmount(rescale(spar,0.0f,1.0f,0.9f,0.9999f));
+        m_amp_env_warp = normdist(*m_rng) * aenvwspr * 0.5f;
+        m_amp_env_warp = clamp(m_amp_env_warp,-1.0f,1.0f);
     }
     void reset()
     {
@@ -205,7 +212,7 @@ private:
     float m_par1 = 0.0f;
     float m_par2 = 0.0f;
     float m_par3 = 0.0f;
-    
+    float m_amp_env_warp = 0.0f;
     double m_chaosphase = 0;
     OnePoleFilter m_chaos_smoother;
 };
@@ -253,6 +260,7 @@ public:
         PAR_AUX3_CHAOS,
         PAR_AUX3_CHAOS_RATE,
         PAR_AUX3_CHAOS_SMOOTH,
+        PAR_AMP_ENV_WARP_SPREAD,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -348,6 +356,7 @@ public:
         configParam(PAR_AUX3_CHAOS,0.0f,1.0f,0.0,"AUX3 chaos amount");
         configParam(PAR_AUX3_CHAOS_RATE,-3.0f,10.0f,1.0,"AUX3 chaos rate", " Hz",2,1);
         configParam(PAR_AUX3_CHAOS_SMOOTH,0.0f,1.0f,0.0,"AUX3 chaos smooth");
+        configParam(PAR_AMP_ENV_WARP_SPREAD,0.0f,1.0f,0.0,"Amplitude envelope warp spread");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -393,6 +402,7 @@ public:
             spreadpitch = clamp(spreadpitch,0.0f,48.0f);
             int manual_amp_env = params[PAR_MASTER_AMP_ENV_TYPE].getValue();
             int manual_pitch_env = params[PAR_MASTER_PITCH_ENV_TYPE].getValue();
+            float aenvwarp = params[PAR_AMP_ENV_WARP_SPREAD].getValue();
             int i = 0;
             while (i<numvoices)
             {
@@ -407,7 +417,7 @@ public:
                         ampenv = vcadist(m_rng);
                     m_voices[voiceIndex].m_chaos_smooth = params[PAR_AUX3_CHAOS_SMOOTH].getValue();
                     m_voices[voiceIndex].start(evdur,centerpitch,spreadpitch,
-                        &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env);
+                        &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env,aenvwarp);
                     ++m_eventCounter;
                     break;
                 }
@@ -456,8 +466,8 @@ public:
                 m_voices[i].m_chaos_rate = chaos_rate;
                 m_voices[i].process(args.sampleTime);
                 vouts = m_voices[i].m_Outs;
-                float aresp = m_pitch_amp_response.GetInterpolatedEnvelopeValue(vouts[1]); 
-                vouts[2] *= m_voices[i].m_amp_resp_smoother.process(aresp); 
+                //float aresp = m_pitch_amp_response.GetInterpolatedEnvelopeValue(vouts[1]); 
+                //vouts[2] *= m_voices[i].m_amp_resp_smoother.process(aresp); 
                 ++m_NumUsedVoices;
             }
             outputs[OUT_GATE].setVoltage(vouts[0],i);
@@ -565,6 +575,9 @@ public:
         xc = 2;
         yc += 47;
         addChild(new KnobInAttnWidget(this,"DURATION SPREAD",XStochastic::PAR_MASTER_DURDEV,
+            -1,-1,xc,yc,false,8.0f));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"AMP ENV WARP SPR",XStochastic::PAR_AMP_ENV_WARP_SPREAD,
             -1,-1,xc,yc,false,8.0f));
     }
     ~XStochasticWidget()
