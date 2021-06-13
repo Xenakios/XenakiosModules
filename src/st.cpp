@@ -303,6 +303,7 @@ public:
         PAR_AMP_ENV_WARP_SPREAD,
         PAR_PITCH_ENV_WARP_SPREAD,
         ENUMS(PAR_DISPLAY_WEIGHT,16),
+        ENUMS(PAR_DISPLAY_WEIGHT2,16),
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -379,6 +380,7 @@ public:
         m_pitch_amp_response.AddNode({48.0f,0.05f,2});
         
         ampEnvWhs.resize(16);
+        pitchEnvWhs.resize(16);
 
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
@@ -403,7 +405,11 @@ public:
         configParam(PAR_AMP_ENV_WARP_SPREAD,0.0f,1.0f,0.0,"Amplitude envelope warp spread");
         configParam(PAR_PITCH_ENV_WARP_SPREAD,0.0f,1.0f,0.0,"Gliss envelope warp spread");
         for (int i=0;i<16;++i)
+        {
             configParam(PAR_DISPLAY_WEIGHT+i,0.0f,1.0f,1.0,"Envelope selection weight "+std::to_string(i));
+            configParam(PAR_DISPLAY_WEIGHT2+i,0.0f,1.0f,1.0,"Envelope selection weight2 "+std::to_string(i));
+        }
+            
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -452,8 +458,13 @@ public:
                 ampEnvWhs[i] = params[PAR_DISPLAY_WEIGHT+i].getValue();
             manual_amp_env = randomDiscrete(m_rng,ampEnvWhs);
             if (manual_amp_env>=m_numAmpEnvs)
-                manual_amp_env = m_numAmpEnvs-1;
-            int manual_pitch_env = params[PAR_MASTER_PITCH_ENV_TYPE].getValue();
+                manual_amp_env = 0;
+            //int manual_pitch_env = params[PAR_MASTER_PITCH_ENV_TYPE].getValue();
+            for (int i=0;i<msnumtables;++i)
+                pitchEnvWhs[i] = params[PAR_DISPLAY_WEIGHT2+i].getValue();
+            int manual_pitch_env = randomDiscrete(m_rng,pitchEnvWhs);
+            if (manual_pitch_env>=msnumtables)
+                manual_pitch_env = 0;
             float aenvwarp = params[PAR_AMP_ENV_WARP_SPREAD].getValue();
             float pitchenvwarp = params[PAR_PITCH_ENV_WARP_SPREAD].getValue();
             int i = 0;
@@ -547,6 +558,7 @@ public:
     }
     unsigned int m_randSeed = 1;
     std::vector<float> ampEnvWhs;
+    std::vector<float> pitchEnvWhs;
 private:
     double m_phase = 0.0f;
     double m_nextEventPos = 0.0f;
@@ -642,6 +654,7 @@ public:
         for (int i=0;i<16;++i)
         {
             addParam(createParam<Trimpot>(Vec(1+20*i, yc), module, XStochastic::PAR_DISPLAY_WEIGHT+i));
+            addParam(createParam<Trimpot>(Vec(1+20*i, yc+20), module, XStochastic::PAR_DISPLAY_WEIGHT2+i));
         }
     }
     ~XStochasticWidget()
