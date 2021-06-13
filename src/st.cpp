@@ -90,7 +90,13 @@ public:
         }
         if (m_activeOuts[1])
         {
-            m_Outs[1] = reflect_value<float>(-60.0f,m_pitch + m_pitch_env.GetInterpolatedEnvelopeValue(normphase),60.0f);
+            float penvphase = normphase;
+            if (m_pitch_env_warp<0.0f)
+                penvphase = 1.0f-std::pow(1.0f-normphase,rescale(m_pitch_env_warp,-1.0f,0.0f,1.0f,4.0f));
+            else
+                penvphase = std::pow(normphase,rescale(m_pitch_env_warp,0.0f,1.0f,1.0f,4.0f));
+            float penvvalue = m_pitch_env.GetInterpolatedEnvelopeValue(penvphase);
+            m_Outs[1] = reflect_value<float>(-60.0f,m_pitch + penvvalue,60.0f);
         }
         if (m_activeOuts[3])
         {
@@ -124,7 +130,7 @@ public:
         return m_available;
     }
     void start(float dur, float centerpitch,float spreadpitch, breakpoint_envelope* ampenv,
-        float glissprob, float gliss_spread, int penv, float aenvwspr)
+        float glissprob, float gliss_spread, int penv, float aenvwspr, float penvwspr)
     {
         std::uniform_real_distribution<float> dist(0.0f,1.0f);
         std::uniform_int_distribution<int> shapedist(0,msnumtables-1);
@@ -178,8 +184,12 @@ public:
         m_available = false;
         float spar = std::pow(m_chaos_smooth,0.3);
         m_chaos_smoother.setAmount(rescale(spar,0.0f,1.0f,0.9f,0.9999f));
+        
         m_amp_env_warp = normdist(*m_rng) * aenvwspr * 0.5f;
         m_amp_env_warp = clamp(m_amp_env_warp,-1.0f,1.0f);
+
+        m_pitch_env_warp = normdist(*m_rng) * penvwspr * 0.5f;
+        m_pitch_env_warp = clamp(m_pitch_env_warp,-1.0f,1.0f);
     }
     void reset()
     {
@@ -213,6 +223,7 @@ private:
     float m_par2 = 0.0f;
     float m_par3 = 0.0f;
     float m_amp_env_warp = 0.0f;
+    float m_pitch_env_warp = 0.0f;
     double m_chaosphase = 0;
     OnePoleFilter m_chaos_smoother;
 };
@@ -261,6 +272,7 @@ public:
         PAR_AUX3_CHAOS_RATE,
         PAR_AUX3_CHAOS_SMOOTH,
         PAR_AMP_ENV_WARP_SPREAD,
+        PAR_PITCH_ENV_WARP_SPREAD,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -357,6 +369,7 @@ public:
         configParam(PAR_AUX3_CHAOS_RATE,-3.0f,10.0f,1.0,"AUX3 chaos rate", " Hz",2,1);
         configParam(PAR_AUX3_CHAOS_SMOOTH,0.0f,1.0f,0.0,"AUX3 chaos smooth");
         configParam(PAR_AMP_ENV_WARP_SPREAD,0.0f,1.0f,0.0,"Amplitude envelope warp spread");
+        configParam(PAR_PITCH_ENV_WARP_SPREAD,0.0f,1.0f,0.0,"Gliss envelope warp spread");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -403,6 +416,7 @@ public:
             int manual_amp_env = params[PAR_MASTER_AMP_ENV_TYPE].getValue();
             int manual_pitch_env = params[PAR_MASTER_PITCH_ENV_TYPE].getValue();
             float aenvwarp = params[PAR_AMP_ENV_WARP_SPREAD].getValue();
+            float pitchenvwarp = params[PAR_PITCH_ENV_WARP_SPREAD].getValue();
             int i = 0;
             while (i<numvoices)
             {
@@ -417,7 +431,8 @@ public:
                         ampenv = vcadist(m_rng);
                     m_voices[voiceIndex].m_chaos_smooth = params[PAR_AUX3_CHAOS_SMOOTH].getValue();
                     m_voices[voiceIndex].start(evdur,centerpitch,spreadpitch,
-                        &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env,aenvwarp);
+                        &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env,
+                        aenvwarp,pitchenvwarp);
                     ++m_eventCounter;
                     break;
                 }
@@ -578,6 +593,9 @@ public:
             -1,-1,xc,yc,false,8.0f));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"AMP ENV WARP SPR",XStochastic::PAR_AMP_ENV_WARP_SPREAD,
+            -1,-1,xc,yc,false,8.0f));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"GLISS ENV WARP SPR",XStochastic::PAR_PITCH_ENV_WARP_SPREAD,
             -1,-1,xc,yc,false,8.0f));
     }
     ~XStochasticWidget()
