@@ -6,6 +6,35 @@
 
 extern std::shared_ptr<Font> g_font;
 
+inline int randomDiscrete(std::mt19937& rng,std::vector<float>& whs)
+{
+    std::uniform_real_distribution<float> dist(0.0f,1.0f);
+    float accum = 0.0f;
+    for (int i=0;i<whs.size();++i)
+      accum+=whs[i];
+    // if all weights zero, just pick uniformly 
+    if (accum==0.0f)
+    {
+        std::uniform_int_distribution<int> idist(0,whs.size()-1);
+        return idist(rng);
+    }
+    float scaler = 1.0f/accum;
+    float z = dist(rng);
+    int choice = -1;
+    accum = 0.0f;
+    for (int i=0;i<whs.size();++i)
+    {
+        accum += whs[i] * scaler;
+        if (accum>=z)
+        {
+            choice = i;
+            break;
+        }
+        
+    }
+    return choice;
+}
+
 inline double quantize(double x, double step, double amount)
 {
     double quan = std::round(x/step)*step;
@@ -273,6 +302,7 @@ public:
         PAR_AUX3_CHAOS_SMOOTH,
         PAR_AMP_ENV_WARP_SPREAD,
         PAR_PITCH_ENV_WARP_SPREAD,
+        ENUMS(PAR_DISPLAY_WEIGHT,16),
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -347,6 +377,8 @@ public:
         //m_pitch_amp_response.AddNode({12.0f,0.1f,2});
         m_pitch_amp_response.AddNode({24.0f,1.0f,2});
         m_pitch_amp_response.AddNode({48.0f,0.05f,2});
+        
+        ampEnvWhs.resize(16);
 
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
@@ -370,6 +402,8 @@ public:
         configParam(PAR_AUX3_CHAOS_SMOOTH,0.0f,1.0f,0.0,"AUX3 chaos smooth");
         configParam(PAR_AMP_ENV_WARP_SPREAD,0.0f,1.0f,0.0,"Amplitude envelope warp spread");
         configParam(PAR_PITCH_ENV_WARP_SPREAD,0.0f,1.0f,0.0,"Gliss envelope warp spread");
+        for (int i=0;i<16;++i)
+            configParam(PAR_DISPLAY_WEIGHT+i,0.0f,1.0f,1.0,"Envelope selection weight "+std::to_string(i));
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -414,6 +448,11 @@ public:
             spreadpitch += inputs[IN_PITCH_SPREAD].getVoltage() * 4.8f * params[PAR_PITCHSPREAD_CV].getValue();
             spreadpitch = clamp(spreadpitch,0.0f,48.0f);
             int manual_amp_env = params[PAR_MASTER_AMP_ENV_TYPE].getValue();
+            for (int i=0;i<m_numAmpEnvs;++i)
+                ampEnvWhs[i] = params[PAR_DISPLAY_WEIGHT+i].getValue();
+            manual_amp_env = randomDiscrete(m_rng,ampEnvWhs);
+            if (manual_amp_env>=m_numAmpEnvs)
+                manual_amp_env = m_numAmpEnvs-1;
             int manual_pitch_env = params[PAR_MASTER_PITCH_ENV_TYPE].getValue();
             float aenvwarp = params[PAR_AMP_ENV_WARP_SPREAD].getValue();
             float pitchenvwarp = params[PAR_PITCH_ENV_WARP_SPREAD].getValue();
@@ -426,9 +465,10 @@ public:
                     m_voices[voiceIndex].m_startPos = m_nextEventPos;
                     float evdur = meandur + durdist(m_rng)*durdev;
                     evdur = clamp(evdur,0.05,8.0);
-                    int ampenv = manual_amp_env - 1;
-                    if (ampenv < 0)
-                        ampenv = vcadist(m_rng);
+                    //int ampenv = manual_amp_env - 1;
+                    //if (ampenv < 0)
+                    //    ampenv = vcadist(m_rng);
+                    int ampenv = manual_amp_env;
                     m_voices[voiceIndex].m_chaos_smooth = params[PAR_AUX3_CHAOS_SMOOTH].getValue();
                     m_voices[voiceIndex].start(evdur,centerpitch,spreadpitch,
                         &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env,
@@ -506,6 +546,7 @@ public:
         m_phase += args.sampleTime;
     }
     unsigned int m_randSeed = 1;
+    std::vector<float> ampEnvWhs;
 private:
     double m_phase = 0.0f;
     double m_nextEventPos = 0.0f;
@@ -597,6 +638,11 @@ public:
         xc += 82;
         addChild(new KnobInAttnWidget(this,"GLISS ENV WARP SPR",XStochastic::PAR_PITCH_ENV_WARP_SPREAD,
             -1,-1,xc,yc,false,8.0f));
+        yc += 47;
+        for (int i=0;i<16;++i)
+        {
+            addParam(createParam<Trimpot>(Vec(1+20*i, yc), module, XStochastic::PAR_DISPLAY_WEIGHT+i));
+        }
     }
     ~XStochasticWidget()
     {
