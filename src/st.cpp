@@ -330,11 +330,11 @@ public:
 
         m_pitch_amp_response.AddNode({-48.0f,0.0f,2});
         m_pitch_amp_response.AddNode({-36.0f,1.0f,2});
-        m_pitch_amp_response.AddNode({0.0f,1.0f,2});
-        m_pitch_amp_response.AddNode({1.0f,0.1f,2});
-        m_pitch_amp_response.AddNode({12.0f,0.1f,2});
-        m_pitch_amp_response.AddNode({13.0f,1.0f,2});
-        m_pitch_amp_response.AddNode({48.0f,0.0f,2});
+        //m_pitch_amp_response.AddNode({0.0f,1.0f,2});
+        //m_pitch_amp_response.AddNode({1.0f,0.1f,2});
+        //m_pitch_amp_response.AddNode({12.0f,0.1f,2});
+        m_pitch_amp_response.AddNode({24.0f,1.0f,2});
+        m_pitch_amp_response.AddNode({48.0f,0.05f,2});
 
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_MASTER_MEANDUR,0.1,2.0,0.5,"Master mean duration");
