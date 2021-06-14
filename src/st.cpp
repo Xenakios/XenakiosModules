@@ -105,8 +105,11 @@ public:
     }
     void process(float deltatime)
     {
-        m_Outs[0] = 10.0f;
         float normphase = 1.0f/m_len*m_phase;
+        if (normphase<0.5f)
+            m_Outs[0] = 10.0f;
+        else
+            m_Outs[0] = 0.0f;
         if (m_activeOuts[2])
         {
             float aenvphase = normphase;
@@ -531,11 +534,12 @@ public:
                 m_voices[i].m_chaos_amt = chaos_amt;
                 m_voices[i].m_chaos_rate = chaos_rate;
                 m_voices[i].process(args.sampleTime);
-                vouts = m_voices[i].m_Outs;
+                
                 //float aresp = m_pitch_amp_response.GetInterpolatedEnvelopeValue(vouts[1]); 
                 //vouts[2] *= m_voices[i].m_amp_resp_smoother.process(aresp); 
                 ++m_NumUsedVoices;
             }
+            vouts = m_voices[i].m_Outs;
             outputs[OUT_GATE].setVoltage(vouts[0],i);
             outputs[OUT_PITCH].setVoltage(vouts[1]*(1.0f/12),i);
             outputs[OUT_VCA].setVoltage(vouts[2],i);
