@@ -192,7 +192,7 @@ public:
                 float cauchy = std::tan(M_PI*(z-0.5));
                 glissdest = clamp(cauchy,-36.0f,36.0f);
             }
-            int shap = penv-1;
+            int shap = penv;
             if (shap<0)
                 pt0.Shape = shapedist(*m_rng);
             else
@@ -563,20 +563,37 @@ public:
     unsigned int m_randSeed = 1;
     std::vector<float> ampEnvWhs;
     std::vector<float> pitchEnvWhs;
+    breakpoint_envelope m_amp_envelopes[16];
 private:
     double m_phase = 0.0f;
     double m_nextEventPos = 0.0f;
     std::mt19937 m_rng{m_randSeed};
     StocVoice m_voices[16];
-    breakpoint_envelope m_amp_envelopes[16];
+    
     breakpoint_envelope m_pitch_amp_response;
     dsp::SchmittTrigger m_resetTrigger;
+};
+
+class MyTrimpot : public Trimpot
+{
+public:
+    MyTrimpot() {}
+    void onEnter(const event::Enter& e) override
+    {
+        Trimpot::onEnter(e);
+        if (EnterCallback)
+            EnterCallback(envType,env);
+    }
+    std::function<void(int,int)> EnterCallback;
+    int envType = -1;
+    int env = -1;
 };
 
 class XStochasticWidget : public ModuleWidget
 {
 public:
-    
+    int hovEtype = -1;
+    int hovE = -1;
     XStochasticWidget(XStochastic* m)
     {
         setModule(m);
@@ -603,7 +620,7 @@ public:
         addParam(createParam<Trimpot>(Vec(xc, yc+21), m, XStochastic::PAR_AUX3_CHAOS_RATE));    
         addParam(createParam<Trimpot>(Vec(xc+21, yc), m, XStochastic::PAR_AUX3_CHAOS_SMOOTH));    
         
-        addInput(createInput<PJ301MPort>(Vec(5, 330), module, XStochastic::IN_RESET));
+        addInput(createInput<PJ301MPort>(Vec(xc+42, yc), module, XStochastic::IN_RESET));
         float lfs = 9.0f;
         xc = 2.0f;
         yc = 60.0f;
@@ -657,9 +674,18 @@ public:
         yc += 47;
         for (int i=0;i<16;++i)
         {
-            addParam(createParam<Trimpot>(Vec(1+20*i, yc), module, XStochastic::PAR_DISPLAY_WEIGHT+i));
-            addParam(createParam<Trimpot>(Vec(1+20*i, yc+20), module, XStochastic::PAR_DISPLAY_WEIGHT2+i));
+            MyTrimpot* mp = nullptr;
+            addParam(mp = createParam<MyTrimpot>(Vec(1+20*i, yc), module, XStochastic::PAR_DISPLAY_WEIGHT+i));
+            mp->envType = 0;
+            mp->env = i;
+            mp->EnterCallback = [this](int a, int b){ hovEtype = a; hovE = b; };
+            addParam(mp = createParam<MyTrimpot>(Vec(1+20*i, yc+20), module, XStochastic::PAR_DISPLAY_WEIGHT2+i));
+            mp->envType = 1;
+            mp->env = i;
+            mp->EnterCallback = [this](int a, int b){ hovEtype = a; hovE = b; };
         }
+        pitchenv.AddNode({0.0f,0.0f});
+        pitchenv.AddNode({1.0f,1.0f});
     }
     ~XStochasticWidget()
     {
@@ -683,14 +709,43 @@ public:
         char buf[100];
         XStochastic* sm = dynamic_cast<XStochastic*>(module);
         if (sm)
-            sprintf(buf,"Xenakios %d voices, %d events",sm->m_NumUsedVoices,sm->m_eventCounter);
+            sprintf(buf,"Xenakios %d voices, %d events %d %d",sm->m_NumUsedVoices,sm->m_eventCounter,hovEtype,hovE);
         else sprintf(buf,"Xenakios");
         nvgText(args.vg, 3 , h-11, buf, NULL);
+        nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+        if (sm && hovEtype>=0)
+        {
+            breakpoint_envelope* env = nullptr;
+            if (hovEtype == 0 && hovE>=0 && hovE<sm->m_numAmpEnvs)
+                env = &sm->m_amp_envelopes[hovE];
+            if (hovEtype == 1)
+            {
+                env = &pitchenv;
+                auto& pt = env->GetNodeAtIndex(0);
+                pt.Shape = hovE;
+            }
+            if (env)
+            {
+                nvgBeginPath(args.vg);
+                for (int i=0;i<101;++i)
+                {
+                    float xcor = 1.0f+i;
+                    float norm = rescale((float)i,0.0f,100.0f,0.0f,1.0f);
+                    float ycor = 300.0f+rescale(env->GetInterpolatedEnvelopeValue(norm),0.0f,1.0f,50.0f,0.0f);
+                    if (i == 0)
+                        nvgMoveTo(args.vg,xcor,ycor);
+                    else
+                        nvgLineTo(args.vg,xcor,ycor);
+                }
+                nvgStroke(args.vg);
+            }
+        }
+        
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
     }
 private:
-    
+    breakpoint_envelope pitchenv;
 };
 
 Model* modelXStochastic = createModel<XStochastic, XStochasticWidget>("XStochastic");
