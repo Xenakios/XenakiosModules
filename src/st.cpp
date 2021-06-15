@@ -81,8 +81,10 @@ inline float Kumaraswamy(float z)
 class StocVoice
 {
 public:
+    dsp::ClockDivider cd;
     StocVoice()
     {
+        cd.setDivision(4);
         m_amp_resp_smoother.setAmount(0.95);
         
         m_pitch_env.AddNode({0.0f,0.0f,2});
@@ -115,11 +117,15 @@ public:
             float aenvphase = normphase;
             if (m_amp_env_warp<0.0f)
                 aenvphase = 1.0f-std::pow(1.0f-normphase,rescale(m_amp_env_warp,-1.0f,0.0f,1.0f,4.0f));
+            else if (m_amp_env_warp == 0.0f)
+                aenvphase = normphase;
             else
                 aenvphase = std::pow(normphase,rescale(m_amp_env_warp,0.0f,1.0f,1.0f,4.0f));
             float gain = m_amp_env->GetInterpolatedEnvelopeValue(aenvphase);
             m_Outs[2] = rescale(gain,0.0f,1.0f,0.0f,10.0f);
         }
+        if (cd.process())
+        {
         if (m_activeOuts[1])
         {
             float penvphase = normphase;
@@ -150,6 +156,7 @@ public:
             }
             m_chaosphase += deltatime;
             m_Outs[5] = rescale(m_chaos_smoother.process(m_chaos),0.0,1.0,-5.0f,5.0f);
+        }
         }
         m_phase += deltatime;
         if (m_phase>=m_len)
