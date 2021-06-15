@@ -595,11 +595,68 @@ public:
     int env = -1;
 };
 
+class STEnvelopesWidget : public TransparentWidget
+{
+public:
+    XStochastic* m_st = nullptr;
+    int m_envType = -1;
+    int m_env = -1;
+    breakpoint_envelope m_pitchenv;
+    STEnvelopesWidget(XStochastic* m) : m_st(m)
+    {
+        m_pitchenv.AddNode({0.0f,0.0f});
+        m_pitchenv.AddNode({1.0f,1.0f});
+    }
+    void draw(const DrawArgs &args) override
+    {
+        if (m_st==nullptr)
+            return;
+        nvgSave(args.vg);
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg,nvgRGBA(0x00, 0x00, 0x00, 0xff));
+        nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
+        nvgFill(args.vg);
+        nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+        breakpoint_envelope* env = nullptr;
+        if (m_envType == 0 && m_env>=0 && m_env<m_st->m_numAmpEnvs)
+            env = &m_st->m_amp_envelopes[m_env];
+        if (m_envType == 1)
+        {
+            env = &m_pitchenv;
+            auto& pt = env->GetNodeAtIndex(0);
+            pt.Shape = m_env;
+        }
+        if (env)
+        {
+            nvgBeginPath(args.vg);
+            int w = box.size.x;
+            for (int i=0;i<w;++i)
+            {
+                float xcor = (float)i;
+                float norm = rescale((float)i,0.0f,w,0.0f,1.0f);
+                float ycor = rescale(env->GetInterpolatedEnvelopeValue(norm),0.0f,1.0f,box.size.y,0.0f);
+                if (i == 0)
+                    nvgMoveTo(args.vg,xcor,ycor);
+                else
+                    nvgLineTo(args.vg,xcor,ycor);
+            }
+            nvgStroke(args.vg);
+        }
+        nvgRestore(args.vg);
+    }
+    void setEnvelopeToShow(int a, int b)
+    {
+        m_envType = a;
+        m_env = b;
+    }
+};
+
 class XStochasticWidget : public ModuleWidget
 {
 public:
     int hovEtype = -1;
     int hovE = -1;
+    STEnvelopesWidget* m_ew = nullptr;
     XStochasticWidget(XStochastic* m)
     {
         setModule(m);
@@ -679,20 +736,35 @@ public:
             -1,-1,xc,yc,false,8.0f));
         yc += 47;
         syc = yc;
+        auto knobcb = [this](int a, int b)
+        {
+            if (a == -1)
+                m_ew->hide();
+            else
+            {
+                m_ew->show();
+                m_ew->setEnvelopeToShow(a,b);
+            }
+        };
         for (int i=0;i<16;++i)
         {
             MyTrimpot* mp = nullptr;
             addParam(mp = createParam<MyTrimpot>(Vec(1+20*i, yc), module, XStochastic::PAR_DISPLAY_WEIGHT+i));
             mp->envType = 0;
             mp->env = i;
-            mp->EnterCallback = [this](int a, int b){ hovEtype = a; hovE = b; };
+            mp->EnterCallback =  knobcb; //[this](int a, int b){ hovEtype = a; hovE = b; };
             addParam(mp = createParam<MyTrimpot>(Vec(1+20*i, yc+20), module, XStochastic::PAR_DISPLAY_WEIGHT2+i));
             mp->envType = 1;
             mp->env = i;
-            mp->EnterCallback = [this](int a, int b){ hovEtype = a; hovE = b; };
+            mp->EnterCallback = knobcb; // [this](int a, int b){ hovEtype = a; hovE = b; };
         }
         pitchenv.AddNode({0.0f,0.0f});
         pitchenv.AddNode({1.0f,1.0f});
+        m_ew = new STEnvelopesWidget(m);
+        m_ew->box.pos = {0,60};
+        m_ew->box.size = {box.size.x,185};
+        addChild(m_ew);
+        m_ew->hide();
     }
     int syc = 0;
     ~XStochasticWidget()
@@ -720,34 +792,7 @@ public:
             sprintf(buf,"Xenakios %d voices, %d events %d %d",sm->m_NumUsedVoices,sm->m_eventCounter,hovEtype,hovE);
         else sprintf(buf,"Xenakios");
         nvgText(args.vg, 3 , h-11, buf, NULL);
-        nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
-        if (sm && hovEtype>=0)
-        {
-            breakpoint_envelope* env = nullptr;
-            if (hovEtype == 0 && hovE>=0 && hovE<sm->m_numAmpEnvs)
-                env = &sm->m_amp_envelopes[hovE];
-            if (hovEtype == 1)
-            {
-                env = &pitchenv;
-                auto& pt = env->GetNodeAtIndex(0);
-                pt.Shape = hovE;
-            }
-            if (env)
-            {
-                nvgBeginPath(args.vg);
-                for (int i=0;i<101;++i)
-                {
-                    float xcor = (15*21.0f)+i;
-                    float norm = rescale((float)i,0.0f,100.0f,0.0f,1.0f);
-                    float ycor = (float)syc+rescale(env->GetInterpolatedEnvelopeValue(norm),0.0f,1.0f,50.0f,0.0f);
-                    if (i == 0)
-                        nvgMoveTo(args.vg,xcor,ycor);
-                    else
-                        nvgLineTo(args.vg,xcor,ycor);
-                }
-                nvgStroke(args.vg);
-            }
-        }
+        
         
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
