@@ -603,7 +603,7 @@ public:
     XStochasticWidget(XStochastic* m)
     {
         setModule(m);
-        box.size.x = RACK_GRID_WIDTH*22;
+        box.size.x = RACK_GRID_WIDTH*28;
         
         if (!g_font)
         	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
@@ -678,6 +678,7 @@ public:
         addChild(new KnobInAttnWidget(this,"GLISS ENV WARP SPR",XStochastic::PAR_PITCH_ENV_WARP_SPREAD,
             -1,-1,xc,yc,false,8.0f));
         yc += 47;
+        syc = yc;
         for (int i=0;i<16;++i)
         {
             MyTrimpot* mp = nullptr;
@@ -693,6 +694,7 @@ public:
         pitchenv.AddNode({0.0f,0.0f});
         pitchenv.AddNode({1.0f,1.0f});
     }
+    int syc = 0;
     ~XStochasticWidget()
     {
         
@@ -735,9 +737,9 @@ public:
                 nvgBeginPath(args.vg);
                 for (int i=0;i<101;++i)
                 {
-                    float xcor = 1.0f+i;
+                    float xcor = (15*21.0f)+i;
                     float norm = rescale((float)i,0.0f,100.0f,0.0f,1.0f);
-                    float ycor = 300.0f+rescale(env->GetInterpolatedEnvelopeValue(norm),0.0f,1.0f,50.0f,0.0f);
+                    float ycor = (float)syc+rescale(env->GetInterpolatedEnvelopeValue(norm),0.0f,1.0f,50.0f,0.0f);
                     if (i == 0)
                         nvgMoveTo(args.vg,xcor,ycor);
                     else
