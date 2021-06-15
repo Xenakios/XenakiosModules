@@ -584,6 +584,12 @@ public:
         if (EnterCallback)
             EnterCallback(envType,env);
     }
+    void onLeave(const event::Leave& e) override
+    {
+        Trimpot::onLeave(e);
+        if (EnterCallback)
+            EnterCallback(-1,-1);
+    }
     std::function<void(int,int)> EnterCallback;
     int envType = -1;
     int env = -1;
