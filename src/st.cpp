@@ -82,9 +82,20 @@ class StocVoice
 {
 public:
     dsp::ClockDivider cd;
+    std::array<float,66> ampwarp_table;
+    std::array<float,66> pitchwarp_table;
     StocVoice()
     {
         cd.setDivision(4);
+        for (int i=0;i<ampwarp_table.size()-2;++i)
+        {
+            ampwarp_table[i] = rescale((float)i,0.0f,(float)ampwarp_table.size()-2,0.0f,1.0f);
+            pitchwarp_table[i] = rescale((float)i,0.0f,(float)pitchwarp_table.size()-2,0.0f,1.0f);
+        }
+        ampwarp_table[ampwarp_table.size()-2] = 1.0f;
+        ampwarp_table[ampwarp_table.size()-1] = 1.0f;
+        pitchwarp_table[pitchwarp_table.size()-2] = 1.0f;
+        pitchwarp_table[pitchwarp_table.size()-1] = 1.0f;
         m_amp_resp_smoother.setAmount(0.95);
         
         m_pitch_env.AddNode({0.0f,0.0f,2});
@@ -112,27 +123,32 @@ public:
             m_Outs[0] = 10.0f;
         else
             m_Outs[0] = 0.0f;
+        //if (cd.process())
+        {
         if (m_activeOuts[2])
         {
-            float aenvphase = normphase;
+            float aenvphase = interpolateLinear(powtable.data(), normphase*64);
+            /*
             if (m_amp_env_warp<0.0f)
                 aenvphase = 1.0f-std::pow(1.0f-normphase,rescale(m_amp_env_warp,-1.0f,0.0f,1.0f,4.0f));
             else if (m_amp_env_warp == 0.0f)
                 aenvphase = normphase;
             else
                 aenvphase = std::pow(normphase,rescale(m_amp_env_warp,0.0f,1.0f,1.0f,4.0f));
+            */
             float gain = m_amp_env->GetInterpolatedEnvelopeValue(aenvphase);
             m_Outs[2] = rescale(gain,0.0f,1.0f,0.0f,10.0f);
         }
-        if (cd.process())
-        {
+        
         if (m_activeOuts[1])
         {
             float penvphase = normphase;
+            /*
             if (m_pitch_env_warp<0.0f)
                 penvphase = 1.0f-std::pow(1.0f-normphase,rescale(m_pitch_env_warp,-1.0f,0.0f,1.0f,4.0f));
             else
                 penvphase = std::pow(normphase,rescale(m_pitch_env_warp,0.0f,1.0f,1.0f,4.0f));
+            */
             float penvvalue = m_pitch_env.GetInterpolatedEnvelopeValue(penvphase);
             m_Outs[1] = reflect_value<float>(-60.0f,m_pitch + penvvalue,60.0f);
         }
