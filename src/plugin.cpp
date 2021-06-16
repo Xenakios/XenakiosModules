@@ -321,4 +321,5 @@ void init(Plugin *p) {
 	p->addModel(modelXGranular);
 	p->addModel(modelXEnvelope);
 	p->addModel(modelXCVShaper);
+	p->addModel(modelXSampler);
 }

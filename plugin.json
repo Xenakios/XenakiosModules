@@ -197,6 +197,15 @@
         "Shaper",
         "Quantizer"
       ]
+    },
+    {
+      "slug": "XSampler",
+      "name": "XSampler",
+      "description": "Sampler",
+      "tags": [
+        "Sampler",
+        "Polyphonic"
+      ]
     }
     
 

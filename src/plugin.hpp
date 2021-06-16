@@ -299,3 +299,4 @@ extern Model* modelXMultiMod;
 extern Model* modelXGranular;
 extern Model* modelXEnvelope;
 extern Model* modelXCVShaper;
+extern Model* modelXSampler;

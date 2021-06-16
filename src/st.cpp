@@ -127,7 +127,7 @@ public:
         {
         if (m_activeOuts[2])
         {
-            float aenvphase = interpolateLinear(powtable.data(), normphase*64);
+            float aenvphase = interpolateLinear(ampwarp_table.data(), normphase*64);
             /*
             if (m_amp_env_warp<0.0f)
                 aenvphase = 1.0f-std::pow(1.0f-normphase,rescale(m_amp_env_warp,-1.0f,0.0f,1.0f,4.0f));
