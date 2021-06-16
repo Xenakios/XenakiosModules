@@ -22,7 +22,7 @@ public:
     {
         drwav_free(pSampleData,nullptr);
     }
-    float process(float deltatime, float outsamplerate, float pitch, float trig)
+    float process(float deltatime, float outsamplerate, float pitch, float trig, float lin_rate)
     {
         if (m_trig.process(rescale(trig,0.0f,10.0f,0.0f,1.0f)))
         {
@@ -32,17 +32,24 @@ public:
         {
             mUpdateCounter = 0;
             double ratio = std::pow(2.0,1.0/12*pitch);
+            int samp_inc = 1;
+            if (lin_rate<0.0f)
+                samp_inc = -1;
+            float arate = std::abs(lin_rate);
+            if (arate<0.001)
+                arate = 0.001;
             float result[2] = {0.0,0.0};
-            m_src.SetRates(m_srcsampleRate,m_srcsampleRate/ratio);
+            m_src.SetRates(m_srcsampleRate,m_srcsampleRate/(ratio*arate));
             float* rsinbuf = nullptr;
             int wanted = m_src.ResamplePrepare(mUpdateLen,1,&rsinbuf);
             for (int i=0;i<wanted;++i)
             {
                 rsinbuf[i] = pSampleData[m_phase];
-                m_phase += 1;
-                if (m_phase>=m_totalPCMFrameCount)
+                m_phase += samp_inc;
+                if (m_phase>=(int)m_totalPCMFrameCount)
                     m_phase = 0;
-                
+                if (m_phase<0)
+                    m_phase = m_totalPCMFrameCount-1;    
             }
             m_src.ResampleOut(srcOutBuffer.data(),wanted,mUpdateLen,1);
         }
@@ -71,6 +78,7 @@ public:
     {
         IN_PITCH,
         IN_TRIG,
+        IN_LIN_RATE,
         IN_LAST
     };
     enum OUTS
@@ -95,15 +103,22 @@ public:
         int numvoices = inputs[IN_PITCH].getChannels();
         if (numvoices==0)
             numvoices = 1;
+        float linrate = 1.0f; 
+        if (inputs[IN_LIN_RATE].isConnected())
+        {
+            linrate = inputs[IN_LIN_RATE].getVoltage()*0.2f;
+            linrate = clamp(linrate,-1.0f,1.0f);
+        }
+        
         for (int i=0;i<numvoices;++i)
         {
             float vpitch = pitch+inputs[IN_PITCH].getVoltage(i)*12.0f;
             vpitch = clamp(vpitch,-60.0f,60.0f);
             float trig = inputs[IN_TRIG].getVoltage(i);
-            float s = m_voices[i].process(args.sampleTime,args.sampleRate,vpitch,trig);
+            float s = m_voices[i].process(args.sampleTime,args.sampleRate,vpitch,trig,linrate);
             sum += s;
         }
-        sum *= 0.3;
+        sum *= 0.5;
         outputs[OUT_AUDIO].setVoltage(sum*5.0f);
     }
 private:
@@ -121,6 +136,7 @@ public:
         port = new PortWithBackGround(m,this,XSampler::OUT_AUDIO,1, 20,"AUDIO OUT",true);
         port = new PortWithBackGround(m,this,XSampler::IN_PITCH,52, 20,"1V/OCT",false);
         port = new PortWithBackGround(m,this,XSampler::IN_TRIG,82, 20,"GT/TR",false);
+        port = new PortWithBackGround(m,this,XSampler::IN_LIN_RATE,112, 20,"LINRATE",false);
         addParam(createParam<Trimpot>(Vec(30, 20), m, XSampler::PAR_PITCH)); 
     }
     void draw(const DrawArgs &args) override
