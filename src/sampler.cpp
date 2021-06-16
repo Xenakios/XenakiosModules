@@ -22,8 +22,12 @@ public:
     {
         drwav_free(pSampleData,nullptr);
     }
-    float process(float deltatime, float outsamplerate, float pitch)
+    float process(float deltatime, float outsamplerate, float pitch, float trig)
     {
+        if (m_trig.process(rescale(trig,0.0f,10.0f,0.0f,1.0f)))
+        {
+            m_phase = 0;
+        }
         if (mUpdateCounter == mUpdateLen)
         {
             mUpdateCounter = 0;
@@ -57,11 +61,18 @@ private:
     std::vector<float> srcOutBuffer;
     int mUpdateCounter = 0;
     int mUpdateLen = 8;
+    dsp::SchmittTrigger m_trig;
 };
 
 class XSampler : public Module
 {
 public:
+    enum INS
+    {
+        IN_PITCH,
+        IN_TRIG,
+        IN_LAST
+    };
     enum OUTS
     {
         OUT_AUDIO,
@@ -74,17 +85,22 @@ public:
     };
     XSampler()
     {
-        config(PAR_LAST,0,OUT_LAST);
+        config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_PITCH,-60.0f,60.0f,0.0f);
     }
     void process(const ProcessArgs& args) override
     {
         float pitch = params[PAR_PITCH].getValue();
         float sum = 0.0f;
-        for (int i=0;i<16;++i)
+        int numvoices = inputs[IN_PITCH].getChannels();
+        if (numvoices==0)
+            numvoices = 1;
+        for (int i=0;i<numvoices;++i)
         {
-            float vpitch = pitch+i*0.1;
-            float s = m_voices[i].process(args.sampleTime,args.sampleRate,vpitch);
+            float vpitch = pitch+inputs[IN_PITCH].getVoltage(i)*12.0f;
+            vpitch = clamp(vpitch,-60.0f,60.0f);
+            float trig = inputs[IN_TRIG].getVoltage(i);
+            float s = m_voices[i].process(args.sampleTime,args.sampleRate,vpitch,trig);
             sum += s;
         }
         sum *= 0.3;
@@ -103,6 +119,8 @@ public:
         box.size.x = RACK_GRID_WIDTH * 30;
         PortWithBackGround* port = nullptr;
         port = new PortWithBackGround(m,this,XSampler::OUT_AUDIO,1, 20,"AUDIO OUT",true);
+        port = new PortWithBackGround(m,this,XSampler::IN_PITCH,52, 20,"1V/OCT",false);
+        port = new PortWithBackGround(m,this,XSampler::IN_TRIG,82, 20,"GT/TR",false);
         addParam(createParam<Trimpot>(Vec(30, 20), m, XSampler::PAR_PITCH)); 
     }
     void draw(const DrawArgs &args) override
