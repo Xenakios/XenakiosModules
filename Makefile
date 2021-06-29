@@ -4,19 +4,6 @@ RACK_DIR ?= ../../Rack-SDK
 # CC:= clang
 # CXX:= clang++
 
-libsamplerate := dep/lib/libsamplerate.a
-OBJECTS += $(libsamplerate)
-DEPS += $(libsamplerate)
-
-$(libsamplerate):
-	$(WGET) http://www.mega-nerd.com/SRC/libsamplerate-0.1.9.tar.gz
-	cd dep/libsamplerate && $(UNTAR) ../../libsamplerate-0.1.9.tar.gz
-	cd dep/libsamplerate/libsamplerate-0.1.9 && $(CONFIGURE)
-	cd dep/libsamplerate/libsamplerate-0.1.9/src && $(MAKE)
-	cd dep/libsamplerate/libsamplerate-0.1.9/src && $(MAKE) install
-
-
-
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS += -Idep
 # FLAGS += -Idep/rubberband

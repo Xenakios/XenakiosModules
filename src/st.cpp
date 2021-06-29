@@ -333,6 +333,7 @@ public:
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
+    int m_lastAllocatedVoice = 0;
     XStochastic()
     {
         for (int i=0;i<16;++i)
@@ -493,10 +494,10 @@ public:
                 manual_pitch_env = 0;
             float aenvwarp = params[PAR_AMP_ENV_WARP_SPREAD].getValue();
             float pitchenvwarp = params[PAR_PITCH_ENV_WARP_SPREAD].getValue();
-            int i = 0;
-            while (i<numvoices)
+            
+            for (int i=0;i<numvoices;++i)
             {
-                int voiceIndex = voicedist(m_rng);
+                int voiceIndex = (m_lastAllocatedVoice+i) % numvoices;
                 if (m_voices[voiceIndex].isAvailable())
                 {
                     m_voices[voiceIndex].m_startPos = m_nextEventPos;
@@ -511,9 +512,9 @@ public:
                         &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env,
                         aenvwarp,pitchenvwarp);
                     ++m_eventCounter;
+                    m_lastAllocatedVoice = voiceIndex;
                     break;
                 }
-                ++i;
             }
             
             double qamt = params[PAR_RATE_QUAN_AMOUNT].getValue();
