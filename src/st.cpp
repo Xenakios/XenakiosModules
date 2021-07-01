@@ -795,6 +795,30 @@ public:
     {
         
     }
+    void appendContextMenu(Menu* menu) override
+    {
+        XStochastic* sm = dynamic_cast<XStochastic*>(module);
+        menu->addChild(createMenuItem([sm]()
+        {
+            for (int i=0;i<16;++i)
+                sm->params[XStochastic::PAR_DISPLAY_WEIGHT+i].setValue(0.0f);
+        },"Set amp envelope probabilities to 0"));
+        menu->addChild(createMenuItem([sm]()
+        {
+            for (int i=0;i<16;++i)
+                sm->params[XStochastic::PAR_DISPLAY_WEIGHT+i].setValue(1.0f);
+        },"Set amp envelope probabilities to 1"));
+        menu->addChild(createMenuItem([sm]()
+        {
+            for (int i=0;i<16;++i)
+                sm->params[XStochastic::PAR_DISPLAY_WEIGHT2+i].setValue(0.0f);
+        },"Set pitch envelope probabilities to 0"));
+        menu->addChild(createMenuItem([sm]()
+        {
+            for (int i=0;i<16;++i)
+                sm->params[XStochastic::PAR_DISPLAY_WEIGHT2+i].setValue(1.0f);
+        },"Set pitch envelope probabilities to 1"));
+    }
     void draw(const DrawArgs &args) override
     {
         nvgSave(args.vg);
