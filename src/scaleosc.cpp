@@ -14,6 +14,7 @@ public:
             m_osc_gains[i] = 1.0f;
         }
         m_norm_smoother.setAmount(0.999);
+        m_balance_smoother.setAmount(0.999);
         double freq = 20.0;
         while (freq<20000.0)
         {
@@ -50,16 +51,17 @@ public:
         float mix_l = 0.0;
         float mix_r = 0.0;
         float gain0 = 0.0f;
-        float gain1 = -60.0f+60.0f*m_balance;
+        float gain1 = -60.0f+60.0f*m_balance_smoother.process(m_balance);
         int oscilsused = 0;
         for (int i=0;i<m_oscils.size();++i)
         {
             
             float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
-            float gain = rack::dsp::dbToAmplitude(db);
+            
             float bypassgain = m_osc_gain_smoothers[i].process(m_osc_gains[i]);
             if (bypassgain<0.001)
                 continue;
+            float gain = rack::dsp::dbToAmplitude(db);
             gain = gain * bypassgain;
             ++oscilsused;
             float gain_l = 1.0f;
@@ -92,11 +94,13 @@ public:
     }
     void setRootPitch(float p)
     {
+        p = clamp(p,-36.0f,36.0f);
         m_root_freq = 256.0f*std::pow(1.05946309436,p);
         //updateOscFrequencies();
     }
     void setPitchOffset(float p)
     {
+        p = clamp(p,-36.0f,36.0f);
         m_freqratio = std::pow(1.05946309436,p);
         //updateOscFrequencies();
     }
@@ -141,6 +145,7 @@ private:
     std::array<float,16> m_osc_gains;
     std::array<OnePoleFilter,16> m_osc_gain_smoothers;
     OnePoleFilter m_norm_smoother;
+    OnePoleFilter m_balance_smoother;
     std::vector<float> m_scale;
     float m_spread = 1.0f;
     float m_root_freq = 60.0f;
@@ -170,6 +175,7 @@ public:
         IN_SPREAD,
         IN_FOLD,
         IN_DETUNE,
+        IN_NUM_OSCS,
         IN_LAST
     };
     enum PARAMETERS
@@ -212,8 +218,12 @@ public:
             pitch += inputs[IN_PITCH].getVoltage()*12.0f;
             pitch = clamp(pitch,-48.0f,48.0);
             m_osc.setPitchOffset(pitch);
-            m_osc.setRootPitch(params[PAR_ROOT].getValue());
-            m_osc.setOscCount(params[PAR_NUM_OSCS].getValue());
+            float root = params[PAR_ROOT].getValue();
+            root += inputs[IN_ROOT].getVoltage()*12.0f;
+            m_osc.setRootPitch(root);
+            float osccount = params[PAR_NUM_OSCS].getValue();
+            osccount += inputs[IN_NUM_OSCS].getVoltage() * (16.0f/10.0f);
+            m_osc.setOscCount(osccount);
             float spread = params[PAR_SPREAD].getValue();
             spread += inputs[IN_SPREAD].getVoltage()*0.1;
             m_osc.setSpread(spread);
@@ -241,7 +251,7 @@ public:
         float yc = 80.0f;
         
         addChild(new KnobInAttnWidget(this,"ROOT",XScaleOsc::PAR_ROOT,
-            -1,-1,xc,yc));
+            XScaleOsc::IN_ROOT,-1,xc,yc));
         xc+=82.0f;
         addChild(new KnobInAttnWidget(this,"BALANCE",XScaleOsc::PAR_BALANCE,
             XScaleOsc::IN_BALANCE,-1,xc,yc));
@@ -260,7 +270,7 @@ public:
             XScaleOsc::IN_FOLD,-1,xc,yc));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"NUM OSCS",XScaleOsc::PAR_NUM_OSCS,
-            -1,-1,xc,yc,true));
+            XScaleOsc::IN_NUM_OSCS,-1,xc,yc,true));
     }
     void draw(const DrawArgs &args) override
     {
