@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include "helperwidgets.h"
+#include "wtosc.h"
 
 class ScaleOscillator
 {
@@ -16,10 +17,10 @@ public:
         m_norm_smoother.setAmount(0.999);
         m_balance_smoother.setAmount(0.999);
         double freq = 20.0;
-        while (freq<20000.0)
+        while (freq<40000.0)
         {
             m_scale.push_back(freq);
-            freq *= 1.2;
+            freq *= 1.25;
         }
         updateOscFrequencies();
     }

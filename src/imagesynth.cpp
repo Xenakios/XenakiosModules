@@ -6,7 +6,7 @@
 #include <functional>
 #include <thread> 
 #include <mutex>
-
+#include "wtosc.h"
 #include "wdl/resample.h"
 #include <chrono>
 
