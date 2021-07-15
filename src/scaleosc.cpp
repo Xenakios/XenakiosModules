@@ -78,7 +78,7 @@ public:
         }
         if (oscilsused>0)
         {
-            float scaler = m_norm_smoother.process(1.0f/oscilsused*0.9f);
+            float scaler = m_norm_smoother.process(1.0f/(oscilsused*0.3f));
             return {mix_l*scaler,mix_r*scaler};
         }
         return {0.0f,0.0f};
@@ -162,6 +162,16 @@ public:
         OUT_AUDIO_2,
         OUT_LAST
     };
+    enum INPUTS
+    {
+        IN_ROOT,
+        IN_PITCH,
+        IN_BALANCE,
+        IN_SPREAD,
+        IN_FOLD,
+        IN_DETUNE,
+        IN_LAST
+    };
     enum PARAMETERS
     {
         PAR_ROOT,
@@ -175,7 +185,7 @@ public:
     };
     XScaleOsc()
     {
-        config(PAR_LAST,0,OUT_LAST);
+        config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_BALANCE,0.0f,1.0f,0.0f,"Balance");
         configParam(PAR_ROOT,-36.0f,36.0f,-12.0f,"Root");
         configParam(PAR_PITCH_OFFS,-36.0f,36.0f,0.0f,"Pitch offset");
@@ -189,13 +199,24 @@ public:
     {
         if (m_pardiv.process())
         {
-            m_osc.setBalance(params[PAR_BALANCE].getValue());
-            m_osc.setDetune(params[PAR_DETUNE].getValue());
-            m_osc.setFold(params[PAR_FOLD].getValue());
-            m_osc.setPitchOffset(params[PAR_PITCH_OFFS].getValue());
+            float bal = params[PAR_BALANCE].getValue();
+            bal += inputs[IN_BALANCE].getVoltage()*0.1f;
+            m_osc.setBalance(bal);
+            float detune = params[PAR_DETUNE].getValue();
+            detune += inputs[IN_DETUNE].getVoltage();
+            m_osc.setDetune(detune);
+            float fold = params[PAR_FOLD].getValue();
+            fold += inputs[IN_FOLD].getVoltage()*0.1f;
+            m_osc.setFold(fold);
+            float pitch = params[PAR_PITCH_OFFS].getValue();
+            pitch += inputs[IN_PITCH].getVoltage()*12.0f;
+            pitch = clamp(pitch,-48.0f,48.0);
+            m_osc.setPitchOffset(pitch);
             m_osc.setRootPitch(params[PAR_ROOT].getValue());
             m_osc.setOscCount(params[PAR_NUM_OSCS].getValue());
-            m_osc.setSpread(params[PAR_SPREAD].getValue());
+            float spread = params[PAR_SPREAD].getValue();
+            spread += inputs[IN_SPREAD].getVoltage()*0.1;
+            m_osc.setSpread(spread);
             m_osc.updateOscFrequencies();
         }
         auto outs = m_osc.getNextFrame();
@@ -223,20 +244,20 @@ public:
             -1,-1,xc,yc));
         xc+=82.0f;
         addChild(new KnobInAttnWidget(this,"BALANCE",XScaleOsc::PAR_BALANCE,
-            -1,-1,xc,yc));
+            XScaleOsc::IN_BALANCE,-1,xc,yc));
         xc+=82.0f;
         addChild(new KnobInAttnWidget(this,"PITCH",XScaleOsc::PAR_PITCH_OFFS,
-            -1,-1,xc,yc));
+            XScaleOsc::IN_PITCH,-1,xc,yc));
         xc+=82.0f;
         addChild(new KnobInAttnWidget(this,"SPREAD",XScaleOsc::PAR_SPREAD,
-            -1,-1,xc,yc));
+            XScaleOsc::IN_SPREAD,-1,xc,yc));
         xc = 1.0f;
         yc += 47.0f;
         addChild(new KnobInAttnWidget(this,"DETUNE",XScaleOsc::PAR_DETUNE,
-            -1,-1,xc,yc));
+            XScaleOsc::IN_DETUNE,-1,xc,yc));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"FOLD",XScaleOsc::PAR_FOLD,
-            -1,-1,xc,yc));
+            XScaleOsc::IN_FOLD,-1,xc,yc));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"NUM OSCS",XScaleOsc::PAR_NUM_OSCS,
             -1,-1,xc,yc,true));
