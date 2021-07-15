@@ -26,15 +26,6 @@ public:
     void updateOscFrequencies()
     {
         double maxfreq = rescale(m_spread,0.0f,1.0f,m_root_freq,20000.0);
-        /*
-        double f = m_root_freq;
-        m_scale.clear();
-        while (f<maxfreq)
-        {
-            f *= 1.5;
-            m_scale.push_back(f);
-        }
-        */
         for (int i=0;i<m_active_oscils;++i)
         {
             double f = rescale((float)i,0,m_active_oscils,m_root_freq,maxfreq);
@@ -42,7 +33,8 @@ public:
             float detun = rescale((float)i,0,m_active_oscils,0.0f,maxfreq*0.05*m_detune);
             if (i % 2 == 1)
                 detun = -detun;
-            m_oscils[i].setFrequency(f*m_freqratio+detun);
+            f = clamp(f*m_freqratio+detun,20.0f,20000.0f);
+            m_oscils[i].setFrequency(f);
             //std::cout << i << "\t" << f << "hz\n";
         }
     }
