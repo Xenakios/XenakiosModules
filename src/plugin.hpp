@@ -348,11 +348,16 @@ public:
         if (m_phase>=m_tablesize)
             m_phase-=m_tablesize;
         */
-        int index0 = std::floor(m_phase);
-        int index1 = std::floor(m_phase)+1;
+        double phasetouse = m_phase;
+        /*
+        float bitlevels = m_phasebitlevels;
+        phasetouse = std::round(phasetouse*bitlevels)/bitlevels;
+        */
+        int index0 = std::floor(phasetouse);
+        int index1 = std::floor(phasetouse)+1;
         if (index1>=m_tablesize)
             index1 = 0;
-        float frac = m_phase-index0;
+        float frac = phasetouse-index0;
         float y0 = m_table[index0];
         float y1 = m_table[index1];
         float sample = y0+(y1-y0)*frac;
@@ -375,6 +380,11 @@ public:
         m_tablesize = tb.size();
         m_table = tb;
     }
+    void setPhaseWarp(int mode, float par)
+    {
+        
+        m_phasebitlevels = par;
+    }
 private:
     int m_tablesize = 0;
     std::vector<float> m_table;
@@ -382,6 +392,7 @@ private:
     float m_sr = 44100.0f;
     float m_phaseincrement = 0.0f;
     float m_freq = 440.0f;
+    float m_phasebitlevels = 2048.0f;
 };
 
 // Declare each Model, defined in each module source file

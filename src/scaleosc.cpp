@@ -77,6 +77,15 @@ public:
         }
         return {0.0f,0.0f};
     }
+    void setWarp(float w)
+    {
+        if (w==m_warp)
+            return;
+        w = clamp(w,0.0f,1.0f);
+        m_warp = w;
+        for (int i=0;i<m_oscils.size();++i)
+            m_oscils[i].setPhaseWarp(0,2.0f+2046.0f*w);
+    }
     void setSpread(float s)
     {
         if (s<0.0f) s = 0.0f;
@@ -146,6 +155,7 @@ private:
     float m_detune = 0.1;
     float m_fold = 0.0f;
     int m_active_oscils = 16;
+    float m_warp = 0.0f;    
 };
 
 
@@ -179,6 +189,7 @@ public:
         PAR_NUM_OSCS,
         PAR_FOLD,
         PAR_SPREAD,
+        PAR_WARP,
         PAR_LAST
     };
     XScaleOsc()
@@ -191,6 +202,7 @@ public:
         configParam(PAR_NUM_OSCS,1.0f,16.0f,16.0f,"Num oscillators");
         configParam(PAR_FOLD,0.0f,1.0f,0.0f,"Fold");
         configParam(PAR_SPREAD,0.0f,1.0f,0.5f,"Spread");
+        configParam(PAR_WARP,0.0f,1.0f,0.5f,"Warp");
         m_pardiv.setDivision(16);
     }
     void process(const ProcessArgs& args) override
@@ -219,6 +231,8 @@ public:
             float spread = params[PAR_SPREAD].getValue();
             spread += inputs[IN_SPREAD].getVoltage()*0.1;
             m_osc.setSpread(spread);
+            float warp = params[PAR_WARP].getValue();
+            m_osc.setWarp(warp);
             m_osc.updateOscFrequencies();
         }
         auto outs = m_osc.getNextFrame();
@@ -263,6 +277,9 @@ public:
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"NUM OSCS",XScaleOsc::PAR_NUM_OSCS,
             XScaleOsc::IN_NUM_OSCS,-1,xc,yc,true));
+        xc += 82.0f;
+        addChild(new KnobInAttnWidget(this,"WARP",XScaleOsc::PAR_WARP,
+            -1,-1,xc,yc));
     }
     void draw(const DrawArgs &args) override
     {
