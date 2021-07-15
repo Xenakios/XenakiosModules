@@ -322,4 +322,5 @@ void init(Plugin *p) {
 	p->addModel(modelXEnvelope);
 	p->addModel(modelXCVShaper);
 	p->addModel(modelXSampler);
+	p->addModel(modelXScaleOscillator);
 }

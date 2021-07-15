@@ -206,6 +206,15 @@
         "Sampler",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "XScaleOscillator",
+      "name": "XScaleOscillator",
+      "description": "Oscillator",
+      "tags": [
+        "Oscillator",
+        "Polyphonic"
+      ]
     }
     
 
