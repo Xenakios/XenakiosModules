@@ -16,11 +16,24 @@ public:
         }
         m_norm_smoother.setAmount(0.999);
         m_balance_smoother.setAmount(0.999);
+        /*
         double freq = 20.0;
         while (freq<40000.0)
         {
             m_scale.push_back(freq);
             freq *= 1.25;
+        }
+        */
+        std::array<int,7> intervals{2,1,2,2,1,2,2};
+        double pitch = 0;
+        for (int i=0;i<256;++i)
+        {
+            double p = pitch;
+            double f = 20.0 * std::pow(1.05946309436,p);
+            if (f>20000.0)
+                break;
+            m_scale.push_back(f);
+            pitch += intervals[i % intervals.size()];
         }
         updateOscFrequencies();
     }
