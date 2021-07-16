@@ -155,7 +155,7 @@ public:
             f = 0.0f;
         if (f>1.0f)
             f = 1.0f;
-        m_fold = f;
+        m_fold = std::pow(f,3.0f);
     }
     void setOscCount(int c)
     {
