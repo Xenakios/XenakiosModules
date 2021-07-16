@@ -94,7 +94,7 @@ public:
             mix_l += s * gain_l;
             mix_r += s * gain_r;
         }
-        int fm_mode = 2;
+        int fm_mode = m_fm_mode;
         if (fm_mode == 0)
         {
             for (int i=1;i<m_active_oscils;++i)
@@ -195,6 +195,12 @@ public:
         }
         m_active_oscils = c;
     }
+    void setFMMode(int m)
+    {
+        if (m<0) m = 0;
+        if (m>2) m = 2;
+        m_fm_mode = m;
+    }
 private:
     std::array<ImgWaveOscillator,16> m_oscils;
     std::array<float,16> m_osc_gains;
@@ -212,6 +218,7 @@ private:
     float m_fm_amt = 0.0f;
     int m_active_oscils = 16;
     float m_warp = 0.0f;    
+    int m_fm_mode = 0;
 };
 
 
@@ -248,6 +255,7 @@ public:
         PAR_SPREAD,
         PAR_WARP,
         PAR_FM_AMT,
+        PAR_FM_MODE,
         PAR_LAST
     };
     XScaleOsc()
@@ -262,6 +270,7 @@ public:
         configParam(PAR_SPREAD,0.0f,1.0f,0.5f,"Spread");
         configParam(PAR_WARP,0.0f,1.0f,0.5f,"Warp");
         configParam(PAR_FM_AMT,0.0f,1.0f,0.0f,"FM Amount");
+        configParam(PAR_FM_MODE,0.0f,2.0f,0.0f,"FM Mode");
         m_pardiv.setDivision(16);
     }
     void process(const ProcessArgs& args) override
@@ -296,6 +305,8 @@ public:
             fm += inputs[IN_FM_AMT].getVoltage()*0.1f;
             fm = clamp(fm,0.0f,1.0f);
             m_osc.setFMAmount(fm);
+            int fmmode = params[PAR_FM_MODE].getValue();
+            m_osc.setFMMode(fmmode);
             m_osc.updateOscFrequencies();
         }
         auto outs = m_osc.getNextFrame();
@@ -345,8 +356,11 @@ public:
             -1,-1,xc,yc));
         xc = 1.0f;
         yc += 47.0f;
-        addChild(new KnobInAttnWidget(this,"FM",XScaleOsc::PAR_FM_AMT,
+        addChild(new KnobInAttnWidget(this,"FM AMOUNT",XScaleOsc::PAR_FM_AMT,
             XScaleOsc::IN_FM_AMT,-1,xc,yc));
+        xc += 82.0f;
+        addChild(new KnobInAttnWidget(this,"FM MODE",XScaleOsc::PAR_FM_MODE,
+            -1,-1,xc,yc,true));
     }
     void draw(const DrawArgs &args) override
     {
