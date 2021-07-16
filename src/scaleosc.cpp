@@ -14,6 +14,7 @@ public:
             m_oscils[i].prepare(1,44100.0f);
             m_osc_gain_smoothers[i].setAmount(0.999);
             m_osc_gains[i] = 1.0f;
+            m_osc_freqs[i] = 440.0f;
         }
         m_norm_smoother.setAmount(0.999);
         m_balance_smoother.setAmount(0.999);
@@ -49,7 +50,8 @@ public:
             if (i % 2 == 1)
                 detun = -detun;
             f = clamp(f*m_freqratio+detun,20.0f,20000.0f);
-            m_oscils[i].setFrequency(f);
+            // m_oscils[i].setFrequency(f);
+            m_osc_freqs[i] = f;
             //std::cout << i << "\t" << f << "hz\n";
         }
     }
@@ -60,6 +62,7 @@ public:
         float gain0 = 0.0f;
         float gain1 = -60.0f+60.0f*m_balance_smoother.process(m_balance);
         int oscilsused = 0;
+        float fm = 0.0f;
         for (int i=0;i<m_oscils.size();++i)
         {
             
@@ -78,7 +81,13 @@ public:
                 gain_l = 0.0f;
                 gain_r = 1.0f;
             }
+            float hz = m_osc_freqs[i];
+            m_oscils[i].setFrequency(hz+(fm*m_fm_amt*hz));
             float s = m_oscils[i].processSample(0.0f);
+            if (i == 0)
+            {
+                fm = s;
+            }
             s = reflect_value(-1.0f,s*(1.0f+m_fold*5.0f),1.0f);
             
             s *= gain;
@@ -91,6 +100,12 @@ public:
             return {mix_l*scaler,mix_r*scaler};
         }
         return {0.0f,0.0f};
+    }
+    void setFMAmount(float a)
+    {
+        if (a<0.0f) a = 0.0f;
+        if (a>1.0f) a = 1.0f;
+        m_fm_amt = a;
     }
     void setWarp(float w)
     {
@@ -159,6 +174,7 @@ public:
 private:
     std::array<ImgWaveOscillator,16> m_oscils;
     std::array<float,16> m_osc_gains;
+    std::array<float,16> m_osc_freqs;
     std::array<OnePoleFilter,16> m_osc_gain_smoothers;
     OnePoleFilter m_norm_smoother;
     OnePoleFilter m_balance_smoother;
@@ -169,6 +185,7 @@ private:
     float m_balance = 0.0f;
     float m_detune = 0.1;
     float m_fold = 0.0f;
+    float m_fm_amt = 0.0f;
     int m_active_oscils = 16;
     float m_warp = 0.0f;    
 };
@@ -193,6 +210,7 @@ public:
         IN_FOLD,
         IN_DETUNE,
         IN_NUM_OSCS,
+        IN_FM_AMT,
         IN_LAST
     };
     enum PARAMETERS
@@ -205,6 +223,7 @@ public:
         PAR_FOLD,
         PAR_SPREAD,
         PAR_WARP,
+        PAR_FM_AMT,
         PAR_LAST
     };
     XScaleOsc()
@@ -218,6 +237,7 @@ public:
         configParam(PAR_FOLD,0.0f,1.0f,0.0f,"Fold");
         configParam(PAR_SPREAD,0.0f,1.0f,0.5f,"Spread");
         configParam(PAR_WARP,0.0f,1.0f,0.5f,"Warp");
+        configParam(PAR_FM_AMT,0.0f,1.0f,0.0f,"FM Amount");
         m_pardiv.setDivision(16);
     }
     void process(const ProcessArgs& args) override
@@ -244,10 +264,14 @@ public:
             osccount += inputs[IN_NUM_OSCS].getVoltage() * (16.0f/10.0f);
             m_osc.setOscCount(osccount);
             float spread = params[PAR_SPREAD].getValue();
-            spread += inputs[IN_SPREAD].getVoltage()*0.1;
+            spread += inputs[IN_SPREAD].getVoltage()*0.1f;
             m_osc.setSpread(spread);
             float warp = params[PAR_WARP].getValue();
             m_osc.setWarp(warp);
+            float fm = params[PAR_FM_AMT].getValue();
+            fm += inputs[IN_FM_AMT].getVoltage()*0.1f;
+            fm = clamp(fm,0.0f,1.0f);
+            m_osc.setFMAmount(fm);
             m_osc.updateOscFrequencies();
         }
         auto outs = m_osc.getNextFrame();
@@ -295,6 +319,10 @@ public:
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"WARP",XScaleOsc::PAR_WARP,
             -1,-1,xc,yc));
+        xc = 1.0f;
+        yc += 47.0f;
+        addChild(new KnobInAttnWidget(this,"FM",XScaleOsc::PAR_FM_AMT,
+            XScaleOsc::IN_FM_AMT,-1,xc,yc));
     }
     void draw(const DrawArgs &args) override
     {
