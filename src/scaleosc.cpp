@@ -18,14 +18,15 @@ public:
         }
         m_norm_smoother.setAmount(0.999);
         m_balance_smoother.setAmount(0.999);
-        /*
+        
         double freq = 20.0;
         while (freq<40000.0)
         {
             m_scale.push_back(freq);
-            freq *= 1.25;
+            freq *= 1.5;
         }
-        */
+        
+        /*
         std::array<int,7> intervals{2,1,2,2,1,2,2};
         double pitch = 0;
         for (int i=0;i<256;++i)
@@ -37,6 +38,7 @@ public:
             m_scale.push_back(f);
             pitch += intervals[i % intervals.size()];
         }
+        */
         updateOscFrequencies();
     }
     void updateOscFrequencies()
@@ -70,8 +72,8 @@ public:
             float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
             
             float bypassgain = m_osc_gain_smoothers[i].process(m_osc_gains[i]);
-            if (bypassgain<0.001)
-                continue;
+            //if (bypassgain<0.001)
+            //    continue;
             float gain = rack::dsp::dbToAmplitude(db);
             gain = gain * bypassgain;
             ++oscilsused;
@@ -82,7 +84,7 @@ public:
                 gain_l = 0.0f;
                 gain_r = 1.0f;
             }
-            float hz = m_osc_freqs[i];
+            //float hz = m_osc_freqs[i];
             //m_oscils[i].setFrequency(hz+(fm*m_fm_amt*hz));
             float s = m_oscils[i].processSample(0.0f);
             
@@ -111,11 +113,12 @@ public:
             }
         } else
         {
-            for (int i=0;i<m_active_oscils-1;++i)
+            for (int i=0;i<m_active_oscils;++i)
             {
                 float hz = m_osc_freqs[i];
                 m_oscils[i].setFrequency(hz+(fms[m_active_oscils-1]*m_fm_amt*hz));
             }
+            m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
         }
         
         if (oscilsused>0)
