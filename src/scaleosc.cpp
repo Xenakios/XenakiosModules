@@ -105,7 +105,7 @@ public:
     {
         if (a<0.0f) a = 0.0f;
         if (a>1.0f) a = 1.0f;
-        m_fm_amt = a;
+        m_fm_amt = std::pow(a,3.0f);
     }
     void setWarp(float w)
     {
