@@ -1,6 +1,7 @@
 #include "plugin.hpp"
 #include "helperwidgets.h"
 #include "wtosc.h"
+#include <array>
 
 class ScaleOscillator
 {
