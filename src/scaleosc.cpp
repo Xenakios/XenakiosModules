@@ -25,6 +25,7 @@ public:
     }
     void setPhaseWarp(int mode, float amt)
     {
+        m_warp_mode = mode;
         m_warp = clamp(amt,0.0f,1.0f);
     }
     float processSample(float)
@@ -216,16 +217,19 @@ public:
     {
         if (a<0.0f) a = 0.0f;
         if (a>1.0f) a = 1.0f;
-        m_fm_amt = std::pow(a,3.0f);
+        m_fm_amt = std::pow(a,2.0f);
     }
-    void setWarp(float w)
+    int m_warp_mode = 0;
+    void setWarp(int mode,float w)
     {
-        if (w==m_warp)
-            return;
-        w = clamp(w,0.0f,1.0f);
-        m_warp = w;
-        for (int i=0;i<m_oscils.size();++i)
-            m_oscils[i].setPhaseWarp(0,w);
+        if (w!=m_warp || mode!=m_warp_mode)
+        {
+            w = clamp(w,0.0f,1.0f);
+            m_warp = w;
+            m_warp_mode = clamp(mode,0,2);
+            for (int i=0;i<m_oscils.size();++i)
+                m_oscils[i].setPhaseWarp(m_warp_mode,w);
+        }
     }
     void setSpread(float s)
     {
@@ -346,6 +350,8 @@ public:
         PAR_FM_AMT,
         PAR_FM_MODE,
         PAR_SCALE,
+        PAR_SCALE_BANK,
+        PAR_WARP_MODE,
         PAR_LAST
     };
     XScaleOsc()
@@ -362,6 +368,8 @@ public:
         configParam(PAR_FM_AMT,0.0f,1.0f,0.0f,"FM Amount");
         configParam(PAR_FM_MODE,0.0f,2.0f,0.0f,"FM Mode");
         configParam(PAR_SCALE,0.0f,1.0f,0.0f,"Scale");
+        configParam(PAR_SCALE_BANK,0.0f,1.0f,0.0f,"Scale bank");
+        configParam(PAR_WARP_MODE,0.0f,2.0f,0.0f,"Warp Mode");
         m_pardiv.setDivision(16);
     }
     void process(const ProcessArgs& args) override
@@ -392,7 +400,8 @@ public:
             m_osc.setSpread(spread);
             float warp = params[PAR_WARP].getValue();
             warp += inputs[IN_WARP].getVoltage()*0.1f;
-            m_osc.setWarp(warp);
+            int wmode = params[PAR_WARP_MODE].getValue();
+            m_osc.setWarp(wmode,warp);
             float fm = params[PAR_FM_AMT].getValue();
             fm += inputs[IN_FM_AMT].getVoltage()*0.1f;
             fm = clamp(fm,0.0f,1.0f);
@@ -458,6 +467,9 @@ public:
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"SCALE",XScaleOsc::PAR_SCALE,
             -1,-1,xc,yc));
+        xc += 82.0f;
+        addChild(new KnobInAttnWidget(this,"WARP MODE",XScaleOsc::PAR_WARP_MODE,
+            -1,-1,xc,yc,true));
     }
     void draw(const DrawArgs &args) override
     {
