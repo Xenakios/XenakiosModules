@@ -13,6 +13,7 @@ public:
     double m_phase = 0.0;
     double m_phase_inc = 0.0;
     double m_samplerate = 44100;
+    float m_warp = 0.0f;
     void prepare(int numchans, double samplerate)
     {
         m_samplerate = samplerate;
@@ -23,11 +24,14 @@ public:
     }
     void setPhaseWarp(int mode, float amt)
     {
-
+        if (amt<0.5)
+            m_warp = rescale(amt,0.0f,0.5,0.2f,1.0f);
+        m_warp = rescale(amt,0.5f,1.0f,1.0f,4.0f);
     }
     float processSample(float)
     {
-        float r = std::sin(2*3.14159265*m_phase);
+        float phase_to_use = std::pow(m_phase,m_warp);
+        float r = std::sin(2*3.14159265*phase_to_use);
         m_phase+=m_phase_inc;
         m_phase = std::fmod(m_phase,1.0);
         //if (m_phase>=1.0f)
@@ -174,7 +178,7 @@ public:
         w = clamp(w,0.0f,1.0f);
         m_warp = w;
         for (int i=0;i<m_oscils.size();++i)
-            m_oscils[i].setPhaseWarp(0,2.0f+2046.0f*w);
+            m_oscils[i].setPhaseWarp(0,w);
     }
     void setSpread(float s)
     {
@@ -278,6 +282,7 @@ public:
         IN_DETUNE,
         IN_NUM_OSCS,
         IN_FM_AMT,
+        IN_WARP,
         IN_LAST
     };
     enum PARAMETERS
@@ -336,6 +341,7 @@ public:
             spread += inputs[IN_SPREAD].getVoltage()*0.1f;
             m_osc.setSpread(spread);
             float warp = params[PAR_WARP].getValue();
+            warp += inputs[IN_WARP].getVoltage()*0.1f;
             m_osc.setWarp(warp);
             float fm = params[PAR_FM_AMT].getValue();
             fm += inputs[IN_FM_AMT].getVoltage()*0.1f;
@@ -389,7 +395,7 @@ public:
             XScaleOsc::IN_NUM_OSCS,-1,xc,yc,true));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"WARP",XScaleOsc::PAR_WARP,
-            -1,-1,xc,yc));
+            XScaleOsc::IN_WARP,-1,xc,yc));
         xc = 1.0f;
         yc += 47.0f;
         addChild(new KnobInAttnWidget(this,"FM AMOUNT",XScaleOsc::PAR_FM_AMT,
