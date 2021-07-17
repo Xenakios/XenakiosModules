@@ -14,7 +14,7 @@ public:
     double m_phase_inc = 0.0;
     double m_samplerate = 44100;
     float m_warp = 0.0f;
-    int m_warp_mode = 1;
+    int m_warp_mode = 2;
     void prepare(int numchans, double samplerate)
     {
         m_samplerate = samplerate;
@@ -50,6 +50,11 @@ public:
                 
             }
             phase_to_use = std::round(m_phase*steps)/steps;
+        }
+        else
+        {
+            double pmult = rescale(m_warp,0.0f,1.0f,0.5f,2.0f);
+            phase_to_use = std::fmod(pmult*m_phase,1.0);
         }
         float r = std::sin(2*3.14159265*phase_to_use);
         m_phase+=m_phase_inc;
