@@ -183,9 +183,9 @@ public:
             m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
         }
         
-        if (oscilsused>0)
+        //if (oscilsused>0)
         {
-            float scaler = m_norm_smoother.process(1.0f/(oscilsused*0.3f));
+            float scaler = m_norm_smoother.process(1.0f/(m_active_oscils*0.3f));
             return {mix_l*scaler,mix_r*scaler};
         }
         return {0.0f,0.0f};
