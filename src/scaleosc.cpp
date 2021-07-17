@@ -80,13 +80,20 @@ public:
         }
         m_norm_smoother.setAmount(0.999);
         m_balance_smoother.setAmount(0.999);
-        
-        double freq = 20.0;
-        while (freq<40000.0)
+        std::array<float,7> ratios{81.0f/80.0f,9.0f/8.0f,1.25f,1.333333f,1.5f,9.0f/5.0f,2.0f};
+        for (int i=0;i<ratios.size();++i)
         {
-            m_scale.push_back(freq);
-            freq *= 1.5;
+            double freq = 20.0;
+            std::vector<float> scale;
+            while (freq<40000.0)
+            {
+                scale.push_back(freq);
+                freq *= ratios[i];
+            }
+            m_scale_bank.push_back(scale);
         }
+        m_scale.reserve(1000);
+        m_scale = m_scale_bank[0];
         
         /*
         std::array<int,7> intervals{2,1,2,2,1,2,2};
@@ -105,12 +112,16 @@ public:
     }
     void updateOscFrequencies()
     {
-        double maxfreq = rescale(m_spread,0.0f,1.0f,m_root_freq,20000.0);
+        //double maxfreq = rescale(m_spread,0.0f,1.0f,m_root_freq,20000.0);
+        // 256.0f*std::pow(1.05946309436,p);
+        
+        double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
         for (int i=0;i<m_active_oscils;++i)
         {
-            double f = rescale((float)i,0,m_active_oscils,m_root_freq,maxfreq);
+            double pitch = rescale((float)i,0,m_active_oscils,m_root_pitch,maxpitch);
+            float f = 256.0f*std::pow(1.05946309436,pitch);
             f = quantize_to_grid(f,m_scale,1.0);
-            float detun = rescale((float)i,0,m_active_oscils,0.0f,maxfreq*0.05*m_detune);
+            float detun = rescale((float)i,0,m_active_oscils,0.0f,f*0.10f*m_detune);
             if (i % 2 == 1)
                 detun = -detun;
             f = clamp(f*m_freqratio+detun,20.0f,20000.0f);
@@ -190,6 +201,17 @@ public:
         }
         return {0.0f,0.0f};
     }
+    int m_curScale = 0;
+    void setScale(float x)
+    {
+        x = clamp(x,0.0f,1.0f);
+        int i = x * (m_scale_bank.size()-1);
+        if (i!=m_curScale)
+        {
+            m_curScale = i;
+            m_scale = m_scale_bank[m_curScale];
+        }
+    }
     void setFMAmount(float a)
     {
         if (a<0.0f) a = 0.0f;
@@ -215,7 +237,7 @@ public:
     void setRootPitch(float p)
     {
         p = clamp(p,-36.0f,36.0f);
-        m_root_freq = 256.0f*std::pow(1.05946309436,p);
+        m_root_pitch = p; 
         //updateOscFrequencies();
     }
     void setPitchOffset(float p)
@@ -275,7 +297,7 @@ private:
     OnePoleFilter m_balance_smoother;
     std::vector<float> m_scale;
     float m_spread = 1.0f;
-    float m_root_freq = 60.0f;
+    float m_root_pitch = 0.0f;
     float m_freqratio = 1.0f;
     float m_balance = 0.0f;
     float m_detune = 0.1;
@@ -284,6 +306,7 @@ private:
     int m_active_oscils = 16;
     float m_warp = 0.0f;    
     int m_fm_mode = 0;
+    std::vector<std::vector<float>> m_scale_bank;
 };
 
 
@@ -322,6 +345,7 @@ public:
         PAR_WARP,
         PAR_FM_AMT,
         PAR_FM_MODE,
+        PAR_SCALE,
         PAR_LAST
     };
     XScaleOsc()
@@ -337,6 +361,7 @@ public:
         configParam(PAR_WARP,0.0f,1.0f,0.5f,"Warp");
         configParam(PAR_FM_AMT,0.0f,1.0f,0.0f,"FM Amount");
         configParam(PAR_FM_MODE,0.0f,2.0f,0.0f,"FM Mode");
+        configParam(PAR_SCALE,0.0f,1.0f,0.0f,"Scale");
         m_pardiv.setDivision(16);
     }
     void process(const ProcessArgs& args) override
@@ -374,6 +399,8 @@ public:
             m_osc.setFMAmount(fm);
             int fmmode = params[PAR_FM_MODE].getValue();
             m_osc.setFMMode(fmmode);
+            float scale = params[PAR_SCALE].getValue();
+            m_osc.setScale(scale);
             m_osc.updateOscFrequencies();
         }
         auto outs = m_osc.getNextFrame();
@@ -428,6 +455,9 @@ public:
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"FM MODE",XScaleOsc::PAR_FM_MODE,
             -1,-1,xc,yc,true));
+        xc += 82.0f;
+        addChild(new KnobInAttnWidget(this,"SCALE",XScaleOsc::PAR_SCALE,
+            -1,-1,xc,yc));
     }
     void draw(const DrawArgs &args) override
     {
