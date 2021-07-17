@@ -3,6 +3,39 @@
 #include "wtosc.h"
 #include <array>
 
+class SimpleOsc
+{
+public:
+    SimpleOsc()
+    {
+
+    }
+    double m_phase = 0.0;
+    double m_phase_inc = 0.0;
+    double m_samplerate = 44100;
+    void prepare(int numchans, double samplerate)
+    {
+        m_samplerate = samplerate;
+    }
+    void setFrequency(float hz)
+    {
+        m_phase_inc = 1.0/m_samplerate*hz;
+    }
+    void setPhaseWarp(int mode, float amt)
+    {
+
+    }
+    float processSample(float)
+    {
+        float r = std::sin(2*3.14159265*m_phase);
+        m_phase+=m_phase_inc;
+        m_phase = std::fmod(m_phase,1.0);
+        //if (m_phase>=1.0f)
+        //    m_phase-=m_phase_inc;
+        return r;
+    }
+};
+
 class ScaleOscillator
 {
 public:
@@ -10,7 +43,7 @@ public:
     {
         for (int i=0;i<m_oscils.size();++i)
         {
-            m_oscils[i].initialise([](float x){ return sin(x); },4096);
+            //m_oscils[i].initialise([](float x){ return sin(x); },4096);
             m_oscils[i].prepare(1,44100.0f);
             m_osc_gain_smoothers[i].setAmount(0.999);
             m_osc_gains[i] = 1.0f;
@@ -205,7 +238,7 @@ public:
         m_fm_mode = m;
     }
 private:
-    std::array<ImgWaveOscillator,16> m_oscils;
+    std::array<SimpleOsc,16> m_oscils;
     std::array<float,16> m_osc_gains;
     std::array<float,16> m_osc_freqs;
     std::array<OnePoleFilter,16> m_osc_gain_smoothers;
