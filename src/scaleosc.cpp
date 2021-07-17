@@ -14,6 +14,7 @@ public:
     double m_phase_inc = 0.0;
     double m_samplerate = 44100;
     float m_warp = 0.0f;
+    int m_warp_mode = 1;
     void prepare(int numchans, double samplerate)
     {
         m_samplerate = samplerate;
@@ -24,13 +25,32 @@ public:
     }
     void setPhaseWarp(int mode, float amt)
     {
-        if (amt<0.5)
-            m_warp = rescale(amt,0.0f,0.5,0.2f,1.0f);
-        m_warp = rescale(amt,0.5f,1.0f,1.0f,4.0f);
+        m_warp = clamp(amt,0.0f,1.0f);
     }
     float processSample(float)
     {
-        float phase_to_use = std::pow(m_phase,m_warp);
+        double phase_to_use;
+        if (m_warp_mode == 0)
+        {
+            double w;
+            if (m_warp<0.5)
+                w = rescale(m_warp,0.0f,0.5,0.2f,1.0f);
+            else
+                w = rescale(m_warp,0.5f,1.0f,1.0f,4.0f);
+            phase_to_use = std::pow(m_phase,w);
+        } else if (m_warp_mode == 1)
+        {
+            double steps;
+            if (m_warp<0.25)
+            {
+                steps = rescale(m_warp,0.00f,0.25f,128.0f,16.0f);
+            } else
+            {
+                steps = rescale(m_warp,0.25f,1.0f,16.0f,3.0f);
+                
+            }
+            phase_to_use = std::round(m_phase*steps)/steps;
+        }
         float r = std::sin(2*3.14159265*phase_to_use);
         m_phase+=m_phase_inc;
         m_phase = std::fmod(m_phase,1.0);
