@@ -413,8 +413,15 @@ public:
             m_osc.updateOscFrequencies();
         }
         auto outs = m_osc.getNextFrame();
-        outputs[OUT_AUDIO_1].setVoltage(outs.first*5.0f);
-        outputs[OUT_AUDIO_2].setVoltage(outs.second*5.0f);
+        if (outputs[OUT_AUDIO_2].isConnected())
+        {
+            outputs[OUT_AUDIO_1].setVoltage(outs.first*5.0f);
+            outputs[OUT_AUDIO_2].setVoltage(outs.second*5.0f);
+        }
+        else
+        {
+            outputs[OUT_AUDIO_1].setVoltage((outs.first+outs.second)*2.5f);
+        }
     }
     ScaleOscillator m_osc;
     dsp::ClockDivider m_pardiv;
