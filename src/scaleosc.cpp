@@ -94,6 +94,22 @@ public:
             }
             m_scale_bank.push_back(scale);
         }
+        std::vector<std::string> scalafiles;
+        scalafiles.push_back("/Users/teemu/Documents/Rack/plugins-v1/Xenakios/res/scala_scales/penta_opt.scl");
+        scalafiles.push_back("/Users/teemu/Documents/Rack/plugins-v1/Xenakios/res/scala_scales/Ancient Greek Archytas Enharmonic.scl");
+        for (auto& e : scalafiles)
+        {
+            auto pitches = loadScala(e,true,0.0,128);
+            std::vector<float> scale;
+            for (int i=0;i<pitches.size();++i)
+            {
+                double p = pitches[i]; //rescale(scale[i],-5.0f,5.0f,0.0f,120.0f);
+                double freq = 20.0 * std::pow(1.05946309436,p);
+                scale.push_back(freq);
+            }
+            m_scale_bank.push_back(scale);
+        }
+        
         m_scale.reserve(1000);
         m_scale = m_scale_bank[0];
         
