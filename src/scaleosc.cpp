@@ -149,7 +149,7 @@ public:
         {
             
             float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
-            
+            if (db<-72.0f) db = -72.0f;
             float bypassgain = m_osc_gain_smoothers[i].process(m_osc_gains[i]);
             //if (bypassgain<0.001)
             //    continue;
@@ -196,6 +196,7 @@ public:
             {
                 float hz = m_osc_freqs[i];
                 m_oscils[i].setFrequency(hz+(fms[m_active_oscils-1]*m_fm_amt*hz));
+                //m_oscils[i].setFrequency(hz);
             }
         }
         
