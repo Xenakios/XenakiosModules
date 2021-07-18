@@ -102,8 +102,11 @@ public:
             m_scale_bank.push_back(scale);
         }
         std::vector<std::string> scalafiles;
-        scalafiles.push_back("/Users/teemu/Documents/Rack/plugins-v1/Xenakios/res/scala_scales/penta_opt.scl");
-        scalafiles.push_back("/Users/teemu/Documents/Rack/plugins-v1/Xenakios/res/scala_scales/Ancient Greek Archytas Enharmonic.scl");
+        std::string dir = "/Users/teemu/Documents/Rack/plugins-v1/Xenakios/res/scala_scales";
+        scalafiles.push_back(dir+"/penta_opt.scl");
+        scalafiles.push_back(dir+"/Ancient Greek Archytas Enharmonic.scl");
+        scalafiles.push_back(dir+"/Chopi Xylophone.scl");
+        scalafiles.push_back(dir+"/equally tempered minor.scl");
         for (auto& e : scalafiles)
         {
             auto pitches = loadScala(e,true,0.0,128);
