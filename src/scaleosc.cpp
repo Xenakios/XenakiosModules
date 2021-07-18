@@ -35,12 +35,17 @@ public:
         double phase_to_use;
         if (m_warp_mode == 0)
         {
-            double w;
-            if (m_warp<0.5)
-                w = rescale(m_warp,0.0f,0.5,0.2f,1.0f);
-            else
-                w = rescale(m_warp,0.5f,1.0f,1.0f,4.0f);
-            phase_to_use = std::pow(m_phase,w);
+            if (m_warp!=0.5f)
+            {
+                double w;
+                if (m_warp<0.5)
+                    w = rescale(m_warp,0.0f,0.5,0.2f,1.0f);
+                else
+                    w = rescale(m_warp,0.5f,1.0f,1.0f,4.0f);
+                phase_to_use = std::pow(m_phase,w);
+            } else
+                phase_to_use = m_phase;
+            
         } else if (m_warp_mode == 1)
         {
             double steps;
@@ -426,7 +431,9 @@ public:
         }
         float outs[16];
         m_osc.processNextFrame(outs);
-        outputs[OUT_AUDIO_1].setChannels(m_osc.getOscCount());
+        int numOutputs = 2;
+        int numOscs = m_osc.getOscCount();
+        outputs[OUT_AUDIO_1].setChannels(numOutputs);
         if (outputs[OUT_AUDIO_2].isConnected())
         {
             //outputs[OUT_AUDIO_1].setVoltage(outs.first*5.0f);
@@ -434,8 +441,17 @@ public:
         }
         else
         {
-            for (int i=0;i<16;++i)
-                outputs[OUT_AUDIO_1].setVoltage(outs[i]*5.0f,i);
+            float mixed[16];
+            for (int i=0;i<numOutputs;++i)
+                mixed[i] = 0.0f;
+            for (int i=0;i<numOscs;++i)
+            {
+                int outindex = i % numOutputs;
+                mixed[outindex] += outs[i];
+                
+            }
+            for (int i=0;i<numOutputs;++i)
+                outputs[OUT_AUDIO_1].setVoltage(mixed[i]*5.0f,i);
             //outputs[OUT_AUDIO_1].setVoltage((outs.first+outs.second)*2.5f);
         }
     }
