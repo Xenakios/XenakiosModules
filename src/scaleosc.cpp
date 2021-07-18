@@ -369,13 +369,14 @@ public:
         PAR_SCALE,
         PAR_SCALE_BANK,
         PAR_WARP_MODE,
+        PAR_NUM_OUTPUTS,
         PAR_LAST
     };
     XScaleOsc()
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_BALANCE,0.0f,1.0f,0.0f,"Balance");
-        configParam(PAR_ROOT,-36.0f,36.0f,-12.0f,"Root");
+        configParam(PAR_ROOT,-36.0f,36.0f,0.0f,"Root");
         configParam(PAR_PITCH_OFFS,-36.0f,36.0f,0.0f,"Pitch offset");
         configParam(PAR_DETUNE,0.0f,1.0f,0.0f,"Detune");
         configParam(PAR_NUM_OSCS,1.0f,16.0f,16.0f,"Num oscillators");
@@ -387,6 +388,7 @@ public:
         configParam(PAR_SCALE,0.0f,1.0f,0.0f,"Scale");
         configParam(PAR_SCALE_BANK,0.0f,1.0f,0.0f,"Scale bank");
         configParam(PAR_WARP_MODE,0.0f,2.0f,0.0f,"Warp Mode");
+        configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Num outputs");
         m_pardiv.setDivision(16);
     }
     void process(const ProcessArgs& args) override
@@ -431,7 +433,7 @@ public:
         }
         float outs[16];
         m_osc.processNextFrame(outs);
-        int numOutputs = 2;
+        int numOutputs = params[PAR_NUM_OUTPUTS].getValue();
         int numOscs = m_osc.getOscCount();
         outputs[OUT_AUDIO_1].setChannels(numOutputs);
         if (outputs[OUT_AUDIO_2].isConnected())
@@ -508,6 +510,10 @@ public:
             -1,-1,xc,yc));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"WARP MODE",XScaleOsc::PAR_WARP_MODE,
+            -1,-1,xc,yc,true));
+        xc = 1.0f;
+        yc += 47.0f;
+        addChild(new KnobInAttnWidget(this,"NUM OUTPUTS",XScaleOsc::PAR_NUM_OUTPUTS,
             -1,-1,xc,yc,true));
     }
     void draw(const DrawArgs &args) override
