@@ -149,17 +149,15 @@ public:
         }
     }
     std::array<float,16> fms;
-    std::pair<float,float> getNextFrame()
+    void processNextFrame(float* outbuf)
     {
-        float mix_l = 0.0;
-        float mix_r = 0.0;
         float gain0 = 0.0f;
         float gain1 = -60.0f+60.0f*m_balance_smoother.process(m_balance);
         int oscilsused = 0;
         if (m_fm_mode<2)
             m_oscils[0].setFrequency(m_osc_freqs[0]);
-        //else
-        //    m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
+        else
+            m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
         
         for (int i=0;i<m_oscils.size();++i)
         {
@@ -171,16 +169,6 @@ public:
             //    continue;
             float gain = rack::dsp::dbToAmplitude(db);
             gain = gain * bypassgain;
-            ++oscilsused;
-            float gain_l = 1.0f;
-            float gain_r = 0.0f;
-            if (i % 2 == 1)
-            {
-                gain_l = 0.0f;
-                gain_r = 1.0f;
-            }
-            //float hz = m_osc_freqs[i];
-            //m_oscils[i].setFrequency(hz+(fm*m_fm_amt*hz));
             float s = m_oscils[i].processSample(0.0f);
             
             fms[i] = s;
@@ -188,8 +176,7 @@ public:
             s = reflect_value(-1.0f,s*(1.0f+m_fold*5.0f),1.0f);
             
             s *= gain;
-            mix_l += s * gain_l;
-            mix_r += s * gain_r;
+            outbuf[i] = s;
         }
         int fm_mode = m_fm_mode;
         if (fm_mode == 0)
@@ -208,7 +195,7 @@ public:
             }
         } else if (m_fm_mode == 2)
         {
-            for (int i=0;i<m_active_oscils;++i)
+            for (int i=0;i<m_active_oscils-1;++i)
             {
                 float hz = m_osc_freqs[i];
                 m_oscils[i].setFrequency(hz+(fms[m_active_oscils-1]*m_fm_amt*hz));
@@ -217,8 +204,8 @@ public:
         }
         
         
-        float scaler = m_norm_smoother.process(1.0f/(m_active_oscils*0.3f));
-        return {mix_l*scaler,mix_r*scaler};
+        //float scaler = m_norm_smoother.process(1.0f/(m_active_oscils*0.3f));
+        //return {mix_l*scaler,mix_r*scaler};
         
     }
     int m_curScale = 0;
@@ -431,15 +418,19 @@ public:
             m_osc.setScale(scale);
             m_osc.updateOscFrequencies();
         }
-        auto outs = m_osc.getNextFrame();
+        float outs[16];
+        m_osc.processNextFrame(outs);
+        outputs[OUT_AUDIO_1].setChannels(16);
         if (outputs[OUT_AUDIO_2].isConnected())
         {
-            outputs[OUT_AUDIO_1].setVoltage(outs.first*5.0f);
-            outputs[OUT_AUDIO_2].setVoltage(outs.second*5.0f);
+            //outputs[OUT_AUDIO_1].setVoltage(outs.first*5.0f);
+            //outputs[OUT_AUDIO_2].setVoltage(outs.second*5.0f);
         }
         else
         {
-            outputs[OUT_AUDIO_1].setVoltage((outs.first+outs.second)*2.5f);
+            for (int i=0;i<16;++i)
+                outputs[OUT_AUDIO_1].setVoltage(outs[i]*5.0f,i);
+            //outputs[OUT_AUDIO_1].setVoltage((outs.first+outs.second)*2.5f);
         }
     }
     ScaleOscillator m_osc;
