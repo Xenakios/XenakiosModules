@@ -102,11 +102,12 @@ public:
             m_scale_bank.push_back(scale);
         }
         std::vector<std::string> scalafiles;
-        std::string dir = "/Users/teemu/Documents/Rack/plugins-v1/Xenakios/res/scala_scales";
+        std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
         scalafiles.push_back(dir+"/penta_opt.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Enharmonic.scl");
         scalafiles.push_back(dir+"/Chopi Xylophone.scl");
         scalafiles.push_back(dir+"/equally tempered minor.scl");
+        scalafiles.push_back(dir+"/bohlen_quintuple_j.scl");
         for (auto& e : scalafiles)
         {
             auto pitches = loadScala(e,true,0.0,128);
