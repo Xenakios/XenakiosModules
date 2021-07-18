@@ -78,6 +78,7 @@ public:
             m_osc_gain_smoothers[i].setAmount(0.999);
             m_osc_gains[i] = 1.0f;
             m_osc_freqs[i] = 440.0f;
+            fms[i] = 0.0f;
         }
         m_norm_smoother.setAmount(0.999);
         m_balance_smoother.setAmount(0.999);
@@ -131,6 +132,7 @@ public:
             //std::cout << i << "\t" << f << "hz\n";
         }
     }
+    std::array<float,16> fms;
     std::pair<float,float> getNextFrame()
     {
         float mix_l = 0.0;
@@ -138,8 +140,11 @@ public:
         float gain0 = 0.0f;
         float gain1 = -60.0f+60.0f*m_balance_smoother.process(m_balance);
         int oscilsused = 0;
-        m_oscils[0].setFrequency(m_osc_freqs[0]);
-        std::array<float,16> fms;
+        if (m_fm_mode<2)
+            m_oscils[0].setFrequency(m_osc_freqs[0]);
+        else
+            m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
+        
         for (int i=0;i<m_oscils.size();++i)
         {
             
@@ -187,13 +192,11 @@ public:
             }
         } else
         {
-            m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
             for (int i=0;i<m_active_oscils-1;++i)
             {
                 float hz = m_osc_freqs[i];
                 m_oscils[i].setFrequency(hz+(fms[m_active_oscils-1]*m_fm_amt*hz));
             }
-            
         }
         
         //if (oscilsused>0)
