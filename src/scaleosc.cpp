@@ -158,8 +158,8 @@ public:
         int oscilsused = 0;
         if (m_fm_mode<2)
             m_oscils[0].setFrequency(m_osc_freqs[0]);
-        else
-            m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
+        //else
+        //    m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
         
         for (int i=0;i<m_oscils.size();++i)
         {
@@ -206,9 +206,9 @@ public:
                 float hz = m_osc_freqs[i];
                 m_oscils[i].setFrequency(hz+(fms[i-1]*m_fm_amt*hz));
             }
-        } else
+        } else if (m_fm_mode == 2)
         {
-            for (int i=0;i<m_active_oscils-1;++i)
+            for (int i=0;i<m_active_oscils;++i)
             {
                 float hz = m_osc_freqs[i];
                 m_oscils[i].setFrequency(hz+(fms[m_active_oscils-1]*m_fm_amt*hz));
@@ -216,12 +216,10 @@ public:
             }
         }
         
-        //if (oscilsused>0)
-        {
-            float scaler = m_norm_smoother.process(1.0f/(m_active_oscils*0.3f));
-            return {mix_l*scaler,mix_r*scaler};
-        }
-        return {0.0f,0.0f};
+        
+        float scaler = m_norm_smoother.process(1.0f/(m_active_oscils*0.3f));
+        return {mix_l*scaler,mix_r*scaler};
+        
     }
     int m_curScale = 0;
     void setScale(float x)
