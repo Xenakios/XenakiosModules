@@ -21,6 +21,8 @@ public:
     }
     void setFrequency(float hz)
     {
+        if (hz<0.01f)
+            hz = 0.01f;
         m_phase_inc = 1.0/m_samplerate*hz;
     }
     void setPhaseWarp(int mode, float amt)
@@ -292,6 +294,10 @@ public:
         }
         m_active_oscils = c;
     }
+    int getOscCount()
+    {
+        return m_active_oscils;
+    }
     void setFMMode(int m)
     {
         if (m<0) m = 0;
@@ -420,7 +426,7 @@ public:
         }
         float outs[16];
         m_osc.processNextFrame(outs);
-        outputs[OUT_AUDIO_1].setChannels(16);
+        outputs[OUT_AUDIO_1].setChannels(m_osc.getOscCount());
         if (outputs[OUT_AUDIO_2].isConnected())
         {
             //outputs[OUT_AUDIO_1].setVoltage(outs.first*5.0f);
