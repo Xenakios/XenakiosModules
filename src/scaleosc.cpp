@@ -187,12 +187,13 @@ public:
             }
         } else
         {
-            for (int i=0;i<m_active_oscils;++i)
+            m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
+            for (int i=0;i<m_active_oscils-1;++i)
             {
                 float hz = m_osc_freqs[i];
                 m_oscils[i].setFrequency(hz+(fms[m_active_oscils-1]*m_fm_amt*hz));
             }
-            m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
+            
         }
         
         //if (oscilsused>0)
