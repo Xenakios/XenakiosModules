@@ -57,7 +57,7 @@ public:
             double pmult = rescale(m_warp,0.0f,1.0f,0.5f,2.0f);
             phase_to_use = std::fmod(pmult*m_phase,1.0);
         }
-        float r = std::sin(2*3.14159265*phase_to_use);
+        float r = std::sin(2*3.14159265359*phase_to_use);
         m_phase+=m_phase_inc;
         m_phase = std::fmod(m_phase,1.0);
         //if (m_phase>=1.0f)
