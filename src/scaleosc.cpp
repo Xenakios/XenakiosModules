@@ -2,6 +2,9 @@
 #include "helperwidgets.h"
 #include "wtosc.h"
 #include <array>
+#include "jcdp_envelope.h"
+
+float g_balance_tables[6][17];
 
 class SimpleOsc
 {
@@ -25,10 +28,13 @@ public:
             hz = 0.01f;
         m_phase_inc = 1.0/m_samplerate*hz;
     }
+    float m_warp_steps = 128.0f;
     void setPhaseWarp(int mode, float amt)
     {
+        amt = clamp(amt,0.0f,1.0f);
         m_warp_mode = mode;
-        m_warp = clamp(amt,0.0f,1.0f);
+        m_warp_steps = std::pow(2.0f,2.0f+(1.0f-amt)*6.0f);
+        m_warp = std::pow(amt,2.0f);
     }
     float processSample(float)
     {
@@ -53,15 +59,18 @@ public:
                 phase_to_use = 1.0f;
         } else if (m_warp_mode == 1)
         {
-            double steps;
-            if (m_warp<0.25)
+            double steps = m_warp_steps; // std::pow(2.0f,2.0f+(1.0-m_warp)*6.0f);
+            /*
+            double skewp = 0.05;
+            if (m_warp<skewp)
             {
-                steps = rescale(m_warp,0.00f,0.25f,128.0f,16.0f);
+                steps = rescale(m_warp,0.00f,skewp,128.0f,16.0f);
             } else
             {
-                steps = rescale(m_warp,0.25f,1.0f,16.0f,3.0f);
+                steps = rescale(m_warp,skewp,1.0f,16.0f,3.0f);
                 
             }
+            */
             phase_to_use = std::round(m_phase*steps)/steps;
         }
         else
@@ -78,11 +87,47 @@ public:
     }
 };
 
+
+
 class ScaleOscillator
 {
 public:
     ScaleOscillator()
     {
+        auto calcbalancetable = [](breakpoint_envelope&e, int table)
+        {
+            for (int i=0;i<17;++i)
+            {
+                float g = e.GetInterpolatedEnvelopeValue(rescale((float)i,0,15,0.0,1.0));
+                g_balance_tables[table][i] = g;
+            }
+        };
+        breakpoint_envelope e;
+        e.AddNode({0.0,1.0});
+        e.AddNode({0.01,0.0});
+        e.AddNode({1.0,0.0});
+        calcbalancetable(e,0);
+        e.ClearAllNodes();
+        e.AddNode({0.0,1.0});
+        e.AddNode({0.5,1.0});
+        e.AddNode({1.0,0.0});
+        calcbalancetable(e,1);
+        e.ClearAllNodes();
+        e.AddNode({0.0,1.0});
+        e.AddNode({1.0,1.0});
+        calcbalancetable(e,2);
+        e.ClearAllNodes();
+        e.AddNode({0.0,0.0});
+        e.AddNode({0.5,1.0});
+        e.AddNode({1.0,0.0});
+        calcbalancetable(e,3);
+        e.ClearAllNodes();
+        e.AddNode({0.0,0.0});
+        e.AddNode({0.99,1.0});
+        e.AddNode({1.0,1.0});
+        calcbalancetable(e,4);
+        calcbalancetable(e,5);
+
         for (int i=0;i<m_oscils.size();++i)
         {
             //m_oscils[i].initialise([](float x){ return sin(x); },4096);
@@ -165,12 +210,21 @@ public:
         }
         float gain0 = 0.0f;
         float gain1 = -60.0f+60.0f*m_balance;
+        float indfloat = m_balance*4;
+        int index0 = std::floor(indfloat);
+        int index1 = index0+1;
+        float frac = indfloat-std::floor(indfloat);
         for (int i=0;i<m_oscils.size();++i)
         {
             float bypassgain = 0.0f;
             if (i<m_active_oscils)
                 bypassgain = 1.0f;
-            float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
+            
+            float g0 = g_balance_tables[index0][i];
+            float g1 = g_balance_tables[index1][i];
+            float g2 = g0+(g1-g0)*frac;
+            float db = rescale(g2,0.0f,1.0f,-60.0f,0.0f);
+            //float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
             if (db<-72.0f) db = -72.0f;
             float gain = rack::dsp::dbToAmplitude(db)*bypassgain;
             m_osc_gains[i] = gain;
@@ -332,7 +386,7 @@ private:
     float m_fold = 0.0f;
     float m_fm_amt = 0.0f;
     int m_active_oscils = 16;
-    float m_warp = 0.0f;    
+    float m_warp = 1.1f;    
     int m_fm_mode = 0;
     std::vector<std::vector<float>> m_scale_bank;
 };
