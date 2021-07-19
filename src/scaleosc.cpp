@@ -236,16 +236,16 @@ public:
             m_oscils[0].setFrequency(m_osc_freqs[0]);
         else
             m_oscils[m_active_oscils-1].setFrequency(m_osc_freqs[m_active_oscils-1]);
-        
+        int m_fm_order = 1;
         for (int i=0;i<m_oscils.size();++i)
         {
             float gain = m_osc_gain_smoothers[i].process(m_osc_gains[i]);
             float s = m_oscils[i].processSample(0.0f);
-            
-            fms[i] = s;
-            
+            if (m_fm_order == 0)
+                fms[i] = s;
             s = reflect_value(-1.0f,s*(1.0f+m_fold*5.0f),1.0f);
-            
+            if (m_fm_order == 1)
+                fms[i] = s;
             s *= gain;
             outbuf[i] = s;
         }
@@ -450,7 +450,8 @@ public:
         for (int i=0;i<16;++i)
         {
             float normfreq = 25.0/44100.0;
-            m_hpfilts[i].setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,1.0f,1.0f);
+            float q = sqrt(2.0)/2.0;
+            m_hpfilts[i].setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
         }
     }
     void process(const ProcessArgs& args) override
@@ -461,7 +462,7 @@ public:
             bal += inputs[IN_BALANCE].getVoltage()*0.1f;
             m_osc.setBalance(bal);
             float detune = params[PAR_DETUNE].getValue();
-            detune += inputs[IN_DETUNE].getVoltage();
+            detune += inputs[IN_DETUNE].getVoltage()*0.1f;
             m_osc.setDetune(detune);
             float fold = params[PAR_FOLD].getValue();
             fold += inputs[IN_FOLD].getVoltage()*0.1f;
