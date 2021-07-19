@@ -140,11 +140,12 @@ public:
         m_norm_smoother.setAmount(0.999);
         m_balance_smoother.setAmount(0.999);
         std::array<float,7> ratios{81.0f/80.0f,9.0f/8.0f,1.25f,1.333333f,1.5f,9.0f/5.0f,2.0f};
+        double root_freq = dsp::FREQ_C4/16.0;
         for (int i=0;i<ratios.size();++i)
         {
-            double freq = 20.0;
+            double freq = root_freq;
             std::vector<float> scale;
-            while (freq<40000.0)
+            while (freq<21000.0)
             {
                 scale.push_back(freq);
                 freq *= ratios[i];
@@ -158,7 +159,7 @@ public:
         scalafiles.push_back(dir+"/Chopi Xylophone.scl");
         scalafiles.push_back(dir+"/equally tempered minor.scl");
         scalafiles.push_back(dir+"/bohlen_quintuple_j.scl");
-        double root_freq = dsp::FREQ_C4/16.0;
+        
         for (auto& e : scalafiles)
         {
             auto pitches = loadScala(e,true,0.0,128);
@@ -171,7 +172,16 @@ public:
             }
             m_scale_bank.push_back(scale);
         }
-        
+        double freq = root_freq;
+        std::vector<float> scale;
+        int i=1;
+        while (freq<20000.0)
+        {
+            freq = i * root_freq;
+            scale.push_back(freq);
+            ++i;
+        }
+        m_scale_bank.push_back(scale);
         m_scale.reserve(2048);
         m_scale = m_scale_bank[0];
         
