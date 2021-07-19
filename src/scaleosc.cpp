@@ -35,6 +35,7 @@ public:
         double phase_to_use;
         if (m_warp_mode == 0)
         {
+            /*
             if (m_warp!=0.5f)
             {
                 double w;
@@ -45,7 +46,11 @@ public:
                 phase_to_use = std::pow(m_phase,w);
             } else
                 phase_to_use = m_phase;
-            
+            */
+            phase_to_use = 1.0+m_warp*7.0;
+            phase_to_use = m_phase * phase_to_use;
+            if (phase_to_use>1.0)
+                phase_to_use = 1.0f;
         } else if (m_warp_mode == 1)
         {
             double steps;
@@ -65,7 +70,7 @@ public:
             phase_to_use = std::fmod(pmult*m_phase,1.0);
         }
         float r = std::sin(2*3.14159265359*phase_to_use);
-        m_phase+=m_phase_inc;
+        m_phase += m_phase_inc;
         m_phase = std::fmod(m_phase,1.0);
         //if (m_phase>=1.0f)
         //    m_phase-=m_phase_inc;
@@ -158,6 +163,18 @@ public:
             m_osc_freqs[i] = f;
             //std::cout << i << "\t" << f << "hz\n";
         }
+        float gain0 = 0.0f;
+        float gain1 = -60.0f+60.0f*m_balance;
+        for (int i=0;i<m_oscils.size();++i)
+        {
+            float bypassgain = 0.0f;
+            if (i<m_active_oscils)
+                bypassgain = 1.0f;
+            float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
+            if (db<-72.0f) db = -72.0f;
+            float gain = rack::dsp::dbToAmplitude(db)*bypassgain;
+            m_osc_gains[i] = gain;
+        }
     }
     std::array<float,16> fms;
     void processNextFrame(float* outbuf)
@@ -172,14 +189,7 @@ public:
         
         for (int i=0;i<m_oscils.size();++i)
         {
-            
-            float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
-            if (db<-72.0f) db = -72.0f;
-            float bypassgain = m_osc_gain_smoothers[i].process(m_osc_gains[i]);
-            //if (bypassgain<0.001)
-            //    continue;
-            float gain = rack::dsp::dbToAmplitude(db);
-            gain = gain * bypassgain;
+            float gain = m_osc_gain_smoothers[i].process(m_osc_gains[i]);
             float s = m_oscils[i].processSample(0.0f);
             
             fms[i] = s;
@@ -291,16 +301,8 @@ public:
     }
     void setOscCount(int c)
     {
-        if (c == m_active_oscils)
-            return;
         if (c<1) c = 1;
         if (c>16) c = 16;
-        for (int i=0;i<16;++i)
-        {
-            if (i<c)
-                m_osc_gains[i] = 1.0f;
-            else m_osc_gains[i] = 0.0f;
-        }
         m_active_oscils = c;
     }
     int getOscCount()
@@ -313,12 +315,13 @@ public:
         if (m>2) m = 2;
         m_fm_mode = m;
     }
+    OnePoleFilter m_norm_smoother;
 private:
     std::array<SimpleOsc,16> m_oscils;
     std::array<float,16> m_osc_gains;
     std::array<float,16> m_osc_freqs;
     std::array<OnePoleFilter,16> m_osc_gain_smoothers;
-    OnePoleFilter m_norm_smoother;
+    
     OnePoleFilter m_balance_smoother;
     std::vector<float> m_scale;
     float m_spread = 1.0f;
@@ -456,8 +459,10 @@ public:
                 mixed[outindex] += outs[i];
                 
             }
+            float normscaler = 2.0f/numOscs;
+            float outgain = m_osc.m_norm_smoother.process(normscaler);
             for (int i=0;i<numOutputs;++i)
-                outputs[OUT_AUDIO_1].setVoltage(mixed[i]*5.0f,i);
+                outputs[OUT_AUDIO_1].setVoltage(mixed[i]*5.0f*outgain,i);
             //outputs[OUT_AUDIO_1].setVoltage((outs.first+outs.second)*2.5f);
         }
     }
