@@ -119,11 +119,11 @@ public:
         e.ClearAllNodes();
         e.AddNode({0.0,0.0});
         e.AddNode({0.5,1.0});
-        e.AddNode({1.0,0.0});
+        e.AddNode({1.0,1.0});
         calcbalancetable(e,3);
         e.ClearAllNodes();
         e.AddNode({0.0,0.0});
-        e.AddNode({0.99,1.0});
+        e.AddNode({0.99,0.0});
         e.AddNode({1.0,1.0});
         calcbalancetable(e,4);
         calcbalancetable(e,5);
@@ -208,8 +208,6 @@ public:
             m_osc_freqs[i] = f;
             //std::cout << i << "\t" << f << "hz\n";
         }
-        float gain0 = 0.0f;
-        float gain1 = -60.0f+60.0f*m_balance;
         float indfloat = m_balance*4;
         int index0 = std::floor(indfloat);
         int index1 = index0+1;
@@ -233,8 +231,6 @@ public:
     std::array<float,16> fms;
     void processNextFrame(float* outbuf)
     {
-        float gain0 = 0.0f;
-        float gain1 = -60.0f+60.0f*m_balance_smoother.process(m_balance);
         int oscilsused = 0;
         if (m_fm_mode<2)
             m_oscils[0].setFrequency(m_osc_freqs[0]);
@@ -451,6 +447,11 @@ public:
         configParam(PAR_WARP_MODE,0.0f,2.0f,0.0f,"Warp Mode");
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Num outputs");
         m_pardiv.setDivision(16);
+        for (int i=0;i<16;++i)
+        {
+            float normfreq = 25.0/44100.0;
+            m_hpfilts[i].setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,1.0f,1.0f);
+        }
     }
     void process(const ProcessArgs& args) override
     {
@@ -516,12 +517,18 @@ public:
             float normscaler = 2.0f/numOscs;
             float outgain = m_osc.m_norm_smoother.process(normscaler);
             for (int i=0;i<numOutputs;++i)
-                outputs[OUT_AUDIO_1].setVoltage(mixed[i]*5.0f*outgain,i);
+            {
+                float outsample = mixed[i]*5.0f*outgain;
+                outsample = m_hpfilts[i].process(outsample);
+                outputs[OUT_AUDIO_1].setVoltage(outsample,i);
+            }
+                
             //outputs[OUT_AUDIO_1].setVoltage((outs.first+outs.second)*2.5f);
         }
     }
     ScaleOscillator m_osc;
     dsp::ClockDivider m_pardiv;
+    dsp::TBiquadFilter<float> m_hpfilts[16];
 };
 
 class XScaleOscWidget : public ModuleWidget
