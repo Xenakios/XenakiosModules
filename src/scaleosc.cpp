@@ -158,6 +158,7 @@ public:
         scalafiles.push_back(dir+"/Chopi Xylophone.scl");
         scalafiles.push_back(dir+"/equally tempered minor.scl");
         scalafiles.push_back(dir+"/bohlen_quintuple_j.scl");
+        double root_freq = dsp::FREQ_C4/16.0;
         for (auto& e : scalafiles)
         {
             auto pitches = loadScala(e,true,0.0,128);
@@ -165,28 +166,15 @@ public:
             for (int i=0;i<pitches.size();++i)
             {
                 double p = pitches[i]; //rescale(scale[i],-5.0f,5.0f,0.0f,120.0f);
-                double freq = 20.0 * std::pow(1.05946309436,p);
+                double freq = root_freq * std::pow(1.05946309436,p);
                 scale.push_back(freq);
             }
             m_scale_bank.push_back(scale);
         }
         
-        m_scale.reserve(1000);
+        m_scale.reserve(2048);
         m_scale = m_scale_bank[0];
         
-        /*
-        std::array<int,7> intervals{2,1,2,2,1,2,2};
-        double pitch = 0;
-        for (int i=0;i<256;++i)
-        {
-            double p = pitch;
-            double f = 20.0 * std::pow(1.05946309436,p);
-            if (f>20000.0)
-                break;
-            m_scale.push_back(f);
-            pitch += intervals[i % intervals.size()];
-        }
-        */
         updateOscFrequencies();
     }
     void updateOscFrequencies()
@@ -198,12 +186,12 @@ public:
         for (int i=0;i<m_active_oscils;++i)
         {
             double pitch = rescale((float)i,0,m_active_oscils,m_root_pitch,maxpitch);
-            float f = 256.0f*std::pow(1.05946309436,pitch);
+            float f = rack::dsp::FREQ_C4*std::pow(1.05946309436,pitch);
             f = quantize_to_grid(f,m_scale,1.0);
             float detun = rescale((float)i,0,m_active_oscils,0.0f,f*0.10f*m_detune);
             if (i % 2 == 1)
                 detun = -detun;
-            f = clamp(f*m_freqratio+detun,20.0f,20000.0f);
+            f = clamp(f*m_freqratio+detun,1.0f,20000.0f);
             // m_oscils[i].setFrequency(f);
             m_osc_freqs[i] = f;
             //std::cout << i << "\t" << f << "hz\n";
