@@ -24,8 +24,8 @@ public:
     }
     void setFrequency(float hz)
     {
-        if (hz<0.01f)
-            hz = 0.01f;
+        //if (hz<0.01f)
+        //    hz = 0.01f;
         m_phase_inc = 1.0/m_samplerate*hz;
     }
     float m_warp_steps = 128.0f;
@@ -254,7 +254,7 @@ public:
             for (int i=1;i<m_active_oscils;++i)
             {
                 float hz = m_osc_freqs[i];
-                m_oscils[i].setFrequency(hz+(fms[0]*m_fm_amt*hz));
+                m_oscils[i].setFrequency(hz+(fms[0]*m_fm_amt*hz*2.0f));
             }
         } else if (fm_mode == 1)
         {
@@ -268,7 +268,7 @@ public:
             for (int i=0;i<m_active_oscils-1;++i)
             {
                 float hz = m_osc_freqs[i];
-                m_oscils[i].setFrequency(hz+(fms[m_active_oscils-1]*m_fm_amt*hz));
+                m_oscils[i].setFrequency(hz+(fms[m_active_oscils-1]*m_fm_amt*hz*2.0f));
                 //m_oscils[i].setFrequency(hz);
             }
         }
