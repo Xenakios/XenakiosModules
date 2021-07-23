@@ -80,7 +80,8 @@ public:
         }
         float r = std::sin(2*3.14159265359*phase_to_use);
         m_phase += m_phase_inc;
-        m_phase = std::fmod(m_phase,1.0);
+        //m_phase = std::fmod(m_phase,1.0);
+        m_phase = wrap_value(0.0,m_phase,1.0);
         //if (m_phase>=1.0f)
         //    m_phase-=m_phase_inc;
         return r;
