@@ -331,9 +331,11 @@ public:
             float bypassgain = 0.0f;
             if (i<m_active_oscils)
                 bypassgain = 1.0f;
-            
-            float g0 = g_balance_tables[index0][i];
-            float g1 = g_balance_tables[index1][i];
+            int gtindex = rescale((float)i,0,m_active_oscils-1,0.0f,16.0f);
+            if (gtindex>16) 
+                gtindex = 16;
+            float g0 = g_balance_tables[index0][gtindex];
+            float g1 = g_balance_tables[index1][gtindex];
             float g2 = g0+(g1-g0)*frac;
             float db = rescale(g2,0.0f,1.0f,-60.0f,0.0f);
             //float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
