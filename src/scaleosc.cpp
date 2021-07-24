@@ -19,7 +19,7 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
         out2 = *t1;
         if (out1 == out2)
         {
-            outdiff = 0.0f;
+            outdiff = 1.0f;
             return;
         }
         outdiff = rescale(x,out1,out2,0.0,1.0);
@@ -51,7 +51,7 @@ public:
     void setFrequencies(float hz0, float hz1)
     {
         simd::float_4 hzs(hz0,hz1,hz0,hz1);
-        m_phase_inc = 1.0/m_samplerate*hzs;
+        m_phase_inc = simd::float_4(1.0/m_samplerate)*hzs;
     }
     void setFrequency(float hz)
     {
@@ -302,9 +302,9 @@ public:
         {
             double pitch = rescale((float)i,0,m_active_oscils,m_root_pitch,m_root_pitch+(72.0f*m_spread));
             float f = rack::dsp::FREQ_C4*std::pow(1.05946309436,pitch);
-            float f0;
-            float f1;
-            float diff;
+            float f0 = f;
+            float f1 = f;
+            float diff = 0.5f;
             quantize_to_scale(f,m_scale,f0,f1,diff);
             xfades[i] = diff;
             //f = quantize_to_grid(f,m_scale,1.0);
@@ -340,7 +340,7 @@ public:
             if (db<-72.0f) db = -72.0f;
             float gain = rack::dsp::dbToAmplitude(db)*bypassgain;
             m_osc_gains[i*2+0] = gain*xfades[i];
-            m_osc_gains[i*2+1] = gain; //*(1.0f-xfades[i]);
+            m_osc_gains[i*2+1] = gain*(1.0f-xfades[i]);
         }
     }
     std::array<float,16> fms;
@@ -387,8 +387,11 @@ public:
         {
             for (int i=1;i<m_active_oscils;++i)
             {
-                float hz = m_osc_freqs[i];
-                m_oscils[i].setFrequency(hz+(fms[i-1]*m_fm_amt*hz));
+                float hz0 = m_osc_freqs[i*2+0];
+                hz0 = hz0+(fms[i-1]*m_fm_amt*hz0);
+                float hz1 = m_osc_freqs[i*2+1];
+                hz1 = hz1+(fms[i-1]*m_fm_amt*hz1);
+                m_oscils[i].setFrequencies(hz0,hz1);
             }
         } else if (m_fm_mode == 2)
         {
