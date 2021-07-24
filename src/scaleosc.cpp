@@ -28,7 +28,7 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
     }
     out1 = g.back();
     out2 = g.back();
-    outdiff = 1.00;
+    outdiff = 1.0f;
 }
 
 
@@ -236,8 +236,8 @@ public:
         {
             //m_oscils[i].initialise([](float x){ return sin(x); },4096);
             m_oscils[i].prepare(1,44100.0f);
-            m_osc_gain_smoothers[i*2+0].setAmount(0.9999);
-            m_osc_gain_smoothers[i*2+1].setAmount(0.9999);
+            m_osc_gain_smoothers[i*2+0].setAmount(0.9995);
+            m_osc_gain_smoothers[i*2+1].setAmount(0.9995);
             m_osc_gains[i*2+0] = 1.0f;
             m_osc_gains[i*2+1] = 1.0f;
             m_osc_freqs[i*2+0] = 440.0f;
@@ -298,6 +298,8 @@ public:
     {
         double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
         float xfades[16];
+        for (int i=0;i<16;++i)
+            xfades[i] = 0.0f;
         for (int i=0;i<m_active_oscils;++i)
         {
             double pitch = rescale((float)i,0,m_active_oscils,m_root_pitch,m_root_pitch+(72.0f*m_spread));
@@ -334,6 +336,8 @@ public:
             int gtindex = rescale((float)i,0,m_active_oscils-1,0.0f,16.0f);
             if (gtindex>16) 
                 gtindex = 16;
+            if (gtindex<0)
+                gtindex = 0;
             float g0 = g_balance_tables[index0][gtindex];
             float g1 = g_balance_tables[index1][gtindex];
             float g2 = g0+(g1-g0)*frac;
@@ -372,7 +376,7 @@ public:
                 fms[i] = s0;
             s0 *= gain0;
             s1 *= gain1;
-            outbuf[i] = s0+s1;
+            outbuf[i] = s0 + s1;
         }
         int fm_mode = m_fm_mode;
         if (fm_mode == 0)
@@ -646,7 +650,8 @@ public:
                 mixed[outindex] += outs[i];
                 
             }
-            float normscaler = 2.0f/numOscs;
+            float nnosc = rescale((float)numOscs,1,16,0.0f,1.0f);
+            float normscaler = 0.25f+0.75f*std::pow(1.0f-nnosc,3.0f);
             float outgain = m_osc.m_norm_smoother.process(normscaler);
             for (int i=0;i<numOutputs;++i)
             {
