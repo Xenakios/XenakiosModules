@@ -6,6 +6,78 @@
 
 float g_balance_tables[6][17];
 
+class SIMDSimpleOsc
+{
+public:
+    SIMDSimpleOsc()
+    {
+
+    }
+    simd::float_4 m_phase = 0.0;
+    simd::float_4 m_phase_inc = 0.0;
+    double m_samplerate = 44100;
+    float m_warp = 0.0f;
+    int m_warp_mode = 2;
+    void prepare(int numchans, double samplerate)
+    {
+        m_samplerate = samplerate;
+    }
+    void setFrequency(float hz)
+    {
+        simd::float_4 hzs(hz);
+        m_phase_inc = 1.0/m_samplerate*hzs;
+    }
+    float m_warp_steps = 128.0f;
+    void setPhaseWarp(int mode, float amt)
+    {
+        amt = clamp(amt,0.0f,1.0f);
+        m_warp_mode = mode;
+        m_warp_steps = std::pow(2.0f,2.0f+(1.0f-amt)*6.0f);
+        m_warp = std::pow(amt,2.0f);
+    }
+    simd::float_4 processSample(float)
+    {
+        double phase_to_use;
+#ifdef FOOSIMD
+        if (m_warp_mode == 0)
+        {
+            phase_to_use = 1.0+m_warp*7.0;
+            phase_to_use = m_phase * phase_to_use;
+            if (phase_to_use>1.0)
+                phase_to_use = 1.0f;
+        } else if (m_warp_mode == 1)
+        {
+            double steps = m_warp_steps; // std::pow(2.0f,2.0f+(1.0-m_warp)*6.0f);
+            /*
+            double skewp = 0.05;
+            if (m_warp<skewp)
+            {
+                steps = rescale(m_warp,0.00f,skewp,128.0f,16.0f);
+            } else
+            {
+                steps = rescale(m_warp,skewp,1.0f,16.0f,3.0f);
+                
+            }
+            */
+            phase_to_use = std::round(m_phase*steps)/steps;
+        }
+        else
+        {
+            double pmult = rescale(m_warp,0.0f,1.0f,0.5f,2.0f);
+            phase_to_use = std::fmod(pmult*m_phase,1.0);
+        }
+#endif
+        simd::float_4 rs = simd::sin(2*3.14159265359*m_phase);
+        //float r = std::sin(2*3.14159265359*phase_to_use);
+        m_phase += m_phase_inc;
+        //m_phase = std::fmod(m_phase,1.0);
+        //m_phase = wrap_value(0.0,m_phase,1.0);
+        m_phase = simd::fmod(m_phase,1.0f);
+        return rs;
+    }
+};
+
+
 class SimpleOsc
 {
 public:
@@ -239,7 +311,8 @@ public:
         for (int i=0;i<m_oscils.size();++i)
         {
             float gain = m_osc_gain_smoothers[i].process(m_osc_gains[i]);
-            float s = m_oscils[i].processSample(0.0f);
+            simd::float_4 ss = m_oscils[i].processSample(0.0f);
+            float s = ss[0];
             if (m_fm_order == 0)
                 fms[i] = s;
             s = reflect_value(-1.0f,s*(1.0f+m_fold*5.0f),1.0f);
@@ -366,7 +439,7 @@ public:
     }
     OnePoleFilter m_norm_smoother;
 private:
-    std::array<SimpleOsc,16> m_oscils;
+    std::array<SIMDSimpleOsc,16> m_oscils;
     std::array<float,16> m_osc_gains;
     std::array<float,16> m_osc_freqs;
     std::array<OnePoleFilter,16> m_osc_gain_smoothers;
