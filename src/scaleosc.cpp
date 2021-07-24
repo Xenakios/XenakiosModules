@@ -339,8 +339,8 @@ public:
             //float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
             if (db<-72.0f) db = -72.0f;
             float gain = rack::dsp::dbToAmplitude(db)*bypassgain;
-            m_osc_gains[i*2+0] = gain*xfades[i];
-            m_osc_gains[i*2+1] = gain*(1.0f-xfades[i]);
+            m_osc_gains[i*2+0] = gain*(1.0-xfades[i]);
+            m_osc_gains[i*2+1] = gain*xfades[i];
         }
     }
     std::array<float,16> fms;
