@@ -297,9 +297,7 @@ public:
     void updateOscFrequencies()
     {
         double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
-        float xfades[16];
-        for (int i=0;i<16;++i)
-            xfades[i] = 0.0f;
+        auto xfades = makeArray<float,16>();
         for (int i=0;i<m_active_oscils;++i)
         {
             double pitch = rescale((float)i,0,m_active_oscils,m_root_pitch,m_root_pitch+(72.0f*m_spread));

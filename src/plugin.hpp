@@ -10,6 +10,14 @@ extern Plugin *pluginInstance;
 
 const float g_pi = 3.14159265358979;
 
+template<typename T, size_t Sz>
+inline std::array<T, Sz> makeArray()
+{
+	std::array<T,Sz> result;
+	std::fill(result.begin(),result.end(),T{});
+	return result;
+}
+
 inline float customlog(float base, float x)
 {
 	return std::log(x)/std::log(base);
