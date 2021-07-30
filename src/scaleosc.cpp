@@ -79,14 +79,14 @@ public:
             //    phase_to_use = 1.0f;
         } else if (m_warp_mode == 1)
         {
-            //double steps = m_warp_steps; // std::pow(2.0f,2.0f+(1.0-m_warp)*6.0f);
+            double steps = m_warp_steps; // std::pow(2.0f,2.0f+(1.0-m_warp)*6.0f);
             
-            //phase_to_use = std::round(m_phase*steps)/steps;
+            phase_to_use = simd::round(m_phase*steps)/steps;
         }
         else
         {
-            //double pmult = rescale(m_warp,0.0f,1.0f,0.5f,2.0f);
-            //phase_to_use = std::fmod(pmult*m_phase,1.0);
+            float pmult = rescale(m_warp,0.0f,1.0f,0.5f,2.0f);
+            phase_to_use = simd::fmod(pmult*m_phase,simd::float_4(1.0f));
         }
 //#endif
         simd::float_4 rs = simd::sin(simd::float_4(2*3.14159265359)*phase_to_use);
@@ -563,7 +563,7 @@ public:
         configParam(PAR_NUM_OSCS,1.0f,16.0f,16.0f,"Num oscillators");
         configParam(PAR_FOLD,0.0f,1.0f,0.0f,"Fold");
         configParam(PAR_SPREAD,0.0f,1.0f,0.5f,"Spread");
-        configParam(PAR_WARP,0.0f,1.0f,0.5f,"Warp");
+        configParam(PAR_WARP,0.0f,1.0f,0.0f,"Warp");
         configParam(PAR_FM_AMT,0.0f,1.0f,0.0f,"FM Amount");
         configParam(PAR_FM_MODE,0.0f,2.0f,0.0f,"FM Mode");
         configParam(PAR_SCALE,0.0f,1.0f,0.0f,"Scale");
