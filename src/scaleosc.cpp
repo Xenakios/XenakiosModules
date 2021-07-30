@@ -68,37 +68,28 @@ public:
     }
     simd::float_4 processSample(float)
     {
-        double phase_to_use;
-#ifdef FOOSIMD
+        simd::float_4 phase_to_use = m_phase;
+//#ifdef FOOSIMD
         if (m_warp_mode == 0)
         {
-            phase_to_use = 1.0+m_warp*7.0;
+            phase_to_use = simd::float_4(1.0)+simd::float_4(m_warp)*simd::float_4(7.0f);
             phase_to_use = m_phase * phase_to_use;
-            if (phase_to_use>1.0)
-                phase_to_use = 1.0f;
+            phase_to_use = simd::fmin(phase_to_use,1.0f);
+            //if (phase_to_use>1.0)
+            //    phase_to_use = 1.0f;
         } else if (m_warp_mode == 1)
         {
-            double steps = m_warp_steps; // std::pow(2.0f,2.0f+(1.0-m_warp)*6.0f);
-            /*
-            double skewp = 0.05;
-            if (m_warp<skewp)
-            {
-                steps = rescale(m_warp,0.00f,skewp,128.0f,16.0f);
-            } else
-            {
-                steps = rescale(m_warp,skewp,1.0f,16.0f,3.0f);
-                
-            }
-            */
-            phase_to_use = std::round(m_phase*steps)/steps;
+            //double steps = m_warp_steps; // std::pow(2.0f,2.0f+(1.0-m_warp)*6.0f);
+            
+            //phase_to_use = std::round(m_phase*steps)/steps;
         }
         else
         {
-            double pmult = rescale(m_warp,0.0f,1.0f,0.5f,2.0f);
-            phase_to_use = std::fmod(pmult*m_phase,1.0);
+            //double pmult = rescale(m_warp,0.0f,1.0f,0.5f,2.0f);
+            //phase_to_use = std::fmod(pmult*m_phase,1.0);
         }
-#endif
-        simd::float_4 rs = simd::sin(simd::float_4(2*3.14159265359)*m_phase);
+//#endif
+        simd::float_4 rs = simd::sin(simd::float_4(2*3.14159265359)*phase_to_use);
         //float r = std::sin(2*3.14159265359*phase_to_use);
         m_phase += m_phase_inc;
         //m_phase = std::fmod(m_phase,1.0);
