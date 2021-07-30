@@ -6,6 +6,13 @@
 
 float g_balance_tables[6][17];
 
+inline simd::float_4 fmodex(simd::float_4 x)
+{
+    x = simd::fmod(x,1.0f);
+    simd::float_4 a = 1.0f - (-1.0f * x);
+    return ((x<0.0f) & a) + ((x>=0.0f) & x); 
+}
+
 inline void quantize_to_scale(float x, const std::vector<float>& g,
     float& out1, float& out2, float& outdiff)
 {
@@ -51,7 +58,7 @@ public:
     void setFrequencies(float hz0, float hz1)
     {
         simd::float_4 hzs(hz0,hz1,hz0,hz1);
-        m_phase_inc = simd::float_4(1.0/m_samplerate)*hzs;
+        m_phase_inc = simd::float_4(1.0f/m_samplerate)*hzs;
     }
     void setFrequency(float hz)
     {
@@ -94,7 +101,8 @@ public:
         m_phase += m_phase_inc;
         //m_phase = std::fmod(m_phase,1.0);
         //m_phase = wrap_value(0.0,m_phase,1.0);
-        m_phase = simd::fmod(m_phase,simd::float_4(1.0f));
+        //m_phase = simd::fmod(m_phase,simd::float_4(1.0f));
+        m_phase = fmodex(m_phase);
         return rs;
     }
 };
