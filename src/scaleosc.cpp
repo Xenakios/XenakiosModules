@@ -76,6 +76,7 @@ public:
     simd::float_4 processSample(float)
     {
         simd::float_4 phase_to_use = m_phase;
+        simd::float_4 gain = 1.0f;
 //#ifdef FOOSIMD
         if (m_warp_mode == 0)
         {
@@ -92,7 +93,8 @@ public:
         }
         else
         {
-            float pmult = rescale(m_warp,0.0f,1.0f,0.5f,2.0f);
+            float pmult = rescale(m_warp,0.0f,1.0f,1.0f,8.0f);
+            gain = 1.0f-simd::fmod(m_phase,1.0f);
             phase_to_use = simd::fmod(pmult*m_phase,simd::float_4(1.0f));
         }
 //#endif
@@ -103,7 +105,7 @@ public:
         //m_phase = wrap_value(0.0,m_phase,1.0);
         //m_phase = simd::fmod(m_phase,simd::float_4(1.0f));
         m_phase = fmodex(m_phase);
-        return rs;
+        return rs*gain;
     }
 };
 
