@@ -217,7 +217,7 @@ public:
         calcbalancetable(e,0);
         e.ClearAllNodes();
         e.AddNode({0.0,1.0});
-        e.AddNode({0.5,0.0});
+        e.AddNode({0.25,1.0});
         e.AddNode({1.0,0.0});
         calcbalancetable(e,1);
         e.ClearAllNodes();
