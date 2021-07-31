@@ -4,7 +4,8 @@
 #include <array>
 #include "jcdp_envelope.h"
 
-float g_balance_tables[6][17];
+int g_balance_stages = 7;
+float g_balance_tables[8][17];
 
 inline simd::float_4 fmodex(simd::float_4 x)
 {
@@ -214,24 +215,30 @@ public:
         calcbalancetable(e,0);
         e.ClearAllNodes();
         e.AddNode({0.0,1.0});
-        //e.AddNode({0.5,0.1});
-        e.AddNode({1.0,0.1});
+        e.AddNode({0.5,0.0});
+        e.AddNode({1.0,0.0});
         calcbalancetable(e,1);
         e.ClearAllNodes();
         e.AddNode({0.0,1.0});
-        e.AddNode({1.0,1.0});
+        e.AddNode({0.5,1.0});
+        e.AddNode({1.0,0.0});
         calcbalancetable(e,2);
+        e.ClearAllNodes();
+        e.AddNode({0.0,1.0});
+        e.AddNode({1.0,1.0});
+        calcbalancetable(e,3);
         e.ClearAllNodes();
         e.AddNode({0.0,1.0});
         //e.AddNode({0.5,1.0});
         e.AddNode({1.0,1.0});
-        calcbalancetable(e,3);
+        calcbalancetable(e,4);
         e.ClearAllNodes();
         e.AddNode({0.0,0.0});
         e.AddNode({0.99,0.0});
         e.AddNode({1.0,1.0});
-        calcbalancetable(e,4);
         calcbalancetable(e,5);
+        calcbalancetable(e,6);
+        calcbalancetable(e,7);
 
         for (int i=0;i<m_oscils.size();++i)
         {
@@ -323,7 +330,7 @@ public:
             m_osc_freqs[i*2+1] = f1;
             
         }
-        float indfloat = m_balance*4;
+        float indfloat = m_balance*(g_balance_stages-1);
         int index0 = std::floor(indfloat);
         int index1 = index0+1;
         float frac = indfloat-std::floor(indfloat);
