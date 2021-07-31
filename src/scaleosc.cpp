@@ -205,6 +205,8 @@ public:
             for (int i=0;i<17;++i)
             {
                 float g = e.GetInterpolatedEnvelopeValue(rescale((float)i,0,15,0.0,1.0));
+                g = rescale(g,0.0f,1.0f,-60.0f,0.0f);
+                g = dsp::dbToAmplitude(g);
                 g_balance_tables[table][i] = g;
             }
         };
@@ -363,7 +365,8 @@ public:
             m_oscils[0].setFrequencies(m_osc_freqs[0],m_osc_freqs[1]);
         else
         {
-            //m_oscils[m_active_oscils-1].setFrequencies(m_osc_freqs[m_active_oscils-1]);
+            float f = m_osc_freqs[m_active_oscils-1];
+            m_oscils[m_active_oscils-1].setFrequencies(f,f);
         }
             
         int m_fm_order = 1;
@@ -409,8 +412,11 @@ public:
         {
             for (int i=0;i<m_active_oscils-1;++i)
             {
-                float hz = m_osc_freqs[i];
-                m_oscils[i].setFrequency(hz+(fms[m_active_oscils-1]*m_fm_amt*hz*2.0f));
+                float hz0 = m_osc_freqs[i*2+0];
+                hz0 = hz0+(fms[m_active_oscils-1]*m_fm_amt*hz0*2.0f);
+                float hz1 = m_osc_freqs[i*2+1];
+                hz1 = hz1+(fms[m_active_oscils-1]*m_fm_amt*hz1*2.0f);
+                m_oscils[i].setFrequencies(hz0,hz1);
                 //m_oscils[i].setFrequency(hz);
             }
         }
