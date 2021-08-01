@@ -523,6 +523,16 @@ public:
         if (m>2) m = 2;
         m_fm_mode = m;
     }
+    void setFrequencySmoothing(float s)
+    {
+        if (s!=m_freq_smooth)
+        {
+            float shaped = 1.0f-std::pow(1.0f-s,3.0f);
+            for (int i=0;i<m_osc_freq_smoothers.size();++i)
+                m_osc_freq_smoothers[i].setAmount(rescale(shaped,0.0f,1.0f,0.99f,0.99999f));
+            m_freq_smooth = s;
+        }
+    }
     OnePoleFilter m_norm_smoother;
 private:
     std::array<SIMDSimpleOsc,16> m_oscils;
@@ -542,6 +552,7 @@ private:
     int m_active_oscils = 16;
     float m_warp = 1.1f;    
     int m_fm_mode = 0;
+    float m_freq_smooth = -1.0f;
     std::vector<std::vector<float>> m_scale_bank;
 };
 
@@ -585,6 +596,7 @@ public:
         PAR_SCALE_BANK,
         PAR_WARP_MODE,
         PAR_NUM_OUTPUTS,
+        PAR_FREQSMOOTH,
         PAR_LAST
     };
     XScaleOsc()
@@ -604,6 +616,7 @@ public:
         configParam(PAR_SCALE_BANK,0.0f,1.0f,0.0f,"Scale bank");
         configParam(PAR_WARP_MODE,0.0f,2.0f,0.0f,"Warp Mode");
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Num outputs");
+        configParam(PAR_FREQSMOOTH,0.0f,1.0f,0.5f,"Pitch smoothing");
         m_pardiv.setDivision(16);
         for (int i=0;i<16;++i)
         {
@@ -650,6 +663,8 @@ public:
             m_osc.setFMMode(fmmode);
             float scale = params[PAR_SCALE].getValue();
             m_osc.setScale(scale);
+            float psmooth = params[PAR_FREQSMOOTH].getValue();
+            m_osc.setFrequencySmoothing(psmooth);
             m_osc.updateOscFrequencies();
         }
         float outs[16];
@@ -745,6 +760,9 @@ public:
         yc += 47.0f;
         addChild(new KnobInAttnWidget(this,"NUM OUTPUTS",XScaleOsc::PAR_NUM_OUTPUTS,
             -1,-1,xc,yc,true));
+        xc += 82.0f;
+        addChild(new KnobInAttnWidget(this,"PITCH SMOOTHING",XScaleOsc::PAR_FREQSMOOTH,
+            -1,-1,xc,yc,false));
     }
     void draw(const DrawArgs &args) override
     {
