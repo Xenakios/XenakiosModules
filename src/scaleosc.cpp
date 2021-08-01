@@ -528,8 +528,9 @@ public:
         if (s!=m_freq_smooth)
         {
             float shaped = 1.0f-std::pow(1.0f-s,3.0f);
+            shaped = rescale(shaped,0.0f,1.0f,0.99f,0.99999f);
             for (int i=0;i<m_osc_freq_smoothers.size();++i)
-                m_osc_freq_smoothers[i].setAmount(rescale(shaped,0.0f,1.0f,0.99f,0.99999f));
+                m_osc_freq_smoothers[i].setAmount(shaped);
             m_freq_smooth = s;
         }
     }
