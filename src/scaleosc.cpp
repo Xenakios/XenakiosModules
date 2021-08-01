@@ -248,6 +248,8 @@ public:
             m_oscils[i].prepare(1,44100.0f);
             m_osc_gain_smoothers[i*2+0].setAmount(0.9995);
             m_osc_gain_smoothers[i*2+1].setAmount(0.9995);
+            m_osc_freq_smoothers[i*2+0].setAmount(0.9995);
+            m_osc_freq_smoothers[i*2+1].setAmount(0.9995);
             m_osc_gains[i*2+0] = 1.0f;
             m_osc_gains[i*2+1] = 1.0f;
             m_osc_freqs[i*2+0] = 440.0f;
@@ -361,12 +363,19 @@ public:
     void processNextFrame(float* outbuf)
     {
         int oscilsused = 0;
+        int lastosci = m_active_oscils-1;
         if (m_fm_mode<2)
-            m_oscils[0].setFrequencies(m_osc_freqs[0],m_osc_freqs[1]);
+        {
+            float hz0 = m_osc_freq_smoothers[0].process(m_osc_freqs[0]);
+            float hz1 = m_osc_freq_smoothers[1].process(m_osc_freqs[1]);
+            m_oscils[0].setFrequencies(hz0,hz1);
+        }
+            
         else
         {
-            float f = m_osc_freqs[m_active_oscils-1];
-            m_oscils[m_active_oscils-1].setFrequencies(f,f);
+            float f = m_osc_freqs[lastosci];
+            f = m_osc_freq_smoothers[lastosci].process(f);
+            m_oscils[lastosci].setFrequencies(f,f);
         }
             
         int m_fm_order = 1;
@@ -392,9 +401,9 @@ public:
         {
             for (int i=1;i<m_active_oscils;++i)
             {
-                float hz0 = m_osc_freqs[i*2+0];
+                float hz0 = m_osc_freq_smoothers[i*2+0].process(m_osc_freqs[i*2+0]);
                 hz0 = hz0+(fms[0]*m_fm_amt*hz0*2.0f);
-                float hz1 = m_osc_freqs[i*2+1];
+                float hz1 = m_osc_freq_smoothers[i*2+1].process(m_osc_freqs[i*2+1]);
                 hz1 = hz1+(fms[0]*m_fm_amt*hz1*2.0f);
                 m_oscils[i].setFrequencies(hz0,hz1);
             }
@@ -518,7 +527,7 @@ private:
     std::array<float,32> m_osc_gains;
     std::array<float,32> m_osc_freqs;
     std::array<OnePoleFilter,32> m_osc_gain_smoothers;
-    
+    std::array<OnePoleFilter,32> m_osc_freq_smoothers;
     OnePoleFilter m_balance_smoother;
     std::vector<float> m_scale;
     float m_spread = 1.0f;
