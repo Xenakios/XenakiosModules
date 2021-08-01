@@ -241,7 +241,7 @@ public:
         calcbalancetable(e,5);
         calcbalancetable(e,6);
         calcbalancetable(e,7);
-
+        m_fold_smoother.setAmount(0.99);
         for (int i=0;i<m_oscils.size();++i)
         {
             //m_oscils[i].initialise([](float x){ return sin(x); },4096);
@@ -379,6 +379,7 @@ public:
         }
             
         int m_fm_order = 1;
+        float foldgain = m_fold_smoother.process((1.0f+m_fold*5.0f));
         for (int i=0;i<m_oscils.size();++i)
         {
             float gain0 = m_osc_gain_smoothers[i*2+0].process(m_osc_gains[i*2+0]);
@@ -393,7 +394,8 @@ public:
             if (m_fm_order == 1)
                 fms[i] = s0;
             float s2 = s0 * gain0 + s1 * gain1;
-            s2 = reflect_value(-1.0f,s2*(1.0f+m_fold*5.0f),1.0f);
+            
+            s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
             //s0 *= gain0;
             //s1 *= gain1;
             outbuf[i] = s2;
@@ -542,6 +544,7 @@ private:
     std::array<OnePoleFilter,32> m_osc_gain_smoothers;
     std::array<OnePoleFilter,32> m_osc_freq_smoothers;
     OnePoleFilter m_balance_smoother;
+    OnePoleFilter m_fold_smoother;
     std::vector<float> m_scale;
     float m_spread = 1.0f;
     float m_root_pitch = 0.0f;
