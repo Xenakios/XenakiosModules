@@ -205,8 +205,6 @@ public:
             for (int i=0;i<17;++i)
             {
                 float g = e.GetInterpolatedEnvelopeValue(rescale((float)i,0,15,0.0,1.0));
-                g = rescale(g,0.0f,1.0f,-60.0f,0.0f);
-                g = dsp::dbToAmplitude(g);
                 g_balance_tables[table][i] = g;
             }
         };
@@ -378,7 +376,6 @@ public:
             m_oscils[lastosci].setFrequencies(f,f);
         }
             
-        int m_fm_order = 1;
         float foldgain = m_fold_smoother.process((1.0f+m_fold*5.0f));
         for (int i=0;i<m_oscils.size();++i)
         {
@@ -387,17 +384,9 @@ public:
             simd::float_4 ss = m_oscils[i].processSample(0.0f);
             float s0 = ss[0];
             float s1 = ss[1];
-            if (m_fm_order == 0)
-                fms[i] = s0;
-            //s0 = reflect_value(-1.0f,s0*(1.0f+m_fold*5.0f),1.0f);
-            //s1 = reflect_value(-1.0f,s1*(1.0f+m_fold*5.0f),1.0f);
-            if (m_fm_order == 1)
-                fms[i] = s0;
+            fms[i] = s0;
             float s2 = s0 * gain0 + s1 * gain1;
-            
             s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
-            //s0 *= gain0;
-            //s1 *= gain1;
             outbuf[i] = s2;
         }
         int fm_mode = m_fm_mode;
@@ -430,14 +419,8 @@ public:
                 float hz1 = m_osc_freqs[i*2+1];
                 hz1 = hz1+(fms[lastosci]*m_fm_amt*hz1*2.0f);
                 m_oscils[i].setFrequencies(hz0,hz1);
-                //m_oscils[i].setFrequency(hz);
             }
         }
-        
-        
-        //float scaler = m_norm_smoother.process(1.0f/(m_active_oscils*0.3f));
-        //return {mix_l*scaler,mix_r*scaler};
-        
     }
     int m_curScale = 0;
     void setScale(float x)
