@@ -341,6 +341,7 @@ public:
             float bypassgain = 0.0f;
             if (i<m_active_oscils)
                 bypassgain = 1.0f;
+            /*
             int gtindex = rescale((float)i,0,m_active_oscils-1,0.0f,16.0f);
             if (gtindex>16) 
                 gtindex = 16;
@@ -351,6 +352,40 @@ public:
             float g2 = g0+(g1-g0)*frac;
             float db = rescale(g2,0.0f,1.0f,-60.0f,0.0f);
             //float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
+            */
+            float xs0 = 0.0f;
+            float xs1 = 1.0f;
+            float ys0 = 1.0f;
+            float ys1 = 1.0f;
+            if (m_balance<0.25f)
+            {
+                xs0 = 0.0f;
+                ys0 = 1.0f;
+                xs1 = rescale(m_balance,0.0f,0.25f,0.01f,1.0f);
+                ys1 = 0.0f;
+            } else if (m_balance>=0.25f && m_balance<0.5f)
+            {
+                xs0 = 0.0f;
+                ys0 = 1.0f;
+                xs1 = 1.0f;
+                ys1 = rescale(m_balance,0.25f,0.5f,0.0f,1.0f);
+            } else if (m_balance>=0.5f && m_balance<0.75f)
+            {
+                xs0 = 0.0f;
+                ys0 = rescale(m_balance,0.5f,0.75f,1.0f,0.0f);
+                xs1 = 1.0f;
+                ys1 = 1.0f;
+            } else 
+            {
+                xs0 = rescale(m_balance,0.75f,1.0f,0.0f,0.99f);
+                ys0 = 1.0f;
+                xs1 = 1.0f;
+                ys1 = 1.0f;
+            }
+            float normx = rescale((float)i,0,m_active_oscils,0.0f,1.0f);
+            float amp = rescale(normx,xs0,xs1,ys0,ys1);
+            amp = clamp(amp,0.0f,1.0f);
+            float db = rescale(amp,0.0f,1.0f,-72.0,0.0f);
             if (db<-72.0f) db = -72.0f;
             float gain = rack::dsp::dbToAmplitude(db)*bypassgain;
             m_osc_gains[i*2+0] = gain*(1.0-xfades[i]);
