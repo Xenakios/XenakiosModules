@@ -306,6 +306,7 @@ public:
         scalafiles.push_back(dir+"/tritones.scl");
         scalafiles.push_back(dir+"/major_chord_et.scl");
         scalafiles.push_back(dir+"/minor_chord_et.scl");
+        scalafiles.push_back(dir+"/tetra01.scl");
         for (auto& e : scalafiles)
         {
             auto pitches = loadScala(e,true,0.0,128);
@@ -481,9 +482,9 @@ public:
         {
             for (int i=1;i<m_active_oscils;++i)
             {
-                float hz0 = m_osc_freqs[i*2+0];
+                float hz0 = m_osc_freq_smoothers[i*2+0].process(m_osc_freqs[i*2+0]);
                 hz0 = hz0+(fms[i-1]*m_fm_amt*hz0);
-                float hz1 = m_osc_freqs[i*2+1];
+                float hz1 = m_osc_freq_smoothers[i*2+1].process(m_osc_freqs[i*2+1]);
                 hz1 = hz1+(fms[i-1]*m_fm_amt*hz1);
                 m_oscils[i].setFrequencies(hz0,hz1);
             }
@@ -491,9 +492,9 @@ public:
         {
             for (int i=0;i<m_active_oscils-1;++i)
             {
-                float hz0 = m_osc_freqs[i*2+0];
+                float hz0 = m_osc_freq_smoothers[i*2+0].process(m_osc_freqs[i*2+0]);
                 hz0 = hz0+(fms[lastosci]*m_fm_amt*hz0*2.0f);
-                float hz1 = m_osc_freqs[i*2+1];
+                float hz1 = m_osc_freq_smoothers[i*2+1].process(m_osc_freqs[i*2+1]);
                 hz1 = hz1+(fms[lastosci]*m_fm_amt*hz1*2.0f);
                 m_oscils[i].setFrequencies(hz0,hz1);
             }
