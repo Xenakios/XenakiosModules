@@ -257,7 +257,7 @@ public:
             fms[i] = 0.0f;
         }
         m_norm_smoother.setAmount(0.999);
-        m_balance_smoother.setAmount(0.999);
+        
         std::array<float,7> ratios{81.0f/80.0f,9.0f/8.0f,1.25f,1.333333f,1.5f,9.0f/5.0f,2.0f};
         double root_freq = dsp::FREQ_C4/16.0;
         for (int i=0;i<ratios.size();++i)
@@ -543,7 +543,7 @@ private:
     std::array<float,32> m_osc_freqs;
     std::array<OnePoleFilter,32> m_osc_gain_smoothers;
     std::array<OnePoleFilter,32> m_osc_freq_smoothers;
-    OnePoleFilter m_balance_smoother;
+    
     OnePoleFilter m_fold_smoother;
     std::vector<float> m_scale;
     float m_spread = 1.0f;
