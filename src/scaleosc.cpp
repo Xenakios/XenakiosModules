@@ -378,7 +378,7 @@ public:
             } else 
             {
                 xs0 = rescale(m_balance,0.75f,1.0f,0.0f,0.99f);
-                ys0 = 1.0f;
+                ys0 = 0.0f;
                 xs1 = 1.0f;
                 ys1 = 1.0f;
             }
