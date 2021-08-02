@@ -17,6 +17,13 @@ inline simd::float_4 fmodex(simd::float_4 x)
 inline void quantize_to_scale(float x, const std::vector<float>& g,
     float& out1, float& out2, float& outdiff)
 {
+    if (g.empty())
+    {
+        out1 = x;
+        out2 = x+1.0f;
+        outdiff = 0.5f;
+        return;
+    }
     auto t1=std::upper_bound(std::begin(g),std::end(g),x);
     if (t1<std::end(g)-1)
     {
@@ -199,6 +206,15 @@ class ScaleOscillator
 {
 public:
     float m_gain_smooth_amt = 0.99f;
+    std::string getScaleName()
+    {
+        if (m_curScale>=0 && m_curScale<m_scalenames.size())
+        {
+            return m_scalenames[m_curScale];
+        }
+        return "No scale name";
+    }
+    std::vector<std::string> m_scalenames;
     ScaleOscillator()
     {
         auto calcbalancetable = [](breakpoint_envelope&e, int table)
@@ -258,6 +274,15 @@ public:
         m_norm_smoother.setAmount(0.999);
         
         std::array<float,7> ratios{81.0f/80.0f,9.0f/8.0f,1.25f,1.333333f,1.5f,9.0f/5.0f,2.0f};
+        m_scale_bank.push_back(std::vector<float>());
+        m_scalenames.push_back("Continuum");
+        m_scalenames.push_back("Syntonic comma");
+        m_scalenames.push_back("Major tone (JI)");
+        m_scalenames.push_back("Major third JI");
+        m_scalenames.push_back("Fourth JI");
+        m_scalenames.push_back("Fifth JI");
+        m_scalenames.push_back("Minor seventh JI");
+        m_scalenames.push_back("Octave");
         double root_freq = dsp::FREQ_C4/16.0;
         for (int i=0;i<ratios.size();++i)
         {
@@ -289,6 +314,7 @@ public:
                 scale.push_back(freq);
             }
             m_scale_bank.push_back(scale);
+            m_scalenames.push_back(rack::string::filename(e));
         }
         double freq = root_freq;
         std::vector<float> scale;
@@ -300,6 +326,7 @@ public:
             ++i;
         }
         m_scale_bank.push_back(scale);
+        m_scalenames.push_back("Harmonic series");
         m_scale.reserve(2048);
         m_scale = m_scale_bank[0];
         
@@ -728,6 +755,7 @@ public:
             //outputs[OUT_AUDIO_1].setVoltage((outs.first+outs.second)*2.5f);
         }
     }
+    
     ScaleOscillator m_osc;
     dsp::ClockDivider m_pardiv;
     dsp::TBiquadFilter<float> m_hpfilts[16];
@@ -800,6 +828,16 @@ public:
         nvgFillColor(args.vg, nvgRGBA(0x50, 0x50, 0x50, 0xff));
         nvgRect(args.vg,0.0f,0.0f,w,h);
         nvgFill(args.vg);
+        XScaleOsc* m = dynamic_cast<XScaleOsc*>(module);
+        if (m)
+        {
+            auto scalename = rack::string::filename(m->m_osc.getScaleName());
+            nvgFontSize(args.vg, 15);
+            nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
+            nvgTextLetterSpacing(args.vg, -1);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            nvgText(args.vg,1.0f,h-20.0f,scalename.c_str(),nullptr);
+        }
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
     }
