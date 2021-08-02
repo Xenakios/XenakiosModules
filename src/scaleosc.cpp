@@ -416,15 +416,17 @@ public:
             float db = rescale(g2,0.0f,1.0f,-60.0f,0.0f);
             //float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
             */
+            /*
             float f = m_osc_freqs[i];
             float f2 = f*f;
             float awamp = ((424.36f + f2) * std::sqrt((11599.3f + f2) * (544496.f + f2)) * (148693636.f + f2)) / (148693636.f * f2 * f2);
             awamp *= (1.0f/17);
             awamp = clamp(awamp,0.0f,1.0f);
+            */
             float normx = rescale((float)i,0,lastoscili,0.0f,1.0f);
             float amp = rescale(normx,xs0,xs1,ys0,ys1);
             amp = clamp(amp,0.0f,1.0f);
-            amp *= awamp;
+            //amp *= awamp;
             //float db = rescale(amp,0.0f,1.0f,-72.0,0.0f);
             //if (db<-72.0f) db = -72.0f;
             float gain = amp*bypassgain; //rack::dsp::dbToAmplitude(db)*bypassgain;
