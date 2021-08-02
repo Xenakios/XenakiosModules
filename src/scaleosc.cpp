@@ -302,7 +302,10 @@ public:
         scalafiles.push_back(dir+"/Chopi Xylophone.scl");
         scalafiles.push_back(dir+"/equally tempered minor.scl");
         scalafiles.push_back(dir+"/bohlen_quintuple_j.scl");
-        
+        scalafiles.push_back(dir+"/12tet.scl");
+        scalafiles.push_back(dir+"/tritones.scl");
+        scalafiles.push_back(dir+"/major_chord_et.scl");
+        scalafiles.push_back(dir+"/minor_chord_et.scl");
         for (auto& e : scalafiles)
         {
             auto pitches = loadScala(e,true,0.0,128);
