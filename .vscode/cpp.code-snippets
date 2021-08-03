@@ -1,0 +1,42 @@
+{
+	// Place your Gendyn workspace snippets here. Each snippet is defined under a snippet name and has a scope, prefix, body and 
+	// description. Add comma separated ids of the languages where the snippet is applicable in the scope field. If scope 
+	// is left empty or omitted, the snippet gets applied to all languages. The prefix is what is 
+	// used to trigger the snippet and the body will be expanded and inserted. Possible variables are: 
+	// $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. 
+	// Placeholders with the same ids are connected.
+	// Example:
+	"std::fill": {
+	"scope": "cpp",
+	"prefix": "std::fill",
+	"body": [
+	"std::fill(${1:cont}.begin(),${2:cont}.end(),${3:fillValue});"
+	],
+	"description": "std::fill"
+	 },
+	 "rack rescale": {
+		"scope": "cpp",
+		"prefix": "rescale",
+		"body": [
+		"rescale(${1:inputVar},${2:inputMin},${3:inputMax},${4:outputMin},${5:outputMax})"
+		],
+		"description": "rescale"
+	 },
+	 "rack clamp": {
+		"scope": "cpp",
+		"prefix": "clamp",
+		"body": [
+		"clamp(${1:inputVar},${2:outMin},${3:outMax})"
+		],
+		"description": "clamp"
+	 }
+	 ,
+	 "phase inc": {
+		"scope": "cpp",
+		"prefix": "phaseinc",
+		"body": [
+		"1.0f / ${1:sampleRate} * ${2:Hz}"
+		],
+		"description": "phase increment"
+	 }
+}
