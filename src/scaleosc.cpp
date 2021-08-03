@@ -58,22 +58,22 @@ public:
     }
     simd::float_4 m_phase = 0.0;
     simd::float_4 m_phase_inc = 0.0;
-    double m_samplerate = 44100;
+    
     float m_warp = 0.0f;
     int m_warp_mode = 2;
     void prepare(int numchans, double samplerate)
     {
-        m_samplerate = samplerate;
+        
     }
-    void setFrequencies(float hz0, float hz1)
+    void setFrequencies(float hz0, float hz1, float samplerate)
     {
         simd::float_4 hzs(hz0,hz1,hz0,hz1);
-        m_phase_inc = simd::float_4(1.0f/m_samplerate)*hzs;
+        m_phase_inc = simd::float_4(1.0f/samplerate)*hzs;
     }
-    void setFrequency(float hz)
+    void setFrequency(float hz, float samplerate)
     {
         simd::float_4 hzs(hz);
-        m_phase_inc = 1.0/m_samplerate*hzs;
+        m_phase_inc = 1.0/samplerate*hzs;
     }
     float m_warp_steps = 128.0f;
     void setPhaseWarp(int mode, float amt)
@@ -438,7 +438,7 @@ public:
         }
     }
     std::array<float,16> fms;
-    void processNextFrame(float* outbuf)
+    void processNextFrame(float* outbuf, float samplerate)
     {
         int oscilsused = 0;
         int lastosci = m_active_oscils-1;
@@ -446,14 +446,14 @@ public:
         {
             float hz0 = m_osc_freq_smoothers[0].process(m_osc_freqs[0]);
             float hz1 = m_osc_freq_smoothers[1].process(m_osc_freqs[1]);
-            m_oscils[0].setFrequencies(hz0,hz1);
+            m_oscils[0].setFrequencies(hz0,hz1,samplerate);
         }
             
         else
         {
             float f = m_osc_freqs[lastosci];
             f = m_osc_freq_smoothers[lastosci].process(f);
-            m_oscils[lastosci].setFrequencies(f,f);
+            m_oscils[lastosci].setFrequencies(f,f,samplerate);
         }
             
         float foldgain = m_fold_smoother.process((1.0f+m_fold*5.0f));
@@ -478,7 +478,7 @@ public:
                 hz0 = hz0+(fms[0]*m_fm_amt*hz0*2.0f);
                 float hz1 = m_osc_freq_smoothers[i*2+1].process(m_osc_freqs[i*2+1]);
                 hz1 = hz1+(fms[0]*m_fm_amt*hz1*2.0f);
-                m_oscils[i].setFrequencies(hz0,hz1);
+                m_oscils[i].setFrequencies(hz0,hz1,samplerate);
             }
         } else if (fm_mode == 1)
         {
@@ -488,7 +488,7 @@ public:
                 hz0 = hz0+(fms[i-1]*m_fm_amt*hz0);
                 float hz1 = m_osc_freq_smoothers[i*2+1].process(m_osc_freqs[i*2+1]);
                 hz1 = hz1+(fms[i-1]*m_fm_amt*hz1);
-                m_oscils[i].setFrequencies(hz0,hz1);
+                m_oscils[i].setFrequencies(hz0,hz1,samplerate);
             }
         } else if (m_fm_mode == 2)
         {
@@ -498,7 +498,7 @@ public:
                 hz0 = hz0+(fms[lastosci]*m_fm_amt*hz0*2.0f);
                 float hz1 = m_osc_freq_smoothers[i*2+1].process(m_osc_freqs[i*2+1]);
                 hz1 = hz1+(fms[lastosci]*m_fm_amt*hz1*2.0f);
-                m_oscils[i].setFrequencies(hz0,hz1);
+                m_oscils[i].setFrequencies(hz0,hz1,samplerate);
             }
         }
     }
@@ -685,15 +685,21 @@ public:
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Num outputs");
         configParam(PAR_FREQSMOOTH,0.0f,1.0f,0.5f,"Pitch smoothing");
         m_pardiv.setDivision(16);
-        for (int i=0;i<16;++i)
-        {
-            float normfreq = 25.0/44100.0;
-            float q = sqrt(2.0)/2.0;
-            m_hpfilts[i].setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
-        }
+        
     }
+    float m_samplerate = 0.0f;
     void process(const ProcessArgs& args) override
     {
+        if (m_samplerate!=args.sampleRate)
+        {
+            for (int i=0;i<16;++i)
+            {
+                float normfreq = 25.0/args.sampleRate;
+                float q = sqrt(2.0)/2.0;
+                m_hpfilts[i].setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
+            }
+            m_samplerate = args.sampleRate;
+        }
         if (m_pardiv.process())
         {
             float bal = params[PAR_BALANCE].getValue();
@@ -735,7 +741,7 @@ public:
             m_osc.updateOscFrequencies();
         }
         float outs[16];
-        m_osc.processNextFrame(outs);
+        m_osc.processNextFrame(outs,args.sampleRate);
         int numOutputs = params[PAR_NUM_OUTPUTS].getValue();
         int numOscs = m_osc.getOscCount();
         outputs[OUT_AUDIO_1].setChannels(numOutputs);
