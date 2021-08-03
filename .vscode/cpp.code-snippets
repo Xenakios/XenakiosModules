@@ -39,4 +39,14 @@
 		],
 		"description": "phase increment"
 	 }
+	 ,
+	 "rackgetpar": {
+		"scope": "cpp",
+		"prefix": "rackgetpar",
+		"body": [
+		"float ${1:parVar} = params[${2:parEnum}].getValue();\n${1:parVar} += inputs[${3:inputEnum}].getVoltage()*1.0f;"
+		],
+		"description": "Rack get parameter and apply CV input"
+	 }
+	 
 }
