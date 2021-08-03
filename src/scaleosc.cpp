@@ -11,8 +11,10 @@ inline simd::float_4 fmodex(simd::float_4 x)
 {
     x = simd::fmod(x,1.0f);
     simd::float_4 a = 1.0f - (-1.0f * x);
-    return ((x<0.0f) & a) + ((x>=0.0f) & x); 
+    simd::float_4 neg = x >= 0.0f;
+    return simd::ifelse(neg,x,a);
 }
+
 
 inline void quantize_to_scale(float x, const std::vector<float>& g,
     float& out1, float& out2, float& outdiff)
