@@ -19,10 +19,13 @@ inline simd::float_4 fmodex(simd::float_4 x)
 inline void quantize_to_scale(float x, const std::vector<float>& g,
     float& out1, float& out2, float& outdiff)
 {
-    if (g.empty())
+    if (g.empty()) // special handling for no scale
     {
         out1 = x;
-        out2 = x+1.0f;
+        float maxd = 5.0f;
+        float dtune = rescale(x,rack::dsp::FREQ_C4/16.0f,20000.0f,0.0f,maxd);
+        dtune = clamp(dtune,0.0f,maxd);
+        out2 = x+dtune;
         outdiff = 0.5f;
         return;
     }
