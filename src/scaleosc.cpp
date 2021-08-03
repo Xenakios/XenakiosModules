@@ -22,13 +22,12 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
     if (g.empty()) // special handling for no scale
     {
         out1 = x;
-        //float maxd = 5.0f;
-        //float dtune = rescale(x,rack::dsp::FREQ_C4/16.0f,20000.0f,0.0f,maxd);
-        //dtune = clamp(dtune,0.0f,maxd);
-        //out2 = x+dtune;
-        float m = std::fmod(x,10.0f);
-        out2 = x+10.0f;
-        outdiff = m*0.1f;
+        float maxd = 10.0f;
+        float dtune = rescale(x,rack::dsp::FREQ_C4/16.0f,20000.0f,0.0f,maxd);
+        dtune = clamp(dtune,0.0f,maxd);
+        float m = std::fmod(x,maxd);
+        out2 = x+dtune;
+        outdiff = m*(1.0f/maxd);
         return;
     }
     auto t1=std::upper_bound(std::begin(g),std::end(g),x);
