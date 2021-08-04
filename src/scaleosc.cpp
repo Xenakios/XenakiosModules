@@ -635,7 +635,6 @@ public:
     enum OUTPUTS
     {
         OUT_AUDIO_1,
-        OUT_AUDIO_2,
         OUT_LAST
     };
     enum INPUTS
@@ -749,33 +748,24 @@ public:
         int numOutputs = params[PAR_NUM_OUTPUTS].getValue();
         int numOscs = m_osc.getOscCount();
         outputs[OUT_AUDIO_1].setChannels(numOutputs);
-        if (outputs[OUT_AUDIO_2].isConnected())
+        
+        float mixed[16];
+        for (int i=0;i<numOutputs;++i)
+            mixed[i] = 0.0f;
+        for (int i=0;i<numOscs;++i)
         {
-            //outputs[OUT_AUDIO_1].setVoltage(outs.first*5.0f);
-            //outputs[OUT_AUDIO_2].setVoltage(outs.second*5.0f);
+            int outindex = i % numOutputs;
+            mixed[outindex] += outs[i];
+            
         }
-        else
+        float nnosc = rescale((float)numOscs,1,16,0.0f,1.0f);
+        float normscaler = 0.25f+0.75f*std::pow(1.0f-nnosc,3.0f);
+        float outgain = m_osc.m_norm_smoother.process(normscaler);
+        for (int i=0;i<numOutputs;++i)
         {
-            float mixed[16];
-            for (int i=0;i<numOutputs;++i)
-                mixed[i] = 0.0f;
-            for (int i=0;i<numOscs;++i)
-            {
-                int outindex = i % numOutputs;
-                mixed[outindex] += outs[i];
-                
-            }
-            float nnosc = rescale((float)numOscs,1,16,0.0f,1.0f);
-            float normscaler = 0.25f+0.75f*std::pow(1.0f-nnosc,3.0f);
-            float outgain = m_osc.m_norm_smoother.process(normscaler);
-            for (int i=0;i<numOutputs;++i)
-            {
-                float outsample = mixed[i]*5.0f*outgain;
-                outsample = m_hpfilts[i].process(outsample);
-                outputs[OUT_AUDIO_1].setVoltage(outsample,i);
-            }
-                
-            //outputs[OUT_AUDIO_1].setVoltage((outs.first+outs.second)*2.5f);
+            float outsample = mixed[i]*5.0f*outgain;
+            outsample = m_hpfilts[i].process(outsample);
+            outputs[OUT_AUDIO_1].setVoltage(outsample,i);
         }
     }
     
@@ -793,7 +783,6 @@ public:
         box.size.x = RACK_GRID_WIDTH * 25;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "SCALE OSCILLATOR",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         auto port = new PortWithBackGround(m,this,XScaleOsc::OUT_AUDIO_1,1,30,"AUDIO OUT 1",true);
-        new PortWithBackGround(m,this,XScaleOsc::OUT_AUDIO_2,31,30,"AUDIO OUT 2",true);
         float xc = 1.0f;
         float yc = 80.0f;
         
@@ -855,7 +844,7 @@ public:
         if (m)
         {
             auto scalename = rack::string::filename(m->m_osc.getScaleName());
-            nvgFontSize(args.vg, 15);
+            nvgFontSize(args.vg, 20);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
