@@ -351,10 +351,23 @@ public:
         int lastoscili = m_active_oscils-1;
         if (lastoscili==0)
             lastoscili = 1;
+        //float roothz = rack::dsp::FREQ_C4*std::pow(1.05946309436,m_root_pitch);
         for (int i=0;i<m_active_oscils;++i)
         {
-            double pitch = rescale((float)i,0,lastoscili,m_root_pitch,m_root_pitch+(72.0f*m_spread));
+            float normpos = rescale((float)i,0,lastoscili,0.0f,1.0f);
+            
+            if (m_spread_dist<0.5)
+            {
+                float sh = rescale(m_spread_dist,0.0f,0.5f,3.0f,1.0f);
+                normpos = std::pow(normpos,sh);
+            } else
+            {
+                float sh = rescale(m_spread_dist,0.5f,1.0f,1.0f,3.0f);
+                normpos = 1.0f-std::pow(1.0f-normpos,sh);
+            }
+            float pitch = rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
             float f = rack::dsp::FREQ_C4*std::pow(1.05946309436,pitch);
+            //float f = rescale(normpos,0.0f,1.0f,roothz,roothz+12000.0f*m_spread);
             float f0 = f;
             float f1 = f;
             float diff = 0.5f;
@@ -521,8 +534,7 @@ public:
     }
     void setFMAmount(float a)
     {
-        if (a<0.0f) a = 0.0f;
-        if (a>1.0f) a = 1.0f;
+        clamp(a,0.0f,1.0f);
         m_fm_amt = std::pow(a,2.0f);
     }
     int m_warp_mode = 0;
@@ -539,10 +551,7 @@ public:
     }
     void setSpread(float s)
     {
-        if (s<0.0f) s = 0.0f;
-        if (s>1.0f) s = 1.0f;
-        m_spread = s;
-        //updateOscFrequencies();
+        m_spread = clamp(s,0.0f,1.0f);
     }
     void setRootPitch(float p)
     {
@@ -558,17 +567,11 @@ public:
     }
     void setBalance(float b)
     {
-        if (b<0.0f) b = 0.0f;
-        if (b>1.0f) b = 1.0f;
-        m_balance = b;
-        //updateOscFrequencies();
+        m_balance = clamp(b,0.0f,1.0f);
     }
     void setDetune(float d)
     {
-        if (d<0.0f) d = 0.0f;
-        if (d>1.0f) d = 1.0f;
-        m_detune = d;
-        //updateOscFrequencies();
+        m_detune = clamp(d,0.0f,1.0f);
     }
     void setFold(float f)
     {
@@ -593,6 +596,10 @@ public:
         if (m<0) m = 0;
         if (m>2) m = 2;
         m_fm_mode = m;
+    }
+    void setSpreadDistribution(float x)
+    {
+        m_spread_dist = clamp(x,0.0f,1.0f);
     }
     void setFrequencySmoothing(float s)
     {
@@ -626,6 +633,7 @@ private:
     float m_warp = 1.1f;    
     int m_fm_mode = 0;
     float m_freq_smooth = -1.0f;
+    float m_spread_dist = 0.5f;
     std::vector<std::vector<float>> m_scale_bank;
 };
 
@@ -670,6 +678,7 @@ public:
         PAR_WARP_MODE,
         PAR_NUM_OUTPUTS,
         PAR_FREQSMOOTH,
+        PAR_SPREAD_DIST,
         PAR_LAST
     };
     XScaleOsc()
@@ -689,7 +698,8 @@ public:
         configParam(PAR_SCALE_BANK,0.0f,1.0f,0.0f,"Scale bank");
         configParam(PAR_WARP_MODE,0.0f,2.0f,0.0f,"Warp Mode");
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Num outputs");
-        configParam(PAR_FREQSMOOTH,0.0f,1.0f,0.5f,"Pitch smoothing");
+        configParam(PAR_FREQSMOOTH,0.0f,1.0f,0.1f,"Pitch smoothing");
+        configParam(PAR_SPREAD_DIST,0.0f,1.0f,0.5f,"Spread distribution");
         m_pardiv.setDivision(16);
         
     }
@@ -730,6 +740,9 @@ public:
             float spread = params[PAR_SPREAD].getValue();
             spread += inputs[IN_SPREAD].getVoltage()*0.1f;
             m_osc.setSpread(spread);
+            float sdist = params[PAR_SPREAD_DIST].getValue();
+            //sdist += inputs[num].getVoltage()*1.0f;
+            m_osc.setSpreadDistribution(sdist);
             float warp = params[PAR_WARP].getValue();
             warp += inputs[IN_WARP].getVoltage()*0.1f;
             int wmode = params[PAR_WARP_MODE].getValue();
@@ -833,6 +846,9 @@ public:
             -1,-1,xc,yc,true));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"PITCH SMOOTHING",XScaleOsc::PAR_FREQSMOOTH,
+            -1,-1,xc,yc,false));
+        xc += 82.0f;
+        addChild(new KnobInAttnWidget(this,"SPREAD DISTRIBUTION",XScaleOsc::PAR_SPREAD_DIST,
             -1,-1,xc,yc,false));
     }
     void draw(const DrawArgs &args) override
