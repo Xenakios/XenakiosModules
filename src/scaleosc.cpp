@@ -650,6 +650,7 @@ public:
         IN_NUM_OSCS,
         IN_FM_AMT,
         IN_WARP,
+        IN_SCALE,
         IN_LAST
     };
     enum PARAMETERS
@@ -740,6 +741,7 @@ public:
             int fmmode = params[PAR_FM_MODE].getValue();
             m_osc.setFMMode(fmmode);
             float scale = params[PAR_SCALE].getValue();
+            scale += inputs[IN_SCALE].getVoltage()*0.1f;
             m_osc.setScale(scale);
             float psmooth = params[PAR_FREQSMOOTH].getValue();
             m_osc.setFrequencySmoothing(psmooth);
@@ -821,7 +823,7 @@ public:
             -1,-1,xc,yc,true));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"SCALE",XScaleOsc::PAR_SCALE,
-            -1,-1,xc,yc));
+            XScaleOsc::IN_SCALE,-1,xc,yc));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"WARP MODE",XScaleOsc::PAR_WARP_MODE,
             -1,-1,xc,yc,true));
