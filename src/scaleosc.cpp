@@ -475,9 +475,9 @@ public:
             
         else
         {
-            float f = m_osc_freqs[lastosci];
-            f = m_osc_freq_smoothers[lastosci].process(f);
-            m_oscils[lastosci].setFrequencies(f,f,samplerate);
+            float hz0 = m_osc_freq_smoothers[lastosci*2+0].process(m_osc_freqs[lastosci*2+0]);
+            float hz1 = m_osc_freq_smoothers[lastosci*2+1].process(m_osc_freqs[lastosci*2+1]);
+            m_oscils[lastosci].setFrequencies(hz0,hz1,samplerate);
         }
             
         float foldgain = m_fold_smoother.process((1.0f+m_fold*5.0f));
