@@ -446,8 +446,13 @@ public:
             awamp = clamp(awamp,0.0f,1.0f);
             */
             float normx = rescale((float)i,0,lastoscili,0.0f,1.0f);
-            float amp = rescale(normx,xs0,xs1,ys0,ys1);
-            amp = clamp(amp,0.0f,1.0f);
+            float amp = 0.0f;
+            if (normx<=1.0f)
+            {
+                amp = rescale(normx,xs0,xs1,ys0,ys1);
+                amp = clamp(amp,0.0f,1.0f);
+            }
+            
             //amp *= awamp;
             //float db = rescale(amp,0.0f,1.0f,-72.0,0.0f);
             //if (db<-72.0f) db = -72.0f;
