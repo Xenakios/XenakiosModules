@@ -258,15 +258,17 @@ public:
         }
         m_norm_smoother.setAmount(0.999);
         
-        std::array<float,7> ratios{81.0f/80.0f,9.0f/8.0f,1.25f,1.333333f,1.5f,9.0f/5.0f,2.0f};
+        std::array<float,9> ratios{81.0f/80.0f,9.0f/8.0f,1.2f,1.25f,1.333333f,1.5f,9.0f/5.0f,15.0f/8.0f,2.0f};
         m_scale_bank.push_back(std::vector<float>());
         m_scalenames.push_back("Continuum");
         m_scalenames.push_back("Syntonic comma");
         m_scalenames.push_back("Major tone (JI)");
+        m_scalenames.push_back("Minor third JI");
         m_scalenames.push_back("Major third JI");
         m_scalenames.push_back("Fourth JI");
         m_scalenames.push_back("Fifth JI");
         m_scalenames.push_back("Minor seventh JI");
+        m_scalenames.push_back("Major seventh JI");
         m_scalenames.push_back("Octave");
         double root_freq = dsp::FREQ_C4/16.0;
         for (int i=0;i<ratios.size();++i)
@@ -284,16 +286,19 @@ public:
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
         scalafiles.push_back(dir+"/penta_opt.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Enharmonic.scl");
+        scalafiles.push_back(dir+"/Ancient Greek Archytas Diatonic.scl");
+        scalafiles.push_back(dir+"/octone.scl");
         scalafiles.push_back(dir+"/Chopi Xylophone.scl");
-        scalafiles.push_back(dir+"/equally tempered minor.scl");
         scalafiles.push_back(dir+"/bohlen_quintuple_j.scl");
+        scalafiles.push_back(dir+"/equally tempered minor.scl");
         scalafiles.push_back(dir+"/12tet.scl");
         scalafiles.push_back(dir+"/tritones.scl");
+        scalafiles.push_back(dir+"/tetra01.scl");
         scalafiles.push_back(dir+"/major_chord_et.scl");
         scalafiles.push_back(dir+"/major_chord_ji.scl");
         scalafiles.push_back(dir+"/minor_chord_et.scl");
         scalafiles.push_back(dir+"/minor_chord_ji.scl");
-        scalafiles.push_back(dir+"/tetra01.scl");
+        
         for (auto& e : scalafiles)
         {
             auto pitches = loadScala(e,true,0.0,128);
