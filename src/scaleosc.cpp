@@ -5,7 +5,6 @@
 #include "jcdp_envelope.h"
 
 int g_balance_stages = 7;
-float g_balance_tables[8][17];
 
 inline simd::float_4 fmodex(simd::float_4 x)
 {
@@ -221,47 +220,27 @@ public:
         return "No scale name";
     }
     std::vector<std::string> m_scalenames;
+    void initScales()
+    {
+        double root_freq = dsp::FREQ_C4/16.0;
+        std::string dir = asset::plugin(pluginInstance, "res/scale_oscillator_scales");
+        auto scalafiles = rack::system::getEntriesRecursive(dir,3);
+        for (auto& e : scalafiles)
+        {
+            auto pitches = loadScala(e,true,0.0,128);
+            std::vector<float> scale;
+            for (int i=0;i<pitches.size();++i)
+            {
+                double p = pitches[i]; //rescale(scale[i],-5.0f,5.0f,0.0f,120.0f);
+                double freq = root_freq * std::pow(1.05946309436,p);
+                scale.push_back(freq);
+            }
+            m_scale_bank.push_back(scale);
+            m_scalenames.push_back(rack::string::filename(e));
+        }
+    }
     ScaleOscillator()
     {
-        auto calcbalancetable = [](breakpoint_envelope&e, int table)
-        {
-            for (int i=0;i<17;++i)
-            {
-                float g = e.GetInterpolatedEnvelopeValue(rescale((float)i,0,15,0.0,1.0));
-                g_balance_tables[table][i] = g;
-            }
-        };
-        breakpoint_envelope e;
-        e.AddNode({0.0,1.0});
-        e.AddNode({0.01,0.0});
-        e.AddNode({1.0,0.0});
-        calcbalancetable(e,0);
-        e.ClearAllNodes();
-        e.AddNode({0.0,1.0});
-        e.AddNode({0.25,1.0});
-        e.AddNode({1.0,0.0});
-        calcbalancetable(e,1);
-        e.ClearAllNodes();
-        e.AddNode({0.0,1.0});
-        e.AddNode({0.5,1.0});
-        e.AddNode({1.0,0.0});
-        calcbalancetable(e,2);
-        e.ClearAllNodes();
-        e.AddNode({0.0,1.0});
-        e.AddNode({1.0,1.0});
-        calcbalancetable(e,3);
-        e.ClearAllNodes();
-        e.AddNode({0.0,1.0});
-        //e.AddNode({0.5,1.0});
-        e.AddNode({1.0,1.0});
-        calcbalancetable(e,4);
-        e.ClearAllNodes();
-        e.AddNode({0.0,0.0});
-        e.AddNode({0.99,0.0});
-        e.AddNode({1.0,1.0});
-        calcbalancetable(e,5);
-        calcbalancetable(e,6);
-        calcbalancetable(e,7);
         m_fold_smoother.setAmount(0.99);
         for (int i=0;i<m_oscils.size();++i)
         {

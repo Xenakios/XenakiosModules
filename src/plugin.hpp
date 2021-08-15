@@ -137,6 +137,10 @@ inline std::vector<float> loadScala(std::string path,
 			f.getline(buf, 4096);
 			lines.push_back(buf);
 		}
+		if (lines.size()==0)
+		{
+			return std::vector<float>();
+		}
 		auto result = parse_scala(lines,outputSemitones);
 		std::sort(result.begin(),result.end());
         float volts = -5.0f;
