@@ -523,7 +523,7 @@ public:
     }
     void setFMAmount(float a)
     {
-        clamp(a,0.0f,1.0f);
+        a = clamp(a,0.0f,1.0f);
         m_fm_amt = std::pow(a,2.0f);
     }
     int m_warp_mode = 0;
@@ -668,6 +668,10 @@ public:
         PAR_NUM_OUTPUTS,
         PAR_FREQSMOOTH,
         PAR_SPREAD_DIST,
+        PAR_ROOT_ATTN,
+        PAR_BAL_ATTN,
+        PAR_PITCH_ATTN,
+        PAR_SPREAD_ATTN,
         PAR_LAST
     };
     XScaleOsc()
@@ -689,10 +693,27 @@ public:
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Num outputs");
         configParam(PAR_FREQSMOOTH,0.0f,1.0f,0.1f,"Pitch smoothing");
         configParam(PAR_SPREAD_DIST,0.0f,1.0f,0.5f,"Spread distribution");
+        
+        configParam(PAR_SPREAD_ATTN,-1.0f,1.0f,0.0f,"Spread CV level");
+        configParam(PAR_ROOT_ATTN,-1.0f,1.0f,1.0f,"Root CV level");
+        configParam(PAR_BAL_ATTN,-1.0f,1.0f,0.0f,"Balance CV level");
+        configParam(PAR_PITCH_ATTN,-1.0f,1.0f,1.0f,"Pitch CV level");
+
         m_pardiv.setDivision(16);
         
     }
     float m_samplerate = 0.0f;
+    inline float getModParValue(int parId, int inId, int attnId=-1, bool doClamp=false, float clampMin = 0.0f, float clampMax = 0.0f)
+    {
+        float p = params[parId].getValue();
+        if (attnId>=0)
+            p += inputs[inId].getVoltage()*0.1f*params[attnId].getValue();
+        else
+            p += inputs[inId].getVoltage()*0.1f;
+        if (doClamp)
+            p = clamp(p,clampMin,clampMax);
+        return p;
+    } 
     void process(const ProcessArgs& args) override
     {
         if (m_samplerate!=args.sampleRate)
@@ -707,38 +728,34 @@ public:
         }
         if (m_pardiv.process())
         {
-            float bal = params[PAR_BALANCE].getValue();
-            bal += inputs[IN_BALANCE].getVoltage()*0.1f;
+            float bal = getModParValue(PAR_BALANCE,IN_BALANCE,PAR_BAL_ATTN);
             m_osc.setBalance(bal);
             float detune = params[PAR_DETUNE].getValue();
             detune += inputs[IN_DETUNE].getVoltage()*0.1f;
+            
             m_osc.setDetune(detune);
             float fold = params[PAR_FOLD].getValue();
             fold += inputs[IN_FOLD].getVoltage()*0.1f;
             m_osc.setFold(fold);
             float pitch = params[PAR_PITCH_OFFS].getValue();
-            pitch += inputs[IN_PITCH].getVoltage()*12.0f;
+            pitch += inputs[IN_PITCH].getVoltage()*12.0f*params[PAR_PITCH_ATTN].getValue();
             pitch = clamp(pitch,-48.0f,48.0);
             m_osc.setPitchOffset(pitch);
             float root = params[PAR_ROOT].getValue();
-            root += inputs[IN_ROOT].getVoltage()*12.0f;
+            root += inputs[IN_ROOT].getVoltage()*12.0f*params[PAR_ROOT_ATTN].getValue();
             m_osc.setRootPitch(root);
             float osccount = params[PAR_NUM_OSCS].getValue();
             osccount += inputs[IN_NUM_OSCS].getVoltage() * (16.0f/10.0f);
             m_osc.setOscCount(osccount);
-            float spread = params[PAR_SPREAD].getValue();
-            spread += inputs[IN_SPREAD].getVoltage()*0.1f;
+            float spread = getModParValue(PAR_SPREAD,IN_SPREAD,PAR_SPREAD_ATTN);
             m_osc.setSpread(spread);
             float sdist = params[PAR_SPREAD_DIST].getValue();
-            //sdist += inputs[num].getVoltage()*1.0f;
             m_osc.setSpreadDistribution(sdist);
             float warp = params[PAR_WARP].getValue();
             warp += inputs[IN_WARP].getVoltage()*0.1f;
             int wmode = params[PAR_WARP_MODE].getValue();
             m_osc.setWarp(wmode,warp);
-            float fm = params[PAR_FM_AMT].getValue();
-            fm += inputs[IN_FM_AMT].getVoltage()*0.1f;
-            fm = clamp(fm,0.0f,1.0f);
+            float fm = getModParValue(PAR_FM_AMT,IN_FM_AMT);
             m_osc.setFMAmount(fm);
             int fmmode = params[PAR_FM_MODE].getValue();
             m_osc.setFMMode(fmmode);
@@ -793,16 +810,16 @@ public:
         float yc = 80.0f;
         
         addChild(new KnobInAttnWidget(this,"ROOT",XScaleOsc::PAR_ROOT,
-            XScaleOsc::IN_ROOT,-1,xc,yc));
+            XScaleOsc::IN_ROOT,XScaleOsc::PAR_ROOT_ATTN,xc,yc));
         xc+=82.0f;
         addChild(new KnobInAttnWidget(this,"BALANCE",XScaleOsc::PAR_BALANCE,
-            XScaleOsc::IN_BALANCE,-1,xc,yc));
+            XScaleOsc::IN_BALANCE,XScaleOsc::PAR_BAL_ATTN,xc,yc));
         xc+=82.0f;
         addChild(new KnobInAttnWidget(this,"PITCH",XScaleOsc::PAR_PITCH_OFFS,
-            XScaleOsc::IN_PITCH,-1,xc,yc));
+            XScaleOsc::IN_PITCH,XScaleOsc::PAR_PITCH_ATTN,xc,yc));
         xc+=82.0f;
         addChild(new KnobInAttnWidget(this,"SPREAD",XScaleOsc::PAR_SPREAD,
-            XScaleOsc::IN_SPREAD,-1,xc,yc));
+            XScaleOsc::IN_SPREAD,XScaleOsc::PAR_SPREAD_ATTN,xc,yc));
         xc = 1.0f;
         yc += 47.0f;
         addChild(new KnobInAttnWidget(this,"DETUNE",XScaleOsc::PAR_DETUNE,
