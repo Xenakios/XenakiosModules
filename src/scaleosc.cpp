@@ -806,7 +806,7 @@ public:
     XScaleOscWidget(XScaleOsc* m)
     {
         setModule(m);
-        box.size.x = RACK_GRID_WIDTH * 25;
+        box.size.x = RACK_GRID_WIDTH * 23;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "SCALE OSCILLATOR",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         auto port = new PortWithBackGround(m,this,XScaleOsc::OUT_AUDIO_1,1,30,"AUDIO OUT 1",true);
         float xc = 1.0f;
