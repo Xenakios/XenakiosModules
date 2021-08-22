@@ -564,10 +564,7 @@ public:
     }
     void setFold(float f)
     {
-        if (f<0.0f)
-            f = 0.0f;
-        if (f>1.0f)
-            f = 1.0f;
+        f = clamp(f,0.0f,1.0f);
         m_fold = std::pow(f,3.0f);
     }
     void setOscCount(int c)
@@ -672,6 +669,11 @@ public:
         PAR_BAL_ATTN,
         PAR_PITCH_ATTN,
         PAR_SPREAD_ATTN,
+        PAR_FM_ATTN,
+        PAR_SCALE_ATTN,
+        PAR_DETUNE_ATTN,
+        PAR_FOLD_ATTN,
+        PAR_WARP_ATTN,
         PAR_LAST
     };
     XScaleOsc()
@@ -698,6 +700,11 @@ public:
         configParam(PAR_ROOT_ATTN,-1.0f,1.0f,1.0f,"Root CV level");
         configParam(PAR_BAL_ATTN,-1.0f,1.0f,0.0f,"Balance CV level");
         configParam(PAR_PITCH_ATTN,-1.0f,1.0f,1.0f,"Pitch CV level");
+        configParam(PAR_FM_ATTN,-1.0f,1.0f,0.0f,"FM CV level");
+        configParam(PAR_SCALE_ATTN,-1.0f,1.0f,0.0f,"Scale CV level");
+        configParam(PAR_FOLD_ATTN,-1.0f,1.0f,0.0f,"Fold CV level");
+        configParam(PAR_WARP_ATTN,-1.0f,1.0f,0.0f,"Warp CV level");
+        configParam(PAR_DETUNE_ATTN,-1.0f,1.0f,0.0f,"Detune CV level");
 
         m_pardiv.setDivision(16);
         
@@ -730,12 +737,9 @@ public:
         {
             float bal = getModParValue(PAR_BALANCE,IN_BALANCE,PAR_BAL_ATTN);
             m_osc.setBalance(bal);
-            float detune = params[PAR_DETUNE].getValue();
-            detune += inputs[IN_DETUNE].getVoltage()*0.1f;
-            
+            float detune = getModParValue(PAR_DETUNE,IN_DETUNE,PAR_DETUNE_ATTN);
             m_osc.setDetune(detune);
-            float fold = params[PAR_FOLD].getValue();
-            fold += inputs[IN_FOLD].getVoltage()*0.1f;
+            float fold = getModParValue(PAR_FOLD,IN_FOLD,PAR_FOLD_ATTN);
             m_osc.setFold(fold);
             float pitch = params[PAR_PITCH_OFFS].getValue();
             pitch += inputs[IN_PITCH].getVoltage()*12.0f*params[PAR_PITCH_ATTN].getValue();
@@ -751,16 +755,15 @@ public:
             m_osc.setSpread(spread);
             float sdist = params[PAR_SPREAD_DIST].getValue();
             m_osc.setSpreadDistribution(sdist);
-            float warp = params[PAR_WARP].getValue();
-            warp += inputs[IN_WARP].getVoltage()*0.1f;
+            
+            float warp = getModParValue(PAR_WARP,IN_WARP,PAR_WARP_ATTN);
             int wmode = params[PAR_WARP_MODE].getValue();
             m_osc.setWarp(wmode,warp);
-            float fm = getModParValue(PAR_FM_AMT,IN_FM_AMT);
+            float fm = getModParValue(PAR_FM_AMT,IN_FM_AMT,PAR_FM_ATTN);
             m_osc.setFMAmount(fm);
             int fmmode = params[PAR_FM_MODE].getValue();
             m_osc.setFMMode(fmmode);
-            float scale = params[PAR_SCALE].getValue();
-            scale += inputs[IN_SCALE].getVoltage()*0.1f;
+            float scale = getModParValue(PAR_SCALE,IN_SCALE,PAR_SCALE_ATTN);
             m_osc.setScale(scale);
             float psmooth = params[PAR_FREQSMOOTH].getValue();
             m_osc.setFrequencySmoothing(psmooth);
@@ -823,26 +826,26 @@ public:
         xc = 1.0f;
         yc += 47.0f;
         addChild(new KnobInAttnWidget(this,"DETUNE",XScaleOsc::PAR_DETUNE,
-            XScaleOsc::IN_DETUNE,-1,xc,yc));
+            XScaleOsc::IN_DETUNE,XScaleOsc::PAR_DETUNE_ATTN,xc,yc));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"FOLD",XScaleOsc::PAR_FOLD,
-            XScaleOsc::IN_FOLD,-1,xc,yc));
+            XScaleOsc::IN_FOLD,XScaleOsc::PAR_FOLD_ATTN,xc,yc));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"NUM OSCS",XScaleOsc::PAR_NUM_OSCS,
             XScaleOsc::IN_NUM_OSCS,-1,xc,yc,true));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"WARP",XScaleOsc::PAR_WARP,
-            XScaleOsc::IN_WARP,-1,xc,yc));
+            XScaleOsc::IN_WARP,XScaleOsc::PAR_WARP_ATTN,xc,yc));
         xc = 1.0f;
         yc += 47.0f;
         addChild(new KnobInAttnWidget(this,"FM AMOUNT",XScaleOsc::PAR_FM_AMT,
-            XScaleOsc::IN_FM_AMT,-1,xc,yc));
+            XScaleOsc::IN_FM_AMT,XScaleOsc::PAR_FM_ATTN,xc,yc));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"FM MODE",XScaleOsc::PAR_FM_MODE,
             -1,-1,xc,yc,true));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"SCALE",XScaleOsc::PAR_SCALE,
-            XScaleOsc::IN_SCALE,-1,xc,yc));
+            XScaleOsc::IN_SCALE,XScaleOsc::PAR_SCALE_ATTN,xc,yc));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"WARP MODE",XScaleOsc::PAR_WARP_MODE,
             -1,-1,xc,yc,true));
