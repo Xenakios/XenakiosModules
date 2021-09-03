@@ -813,8 +813,9 @@ public:
         float yc = 80.0f;
         KnobInAttnWidget* kwid = nullptr;
         auto defrand = [](){ return random::uniform(); };
-        addChild(new KnobInAttnWidget(this,"ROOT",XScaleOsc::PAR_ROOT,
+        addChild(kwid = new KnobInAttnWidget(this,"ROOT",XScaleOsc::PAR_ROOT,
             XScaleOsc::IN_ROOT,XScaleOsc::PAR_ROOT_ATTN,xc,yc));
+        kwid->m_knob->GetRandomizedValue = defrand;
         xc+=82.0f;
         addChild(kwid = new KnobInAttnWidget(this,"BALANCE",XScaleOsc::PAR_BALANCE,
             XScaleOsc::IN_BALANCE,XScaleOsc::PAR_BAL_ATTN,xc,yc));
@@ -832,8 +833,9 @@ public:
             XScaleOsc::IN_DETUNE,XScaleOsc::PAR_DETUNE_ATTN,xc,yc));
         kwid->m_knob->GetRandomizedValue = defrand;
         xc += 82.0f;
-        addChild(new KnobInAttnWidget(this,"FOLD",XScaleOsc::PAR_FOLD,
+        addChild(kwid = new KnobInAttnWidget(this,"FOLD",XScaleOsc::PAR_FOLD,
             XScaleOsc::IN_FOLD,XScaleOsc::PAR_FOLD_ATTN,xc,yc));
+        kwid->m_knob->GetRandomizedValue = defrand;
         xc += 82.0f;
         
         addChild(new KnobInAttnWidget(this,"NUM OSCS",XScaleOsc::PAR_NUM_OSCS,
@@ -844,8 +846,9 @@ public:
             XScaleOsc::IN_WARP,XScaleOsc::PAR_WARP_ATTN,xc,yc));
         xc = 1.0f;
         yc += 47.0f;
-        addChild(new KnobInAttnWidget(this,"FM AMOUNT",XScaleOsc::PAR_FM_AMT,
+        addChild(kwid = new KnobInAttnWidget(this,"FM AMOUNT",XScaleOsc::PAR_FM_AMT,
             XScaleOsc::IN_FM_AMT,XScaleOsc::PAR_FM_ATTN,xc,yc));
+        kwid->m_knob->GetRandomizedValue = defrand;
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"FM MODE",XScaleOsc::PAR_FM_MODE,
             -1,-1,xc,yc,true));
