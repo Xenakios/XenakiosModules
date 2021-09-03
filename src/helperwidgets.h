@@ -3,6 +3,26 @@
 #include <rack.hpp>
 #include "plugin.hpp"
 
+class MyRoundBlackKnob : public RoundBlackKnob
+{
+public:
+    MyRoundBlackKnob() : RoundBlackKnob() {}
+    void randomize() override 
+    {
+        
+    }
+};
+
+class MyTrimPot : public Trimpot
+{
+public:
+    MyTrimPot() : Trimpot() {}
+    void randomize() override 
+    {
+        
+    }
+};
+
 class LabelWidget : public TransparentWidget
 {
 public:

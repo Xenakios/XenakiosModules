@@ -144,12 +144,12 @@ KnobInAttnWidget::KnobInAttnWidget(ModuleWidget* parent, std::string param_desc,
     m_labeltext = param_desc;
 	box.size = Vec(80,45);
 	RoundBlackKnob* knob = nullptr;
-	parent->addParam(knob=createParam<RoundBlackKnob>(Vec(xc+1.0, yc+13), parent->module, mainparamid));
+	parent->addParam(knob=createParam<MyRoundBlackKnob>(Vec(xc+1.0, yc+13), parent->module, mainparamid));
 	knob->snap = knobsnap;
 	if (cvin_id>=0)
 		parent->addInput(createInput<PJ301MPort>(Vec(xc+31.0f, yc+16), parent->module, cvin_id));
 	if (attnparamid>=0)
-		parent->addParam(createParam<Trimpot>(Vec(xc+57.00, yc+19), parent->module, attnparamid));
+		parent->addParam(createParam<MyTrimPot>(Vec(xc+57.00, yc+19), parent->module, attnparamid));
 
 }
 
