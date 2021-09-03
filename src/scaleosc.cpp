@@ -811,28 +811,34 @@ public:
         auto port = new PortWithBackGround(m,this,XScaleOsc::OUT_AUDIO_1,1,30,"AUDIO OUT 1",true);
         float xc = 1.0f;
         float yc = 80.0f;
-        
+        KnobInAttnWidget* kwid = nullptr;
+        auto defrand = [](){ return random::uniform(); };
         addChild(new KnobInAttnWidget(this,"ROOT",XScaleOsc::PAR_ROOT,
             XScaleOsc::IN_ROOT,XScaleOsc::PAR_ROOT_ATTN,xc,yc));
         xc+=82.0f;
-        addChild(new KnobInAttnWidget(this,"BALANCE",XScaleOsc::PAR_BALANCE,
+        addChild(kwid = new KnobInAttnWidget(this,"BALANCE",XScaleOsc::PAR_BALANCE,
             XScaleOsc::IN_BALANCE,XScaleOsc::PAR_BAL_ATTN,xc,yc));
+        kwid->m_knob->GetRandomizedValue = defrand;
         xc+=82.0f;
         addChild(new KnobInAttnWidget(this,"PITCH",XScaleOsc::PAR_PITCH_OFFS,
             XScaleOsc::IN_PITCH,XScaleOsc::PAR_PITCH_ATTN,xc,yc));
         xc+=82.0f;
-        addChild(new KnobInAttnWidget(this,"SPREAD",XScaleOsc::PAR_SPREAD,
+        addChild(kwid = new KnobInAttnWidget(this,"SPREAD",XScaleOsc::PAR_SPREAD,
             XScaleOsc::IN_SPREAD,XScaleOsc::PAR_SPREAD_ATTN,xc,yc));
+        kwid->m_knob->GetRandomizedValue = defrand;
         xc = 1.0f;
         yc += 47.0f;
-        addChild(new KnobInAttnWidget(this,"DETUNE",XScaleOsc::PAR_DETUNE,
+        addChild(kwid = new KnobInAttnWidget(this,"DETUNE",XScaleOsc::PAR_DETUNE,
             XScaleOsc::IN_DETUNE,XScaleOsc::PAR_DETUNE_ATTN,xc,yc));
+        kwid->m_knob->GetRandomizedValue = defrand;
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"FOLD",XScaleOsc::PAR_FOLD,
             XScaleOsc::IN_FOLD,XScaleOsc::PAR_FOLD_ATTN,xc,yc));
         xc += 82.0f;
+        
         addChild(new KnobInAttnWidget(this,"NUM OSCS",XScaleOsc::PAR_NUM_OSCS,
             XScaleOsc::IN_NUM_OSCS,-1,xc,yc,true));
+        
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"WARP",XScaleOsc::PAR_WARP,
             XScaleOsc::IN_WARP,XScaleOsc::PAR_WARP_ATTN,xc,yc));

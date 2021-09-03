@@ -9,8 +9,13 @@ public:
     MyRoundBlackKnob() : RoundBlackKnob() {}
     void randomize() override 
     {
-        
+        if (GetRandomizedValue)
+        {
+            float v = GetRandomizedValue();
+            this->paramQuantity->setValue(v);
+        } 
     }
+    std::function<float(void)> GetRandomizedValue;
 };
 
 class MyTrimPot : public Trimpot
@@ -82,6 +87,8 @@ public:
 	float m_xcor = 0.0f;
 	float m_ycor = 0.0f;
     float m_labfontsize = 10.0f;
+    MyRoundBlackKnob* m_knob = nullptr;
+    MyTrimPot* m_trimpot = nullptr;
 };
 
 class PortWithBackGround : public TransparentWidget
