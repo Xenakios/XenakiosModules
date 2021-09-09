@@ -3,7 +3,6 @@
 #include "keyframer.h"
 #include "clocks.h"
 #include "xenutils.h"
-#include "gendyn.h"
 #include "audiostretcher.h"
 #include <array>
 
@@ -305,7 +304,7 @@ void init(Plugin *p) {
 	p->addModel(createModel<DivisionClockModule,DividerClockWidget>("DividerClock"));
 	p->addModel(createModel<ReducerModule,ReducerWidget>("Reduce"));
 	p->addModel(createModel<DecahexCVTransformer,DecahexCVTransformerWidget>("DecahexCVTransformer"));
-	p->addModel(createModel<GendynModule,GendynWidget>("GendynOsc"));
+	p->addModel(modelGendynOSC);
 	p->addModel(createModel<DerivatorModule,DerivatorWidget>("Derivator"));
 #ifdef RBMODULE
 	p->addModel(createModel<AudioStretchModule,AudioStretchWidget>("XAudioStretch"));
