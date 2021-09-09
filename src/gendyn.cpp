@@ -326,7 +326,7 @@ GendynModule::GendynModule()
     configParam(PAR_AMP_RESET_MODE,0.0,LASTRM,RM_UniformRandom,"Amp reset mode");
     configParam(PAR_PolyphonyVoices,0.0,16.0,0,"Polyphony voices");
     configParam(PAR_CenterFrequency,-54.f, 54.f, 0.f, "Center frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
-    // configParam(FREQ_PARAM, -54.f, 54.f, 0.f, "Frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
+    configParam(PAR_AMP_BEHAVIOR,0.0,1.0f,0.1f,"Amplitude flux");
     m_divider.setDivision(16);
 }
 
@@ -424,7 +424,7 @@ GendynWidget::GendynWidget(GendynModule* m)
     if (!g_font)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
-    box.size.x = RACK_GRID_WIDTH*40;
+    box.size.x = RACK_GRID_WIDTH*23;
     auto port = new PortWithBackGround(m,this,GendynModule::OUT_AUDIO,1,30,"AUDIO OUT",true);
     port = new PortWithBackGround(m,this,GendynModule::OUT_PITCH,31,30,"PITCH OUT",true);
     port = new PortWithBackGround(m,this,GendynModule::IN_RESET,62,30,"RESET",false);
@@ -434,6 +434,16 @@ GendynWidget::GendynWidget(GendynModule* m)
             GendynModule::IN_PITCH,-1,xc,yc));
     xc += 82.0f;
     addChild(new KnobInAttnWidget(this,"PITCH FLUX",GendynModule::PAR_TimeDeviation,
+            -1,-1,xc,yc));
+    xc += 82.0f;
+    addChild(new KnobInAttnWidget(this,"PITCH MIN",GendynModule::PAR_TimeSecondaryBarrierLow,
+            -1,-1,xc,yc));
+    xc += 82.0f;
+    addChild(new KnobInAttnWidget(this,"PITCH MAX",GendynModule::PAR_TimeSecondaryBarrierHigh,
+            -1,-1,xc,yc));
+    yc += 47;
+    xc = 1;
+    addChild(new KnobInAttnWidget(this,"AMPLITUDE FLUX",GendynModule::PAR_AMP_BEHAVIOR,
             -1,-1,xc,yc));
 }
 
