@@ -284,7 +284,7 @@ public:
 		PAR_CenterFrequency,
         LASTPAR
     };
-	
+	int m_numvoices_used = 0;
     GendynModule();
     std::string getDebugMessage();
     void process(const ProcessArgs& args) override;
@@ -317,7 +317,7 @@ GendynModule::GendynModule()
     configParam(PAR_TimeSecondaryBarrierLow,-60.0,60.0,-1.0,"Time sec low barrier");
     configParam(PAR_TimeSecondaryBarrierHigh,-60.0,60.0,1.0,"Time sec high barrier");
     configParam(PAR_AmpResetMode,0.0,LASTRM,RM_UniformRandom,"Amp reset mode");
-    configParam(PAR_PolyphonyVoices,1.0,16.0,1,"Polyphony voices");
+    configParam(PAR_PolyphonyVoices,0.0,16.0,0,"Polyphony voices");
     configParam(PAR_CenterFrequency,-54.f, 54.f, 0.f, "Center frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
     // configParam(FREQ_PARAM, -54.f, 54.f, 0.f, "Frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
     m_divider.setDivision(16);
@@ -328,7 +328,7 @@ std::string GendynModule::getDebugMessage()
     std::stringstream ss;
     ss << m_oscs[0].m_low_frequency << " " << m_oscs[0].m_center_frequency << " ";
     ss << m_oscs[0].m_high_frequency << " " << m_oscs[0].m_time_secondary_low_barrier << " ";
-    ss << m_oscs[0].m_time_secondary_high_barrier;
+    ss << m_oscs[0].m_time_secondary_high_barrier << " " << m_numvoices_used;
     return ss.str();
     
 }
@@ -336,35 +336,34 @@ std::string GendynModule::getDebugMessage()
 void GendynModule::process(const ProcessArgs& args)
 {
     int numvoices = params[PAR_PolyphonyVoices].getValue();
-    numvoices = clamp(numvoices,1,16);
+    if (numvoices == 0 && inputs[PAR_CenterFrequency+1].isConnected())
+        numvoices = inputs[PAR_CenterFrequency+1].getChannels();
+    if (numvoices == 0)
+        numvoices = 1;
     bool shouldReset = false;
     if (m_reset_trigger.process(inputs[0].getVoltage()))
     {
         shouldReset = true;
-        
-        
     }
+    m_numvoices_used = numvoices;
     outputs[0].setChannels(numvoices);
     outputs[1].setChannels(numvoices);
     float numsegs = params[PAR_NumSegments].getValue();
-    numsegs+=rescale(inputs[1+PAR_NumSegments].getVoltage(),0.0f,10.0f,0,61);
-    numsegs=clamp(numsegs,3.0,64.0);
+    numsegs += rescale(inputs[1+PAR_NumSegments].getVoltage(),0.0f,10.0f,0,61);
+    numsegs = clamp(numsegs,3.0,64.0);
     float timedev = params[PAR_TimeDeviation].getValue();
-    timedev+=rescale(inputs[1+PAR_TimeDeviation].getVoltage(),0.0f,10.0f,0.0f,5.0f);
-    timedev=clamp(timedev,0.0f,5.0f);
+    timedev += rescale(inputs[1+PAR_TimeDeviation].getVoltage(),0.0f,10.0f,0.0f,5.0f);
+    timedev = clamp(timedev,0.0f,5.0f);
     float sectimebarlow = params[PAR_TimeSecondaryBarrierLow].getValue();
-    sectimebarlow+=rescale(inputs[1+PAR_TimeSecondaryBarrierLow].getVoltage(),0.0f,10.0f,1.0,64.0);
-    sectimebarlow=clamp(sectimebarlow,1.0,64.0);
+    sectimebarlow += rescale(inputs[1+PAR_TimeSecondaryBarrierLow].getVoltage(),0.0f,10.0f,1.0,64.0);
+    sectimebarlow = clamp(sectimebarlow,1.0,64.0);
     float sectimebarhigh = params[PAR_TimeSecondaryBarrierHigh].getValue();
-    sectimebarhigh+=rescale(inputs[1+PAR_TimeSecondaryBarrierHigh].getVoltage(),0.0f,10.0f,1.0,64.0);
-    sectimebarhigh=clamp(sectimebarhigh,1.0,64.0);
+    sectimebarhigh += rescale(inputs[1+PAR_TimeSecondaryBarrierHigh].getVoltage(),0.0f,10.0f,1.0,64.0);
+    sectimebarhigh = clamp(sectimebarhigh,1.0,64.0);
     sanitizeRange(sectimebarlow,sectimebarhigh,1.0f);
     
     if (m_divider.process())
     {
-        int numpitchins = inputs[1+PAR_CenterFrequency].getChannels();
-        if (numpitchins<1)
-            numpitchins = 1;
         for (int i=0;i<numvoices;++i)
         {
             m_oscs[i].setSampleRate(args.sampleRate);
@@ -373,7 +372,7 @@ void GendynModule::process(const ProcessArgs& args)
             m_oscs[i].m_time_dev = timedev;
             m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
             float pitch = params[PAR_CenterFrequency].getValue();
-            pitch += rescale(inputs[1+PAR_CenterFrequency].getVoltage(i % numpitchins),
+            pitch += rescale(inputs[1+PAR_CenterFrequency].getVoltage(i),
                 -5.0f,5.0f,-60.0f,60.0f);
             pitch = clamp(pitch,-60.0f,60.0f);
             float centerfreq = dsp::FREQ_C4*pow(2.0f,1.0f/12.0f*pitch);
@@ -396,7 +395,7 @@ void GendynModule::process(const ProcessArgs& args)
             m_oscs[i].m_ampResetMode = params[PAR_AmpResetMode].getValue();
             m_oscs[i].m_timeResetMode = params[PAR_TimeResetMode].getValue();
             float pitch = params[PAR_CenterFrequency].getValue();
-            pitch+=rescale(inputs[1+PAR_CenterFrequency].getVoltage(i),-5.0f,5.0f,-60.0f,60.0f);
+            pitch += rescale(inputs[1+PAR_CenterFrequency].getVoltage(i),-5.0f,5.0f,-60.0f,60.0f);
             pitch = clamp(pitch,-60.0f,60.0f);
             float centerfreq = dsp::FREQ_C4*pow(2.0f,1.0f/12.0f*pitch);
             m_oscs[i].setFrequencies(centerfreq,params[PAR_TimeSecondaryBarrierLow].getValue(),
@@ -412,7 +411,7 @@ void GendynModule::process(const ProcessArgs& args)
         outputs[1].setVoltage(m_oscs[i].m_curFrequencyVolts,i);
         outputs[0].setVoltage(outsample*5.0f,i);
     }
-    dsp::SampleRateConverter<8> rs;
+    
     
 }
 
