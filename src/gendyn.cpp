@@ -67,6 +67,7 @@ public:
 		m_cur_y0 = m_nodes.front().m_y_sec;
 		m_cur_y1 = m_nodes[1].m_y_sec;
 		m_next_segment_time = m_nodes[0].m_x_sec;
+        setSampleRate(44100.0f);
 	}
 	void setRandomSeed(int s)
 	{
@@ -253,7 +254,7 @@ private:
 	float m_cur_dur = 0.0;
 	float m_cur_y0 = 0.0;
 	float m_cur_y1 = 0.0;
-	float m_sampleRate = 44100.0f;
+	float m_sampleRate = 0.0f;
 	dsp::TBiquadFilter<float> m_hpfilt;
 };
 
