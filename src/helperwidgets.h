@@ -6,7 +6,10 @@
 class MyRoundBlackKnob : public RoundBlackKnob
 {
 public:
-    MyRoundBlackKnob() : RoundBlackKnob() {}
+    MyRoundBlackKnob() : RoundBlackKnob() 
+    {
+        
+    }
     void randomize() override 
     {
         if (GetRandomizedValue)
