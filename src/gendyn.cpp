@@ -1,4 +1,5 @@
 #include "gendyn.h"
+#include "helperwidgets.h"
 
 extern std::shared_ptr<Font> g_font;
 
@@ -263,26 +264,32 @@ class GendynModule : public rack::Module
 public:
     enum PARAMS
     {
-        PAR_NumSegments,
-		PAR_TimeDistribution,
-		PAR_TimeResetMode,
+        PAR_NUM_SEGS,
+		PAR_TIME_DISTRIBUTION,
+		PAR_TIME_RESET_MODE,
         PAR_TimePrimaryBarrierLow,
         PAR_TimePrimaryBarrierHigh,
         PAR_TimeSecondaryBarrierLow,
         PAR_TimeSecondaryBarrierHigh,
         PAR_TimeMean,
         PAR_TimeDeviation,
-        PAR_AmpDistribution,
-		PAR_AmpResetMode,
-		PAR_AmpPrimaryBarrierLow,
-        PAR_AmpPrimaryBarrierHigh,
-        PAR_AmpSecondaryBarrierLow,
-        PAR_AmpSecondaryBarrierHigh,
-        PAR_AmpMean,
-        PAR_AmpDeviation,
+        PAR_AMP_RESET_MODE,
+        PAR_AMP_BEHAVIOR,
 		PAR_PolyphonyVoices,
 		PAR_CenterFrequency,
-        LASTPAR
+        PAR_LAST
+    };
+    enum INPUTS
+    {
+        IN_RESET,
+        IN_PITCH,
+        IN_LAST
+    };
+    enum OUTPUTS
+    {
+        OUT_AUDIO,
+        OUT_PITCH,
+        OUT_LAST
     };
 	int m_numvoices_used = 0;
     GendynModule();
@@ -306,17 +313,17 @@ GendynModule::GendynModule()
 {
     for (int i=0;i<16;++i)
         m_oscs[i].setRandomSeed(i);
-    config(PARAMS::LASTPAR,PARAMS::LASTPAR+1,2);
-    configParam(PAR_NumSegments,3.0,64.0,10.0,"Num segments");
-    configParam(PAR_TimeDistribution,0.0,LASTDIST-1,1.0,"Time distribution");
+    config(PARAMS::PAR_LAST,IN_LAST,OUT_LAST);
+    configParam(PAR_NUM_SEGS,3.0,64.0,10.0,"Num segments");
+    configParam(PAR_TIME_DISTRIBUTION,0.0,LASTDIST-1,1.0,"Time distribution");
     configParam(PAR_TimeMean,-5.0,5.0,0.0,"Time mean");
-    configParam(PAR_TimeResetMode,0.0,LASTRM,RM_Avg,"Time reset mode");
+    configParam(PAR_TIME_RESET_MODE,0.0,LASTRM,RM_Avg,"Time reset mode");
     configParam(PAR_TimeDeviation,0.0,5.0,0.1,"Time deviation");
     configParam(PAR_TimePrimaryBarrierLow,-5.0,5.0,-1.0,"Time primary low barrier");
     configParam(PAR_TimePrimaryBarrierHigh,-5.0,5.0,1.0,"Time primary high barrier");
     configParam(PAR_TimeSecondaryBarrierLow,-60.0,60.0,-1.0,"Time sec low barrier");
     configParam(PAR_TimeSecondaryBarrierHigh,-60.0,60.0,1.0,"Time sec high barrier");
-    configParam(PAR_AmpResetMode,0.0,LASTRM,RM_UniformRandom,"Amp reset mode");
+    configParam(PAR_AMP_RESET_MODE,0.0,LASTRM,RM_UniformRandom,"Amp reset mode");
     configParam(PAR_PolyphonyVoices,0.0,16.0,0,"Polyphony voices");
     configParam(PAR_CenterFrequency,-54.f, 54.f, 0.f, "Center frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
     // configParam(FREQ_PARAM, -54.f, 54.f, 0.f, "Frequency", " Hz", dsp::FREQ_SEMITONE, dsp::FREQ_C4);
@@ -336,29 +343,26 @@ std::string GendynModule::getDebugMessage()
 void GendynModule::process(const ProcessArgs& args)
 {
     int numvoices = params[PAR_PolyphonyVoices].getValue();
-    if (numvoices == 0 && inputs[PAR_CenterFrequency+1].isConnected())
-        numvoices = inputs[PAR_CenterFrequency+1].getChannels();
+    if (numvoices == 0 && inputs[IN_PITCH].isConnected())
+        numvoices = inputs[IN_PITCH].getChannels();
     if (numvoices == 0)
         numvoices = 1;
     bool shouldReset = false;
-    if (m_reset_trigger.process(inputs[0].getVoltage()))
+    if (m_reset_trigger.process(inputs[IN_RESET].getVoltage()))
     {
         shouldReset = true;
     }
     m_numvoices_used = numvoices;
     outputs[0].setChannels(numvoices);
     outputs[1].setChannels(numvoices);
-    float numsegs = params[PAR_NumSegments].getValue();
-    numsegs += rescale(inputs[1+PAR_NumSegments].getVoltage(),0.0f,10.0f,0,61);
+    float numsegs = params[PAR_NUM_SEGS].getValue();
     numsegs = clamp(numsegs,3.0,64.0);
     float timedev = params[PAR_TimeDeviation].getValue();
-    timedev += rescale(inputs[1+PAR_TimeDeviation].getVoltage(),0.0f,10.0f,0.0f,5.0f);
     timedev = clamp(timedev,0.0f,5.0f);
+    
     float sectimebarlow = params[PAR_TimeSecondaryBarrierLow].getValue();
-    sectimebarlow += rescale(inputs[1+PAR_TimeSecondaryBarrierLow].getVoltage(),0.0f,10.0f,1.0,64.0);
     sectimebarlow = clamp(sectimebarlow,1.0,64.0);
     float sectimebarhigh = params[PAR_TimeSecondaryBarrierHigh].getValue();
-    sectimebarhigh += rescale(inputs[1+PAR_TimeSecondaryBarrierHigh].getVoltage(),0.0f,10.0f,1.0,64.0);
     sectimebarhigh = clamp(sectimebarhigh,1.0,64.0);
     sanitizeRange(sectimebarlow,sectimebarhigh,1.0f);
     
@@ -372,7 +376,7 @@ void GendynModule::process(const ProcessArgs& args)
             m_oscs[i].m_time_dev = timedev;
             m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
             float pitch = params[PAR_CenterFrequency].getValue();
-            pitch += rescale(inputs[1+PAR_CenterFrequency].getVoltage(i),
+            pitch += rescale(inputs[IN_PITCH].getVoltage(i),
                 -5.0f,5.0f,-60.0f,60.0f);
             pitch = clamp(pitch,-60.0f,60.0f);
             float centerfreq = dsp::FREQ_C4*pow(2.0f,1.0f/12.0f*pitch);
@@ -392,10 +396,10 @@ void GendynModule::process(const ProcessArgs& args)
     {
         for (int i=0;i<numvoices;++i)
         {
-            m_oscs[i].m_ampResetMode = params[PAR_AmpResetMode].getValue();
-            m_oscs[i].m_timeResetMode = params[PAR_TimeResetMode].getValue();
+            m_oscs[i].m_ampResetMode = params[PAR_AMP_RESET_MODE].getValue();
+            m_oscs[i].m_timeResetMode = params[PAR_TIME_RESET_MODE].getValue();
             float pitch = params[PAR_CenterFrequency].getValue();
-            pitch += rescale(inputs[1+PAR_CenterFrequency].getVoltage(i),-5.0f,5.0f,-60.0f,60.0f);
+            pitch += rescale(inputs[IN_PITCH].getVoltage(i),-5.0f,5.0f,-60.0f,60.0f);
             pitch = clamp(pitch,-60.0f,60.0f);
             float centerfreq = dsp::FREQ_C4*pow(2.0f,1.0f/12.0f*pitch);
             m_oscs[i].setFrequencies(centerfreq,params[PAR_TimeSecondaryBarrierLow].getValue(),
@@ -420,27 +424,17 @@ GendynWidget::GendynWidget(GendynModule* m)
     if (!g_font)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
-    box.size.x = 600;
-    addOutput(createOutput<PJ301MPort>(Vec(30, 30), module, 0));
-    addOutput(createOutput<PJ301MPort>(Vec(30, 60), module, 1));
-    addInput(createInput<PJ301MPort>(Vec(30, 90), module, 0));
-    for (int i=0;i<GendynModule::LASTPAR;++i)
-    {
-        int xpos = i / 11;
-        int ypos = i % 11;
-        BefacoTinyKnob* knob = nullptr;
-        addParam(knob = createParam<BefacoTinyKnob>(Vec(220+250*xpos, 30+ypos*30), module, i)); 
-        if (i == GendynModule::PAR_PolyphonyVoices)
-            knob->snap = true;
-        addInput(createInput<PJ301MPort>(Vec(250+250*xpos, 30+ypos*30), module, 1+i));
-        auto* atveknob = new Trimpot;
-        atveknob->box.pos.x = 280+250*xpos;
-        atveknob->box.pos.y = 33+ypos*30;
-        //atveknob->box.size.x = 15;
-        //atveknob->box.size.y = 15;
-        addParam(atveknob);
-    }
-    
+    box.size.x = RACK_GRID_WIDTH*40;
+    auto port = new PortWithBackGround(m,this,GendynModule::OUT_AUDIO,1,30,"AUDIO OUT",true);
+    port = new PortWithBackGround(m,this,GendynModule::OUT_PITCH,31,30,"PITCH OUT",true);
+    port = new PortWithBackGround(m,this,GendynModule::IN_RESET,62,30,"RESET",false);
+    float xc = 1.0f;
+    float yc = 80.0f;
+    addChild(new KnobInAttnWidget(this,"PITCH",GendynModule::PAR_CenterFrequency,
+            GendynModule::IN_PITCH,-1,xc,yc));
+    xc += 82.0f;
+    addChild(new KnobInAttnWidget(this,"PITCH FLUX",GendynModule::PAR_TimeDeviation,
+            -1,-1,xc,yc));
 }
 
 void GendynWidget::draw(const DrawArgs &args)
@@ -461,12 +455,6 @@ void GendynWidget::draw(const DrawArgs &args)
     nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
     if (module)
     {
-        for (int i=0;i<(int)module->paramQuantities.size();++i)
-        {
-            int xpos = i / 11;
-            int ypos = i % 11;
-            nvgText(args.vg, 70+250*xpos , 50+ypos*30, module->paramQuantities[i]->getLabel().c_str(), NULL);
-        }
         GendynModule* mod = dynamic_cast<GendynModule*>(module);
         nvgText(args.vg, 1 , 20, mod->getDebugMessage().c_str(), NULL);
     }
