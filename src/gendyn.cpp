@@ -185,6 +185,9 @@ public:
         {
 
         }
+        
+        m_amp_primary_low_barrier = -rescale(m_amp_flux,0.0f,1.0f,0.01,1.0f);
+        m_amp_primary_high_barrier = -m_amp_primary_low_barrier;
         m_amp_dev = m_amp_flux * (m_amp_primary_high_barrier-m_amp_primary_low_barrier);
         std::normal_distribution<float> timedist(m_time_mean, m_time_dev);
 		std::normal_distribution<float> ampdist(m_amp_mean, m_amp_dev);
