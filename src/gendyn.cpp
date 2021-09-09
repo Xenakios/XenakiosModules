@@ -52,6 +52,22 @@ public:
 	float m_y_sec = 0.0f;
 };
 
+class DCBlocker
+{
+public:
+	DCBlocker() {}
+	float process(float input)
+	{
+		double y = input - xm1 + 0.995 * ym1;
+  		xm1 = input;
+  		ym1 = y;
+		return y;
+	}
+private:
+	double xm1 = 0.0f;
+	double ym1 = 0.0f;
+};
+
 class GendynOsc
 {
 public:
@@ -254,9 +270,9 @@ public:
 		if (s!=m_sampleRate)
 		{
 			m_sampleRate = s;
-			float normfreq = 25.0/m_sampleRate;
+			float normfreq = 50.0/m_sampleRate;
             float q = sqrt(2.0)/2.0;
-            m_hpfilt.setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
+            m_hpfilt.setParameters(dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
 		}
 	}
 	void setAmplitudeFlux(float f)
@@ -283,6 +299,7 @@ private:
 	float m_amp_dev = 0.01;
     float m_amp_flux = -1.0f;
 	dsp::TBiquadFilter<float> m_hpfilt;
+	DCBlocker m_dcblock;
 };
 
 class GendynModule : public rack::Module
