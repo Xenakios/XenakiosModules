@@ -169,7 +169,22 @@ public:
 	}
 	void updateTable()
 	{
-		std::normal_distribution<float> timedist(m_time_mean, m_time_dev);
+		if (m_amp_flux < 0.25f)
+        {
+            float norm = rescale(m_amp_flux,0.0f,0.25f,0.0f,1.0f);
+            //m_amp_dev = norm*
+        } else if (m_amp_flux>=0.25f && m_amp_flux<0.5f)
+        {
+
+        } else if (m_amp_flux>=0.5f && m_amp_flux<0.75f)
+        {
+
+        } else 
+        {
+
+        }
+        m_amp_dev = m_amp_flux * (m_amp_primary_high_barrier-m_amp_primary_low_barrier);
+        std::normal_distribution<float> timedist(m_time_mean, m_time_dev);
 		std::normal_distribution<float> ampdist(m_amp_mean, m_amp_dev);
 		float segAcc = 0.0f;
 		for (int i = 0; i < m_num_segs; ++i)
@@ -191,7 +206,7 @@ public:
 			y_p = clamp(y_p,m_amp_primary_low_barrier, m_amp_primary_high_barrier);
 			float y_s = m_nodes[i].m_y_sec;
 			y_s += y_p;
-			y_s = clamp(y_s,m_amp_secondary_low_barrier, m_amp_secondary_high_barrier);
+			y_s = reflect_value(m_amp_secondary_low_barrier, y_s, m_amp_secondary_high_barrier);
 			m_nodes[i].m_y_prim = y_p;
 			m_nodes[i].m_y_sec = y_s;
 		}
@@ -207,12 +222,7 @@ public:
 	float m_time_secondary_high_barrier = 20.0;
 	float m_time_mean = 0.0f;
 	float m_time_dev = 0.01;
-	float m_amp_primary_low_barrier = -0.01;
-	float m_amp_primary_high_barrier = 0.01;
-	float m_amp_secondary_low_barrier = -0.2;
-	float m_amp_secondary_high_barrier = 0.2;
-	float m_amp_mean = 0.0f;
-	float m_amp_dev = 0.01;
+	
 	int m_timeResetMode = RM_Avg;
 	int m_ampResetMode = RM_Zeros;
 	float m_center_frequency = 440.0f;
@@ -244,7 +254,11 @@ public:
             m_hpfilt.setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
 		}
 	}
-	
+	void setAmplitudeFlux(float f)
+    {
+        f = clamp(f,0.0f,1.0f);
+        m_amp_flux = f;
+    }
 private:
 	int m_cur_node = 0;
 	double m_phase = 0.0;
@@ -256,6 +270,13 @@ private:
 	float m_cur_y0 = 0.0;
 	float m_cur_y1 = 0.0;
 	float m_sampleRate = 0.0f;
+    float m_amp_primary_low_barrier = -0.05;
+	float m_amp_primary_high_barrier = 0.05;
+	float m_amp_secondary_low_barrier = -0.9;
+	float m_amp_secondary_high_barrier = 0.9;
+	float m_amp_mean = 0.0f;
+	float m_amp_dev = 0.01;
+    float m_amp_flux = -1.0f;
 	dsp::TBiquadFilter<float> m_hpfilt;
 };
 
@@ -390,6 +411,8 @@ void GendynModule::process(const ProcessArgs& args)
                 bar1=bar0+0.01;
             m_oscs[i].m_time_primary_low_barrier = bar0;
             m_oscs[i].m_time_primary_high_barrier = bar1;
+            float alux = params[PAR_AMP_BEHAVIOR].getValue();
+            m_oscs[i].setAmplitudeFlux(alux);
         }
     }
     if (shouldReset == true)
@@ -445,6 +468,9 @@ GendynWidget::GendynWidget(GendynModule* m)
     xc = 1;
     addChild(new KnobInAttnWidget(this,"AMPLITUDE FLUX",GendynModule::PAR_AMP_BEHAVIOR,
             -1,-1,xc,yc));
+    xc += 82.0f;
+    addChild(new KnobInAttnWidget(this,"NUM SEGMENTS",GendynModule::PAR_NUM_SEGS,
+            -1,-1,xc,yc,true));
 }
 
 void GendynWidget::draw(const DrawArgs &args)
