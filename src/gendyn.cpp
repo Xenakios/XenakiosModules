@@ -59,8 +59,12 @@ void GendynModule::process(const ProcessArgs& args)
     sectimebarhigh+=rescale(inputs[1+PAR_TimeSecondaryBarrierHigh].getVoltage(),0.0f,10.0f,1.0,64.0);
     sectimebarhigh=clamp(sectimebarhigh,1.0,64.0);
     sanitizeRange(sectimebarlow,sectimebarhigh,1.0f);
+    
     if (m_divider.process())
     {
+        int numpitchins = inputs[1+PAR_CenterFrequency].getChannels();
+        if (numpitchins<1)
+            numpitchins = 1;
         for (int i=0;i<numvoices;++i)
         {
             m_oscs[i].m_sampleRate = args.sampleRate;
@@ -69,7 +73,8 @@ void GendynModule::process(const ProcessArgs& args)
             m_oscs[i].m_time_dev = timedev;
             m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
             float pitch = params[PAR_CenterFrequency].getValue();
-            pitch+=rescale(inputs[1+PAR_CenterFrequency].getVoltage(i),-5.0f,5.0f,-60.0f,60.0f);
+            pitch += rescale(inputs[1+PAR_CenterFrequency].getVoltage(i % numpitchins),
+                -5.0f,5.0f,-60.0f,60.0f);
             pitch = clamp(pitch,-60.0f,60.0f);
             float centerfreq = dsp::FREQ_C4*pow(2.0f,1.0f/12.0f*pitch);
             m_oscs[i].setFrequencies(centerfreq,params[PAR_TimeSecondaryBarrierLow].getValue(),
@@ -124,7 +129,10 @@ GendynWidget::GendynWidget(GendynModule* m)
     {
         int xpos = i / 11;
         int ypos = i % 11;
-        addParam(createParam<BefacoTinyKnob>(Vec(220+250*xpos, 30+ypos*30), module, i)); 
+        BefacoTinyKnob* knob = nullptr;
+        addParam(knob = createParam<BefacoTinyKnob>(Vec(220+250*xpos, 30+ypos*30), module, i)); 
+        if (i == GendynModule::PAR_PolyphonyVoices)
+            knob->snap = true;
         addInput(createInput<PJ301MPort>(Vec(250+250*xpos, 30+ypos*30), module, 1+i));
         auto* atveknob = new Trimpot;
         atveknob->box.pos.x = 280+250*xpos;
