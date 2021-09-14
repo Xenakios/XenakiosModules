@@ -83,7 +83,7 @@ public:
     {
         amt = clamp(amt,0.0f,1.0f);
         m_warp_mode = mode;
-        m_warp_steps = std::pow(2.0f,2.0f+(1.0f-amt)*6.0f);
+        m_warp_steps = std::pow(2.0f,2.0f+(1.0f-amt)*4.0f);
         m_warp = std::pow(amt,2.0f);
     }
     simd::float_4 processSample(float)
