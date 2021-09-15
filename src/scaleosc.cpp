@@ -55,9 +55,26 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
 class SIMDSimpleOsc
 {
 public:
+    std::array<float,512> warp3table;
     SIMDSimpleOsc()
     {
-        
+        for (int i=0;i<warp3table.size();++i)
+        {
+            float x = rescale(float(i),0,warp3table.size()-1,0.0f,1.0f);
+            const float n1 = 7.5625;
+            const float d1 = 2.75;
+            float y = x;
+            if (x < 1 / d1) {
+                y = n1 * x * x;
+            } else if (x < 2 / d1) {
+                y = n1 * (x -= 1.5 / d1) * x + 0.75;
+            } else if (x < 2.5 / d1) {
+                y = n1 * (x -= 2.25 / d1) * x + 0.9375;
+            } else {
+                y = n1 * (x -= 2.625 / d1) * x + 0.984375;
+            }
+            warp3table[i] = y;
+        }
     }
     simd::float_4 m_phase = 0.0;
     simd::float_4 m_phase_inc = 0.0;
@@ -106,9 +123,17 @@ public:
         }
         else
         {
-            float pmult = rescale(m_warp,0.0f,1.0f,1.0f,8.0f);
-            gain = 1.0f-simd::fmod(m_phase,1.0f);
-            phase_to_use = simd::fmod(pmult*m_phase,simd::float_4(1.0f));
+            for (int i=0;i<4;++i)
+            {
+                float ph = m_phase[i];
+                int ind = ph * (warp3table.size()-1);
+                ind = clamp(ind,0,warp3table.size()-1);
+                ph = warp3table[ind];
+                phase_to_use[i] = (1.0f-m_warp) * phase_to_use[i] + m_warp * ph;
+            }
+            //float pmult = rescale(m_warp,0.0f,1.0f,1.0f,8.0f);
+            //gain = 1.0f-simd::fmod(m_phase,1.0f);
+            //phase_to_use = simd::fmod(pmult*m_phase,simd::float_4(1.0f));
         }
 //#endif
         simd::float_4 rs = simd::sin(simd::float_4(2*3.14159265359)*phase_to_use);
