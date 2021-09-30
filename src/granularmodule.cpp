@@ -338,13 +338,18 @@ public:
         prate = clamp(prate,-1.0f,1.0f);
         if (prate<0.0f)
         {
-            prate = -std::pow(-prate,2.0f);
-        } else
-        {
-            if (prate<0.5f)
+            prate = std::abs(prate);
+            if (prate < 0.5f)
                 prate = std::pow(prate*2.0f,2.0f);
             else
-                prate = 1.0f+std::pow(prate-0.5f,2.0f);
+                prate = 1.0f+std::pow((prate-0.5f)*2.0f,2.0f);
+            prate = -prate;
+        } else
+        {
+            if (prate < 0.5f)
+                prate = std::pow(prate*2.0f,2.0f);
+            else
+                prate = 1.0f+std::pow((prate-0.5f)*2.0f,2.0f);
         }
         prate = clamp(prate,-2.0f,2.0f);
         float pitch = params[PAR_PITCH].getValue();
@@ -430,7 +435,7 @@ public:
         box.size.x = 300;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "GRAINS",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         
-        auto port = new PortWithBackGround(m,this,XGranularModule::OUT_AUDIO,1,30,"AUDIO OUT 1",true);
+        auto port = new PortWithBackGround(m,this,XGranularModule::OUT_AUDIO,1,17,"AUDIO OUT 1",true);
         //addOutput(port = createOutput<PortWithBackGround>(Vec(31, 34), m, XGranularModule::OUT_AUDIO));
         //port->m_text = "AUDIO OUT";
         //addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(1, 34), m, XGranularModule::IN_AUDIO));
