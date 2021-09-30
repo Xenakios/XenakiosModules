@@ -292,7 +292,7 @@ public:
         std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
         rack::system::createDirectory(audioDir);
         config(PAR_LAST,IN_LAST,OUT_LAST);
-        configParam(PAR_PLAYRATE,-2.0f,2.0f,1.0f,"Playrate");
+        configParam(PAR_PLAYRATE,-1.0f,1.0f,0.5f,"Playrate");
         configParam(PAR_PITCH,-24.0f,24.0f,0.0f,"Pitch");
         configParam(PAR_LOOPSTART,0.0f,1.0f,0.0f,"Loop start");
         configParam(PAR_LOOPLEN,0.0f,1.0f,1.0f,"Loop length");
@@ -335,6 +335,17 @@ public:
         
         float prate = params[PAR_PLAYRATE].getValue();
         prate += inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()/10.0f;
+        prate = clamp(prate,-1.0f,1.0f);
+        if (prate<0.0f)
+        {
+            prate = -std::pow(-prate,2.0f);
+        } else
+        {
+            if (prate<0.5f)
+                prate = std::pow(prate*2.0f,2.0f);
+            else
+                prate = 1.0f+std::pow(prate-0.5f,2.0f);
+        }
         prate = clamp(prate,-2.0f,2.0f);
         float pitch = params[PAR_PITCH].getValue();
         pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f;
