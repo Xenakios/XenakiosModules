@@ -63,7 +63,7 @@ public:
     {
         m_grainOutBuffer.resize(65536*m_chans*2);
     }
-    bool initGrain(float inputdur, float startInSource,float len, float pitch, float outsr)
+    bool initGrain(float inputdur, float startInSource,float len, float pitch, float outsr, float pan)
     {
         if (playState == 1)
             return false;
@@ -84,6 +84,7 @@ public:
         srcpossamples = xenakios::clamp((float)srcpossamples,(float)0,inputdur-1.0f);
         m_syn->putIntoBuffer(rsinbuf,wanted,m_chans,srcpossamples);
         m_resampler.ResampleOut(m_grainOutBuffer.data(),wanted,lensamples,m_chans);
+        float pangains[2] = {pan,1.0f-pan};
         for (int i=0;i<lensamples;++i)
         {
             float hannpos = 1.0/(m_grainSize-1)*i;
@@ -93,7 +94,7 @@ public:
             float win = m_hannwind.getValue(hannpos);
             for (int j=0;j<m_chans;++j)
             {
-                m_grainOutBuffer[i*m_chans+j]*=win;
+                m_grainOutBuffer[i*m_chans+j]*=win*pangains[j];
             }
             
         }
@@ -159,7 +160,7 @@ public:
         for (int i=0;i<(int)m_grains.size();++i)
         {
             m_grains[i].m_syn = s;
-            m_grains[i].setNumOutChans(1);
+            m_grains[i].setNumOutChans(2);
         }
     }
     std::mt19937 m_randgen;
@@ -177,6 +178,8 @@ public:
     float m_actLoopstart = 0.0f;
     float m_actLoopend = 1.0f;
     float m_actSourcePos = 0.0f;
+    float m_lenMultip = 1.0f;
+    int m_grainsUsed = 0;
     void processAudio(float* buf)
     {
         if (m_inputdur<0.5f)
@@ -185,16 +188,27 @@ public:
         {
             ++debugCounter;
             m_outcounter = 0;
-            float glen = m_grainDensity*1.9;
+            float glen = std::pow(m_lenMultip,3.0f);
+            glen = rescale(glen,0.0f,1.0f,0.02f,0.5f);
             float glensamples = m_sr*glen;
             float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
             float srcpostouse = m_srcpos+posrand;
             m_actSourcePos = srcpostouse+m_loopstart*m_inputdur;
+            float pan = 0.0f;
+            if (debugCounter % 2 == 1)
+                pan = 1.0f;
             int availgrain = findFreeGain();
             if (availgrain>=0)
             {
-                m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch,m_sr);
+                m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch,m_sr, pan);
             }
+            int usedgrains = 0;
+            for (int i=0;i<m_grains.size();++i)
+            {
+                if (m_grains[i].playState == 1)
+                    ++usedgrains;
+            }
+            m_grainsUsed = usedgrains;
             m_nextGrainPos=m_sr*(m_grainDensity);
             m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed;
             float actlooplen = m_looplen;
@@ -237,7 +251,7 @@ public:
     int m_outcounter = 0;
     int m_nextGrainPos = 0;
     
-    std::array<ISGrain,2> m_grains;
+    std::array<ISGrain,64> m_grains;
     void setDensity(float d)
     {
         if (d!=m_grainDensity)
@@ -245,6 +259,10 @@ public:
             m_grainDensity = d;
             //m_nextGrainPos = m_outcounter;
         }
+    }
+    void setLengthMultiplier(float m)
+    {
+        m_lenMultip = clamp(m,0.0,1.0f);
     }
 private:
     float m_grainDensity = 0.1;

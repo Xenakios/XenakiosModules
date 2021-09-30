@@ -229,7 +229,7 @@ public:
 
     }
     void process(float sr,float* buf, float playrate, float pitch, 
-        float loopstart, float looplen, float posrand, float grate)
+        float loopstart, float looplen, float posrand, float grate, float lenm)
     {
         buf[0] = 0.0f;
         buf[1] = 0.0f;
@@ -243,6 +243,7 @@ public:
         m_gm.m_pitch = pitch;
         m_gm.m_posrandamt = posrand;
         m_gm.setDensity(grate);
+        m_gm.setLengthMultiplier(lenm);
         m_gm.processAudio(buf);
     }
     DrWavSource m_src;
@@ -267,6 +268,7 @@ public:
         PAR_ATTN_LOOPLEN,
         PAR_GRAINDENSITY,
         PAR_RECORD_ACTIVE,
+        PAR_LEN_MULTIP,
         PAR_LAST
     };
     enum OUTPUTS
@@ -301,6 +303,7 @@ public:
         configParam(PAR_ATTN_LOOPLEN,-1.0f,1.0f,0.0f,"Loop len CV ATTN");
         configParam(PAR_GRAINDENSITY,0.0f,1.0f,0.25f,"Grain rate");
         configParam(PAR_RECORD_ACTIVE,0.0f,1.0f,0.0f,"Record active");
+        configParam(PAR_LEN_MULTIP,0.0f,1.0f,0.25f,"Grain length");
     }
     json_t* dataToJson() override
     {
@@ -329,7 +332,7 @@ public:
     std::string m_currentFile;
     void process(const ProcessArgs& args) override
     {
-        float buf[4] ={0.0f,0.0f,0.0f,0.0f};
+        
         float prate = params[PAR_PLAYRATE].getValue();
         prate += inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()/10.0f;
         prate = clamp(prate,-2.0f,2.0f);
@@ -344,7 +347,8 @@ public:
         looplen = clamp(looplen,0.0f,1.0f);
         float posrnd = params[PAR_SRCPOSRANDOM].getValue();
         float grate = params[PAR_GRAINDENSITY].getValue();
-        grate = 0.01f+std::pow(grate,2.0f)*0.49;
+        grate = 0.01f+std::pow(1.0f-grate,2.0f)*0.49;
+        float glenm = params[PAR_LEN_MULTIP].getValue();
         if (m_recordTrigger.process(params[PAR_RECORD_ACTIVE].getValue()>0.5f))
         {
             if (m_recordActive==false)
@@ -359,13 +363,17 @@ public:
             }
         }
         float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/10.0f,0.0f};
+        float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_recordActive)
             m_eng.m_src.pushSamplesToRecordBuffer(recbuf);
-        m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate);
-        outputs[OUT_AUDIO].setVoltage(buf[0]*5.0f);
+        m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate,glenm);
+        outputs[OUT_AUDIO].setChannels(2);
+        outputs[OUT_AUDIO].setVoltage(buf[0]*5.0f,0);
+        outputs[OUT_AUDIO].setVoltage(buf[1]*5.0f,1);
         graindebugcounter = m_eng.m_gm.debugCounter;
     }
     int graindebugcounter = 0;
+    
     GrainEngine m_eng;
 private:
     
@@ -410,14 +418,14 @@ public:
         m_gm = m;
         box.size.x = 300;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "GRAINS",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
-        /*
-        PortWithBackGround<PJ301MPort>* port = nullptr;
-        addOutput(port = createOutput<PortWithBackGround<PJ301MPort>>(Vec(31, 34), m, XGranularModule::OUT_AUDIO));
-        port->m_text = "AUDIO OUT";
-        addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(1, 34), m, XGranularModule::IN_AUDIO));
-        port->m_text = "AUDIO IN";
-        port->m_is_out = false;
-        */
+        
+        auto port = new PortWithBackGround(m,this,XGranularModule::OUT_AUDIO,1,30,"AUDIO OUT 1",true);
+        //addOutput(port = createOutput<PortWithBackGround>(Vec(31, 34), m, XGranularModule::OUT_AUDIO));
+        //port->m_text = "AUDIO OUT";
+        //addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(1, 34), m, XGranularModule::IN_AUDIO));
+        //port->m_text = "AUDIO IN";
+        //port->m_is_out = false;
+        
         addParam(createParam<TL1105>(Vec(61,34),m,XGranularModule::PAR_RECORD_ACTIVE));
         addChild(new KnobInAttnWidget(this,
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,
@@ -430,6 +438,7 @@ public:
             XGranularModule::PAR_LOOPLEN,XGranularModule::IN_CV_LOOPLEN,XGranularModule::PAR_ATTN_LOOPLEN,82.0f,101.0f));
         addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",XGranularModule::PAR_SRCPOSRANDOM,-1,-1,1.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN RATE",XGranularModule::PAR_GRAINDENSITY,-1,-1,82.0f,142.0f));
+        addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,-1,-1,2*82.0f,142.0f));
     }
     void draw(const DrawArgs &args) override
     {
@@ -441,7 +450,7 @@ public:
         if (m_gm)
         {
             char buf[100];
-            sprintf(buf,"%d",m_gm->graindebugcounter);
+            sprintf(buf,"%d %d",m_gm->graindebugcounter,m_gm->m_eng.m_gm.m_grainsUsed);
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
