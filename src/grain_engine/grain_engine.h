@@ -22,6 +22,93 @@ inline float rescale(float x, float xMin, float xMax, float yMin, float yMax) {
 }
 }
 
+template<typename T>
+class ConcatBuffer
+{
+public:
+    ConcatBuffer()
+    {
+        
+    }
+    void addBuffer(std::vector<T> v)
+    {
+        m_bufs.push_back(v);
+        m_sz += v.size();
+    }
+    T operator[](size_t index)
+    {
+        int acc = 0;
+        for (int i=0;i<m_bufs.size();++i)
+        {
+            auto& e = m_bufs[i];
+            int i0 = acc;
+            int i1 = acc+e.size();
+            if (index>=i0 && index<i1)
+            {
+                int i2 = index - acc;
+                //std::cout << "found from buf " << i << "\n";
+                return e[i2];
+            }
+            acc += e.size();
+        }
+        return T{};
+    }
+    void putToBuf(T* dest, int sz, int startIndex)
+    {
+        // find first buffer
+        int bufindex = -1;
+        int acc = 0;
+        for (int i=0;i<m_bufs.size();++i)
+        {
+            int i0 = acc;
+            int i1 = acc+m_bufs[i].size();
+            if (startIndex>=i0 && startIndex<i1)
+            {
+                bufindex = i;
+                break;
+            }
+                
+            acc+=m_bufs[i].size();
+            
+        }
+        if (bufindex>=0)
+        {
+            int pos = startIndex-acc;
+            for (int i=0;i<sz;++i)
+            {
+                
+                if (pos>=m_bufs[bufindex].size())
+                {
+                    ++bufindex;
+                    if (bufindex == m_bufs.size())
+                    {
+                        // reached end of buffers, fill rest of destination with default
+                        for (int j=i;j<sz;++j)
+                            dest[j] = T{};
+                        return;
+                    }
+                       
+                    pos = 0;
+                }
+                dest[i] = m_bufs[bufindex][pos];
+                ++pos;
+            }
+        } else
+        {
+            for (int i=0;i<sz;++i)
+                dest[i] = T{};
+        }
+        
+    }
+    int getSize()
+    {
+        return m_sz;
+    }
+private:
+    std::vector<std::vector<T>> m_bufs;
+    int m_sz = 0;
+};
+
 class GrainAudioSource
 {
 public:
@@ -62,6 +149,7 @@ public:
     ISGrain() 
     {
         m_grainOutBuffer.resize(65536*m_chans*2);
+        m_srcOutBuffer.resize(65536*m_chans*2);
     }
     bool initGrain(float inputdur, float startInSource,float len, float pitch, 
         float outsr, float pan, bool reverseGrain)
@@ -70,6 +158,7 @@ public:
             return false;
         playState = 1;
         m_outpos = 0;
+        int inchs = m_syn->getSourceNumChannels();
         float insr = m_syn->getSourceSampleRate();
         float outratio = outsr/insr;
         
@@ -78,14 +167,29 @@ public:
         int lensamples = outsr*len;
         m_grainSize = lensamples;
         m_resampler.Reset();
-        int wanted = m_resampler.ResamplePrepare(lensamples,m_chans,&rsinbuf);
+        int wanted = m_resampler.ResamplePrepare(lensamples,inchs,&rsinbuf);
         
         int srcpossamples = startInSource;
         //srcpossamples+=rack::random::normal()*lensamples;
         srcpossamples = xenakios::clamp((float)srcpossamples,(float)0,inputdur-1.0f);
-        m_syn->putIntoBuffer(rsinbuf,wanted,m_chans,srcpossamples);
-        m_resampler.ResampleOut(m_grainOutBuffer.data(),wanted,lensamples,m_chans);
+        m_syn->putIntoBuffer(rsinbuf,wanted,inchs,srcpossamples);
+        m_resampler.ResampleOut(m_srcOutBuffer.data(),wanted,lensamples,inchs);
         float pangains[2] = {pan,1.0f-pan};
+        
+        if (inchs == 1 && m_chans == 2)
+        {
+            for (int i=0;i<lensamples;++i)
+            {
+                m_grainOutBuffer[i*2] = m_srcOutBuffer[i];
+                m_grainOutBuffer[i*2+1] = m_srcOutBuffer[i];
+            }
+        } else if (inchs == 2 && m_chans == 2)
+        {
+            for (int i=0;i<lensamples*m_chans;++i)
+            {
+                m_grainOutBuffer[i] = m_srcOutBuffer[i];
+            }
+        }
         if (reverseGrain)
         {
             std::reverse(m_grainOutBuffer.begin(),m_grainOutBuffer.begin()+(lensamples*m_chans));
@@ -152,7 +256,7 @@ private:
     int m_chans = 2;
     WDL_Resampler m_resampler;
     std::vector<float> m_grainOutBuffer;
-    
+    std::vector<float> m_srcOutBuffer;  
 };
 
 
