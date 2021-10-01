@@ -63,7 +63,8 @@ public:
     {
         m_grainOutBuffer.resize(65536*m_chans*2);
     }
-    bool initGrain(float inputdur, float startInSource,float len, float pitch, float outsr, float pan)
+    bool initGrain(float inputdur, float startInSource,float len, float pitch, 
+        float outsr, float pan, bool reverseGrain)
     {
         if (playState == 1)
             return false;
@@ -85,6 +86,11 @@ public:
         m_syn->putIntoBuffer(rsinbuf,wanted,m_chans,srcpossamples);
         m_resampler.ResampleOut(m_grainOutBuffer.data(),wanted,lensamples,m_chans);
         float pangains[2] = {pan,1.0f-pan};
+        if (reverseGrain)
+        {
+            std::reverse(m_grainOutBuffer.begin(),m_grainOutBuffer.begin()+(lensamples*m_chans));
+
+        }
         for (int i=0;i<lensamples;++i)
         {
             float hannpos = 1.0/(m_grainSize-1)*i;
@@ -165,6 +171,7 @@ public:
     }
     std::mt19937 m_randgen;
     std::normal_distribution<float> m_gaussdist{0.0f,1.0f};
+    std::uniform_real_distribution<float> m_unidist{0.0f,1.0f};
     int debugCounter = 0;
     int findFreeGain()
     {
@@ -180,6 +187,7 @@ public:
     float m_actSourcePos = 0.0f;
     float m_lenMultip = 1.0f;
     int m_grainsUsed = 0;
+    float m_reverseProb = 0.0f;
     void processAudio(float* buf)
     {
         if (m_inputdur<0.5f)
@@ -197,10 +205,12 @@ public:
             float pan = 0.0f;
             if (debugCounter % 2 == 1)
                 pan = 1.0f;
+            bool revgrain = m_unidist(m_randgen)<m_reverseProb;
             int availgrain = findFreeGain();
             if (availgrain>=0)
             {
-                m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,glen,m_pitch,m_sr, pan);
+                m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,
+                    glen,m_pitch,m_sr, pan, revgrain);
             }
             int usedgrains = 0;
             for (int i=0;i<m_grains.size();++i)

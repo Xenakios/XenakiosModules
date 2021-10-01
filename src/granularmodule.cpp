@@ -229,7 +229,7 @@ public:
 
     }
     void process(float sr,float* buf, float playrate, float pitch, 
-        float loopstart, float looplen, float posrand, float grate, float lenm)
+        float loopstart, float looplen, float posrand, float grate, float lenm, float revprob)
     {
         buf[0] = 0.0f;
         buf[1] = 0.0f;
@@ -242,6 +242,7 @@ public:
         m_gm.m_sourcePlaySpeed = playrate;
         m_gm.m_pitch = pitch;
         m_gm.m_posrandamt = posrand;
+        m_gm.m_reverseProb = revprob;
         m_gm.setDensity(grate);
         m_gm.setLengthMultiplier(lenm);
         m_gm.processAudio(buf);
@@ -269,6 +270,7 @@ public:
         PAR_GRAINDENSITY,
         PAR_RECORD_ACTIVE,
         PAR_LEN_MULTIP,
+        PAR_REVERSE,
         PAR_LAST
     };
     enum OUTPUTS
@@ -304,6 +306,7 @@ public:
         configParam(PAR_GRAINDENSITY,0.0f,1.0f,0.25f,"Grain rate");
         configParam(PAR_RECORD_ACTIVE,0.0f,1.0f,0.0f,"Record active");
         configParam(PAR_LEN_MULTIP,0.0f,1.0f,0.25f,"Grain length");
+        configParam(PAR_REVERSE,0.0f,1.0f,0.0f,"Grain reverse probability");
     }
     json_t* dataToJson() override
     {
@@ -365,6 +368,7 @@ public:
         float grate = params[PAR_GRAINDENSITY].getValue();
         grate = 0.01f+std::pow(1.0f-grate,2.0f)*0.49;
         float glenm = params[PAR_LEN_MULTIP].getValue();
+        float revprob = params[PAR_REVERSE].getValue();
         if (m_recordTrigger.process(params[PAR_RECORD_ACTIVE].getValue()>0.5f))
         {
             if (m_recordActive==false)
@@ -382,7 +386,7 @@ public:
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_recordActive)
             m_eng.m_src.pushSamplesToRecordBuffer(recbuf);
-        m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate,glenm);
+        m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate,glenm,revprob);
         outputs[OUT_AUDIO].setChannels(2);
         outputs[OUT_AUDIO].setVoltage(buf[0]*5.0f,0);
         outputs[OUT_AUDIO].setVoltage(buf[1]*5.0f,1);
@@ -455,6 +459,7 @@ public:
         addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",XGranularModule::PAR_SRCPOSRANDOM,-1,-1,1.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN RATE",XGranularModule::PAR_GRAINDENSITY,-1,-1,82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,-1,-1,2*82.0f,142.0f));
+        addChild(new KnobInAttnWidget(this,"GRAIN REVERSE",XGranularModule::PAR_REVERSE,-1,-1,2*82.0f,101.0f));
     }
     void draw(const DrawArgs &args) override
     {
