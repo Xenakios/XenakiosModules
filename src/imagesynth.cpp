@@ -348,7 +348,18 @@ public:
     
     int m_stepsize = 64;
     
-    
+    float getSourceSampleRate() override
+    {
+        return 44100.0f;
+    }
+    int getSourceNumSamples() override
+    {
+        return m_numOutputSamples;
+    }
+    int getSourceNumChannels() override
+    {
+        return this->getNumOutputChannels();
+    }
     void setFrequencyMapping(int m)
     {
         if (m!=m_frequencyMapping)

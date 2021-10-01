@@ -219,6 +219,7 @@ public:
             return 44100.0f;
         return m_sampleRate;
     }
+    int getSourceNumSamples() override { return m_totalPCMFrameCount; };
 };
 
 class GrainEngine
@@ -227,7 +228,7 @@ public:
     GrainEngine()
     {
         m_srcs.emplace_back(new DrWavSource);
-        m_gm.reset(new GrainMixer(m_srcs[0].get()));
+        m_gm.reset(new GrainMixer(m_srcs));
     }
     void process(float sr,float* buf, float playrate, float pitch, 
         float loopstart, float looplen, float posrand, float grate, float lenm, float revprob, int ss)
@@ -237,7 +238,7 @@ public:
         buf[2] = 0.0f;
         buf[3] = 0.0f;
         m_gm->m_sr = sr;
-        m_gm->m_inputdur = m_srcs[0]->m_totalPCMFrameCount;
+        m_gm->m_inputdur = m_srcs[0]->getSourceNumSamples();
         m_gm->m_loopstart = loopstart;
         m_gm->m_looplen = looplen;
         m_gm->m_sourcePlaySpeed = playrate;
@@ -248,7 +249,7 @@ public:
         m_gm->setLengthMultiplier(lenm);
         m_gm->processAudio(buf);
     }
-    std::vector<std::unique_ptr<DrWavSource>> m_srcs;
+    std::vector<std::unique_ptr<GrainAudioSource>> m_srcs;
     std::unique_ptr<GrainMixer> m_gm;
 private:
     
@@ -330,7 +331,8 @@ public:
     {
         if (filename.size()==0)
             return;
-        if (m_eng.m_srcs[0]->importFile(filename))
+        auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
+        if (drsrc && drsrc->importFile(filename))
         {
             m_currentFile = filename;
         }
@@ -372,23 +374,25 @@ public:
         grate = 0.01f+std::pow(1.0f-grate,2.0f)*0.49;
         float glenm = params[PAR_LEN_MULTIP].getValue();
         float revprob = params[PAR_REVERSE].getValue();
+        auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
         if (m_recordTrigger.process(params[PAR_RECORD_ACTIVE].getValue()>0.5f))
         {
+            
             if (m_recordActive==false)
             {
                 m_recordActive = true;
-                m_eng.m_srcs[0]->startRecording(1,args.sampleRate);
+                drsrc->startRecording(1,args.sampleRate);
             }
             else
             {
                 m_recordActive = false;
-                m_eng.m_srcs[0]->stopRecording();
+                drsrc->stopRecording();
             }
         }
         float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/10.0f,0.0f};
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_recordActive)
-            m_eng.m_srcs[0]->pushSamplesToRecordBuffer(recbuf);
+            drsrc->pushSamplesToRecordBuffer(recbuf);
         int srcindex = params[PAR_SOURCESELECT].getValue();
         m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate,glenm,revprob, srcindex);
         outputs[OUT_AUDIO].setChannels(2);
@@ -431,9 +435,10 @@ public:
 		auto loadItem = createMenuItem<LoadFileItem>("Import .wav file...");
 		loadItem->m_mod = m_gm;
 		menu->addChild(loadItem);
-        auto normItem = createMenuItem([this](){ m_gm->m_eng.m_srcs[0]->normalize(1.0f); },"Normalize buffer");
+        auto drsrc = dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
+        auto normItem = createMenuItem([this,drsrc](){ drsrc->normalize(1.0f); },"Normalize buffer");
         menu->addChild(normItem);
-        auto revItem = createMenuItem([this](){ m_gm->m_eng.m_srcs[0]->reverse(); },"Reverse buffer");
+        auto revItem = createMenuItem([this,drsrc](){ drsrc->reverse(); },"Reverse buffer");
         menu->addChild(revItem);
     }
     XGranularWidget(XGranularModule* m)
@@ -485,7 +490,7 @@ public:
             nvgText(args.vg, 1 , 230, buf, NULL);
 
             nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            auto& src = *m_gm->m_eng.m_srcs[0];
+            auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
             if (src.m_channels>0)
             {
                 std::lock_guard<std::mutex> locker(src.m_peaks_mut);
@@ -530,7 +535,7 @@ public:
                 nvgLineTo(args.vg,xcor,250.0+100.0f);
                 nvgStroke(args.vg);
 
-                ppos = m_gm->m_eng.m_srcs[0]->getRecordPosition();
+                ppos = src.getRecordPosition();
                 if (ppos>=0.0)
                 {
 

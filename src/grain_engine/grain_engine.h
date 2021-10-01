@@ -113,9 +113,9 @@ class GrainAudioSource
 {
 public:
     virtual ~GrainAudioSource() {}
-    virtual float getSourceSampleRate() { return 0.0f; };
-    virtual int getSourceNumSamples() { return 0; };
-    virtual int getSourceNumChannels() { return 0; };
+    virtual float getSourceSampleRate() = 0;
+    virtual int getSourceNumSamples() = 0;
+    virtual int getSourceNumChannels() = 0;
     virtual void putIntoBuffer(float* dest, int frames, int channels, int startInSource) = 0;
 };
 
@@ -264,13 +264,22 @@ private:
 class GrainMixer
 {
 public:
-    GrainAudioSource* m_syn = nullptr;
-    GrainMixer(GrainAudioSource* s) : m_syn(s)
+    std::vector<std::unique_ptr<GrainAudioSource>>& m_sources;
+    std::vector<std::unique_ptr<GrainAudioSource>> m_dummysources;
+    GrainMixer(std::vector<std::unique_ptr<GrainAudioSource>>& sources) : m_sources(sources)
     {
         for (int i=0;i<(int)m_grains.size();++i)
         {
-            m_grains[i].m_syn = s;
+            m_grains[i].m_syn = m_sources[0].get();
             m_grains[i].setNumOutChans(2);
+        }
+    }
+    GrainMixer(GrainAudioSource* s) : m_sources(m_dummysources)
+    {
+        for (int i=0;i<(int)m_grains.size();++i)
+        {
+            //m_grains[i].m_syn = m_sources[0].get();
+            //m_grains[i].setNumOutChans(2);
         }
     }
     std::mt19937 m_randgen;
