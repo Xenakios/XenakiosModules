@@ -271,6 +271,7 @@ public:
         PAR_RECORD_ACTIVE,
         PAR_LEN_MULTIP,
         PAR_REVERSE,
+        PAR_SOURCESELECT,
         PAR_LAST
     };
     enum OUTPUTS
@@ -307,6 +308,7 @@ public:
         configParam(PAR_RECORD_ACTIVE,0.0f,1.0f,0.0f,"Record active");
         configParam(PAR_LEN_MULTIP,0.0f,1.0f,0.25f,"Grain length");
         configParam(PAR_REVERSE,0.0f,1.0f,0.0f,"Grain reverse probability");
+        configParam(PAR_SOURCESELECT,0.0f,7.0f,0.0f,"Source select");
     }
     json_t* dataToJson() override
     {
