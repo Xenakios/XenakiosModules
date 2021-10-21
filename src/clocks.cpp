@@ -142,3 +142,48 @@ void DividerClockWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }
+
+void DivisionClockModule::process(const ProcessArgs& args) 
+{
+    
+    if (m_reset_trig.process(inputs[0].getVoltage()))
+    {
+        for (int i=0;i<8;++i)
+        {
+            m_clocks[i].reset();
+        }
+    }
+    const float bpm = params[32].getValue();
+    bool updateparams = m_cd.process();
+    static const int divvalues_a[5]={1,2,4,8,16};
+    static const int divvalues_b[8]={1,2,3,4,6,8,12,16};
+    static const int divvalues_c[14]={1,2,3,4,5,6,7,8,9,11,12,13,15,16};
+    int dtabsize = 14;
+    for (int i=0;i<8;++i)
+    {
+        //if (outputs[i].isConnected() || outputs[i+8].isConnected())
+        {
+            if (updateparams)
+            {
+                float v = params[i].getValue()+rescale(inputs[i+1].getVoltage(),0.0,10.0f,0.0,31.0f);
+                v = clamp(v,1.0,32.0);
+                float len = 60.0f/bpm/4.0f*v;
+                float subdivs = params[i+8].getValue();
+                //subdivs += rescale(inputs[i+9].getVoltage(),0.0,10.0f,0.0,31.0f);
+                float sdiv_cv = rescale(inputs[i+9].getVoltage(),0.0,10.0f,0.0,(float)dtabsize-1);
+                sdiv_cv = clamp(sdiv_cv,0.0f,(float)dtabsize-1);
+                int sdiv_index = sdiv_cv;
+                subdivs *= divvalues_c[sdiv_index];
+                subdivs = clamp(subdivs,1.0,32.0);
+                
+                float offs = params[i+24].getValue();
+                m_clocks[i].setParams(len,subdivs,offs,false);
+                v = params[i+16].getValue()+rescale(inputs[i+17].getVoltage(),0.0,10.0f,0.0,0.99f);
+                m_clocks[i].setGateLen(v); // clamped in the clock method
+            }
+            outputs[i].setVoltage(m_clocks[i].process(args.sampleTime)*10.0f);
+            outputs[i+8].setVoltage(m_clocks[i].mainClockHigh()*10.0f);
+        }
+    }
+    
+}

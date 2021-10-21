@@ -257,41 +257,8 @@ public:
             configParam(24+i,0.0f,1.0f,0.0f,"Phase offset");
         configParam(32,30.0f,240.0f,60.0f,"BPM");
     }
-    void process(const ProcessArgs& args) override
-    {
-        
-        if (m_reset_trig.process(inputs[0].getVoltage()))
-        {
-            for (int i=0;i<8;++i)
-            {
-                m_clocks[i].reset();
-            }
-        }
-        const float bpm = params[32].getValue();
-        bool updateparams = m_cd.process();
-        for (int i=0;i<8;++i)
-        {
-            //if (outputs[i].isConnected() || outputs[i+8].isConnected())
-            {
-                if (updateparams)
-                {
-                    float v = params[i].getValue()+rescale(inputs[i+1].getVoltage(),0.0,10.0f,0.0,31.0f);
-                    v = clamp(v,1.0,32.0);
-                    float len = 60.0f/bpm/4.0f*v;
-                    v = params[i+8].getValue()+rescale(inputs[i+9].getVoltage(),0.0,10.0f,0.0,31.0f);
-                    v = clamp(v,1.0,32.0);
-                    float div = v;
-                    float offs = params[i+24].getValue();
-                    m_clocks[i].setParams(len,div,offs,false);
-                    v = params[i+16].getValue()+rescale(inputs[i+17].getVoltage(),0.0,10.0f,0.0,0.99f);
-                    m_clocks[i].setGateLen(v); // clamped in the clock method
-                }
-                outputs[i].setVoltage(m_clocks[i].process(args.sampleTime)*10.0f);
-                outputs[i+8].setVoltage(m_clocks[i].mainClockHigh()*10.0f);
-            }
-        }
-        
-    }
+    void process(const ProcessArgs& args) override;
+    
 private:
     DividerClock m_clocks[8];
     dsp::SchmittTrigger m_reset_trig;
