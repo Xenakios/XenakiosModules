@@ -227,10 +227,18 @@ void DividerClockWidget::draw(const DrawArgs &args)
         nvgFontSize(args.vg, 14);
         for (int i=0;i<8;++i)
         {
-            sprintf(buf,"%.2f",m->currentDivs[i]);
-            nvgText(args.vg, 124 , 43+30*i, buf, NULL);
-            sprintf(buf,"%.2f",m->currentLens[i]);
-            nvgText(args.vg, 30 , 43+30*i, buf, NULL);
+            if (m->outputs[i].isConnected())
+            {
+                sprintf(buf,"%.2f",m->currentDivs[i]);
+                nvgText(args.vg, 124 , 43+30*i, buf, NULL);
+                sprintf(buf,"%.2f",m->currentLens[i]);
+                nvgText(args.vg, 30 , 43+30*i, buf, NULL);
+            } else
+            {
+                nvgText(args.vg, 124 , 43+30*i, "N/C", NULL);
+                nvgText(args.vg, 30 , 43+30*i, "N/C", NULL);
+            }
+            
         }
     }
     nvgRestore(args.vg);
