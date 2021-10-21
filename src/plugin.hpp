@@ -335,7 +335,9 @@ private:
 
 // Declare each Model, defined in each module source file
 
-extern Model *modelGendynOSC;
+extern Model* modelGendynOSC;
+extern Model* modelPolyClock;
+extern Model* modelRandomClock;
 extern Model *modelRandom;
 extern Model *modelXQuantizer;
 extern Model* modelXPSynth;

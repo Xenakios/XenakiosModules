@@ -2,6 +2,23 @@
 
 extern std::shared_ptr<Font> g_font;
 
+class RandomClockModule : public rack::Module
+{
+public:
+    enum PARAMS
+    {
+        PAR_MASTER_DENSITY,
+        ENUMS(PAR_DENSITY_MULTIP, 8),
+        ENUMS(PAR_GATE_LEN, 8),
+        PAR_LAST
+    };
+    RandomClockModule();
+    void process(const ProcessArgs& args) override;
+    float m_curDensity = 0.0f;
+private:
+    RandomClock m_clocks[8];
+};
+
 RandomClockModule::RandomClockModule()
 {
     config(PAR_LAST,1,16);
@@ -16,6 +33,17 @@ RandomClockModule::RandomClockModule()
         configParam(PAR_GATE_LEN+i,0.0,1.0f,0.25f,"Gate length "+std::to_string(i+1)); 
     }
 }
+
+
+
+class RandomClockWidget : public ModuleWidget
+{
+public:
+    RandomClockWidget(RandomClockModule*);
+    void draw(const DrawArgs &args) override;
+private:
+    RandomClockModule* m_mod = nullptr;
+};
 
 void RandomClockModule::process(const ProcessArgs& args)
 {
@@ -98,6 +126,40 @@ void RandomClockWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }
+
+class DivisionClockModule : public rack::Module
+{
+public:
+    
+    DivisionClockModule()
+    {
+        m_cd.setDivision(128);
+        config(33,25,16);
+        for (int i=0;i<8;++i)
+            configParam(i,1.0f,32.0f,4.0f,"Main div");
+        for (int i=0;i<8;++i)
+            configParam(8+i,1.0f,32.0f,1.0f,"Sub div");
+        for (int i=0;i<8;++i)
+            configParam(16+i,0.01f,0.99f,0.5f,"Gate len");
+        for (int i=0;i<8;++i)
+            configParam(24+i,0.0f,1.0f,0.0f,"Phase offset");
+        configParam(32,30.0f,240.0f,60.0f,"BPM");
+    }
+    void process(const ProcessArgs& args) override;
+    
+private:
+    DividerClock m_clocks[8];
+    dsp::SchmittTrigger m_reset_trig;
+    dsp::ClockDivider m_cd;
+};
+
+class DividerClockWidget : public ModuleWidget
+{
+public:
+    DividerClockWidget(DivisionClockModule* m);
+    void draw(const DrawArgs &args) override;
+    
+};
 
 DividerClockWidget::DividerClockWidget(DivisionClockModule* m)
 {
@@ -187,3 +249,6 @@ void DivisionClockModule::process(const ProcessArgs& args)
     }
     
 }
+
+Model* modelPolyClock = createModel<DivisionClockModule, DividerClockWidget>("DividerClock");
+Model* modelRandomClock = createModel<RandomClockModule,RandomClockWidget>("RandomClock");
