@@ -183,7 +183,7 @@ public:
         //if (m_cd.process())
         {
             float divhz = 1.0f/(m_main_len/m_division);
-            m_cur_output = pulse_wave(divhz,m_gate_len,m_main_phase+m_phase_offset*m_main_len);
+            m_cur_output = pulse_wave(divhz,m_gate_len,m_main_phase+m_phase_offset);
         }
         return m_cur_output;
     }
