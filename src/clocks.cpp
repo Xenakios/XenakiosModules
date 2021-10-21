@@ -130,23 +130,33 @@ void RandomClockWidget::draw(const DrawArgs &args)
 class DivisionClockModule : public rack::Module
 {
 public:
-    
+    enum PARAMS
+    {
+        ENUMS(PAR_LEN, 8),
+        ENUMS(PAR_DIV, 8),
+        ENUMS(PAR_GATELEN, 8),
+        ENUMS(PAR_OFFSET, 8),
+        PAR_MASTER_BPM,
+        PAR_LAST
+    };
     DivisionClockModule()
     {
         m_cd.setDivision(128);
-        config(33,25,16);
+        config(PAR_LAST,25,16);
         for (int i=0;i<8;++i)
-            configParam(i,1.0f,32.0f,4.0f,"Main div");
-        for (int i=0;i<8;++i)
-            configParam(8+i,1.0f,32.0f,1.0f,"Sub div");
-        for (int i=0;i<8;++i)
-            configParam(16+i,0.01f,0.99f,0.5f,"Gate len");
-        for (int i=0;i<8;++i)
-            configParam(24+i,0.0f,1.0f,0.0f,"Phase offset");
-        configParam(32,30.0f,240.0f,60.0f,"BPM");
+        {
+            configParam(i,1.0f,32.0f,4.0f,"Main div "+std::to_string(i+1));
+            configParam(8+i,1.0f,32.0f,1.0f,"Sub div"+std::to_string(i+1));
+            configParam(16+i,0.01f,0.99f,0.5f,"Gate len"+std::to_string(i+1));
+            configParam(24+i,0.0f,1.0f,0.0f,"Phase offset"+std::to_string(i+1));
+            currentLens[i] = 1.0f;
+            currentDivs[i] = 1.0f;
+        }
+        configParam(PAR_MASTER_BPM,30.0f,240.0f,60.0f,"BPM");
     }
     void process(const ProcessArgs& args) override;
-    
+    float currentLens[8];
+    float currentDivs[8];
 private:
     DividerClock m_clocks[8];
     dsp::SchmittTrigger m_reset_trig;
@@ -166,21 +176,30 @@ DividerClockWidget::DividerClockWidget(DivisionClockModule* m)
     if (!g_font)
     	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
-    box.size.x = 290;
+    box.size.x = RACK_GRID_WIDTH * 25;
     for (int i=0;i<8;++i)
     {
-        addParam(createParam<RoundSmallBlackKnob>(Vec(5, 30+30*i), module, i)); 
-        addInput(createInput<PJ301MPort>(Vec(35,30+30*i), module, i+1));
-        addParam(createParam<RoundSmallBlackKnob>(Vec(65, 30+30*i), module, i+8)); 
-        addInput(createInput<PJ301MPort>(Vec(95,30+30*i), module, i+9));
-        addParam(createParam<RoundSmallBlackKnob>(Vec(125, 30+30*i), module, i+16)); 
-        addInput(createInput<PJ301MPort>(Vec(155,30+30*i), module, i+17));
-        addParam(createParam<RoundSmallBlackKnob>(Vec(185, 30+30*i), module, i+24)); 
-        addOutput(createOutput<PJ301MPort>(Vec(225,30+30*i), module, i));
-        addOutput(createOutput<PJ301MPort>(Vec(255,30+30*i), module, i+8));
+        float xc = 5.0f;
+        addParam(createParam<RoundSmallBlackKnob>(Vec(xc, 30+30*i), module, DivisionClockModule::PAR_LEN+i)); 
+        xc+=60.0f;
+        addInput(createInput<PJ301MPort>(Vec(xc,30+30*i), module, i+1));
+        xc+=30.0f;
+        addParam(createParam<RoundSmallBlackKnob>(Vec(xc, 30+30*i), module, DivisionClockModule::PAR_DIV+i)); 
+        xc+=60.0f;
+        addInput(createInput<PJ301MPort>(Vec(xc,30+30*i), module, i+9));
+        xc+=30.0f;
+        addParam(createParam<RoundSmallBlackKnob>(Vec(xc, 30+30*i), module, DivisionClockModule::PAR_GATELEN+i)); 
+        xc+=30.0f;
+        addInput(createInput<PJ301MPort>(Vec(xc,30+30*i), module, i+17));
+        xc+=30.0f;
+        addParam(createParam<RoundSmallBlackKnob>(Vec(xc, 30+30*i), module, DivisionClockModule::PAR_OFFSET+i)); 
+        xc+=30.0f;
+        addOutput(createOutput<PJ301MPort>(Vec(xc,30+30*i), module, i));
+        xc+=30.0f;
+        addOutput(createOutput<PJ301MPort>(Vec(xc,30+30*i), module, i+8));
     }
     addInput(createInput<PJ301MPort>(Vec(5,30+30*8), module, 0));
-    addParam(createParam<RoundLargeBlackKnob>(Vec(65, 30+30*8), module, 32)); 
+    addParam(createParam<RoundHugeBlackKnob>(Vec(30, 30+30*8), module, DivisionClockModule::PAR_MASTER_BPM)); 
 }
 
 void DividerClockWidget::draw(const DrawArgs &args)
@@ -201,6 +220,19 @@ void DividerClockWidget::draw(const DrawArgs &args)
     
     
     nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
+    DivisionClockModule* m = dynamic_cast<DivisionClockModule*>(this->module);
+    if (m)
+    {
+        char buf[100];
+        nvgFontSize(args.vg, 14);
+        for (int i=0;i<8;++i)
+        {
+            sprintf(buf,"%.2f",m->currentDivs[i]);
+            nvgText(args.vg, 124 , 43+30*i, buf, NULL);
+            sprintf(buf,"%.2f",m->currentLens[i]);
+            nvgText(args.vg, 30 , 43+30*i, buf, NULL);
+        }
+    }
     nvgRestore(args.vg);
     ModuleWidget::draw(args);
 }
@@ -229,6 +261,7 @@ void DivisionClockModule::process(const ProcessArgs& args)
             {
                 float v = params[i].getValue()+rescale(inputs[i+1].getVoltage(),0.0,10.0f,0.0,31.0f);
                 v = clamp(v,1.0,32.0);
+                currentLens[i] = v;
                 float len = 60.0f/bpm/4.0f*v;
                 float subdivs = params[i+8].getValue();
                 //subdivs += rescale(inputs[i+9].getVoltage(),0.0,10.0f,0.0,31.0f);
@@ -237,7 +270,7 @@ void DivisionClockModule::process(const ProcessArgs& args)
                 int sdiv_index = sdiv_cv;
                 subdivs *= divvalues_c[sdiv_index];
                 subdivs = clamp(subdivs,1.0,32.0);
-                
+                currentDivs[i] = subdivs;
                 float offs = params[i+24].getValue();
                 m_clocks[i].setParams(len,subdivs,offs,false);
                 v = params[i+16].getValue()+rescale(inputs[i+17].getVoltage(),0.0,10.0f,0.0,0.99f);
