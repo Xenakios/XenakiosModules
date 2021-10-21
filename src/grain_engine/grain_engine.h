@@ -35,10 +35,10 @@ public:
         m_bufs.push_back(v);
         m_sz += v.size();
     }
-    T operator[](size_t index)
+    T operator[](int index)
     {
         int acc = 0;
-        for (int i=0;i<m_bufs.size();++i)
+        for (int i=0;i<(int)m_bufs.size();++i)
         {
             auto& e = m_bufs[i];
             int i0 = acc;
@@ -46,7 +46,6 @@ public:
             if (index>=i0 && index<i1)
             {
                 int i2 = index - acc;
-                //std::cout << "found from buf " << i << "\n";
                 return e[i2];
             }
             acc += e.size();
