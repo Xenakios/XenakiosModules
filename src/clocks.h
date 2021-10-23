@@ -90,6 +90,8 @@ private:
 
 inline float pulse_wave(float frequency, float duty, float phase)
 {
+    if (duty>=1.0f)
+        return 1.0f;
     phase = std::fmod(phase*frequency,1.0f);
     if (phase<duty)
         return 1.0f;
@@ -180,7 +182,7 @@ public:
     }
     void setGateLen(float gl)
     {
-        m_gate_len = clamp(gl,0.01f,0.99f);
+        m_gate_len = clamp(gl,0.01f,1.0f);
     }
     void reset()
     {
