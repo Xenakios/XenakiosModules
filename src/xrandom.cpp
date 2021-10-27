@@ -1,12 +1,13 @@
 #include "plugin.hpp"
 #include <random>
 #include "helperwidgets.h"
+#include <set>
 
 class EntropySource
 {
 public:
     virtual ~EntropySource() {}
-    virtual void setSeed(float seed) = 0;
+    virtual void setSeed(float seed, bool force) = 0;
     virtual void generate(float* dest, int sz) = 0;
     virtual std::string getName() { return "Unknown"; }
 };
@@ -15,9 +16,9 @@ class MersenneTwister final : public EntropySource
 {
 public:
     MersenneTwister() {}
-    void setSeed(float s) override
+    void setSeed(float s, bool force) override
     {
-        if (s!=m_cur_seed)
+        if (s!=m_cur_seed || force)
         {
             m_mt = std::mt19937((int)(s*65536));
             m_cur_seed = s;
@@ -39,7 +40,7 @@ class LogisticChaos final : public EntropySource
 {
 public:
     LogisticChaos(float r) : m_r(r) {}
-    void setSeed(float s) override
+    void setSeed(float s, bool force) override
     {
         m_x0 = s;
     }
@@ -62,7 +63,7 @@ class LehmerRandom final : public EntropySource
 {
 public:
     LehmerRandom(unsigned a, unsigned int m) : m_a(a), m_m(m) {}
-    void setSeed(float s) override
+    void setSeed(float s, bool force) override
     {
         m_prev = 1.0f+s*65536.0f;
     }
@@ -149,18 +150,23 @@ public:
             m_entropySource = s;
             m_entbufpos = 0;
             if (m_seed>=0.0f)
-                m_entsources[m_entropySource]->setSeed(m_seed);
+                m_entsources[m_entropySource]->setSeed(m_seed,false);
         }
     }
     int getNumEntropySources()
     {
         return m_entsources.size();
     }
-    void setSeed(float s)
+    void setSeed(float s, bool force=false)
     {
-        if (s!=m_seed)
+        bool doit = false;
+        if (s != m_seed && force==false)
+            doit = true;
+        if (s == m_seed && force==true)
+            doit = true;
+        if (doit)
         {
-            m_entsources[m_entropySource]->setSeed(s);
+            m_entsources[m_entropySource]->setSeed(s,force);
             m_entbufpos = 0;
             m_seed = s;
         }
@@ -176,7 +182,7 @@ public:
     }
     void setOutputLimitMode(int m)
     {
-        m_clipType = m;
+        m_clipType = clamp(m,0,2);
     }
     void setFrequency(float Hz)
     {
@@ -224,6 +230,9 @@ public:
             float cmean = rack::math::rescale(m_distpar0,-1.0f,1.0f,-5.0f,5.0f);
             // spread parameter shaped with pow because Cauchy behaves more interestingly with lower spread values
             float csigma = rack::math::rescale(std::pow(m_distpar1,3.0f),0.0f,1.0f,0.0f,3.0f);
+            // the uniform variable can't be one or zero for the Cauchy generation!
+            // that might happen quite often with the purposely bad entropy sources used...
+            z = clamp(z,0.000001f,0.9999999f);
             return cmean+csigma*std::tan(M_PI*(z-0.5f));
         }
         else if (m_distType == D_UNIEXP) // Unilateral Exponential with shift
@@ -333,6 +342,11 @@ public:
     {
         m_quantSteps = s;
     }
+    void reset()
+    {
+        m_phase = 0.0;
+        setSeed(m_seed,true);
+    }
 private:
     double m_phase = 0.0;
     double m_frequency = 8.0;
@@ -367,10 +381,14 @@ public:
         PAR_DIST_TYPE,
         PAR_DIST_PAR0,
         PAR_DIST_PAR1,
+        PAR_LIMIT_TYPE,
+        PAR_LIMIT_MIN,
+        PAR_LIMIT_MAX,
         PAR_LAST
     };
     enum INPUTS
     {
+        IN_RESET,
         IN_LAST
     };
     enum OUTPUTS
@@ -387,7 +405,9 @@ public:
         configParam(PAR_DIST_TYPE,0.0f,RandomEngine::D_LAST-1,0.0f,"Distribution type");
         configParam(PAR_DIST_PAR0,-1.0f,1.0f,0.0f,"Distribution par 0");
         configParam(PAR_DIST_PAR1,0.0f,1.0f,0.0f,"Distribution par 1");
-        
+        configParam(PAR_LIMIT_TYPE,0.0f,2.0f,0.0f,"Limit type");
+        configParam(PAR_LIMIT_MIN,-5.0f,5.0f,-5.0f,"Min Limit");
+        configParam(PAR_LIMIT_MAX,-5.0f,5.0f,5.0f,"Max Limit");
     }
     void process(const ProcessArgs& args) override
     {
@@ -401,11 +421,19 @@ public:
         m_eng.setDistributionParameters(dpar0,dpar1);
         int dtype = params[PAR_DIST_TYPE].getValue();
         m_eng.setDistributionType(dtype);
+        int lmode = params[PAR_LIMIT_TYPE].getValue();
+        m_eng.setOutputLimitMode(lmode);
+        float lim_min = params[PAR_LIMIT_MIN].getValue();
+        float lim_max = params[PAR_LIMIT_MAX].getValue();
+        m_eng.setLimits(lim_min,lim_max);
         float eseed = params[PAR_ENTROPY_SEED].getValue();
         m_eng.setSeed(eseed);
+        if (m_reset_trig.process(inputs[IN_RESET].getVoltage()))
+            m_eng.reset();
         outputs[OUT_MAIN].setVoltage(m_eng.getNext(args.sampleTime),0);
     }
     RandomEngine m_eng;
+    dsp::SchmittTrigger m_reset_trig;
 private:
 
 };
@@ -419,6 +447,8 @@ public:
         box.size.x = RACK_GRID_WIDTH * 24;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "X-RANDOM",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         auto port = new PortWithBackGround(m,this, XRandomModule::OUT_MAIN ,1,30,"OUT",true);
+        new PortWithBackGround(m,this, XRandomModule::IN_RESET ,62,30,"RESET",false);
+        std::set<int> snappars{XRandomModule::PAR_ENTROPY_SOURCE,XRandomModule::PAR_DIST_TYPE,XRandomModule::PAR_LIMIT_TYPE};
         for (int i=0;i<m->paramQuantities.size();++i)
         {
             int xpos = i % 4;
@@ -427,7 +457,8 @@ public:
             float ycor = 75.0f+48.0f*ypos;
             auto name = m->paramQuantities[i]->label;
             bool snap = false;
-            if (i == XRandomModule::PAR_ENTROPY_SOURCE) snap = true;
+            if (snappars.count(i))
+                 snap = true;
             addChild(new KnobInAttnWidget(this,name,i,-1,-1,xcor,ycor,snap));
         }
         
