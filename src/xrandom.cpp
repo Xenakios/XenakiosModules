@@ -346,7 +346,14 @@ public:
         if (m_phase>=1.0)
         {
             m_start_val = m_end_val;
-            m_end_val = getNextShaped();
+            if (m_procMode == PM_DIRECT)
+            {
+                m_end_val = getNextShaped();
+            }
+            else if (m_procMode == PM_RANDOMWALK)
+            {
+                m_end_val = m_rand_walk + getNextShaped();
+            }
             m_phase -= 1.0;
         }
         float quanstart = quantize(m_start_val,m_quantSteps);
@@ -363,6 +370,7 @@ public:
         else if (m_clipType == 1)
             out = reflect_value_safe(m_min_val,out,m_max_val);
         else out = wrap_value_safe(m_min_val,out,m_max_val);
+        m_rand_walk = out;
         return out;
     }
     void setLimits(float lowlim, float highlim)
@@ -376,8 +384,8 @@ public:
     }
     void setSmoothingParameters(float s0, float s1)
     {
-        m_smoothpar0 = s0;
-        m_smoothpar1 = s1;
+        m_smoothpar0 = clamp(s0,0.0f,1.0f);
+        m_smoothpar1 = clamp(s1,0.0f,1.0f);
     }
     void setQuantizeSteps(int s)
     {
@@ -387,6 +395,16 @@ public:
     {
         m_phase = 0.0;
         setSeed(m_seed,true);
+    }
+    enum PROCMODES
+    {
+        PM_DIRECT,
+        PM_RANDOMWALK,
+        PM_LAST
+    };
+    void setProcessingMode(int m)
+    {
+        m_procMode = clamp(m,0,1);
     }
 private:
     double m_phase = 0.0;
@@ -407,7 +425,9 @@ private:
     float m_min_val = -5.0f;
     float m_max_val = 5.0f;
     float m_seed = -1.0f;
-    int m_quantSteps = 65536;
+    int m_quantSteps = 65536*2;
+    int m_procMode = PM_DIRECT;
+    float m_rand_walk = 0.0f;
     std::normal_distribution<float> m_dist_normal{0.0,1.0};
 };
 
@@ -425,11 +445,16 @@ public:
         PAR_LIMIT_TYPE,
         PAR_LIMIT_MIN,
         PAR_LIMIT_MAX,
+        PAR_SMOOTH_PAR0,
+        PAR_SMOOTH_PAR1,
+        PAR_QUANTIZESTEPS,
+        PAR_PROCMODE,
         PAR_LAST
     };
     enum INPUTS
     {
         IN_RESET,
+        IN_RATE_CV,
         IN_LAST
     };
     enum OUTPUTS
@@ -444,37 +469,55 @@ public:
         configParam(PAR_ENTROPY_SOURCE,0,m_eng.getNumEntropySources()-1,0.0f,"Entropy source");
         configParam(PAR_ENTROPY_SEED,0.0f,1.0f,0.0f,"Entropy seed");
         configParam(PAR_DIST_TYPE,0.0f,RandomEngine::D_LAST-1,0.0f,"Distribution type");
-        configParam(PAR_DIST_PAR0,-1.0f,1.0f,0.0f,"Distribution par 0");
-        configParam(PAR_DIST_PAR1,0.0f,1.0f,0.0f,"Distribution par 1");
+        configParam(PAR_DIST_PAR0,-1.0f,1.0f,0.0f,"Distribution par 1");
+        configParam(PAR_DIST_PAR1,0.0f,1.0f,0.0f,"Distribution par 2");
         configParam(PAR_LIMIT_TYPE,0.0f,2.0f,0.0f,"Limit type");
         configParam(PAR_LIMIT_MIN,-5.0f,5.0f,-5.0f,"Min Limit");
         configParam(PAR_LIMIT_MAX,-5.0f,5.0f,5.0f,"Max Limit");
+        configParam(PAR_SMOOTH_PAR0,0.0f,1.0f,0.5f,"Smoothing par 1");
+        configParam(PAR_SMOOTH_PAR1,0.0f,1.0f,0.5f,"Smoothing par 2");
+        configParam(PAR_QUANTIZESTEPS,0.0f,1.0f,0.0f,"Quantize steps");
+        configParam(PAR_PROCMODE,0.0f,1.0f,0.0f,"Processing mode");
+        m_updatediv.setDivision(8);
     }
     void process(const ProcessArgs& args) override
     {
-        float pitch = params[PAR_RATE].getValue()*12.0f;
-        float rate = std::pow(2.0f,1.0f/12*pitch);
-        m_eng.setFrequency(rate);
-        int esource = params[PAR_ENTROPY_SOURCE].getValue();
-        m_eng.setEntropySource(esource);
-        float dpar0 = params[PAR_DIST_PAR0].getValue();
-        float dpar1 = params[PAR_DIST_PAR1].getValue();
-        m_eng.setDistributionParameters(dpar0,dpar1);
-        int dtype = params[PAR_DIST_TYPE].getValue();
-        m_eng.setDistributionType(dtype);
-        int lmode = params[PAR_LIMIT_TYPE].getValue();
-        m_eng.setOutputLimitMode(lmode);
-        float lim_min = params[PAR_LIMIT_MIN].getValue();
-        float lim_max = params[PAR_LIMIT_MAX].getValue();
-        m_eng.setLimits(lim_min,lim_max);
-        float eseed = params[PAR_ENTROPY_SEED].getValue();
-        m_eng.setSeed(eseed);
+        if (m_updatediv.process())
+        {
+            float pitch = params[PAR_RATE].getValue();
+            pitch += inputs[IN_RATE_CV].getVoltage();
+            pitch = clamp(pitch,-8.0f,12.0f);
+            pitch *= 12.0f;
+            float rate = std::pow(2.0f,1.0f/12*pitch);
+            m_eng.setFrequency(rate);
+            int esource = params[PAR_ENTROPY_SOURCE].getValue();
+            m_eng.setEntropySource(esource);
+            float dpar0 = params[PAR_DIST_PAR0].getValue();
+            float dpar1 = params[PAR_DIST_PAR1].getValue();
+            m_eng.setDistributionParameters(dpar0,dpar1);
+            int dtype = params[PAR_DIST_TYPE].getValue();
+            m_eng.setDistributionType(dtype);
+            int lmode = params[PAR_LIMIT_TYPE].getValue();
+            m_eng.setOutputLimitMode(lmode);
+            float lim_min = params[PAR_LIMIT_MIN].getValue();
+            float lim_max = params[PAR_LIMIT_MAX].getValue();
+            m_eng.setLimits(lim_min,lim_max);
+            float smoothpar0 = params[PAR_SMOOTH_PAR0].getValue();
+            m_eng.setSmoothingParameters(smoothpar0,0.0f);
+            float qsteps = params[PAR_QUANTIZESTEPS].getValue();
+            //m_eng.setQuantizeSteps()
+            int procmode = params[PAR_PROCMODE].getValue();
+            m_eng.setProcessingMode(procmode);
+            float eseed = params[PAR_ENTROPY_SEED].getValue();
+            m_eng.setSeed(eseed);
+        }
         if (m_reset_trig.process(inputs[IN_RESET].getVoltage()))
             m_eng.reset();
         outputs[OUT_MAIN].setVoltage(m_eng.getNext(args.sampleTime),0);
     }
     RandomEngine m_eng;
     dsp::SchmittTrigger m_reset_trig;
+    dsp::ClockDivider m_updatediv;
 private:
 
 };
@@ -489,9 +532,12 @@ public:
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "X-RANDOM",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         auto port = new PortWithBackGround(m,this, XRandomModule::OUT_MAIN ,1,30,"OUT",true);
         new PortWithBackGround(m,this, XRandomModule::IN_RESET ,62,30,"RESET",false);
-        std::set<int> snappars{XRandomModule::PAR_ENTROPY_SOURCE,XRandomModule::PAR_DIST_TYPE,XRandomModule::PAR_LIMIT_TYPE};
+        
         if (m)
         {
+            std::map<int,int> cvins;
+            cvins[XRandomModule::PAR_RATE] = XRandomModule::IN_RATE_CV;
+            std::set<int> snappars{XRandomModule::PAR_ENTROPY_SOURCE,XRandomModule::PAR_DIST_TYPE,XRandomModule::PAR_LIMIT_TYPE};
             for (int i=0;i<m->paramQuantities.size();++i)
             {
                 int xpos = i % 4;
@@ -502,7 +548,10 @@ public:
                 bool snap = false;
                 if (snappars.count(i))
                     snap = true;
-                addChild(new KnobInAttnWidget(this,name,i,-1,-1,xcor,ycor,snap));
+                int cv = -1;
+                if (cvins.count(i))
+                    cv = cvins[i];
+                addChild(new KnobInAttnWidget(this,name,i,cv,-1,xcor,ycor,snap));
             }
         }
     }
@@ -522,7 +571,9 @@ public:
             auto entrname = m->m_eng.getEntropySourceName(-1);
             auto distname = m->m_eng.getDistributionName(-1);
             auto thetext = entrname+" -> "+distname;
-            nvgFontSize(args.vg, 20);
+            if (m->params[XRandomModule::PAR_PROCMODE].getValue()>0.5)
+                thetext+=" (Random walk)";
+            nvgFontSize(args.vg, 18);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
