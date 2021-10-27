@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include <random>
+#include <array>
 #include "helperwidgets.h"
 #include <set>
 
@@ -16,6 +17,7 @@ class MersenneTwister final : public EntropySource
 {
 public:
     MersenneTwister() {}
+    std::string getName() override { return "Mersenne Twister"; }
     void setSeed(float s, bool force) override
     {
         if (s!=m_cur_seed || force)
@@ -39,7 +41,11 @@ private:
 class LogisticChaos final : public EntropySource 
 {
 public:
-    LogisticChaos(float r) : m_r(r) {}
+    LogisticChaos(float r) : m_r(r) 
+    {
+        m_name = rack::string::f("Chaos %.4f",r);
+    }
+    std::string getName() override { return m_name; }
     void setSeed(float s, bool force) override
     {
         m_x0 = s;
@@ -57,12 +63,17 @@ public:
 private:
     double m_x0 = 0.4f;
     double m_r = 3.9f;
+    std::string m_name;
 };
 
 class LehmerRandom final : public EntropySource
 {
 public:
-    LehmerRandom(unsigned a, unsigned int m) : m_a(a), m_m(m) {}
+    LehmerRandom(unsigned a, unsigned int m) : m_a(a), m_m(m) 
+    {
+        m_name = "Lehmer "+std::to_string(a)+"/"+std::to_string(m);
+    }
+    std::string getName() override { return m_name; }
     void setSeed(float s, bool force) override
     {
         m_prev = 1.0f+s*65536.0f;
@@ -80,6 +91,7 @@ private:
     unsigned int m_prev = 1;
     unsigned int m_a = 0;
     unsigned int m_m = 0;
+    std::string m_name;
 };
 
 inline float zero_to_epsilon(float x, float eps = 0.000001)
@@ -157,6 +169,10 @@ public:
     {
         return m_entsources.size();
     }
+    int getEntroSourceIndex()
+    {
+        return m_entropySource;
+    }
     void setSeed(float s, bool force=false)
     {
         bool doit = false;
@@ -213,6 +229,32 @@ public:
         D_TRIANGULAR,
         D_LAST
     };
+    std::string getDistributionName(int index)
+    {
+        if (index == -1)
+            index = m_distType;
+        if (index == D_UNIFORM) return "Uniform";
+        else if (index == D_GAUSS) return "Gaussian";
+        else if (index == D_CAUCHY) return "Cauchy";
+        else if (index == D_HYPCOS) return "Hypcos";
+        else if (index == D_LOGISTIC) return "Logistic";
+        else if (index == D_UNIEXP) return "Unilat Exp";
+        else if (index == D_BIEXP) return "Bilat Exp";
+        else if (index == D_ARCSINE) return "ArcSine";
+        else if (index == D_LINEAR) return "Linear";
+        else if (index == D_TRIANGULAR) return "Triangular";
+        return "Unknown";
+    }
+    std::string getEntropySourceName(int index)
+    {
+        if (index == -1)
+            index = m_entropySource;
+        if (index>=0 && index<m_entsources.size())
+        {
+            return m_entsources[m_entropySource]->getName();
+        }
+        return "Unknown";
+    }
     // return values nominally in the -5 to 5 range from here
     inline float getNextShaped()
     {
@@ -448,19 +490,21 @@ public:
         auto port = new PortWithBackGround(m,this, XRandomModule::OUT_MAIN ,1,30,"OUT",true);
         new PortWithBackGround(m,this, XRandomModule::IN_RESET ,62,30,"RESET",false);
         std::set<int> snappars{XRandomModule::PAR_ENTROPY_SOURCE,XRandomModule::PAR_DIST_TYPE,XRandomModule::PAR_LIMIT_TYPE};
-        for (int i=0;i<m->paramQuantities.size();++i)
+        if (m)
         {
-            int xpos = i % 4;
-            int ypos = i / 4;
-            float xcor = 5.0f+84.0f*xpos;
-            float ycor = 75.0f+48.0f*ypos;
-            auto name = m->paramQuantities[i]->label;
-            bool snap = false;
-            if (snappars.count(i))
-                 snap = true;
-            addChild(new KnobInAttnWidget(this,name,i,-1,-1,xcor,ycor,snap));
+            for (int i=0;i<m->paramQuantities.size();++i)
+            {
+                int xpos = i % 4;
+                int ypos = i / 4;
+                float xcor = 5.0f+84.0f*xpos;
+                float ycor = 75.0f+48.0f*ypos;
+                auto name = m->paramQuantities[i]->label;
+                bool snap = false;
+                if (snappars.count(i))
+                    snap = true;
+                addChild(new KnobInAttnWidget(this,name,i,-1,-1,xcor,ycor,snap));
+            }
         }
-        
     }
     void draw(const DrawArgs &args) override
     {
@@ -471,18 +515,20 @@ public:
         nvgFillColor(args.vg, nvgRGBA(0x50, 0x50, 0x50, 0xff));
         nvgRect(args.vg,0.0f,0.0f,w,h);
         nvgFill(args.vg);
-        /*
-        XScaleOsc* m = dynamic_cast<XScaleOsc*>(module);
+        
+        XRandomModule* m = dynamic_cast<XRandomModule*>(module);
         if (m)
         {
-            auto scalename = rack::string::filename(m->m_osc.getScaleName());
+            auto entrname = m->m_eng.getEntropySourceName(-1);
+            auto distname = m->m_eng.getDistributionName(-1);
+            auto thetext = entrname+" -> "+distname;
             nvgFontSize(args.vg, 20);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            nvgText(args.vg,1.0f,h-20.0f,scalename.c_str(),nullptr);
+            nvgText(args.vg,1.0f,h-20.0f,thetext.c_str(),nullptr);
         }
-        */
+        
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
     }
