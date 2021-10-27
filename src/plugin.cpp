@@ -304,6 +304,7 @@ void init(Plugin *p) {
 	p->addModel(createModel<ReducerModule,ReducerWidget>("Reduce"));
 	p->addModel(createModel<DecahexCVTransformer,DecahexCVTransformerWidget>("DecahexCVTransformer"));
 	p->addModel(modelGendynOSC);
+	p->addModel(modelXRandom);
 	p->addModel(createModel<DerivatorModule,DerivatorWidget>("Derivator"));
 #ifdef RBMODULE
 	p->addModel(createModel<AudioStretchModule,AudioStretchWidget>("XAudioStretch"));

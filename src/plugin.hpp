@@ -351,3 +351,4 @@ extern Model* modelXEnvelope;
 extern Model* modelXCVShaper;
 extern Model* modelXSampler;
 extern Model* modelXScaleOscillator;
+extern Model* modelXRandom;

@@ -215,6 +215,15 @@
         "Oscillator",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "XRandom",
+      "name": "XRandom",
+      "description": "Random",
+      "tags": [
+        "Random",
+        "Polyphonic"
+      ]
     }
     
 
