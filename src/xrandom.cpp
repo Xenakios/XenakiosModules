@@ -316,12 +316,11 @@ public:
                 ++m_histogram[hindex];
         }
         float out = ramp_adjustable(m_phase,quanstart,quanend,m_smoothpar0);
-        //out = rack::math::rescale(out,-5.0f,5.0f,m_min_val,m_max_val);
         if (m_clipType == 0)
             out = rack::math::clamp(out,m_min_val,m_max_val);
         else if (m_clipType == 1)
-            out = reflect_value(m_min_val,out,m_max_val);
-        else out = wrap_value(m_min_val,out,m_max_val);
+            out = reflect_value_safe(m_min_val,out,m_max_val);
+        else out = wrap_value_safe(m_min_val,out,m_max_val);
         return out;
     }
     void setLimits(float lowlim, float highlim)

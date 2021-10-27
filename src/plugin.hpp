@@ -247,12 +247,10 @@ inline float soft_clip(float x)
     return x-(std::pow(x,3.0f)/3.0f);
 }
 
-
+// note that limits can't be the same and the loop may run for long!
 template<typename T>
 inline T wrap_value(const T& minval, const T& val, const T& maxval)
 {
-	if (minval==maxval)
-		return minval;
 	T temp = val;
 	while (temp<minval || temp>maxval)
 	{
@@ -264,11 +262,34 @@ inline T wrap_value(const T& minval, const T& val, const T& maxval)
 	return temp;
 }
 
+// safe version that handles the case where limits are the same and the loop has an iteration limit
+// if iteration limit is reached, returns value between the limits
 template<typename T>
-inline T reflect_value(const T& minval, const T& val, const T& maxval)
+inline T wrap_value_safe(const T& minval, const T& val, const T& maxval, int iterlimit=100)
 {
 	if (minval==maxval)
 		return minval;
+	int sanity = 0;
+	T temp = val;
+	while (temp<minval || temp>maxval)
+	{
+		if (temp < minval)
+			temp = maxval - (minval - temp);
+		if (temp > maxval)
+			temp = minval - (maxval - temp);
+		++sanity;
+		if (sanity == iterlimit)
+		{
+			return minval+(maxval-minval)/2.0f;
+		}
+	}
+	return temp;
+}
+
+// note that limits can't be the same and the loop may run for long!
+template<typename T>
+inline T reflect_value(const T& minval, const T& val, const T& maxval)
+{
 	T temp = val;
 	while (temp<minval || temp>maxval)
 	{
@@ -276,6 +297,30 @@ inline T reflect_value(const T& minval, const T& val, const T& maxval)
 			temp = minval + (minval - temp);
 		if (temp > maxval)
 			temp = maxval + (maxval - temp);
+	}
+	return temp;
+}
+
+// safe version that handles the case where limits are the same and the loop has an iteration limit
+// if iteration limit is reached, returns value between the limits
+template<typename T>
+inline T reflect_value_safe(const T& minval, const T& val, const T& maxval, int iterlimit=100)
+{
+	if (minval==maxval)
+		return minval;
+	int sanity = 0;
+	T temp = val;
+	while (temp<minval || temp>maxval)
+	{
+		if (temp < minval)
+			temp = minval + (minval - temp);
+		if (temp > maxval)
+			temp = maxval + (maxval - temp);
+		++sanity;
+		if (sanity==iterlimit)
+		{
+			return minval+(maxval-minval)/2.0;
+		}
 	}
 	return temp;
 }
