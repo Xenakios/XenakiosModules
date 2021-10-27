@@ -251,6 +251,8 @@ inline float soft_clip(float x)
 template<typename T>
 inline T wrap_value(const T& minval, const T& val, const T& maxval)
 {
+	if (minval==maxval)
+		return minval;
 	T temp = val;
 	while (temp<minval || temp>maxval)
 	{
@@ -265,6 +267,8 @@ inline T wrap_value(const T& minval, const T& val, const T& maxval)
 template<typename T>
 inline T reflect_value(const T& minval, const T& val, const T& maxval)
 {
+	if (minval==maxval)
+		return minval;
 	T temp = val;
 	while (temp<minval || temp>maxval)
 	{

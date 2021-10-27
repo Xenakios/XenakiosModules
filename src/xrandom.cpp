@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include <random>
+#include "helperwidgets.h"
 
 class EntropySource
 {
@@ -63,7 +64,7 @@ public:
     LehmerRandom(unsigned a, unsigned int m) : m_a(a), m_m(m) {}
     void setSeed(float s) override
     {
-        m_prev = 1+s*65536;
+        m_prev = 1.0f+s*65536.0f;
     }
     void generate(float* dest, int sz) override
     {
@@ -102,10 +103,18 @@ inline float BoxMullerNormal(float mu, float sigma,F&& EntropyFunc)
     constexpr double epsilon = std::numeric_limits<double>::epsilon();
     constexpr double two_pi = 2.0 * M_PI;
     double u1, u2;
+    int sanity = 0;
     do
     {
         u1 = EntropyFunc();
         u2 = EntropyFunc();
+        ++sanity;
+        if (sanity>50)
+        {
+            u1 = 0.5f;
+            u2 = 0.4;
+            break;
+        }
     }
     while (u1 <= epsilon);
     auto mag = sigma * sqrt(-2.0 * log(u1));
@@ -120,6 +129,7 @@ public:
     RandomEngine()
     {
         m_entsources.emplace_back(new MersenneTwister);
+        m_entsources.emplace_back(new LehmerRandom(17,89));
         m_entsources.emplace_back(new LehmerRandom(41,401));
         m_entsources.emplace_back(new LehmerRandom(16807,2147483647));
         m_entsources.emplace_back(new LogisticChaos(3.8));
@@ -132,6 +142,8 @@ public:
     }
     void setEntropySource(int s)
     {
+        if (s==m_entropySource)
+            return;
         if (s>=0 && s < m_entsources.size())
         {
             m_entropySource = s;
@@ -139,6 +151,10 @@ public:
             if (m_seed>=0.0f)
                 m_entsources[m_entropySource]->setSeed(m_seed);
         }
+    }
+    int getNumEntropySources()
+    {
+        return m_entsources.size();
     }
     void setSeed(float s)
     {
@@ -323,7 +339,7 @@ private:
     float m_start_val = 0.0f;
     float m_end_val = 0.0f;
     int m_entropySource = 0;
-    int m_distType = 1;
+    int m_distType = 0;
     int m_clipType = 0;
     float m_distpar0 = 0.0f;
     float m_distpar1 = 1.0f;
@@ -343,9 +359,51 @@ private:
 class XRandomModule : public Module
 {
 public:
+    enum PARAMS
+    {
+        PAR_RATE,
+        PAR_ENTROPY_SOURCE,
+        PAR_ENTROPY_SEED,
+        PAR_DIST_TYPE,
+        PAR_DIST_PAR0,
+        PAR_DIST_PAR1,
+        PAR_LAST
+    };
+    enum INPUTS
+    {
+        IN_LAST
+    };
+    enum OUTPUTS
+    {
+        OUT_MAIN,
+        OUT_LAST
+    };
     XRandomModule()
     {
+        config(PAR_LAST,IN_LAST,OUT_LAST);
+        configParam(PAR_RATE,-8.0f,12.0f,1.0f,"Rate", " Hz",2,1);
+        configParam(PAR_ENTROPY_SOURCE,0,m_eng.getNumEntropySources()-1,0.0f,"Entropy source");
+        configParam(PAR_ENTROPY_SEED,0.0f,1.0f,0.0f,"Entropy seed");
+        configParam(PAR_DIST_TYPE,0.0f,RandomEngine::D_LAST-1,0.0f,"Distribution type");
+        configParam(PAR_DIST_PAR0,-1.0f,1.0f,0.0f,"Distribution par 0");
+        configParam(PAR_DIST_PAR1,0.0f,1.0f,0.0f,"Distribution par 1");
         
+    }
+    void process(const ProcessArgs& args) override
+    {
+        float pitch = params[PAR_RATE].getValue()*12.0f;
+        float rate = std::pow(2.0f,1.0f/12*pitch);
+        m_eng.setFrequency(rate);
+        int esource = params[PAR_ENTROPY_SOURCE].getValue();
+        m_eng.setEntropySource(esource);
+        float dpar0 = params[PAR_DIST_PAR0].getValue();
+        float dpar1 = params[PAR_DIST_PAR1].getValue();
+        m_eng.setDistributionParameters(dpar0,dpar1);
+        int dtype = params[PAR_DIST_TYPE].getValue();
+        m_eng.setDistributionType(dtype);
+        float eseed = params[PAR_ENTROPY_SEED].getValue();
+        m_eng.setSeed(eseed);
+        outputs[OUT_MAIN].setVoltage(m_eng.getNext(args.sampleTime),0);
     }
     RandomEngine m_eng;
 private:
@@ -358,6 +416,45 @@ public:
     XRandomModuleWidget(XRandomModule *m)
     {
         setModule(m);
+        box.size.x = RACK_GRID_WIDTH * 24;
+        addChild(new LabelWidget({{1,6},{box.size.x,1}}, "X-RANDOM",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
+        auto port = new PortWithBackGround(m,this, XRandomModule::OUT_MAIN ,1,30,"OUT",true);
+        for (int i=0;i<m->paramQuantities.size();++i)
+        {
+            int xpos = i % 4;
+            int ypos = i / 4;
+            float xcor = 5.0f+84.0f*xpos;
+            float ycor = 75.0f+48.0f*ypos;
+            auto name = m->paramQuantities[i]->label;
+            bool snap = false;
+            if (i == XRandomModule::PAR_ENTROPY_SOURCE) snap = true;
+            addChild(new KnobInAttnWidget(this,name,i,-1,-1,xcor,ycor,snap));
+        }
+        
+    }
+    void draw(const DrawArgs &args) override
+    {
+        nvgSave(args.vg);
+        float w = box.size.x;
+        float h = box.size.y;
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg, nvgRGBA(0x50, 0x50, 0x50, 0xff));
+        nvgRect(args.vg,0.0f,0.0f,w,h);
+        nvgFill(args.vg);
+        /*
+        XScaleOsc* m = dynamic_cast<XScaleOsc*>(module);
+        if (m)
+        {
+            auto scalename = rack::string::filename(m->m_osc.getScaleName());
+            nvgFontSize(args.vg, 20);
+            nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
+            nvgTextLetterSpacing(args.vg, -1);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            nvgText(args.vg,1.0f,h-20.0f,scalename.c_str(),nullptr);
+        }
+        */
+        nvgRestore(args.vg);
+        ModuleWidget::draw(args);
     }
 };
 
