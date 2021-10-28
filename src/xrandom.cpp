@@ -456,6 +456,10 @@ public:
     {
         IN_RESET,
         IN_RATE_CV,
+        IN_D_PAR0_CV,
+        IN_D_PAR1_CV,
+        IN_LIMMIN_CV,
+        IN_LIMMAX_CV,
         IN_LAST
     };
     enum OUTPUTS
@@ -494,14 +498,18 @@ public:
             int esource = params[PAR_ENTROPY_SOURCE].getValue();
             m_eng.setEntropySource(esource);
             float dpar0 = params[PAR_DIST_PAR0].getValue();
+            dpar0 += inputs[IN_D_PAR0_CV].getVoltage()*0.2f;
             float dpar1 = params[PAR_DIST_PAR1].getValue();
+            dpar1 += inputs[IN_D_PAR1_CV].getVoltage()*0.1f;
             m_eng.setDistributionParameters(dpar0,dpar1);
             int dtype = params[PAR_DIST_TYPE].getValue();
             m_eng.setDistributionType(dtype);
             int lmode = params[PAR_LIMIT_TYPE].getValue();
             m_eng.setOutputLimitMode(lmode);
             float lim_min = params[PAR_LIMIT_MIN].getValue();
+            lim_min += inputs[IN_LIMMIN_CV].getVoltage();
             float lim_max = params[PAR_LIMIT_MAX].getValue();
+            lim_max += inputs[IN_LIMMAX_CV].getVoltage();
             m_eng.setLimits(lim_min,lim_max);
             float smoothpar0 = params[PAR_SMOOTH_PAR0].getValue();
             m_eng.setSmoothingParameters(smoothpar0,0.0f);
@@ -538,7 +546,14 @@ public:
         {
             std::map<int,int> cvins;
             cvins[XRandomModule::PAR_RATE] = XRandomModule::IN_RATE_CV;
-            std::set<int> snappars{XRandomModule::PAR_ENTROPY_SOURCE,XRandomModule::PAR_DIST_TYPE,XRandomModule::PAR_LIMIT_TYPE};
+            cvins[XRandomModule::PAR_DIST_PAR0] = XRandomModule::IN_D_PAR0_CV;
+            cvins[XRandomModule::PAR_DIST_PAR1] = XRandomModule::IN_D_PAR1_CV;
+            cvins[XRandomModule::PAR_LIMIT_MIN] = XRandomModule::IN_LIMMIN_CV;
+            cvins[XRandomModule::PAR_LIMIT_MAX] = XRandomModule::IN_LIMMAX_CV;
+            std::set<int> snappars{XRandomModule::PAR_ENTROPY_SOURCE,
+                XRandomModule::PAR_DIST_TYPE,
+                XRandomModule::PAR_LIMIT_TYPE,
+                XRandomModule::PAR_PROCMODE};
             for (int i=0;i<m->paramQuantities.size();++i)
             {
                 int xpos = i % 4;
