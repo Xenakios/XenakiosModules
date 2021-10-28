@@ -367,7 +367,7 @@ public:
             
         return z;
     }
-    inline float quantize(float v, int numsteps)
+    inline float quantize(float v, float numsteps)
     {
         float nsteps = numsteps/10.0f;
         return std::round(v*nsteps)/nsteps;
@@ -430,10 +430,14 @@ public:
         m_smoothpar0 = clamp(s0,0.0f,1.0f);
         m_smoothpar1 = clamp(s1,0.0f,1.0f);
     }
-    void setQuantizeSteps(int s)
+    void setQuantizeSteps(float s)
     {
-        m_quantSteps = s;
+        s = std::pow(s,3.0f);
+        float steps = std::pow(2.0f,rescale(s,0.0f,1.0f,17.0f,1.0f));
+        //float steps = rescale(s,0.0f,1.0f,65536.0f,1.0f);
+        m_quantSteps = steps;
     }
+    float getQuantizeStep() { return m_quantSteps; }
     void reset()
     {
         m_phase = 0.0;
@@ -475,7 +479,7 @@ private:
     float m_min_val = -5.0f;
     float m_max_val = 5.0f;
     float m_seed = -1.0f;
-    int m_quantSteps = 65536*2;
+    float m_quantSteps = 65536;
     int m_procMode = PM_DIRECT;
     float m_rand_walk = 0.0f;
     int m_smoothingMode = E_LINEAR;
@@ -567,7 +571,7 @@ public:
             float smoothpar0 = params[PAR_SMOOTH_PAR0].getValue();
             m_eng.setSmoothingParameters(smoothpar0,0.0f);
             float qsteps = params[PAR_QUANTIZESTEPS].getValue();
-            //m_eng.setQuantizeSteps()
+            m_eng.setQuantizeSteps(qsteps);
             int procmode = params[PAR_PROCMODE].getValue();
             m_eng.setProcessingMode(procmode);
             int smoothingmode = params[PAR_SMOOTHINGMODE].getValue();
@@ -645,6 +649,7 @@ public:
             auto thetext = entrname+" -> "+distname;
             if (m->params[XRandomModule::PAR_PROCMODE].getValue()>0.5)
                 thetext+=" (Random walk)";
+            thetext += " "+std::to_string(m->m_eng.getQuantizeStep());
             nvgFontSize(args.vg, 18);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
