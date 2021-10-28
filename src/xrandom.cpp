@@ -110,6 +110,33 @@ inline float ramp_adjustable(float normpos, float startval, float endval, float 
     return endval;
 }
 
+inline float easing_bounce(float x)
+{
+    const float n1 = 7.5625;
+    const float d1 = 2.75;
+    float y = x;
+    if (x < 1 / d1) {
+        y = n1 * x * x;
+    } else if (x < 2 / d1) {
+        y = n1 * (x -= 1.5 / d1) * x + 0.75;
+    } else if (x < 2.5 / d1) {
+        y = n1 * (x -= 2.25 / d1) * x + 0.9375;
+    } else {
+        y = n1 * (x -= 2.625 / d1) * x + 0.984375;
+    }
+    return y;
+}
+
+inline float easing_out_elastic(float x, float par0)
+{
+    const float c4 = (2.0f * M_PI) / rescale(par0,0.0f,1.0f,1.0f,6.0f);
+    if (x==0.0f)
+        return 0.0f;
+    if (x==1.0f)
+        return 1.0f;
+    return std::pow(2.0f, -10.0f * x) * std::sin((x * 10.0f - 0.75f) * c4) + 1.0f;
+}
+
 template<typename F>
 inline float BoxMullerNormal(float mu, float sigma,F&& EntropyFunc)
 {
@@ -255,6 +282,13 @@ public:
         }
         return "Unknown";
     }
+    enum EASINGSHAPES
+    {
+        E_LINEAR,
+        E_BOUNCE,
+        E_OUT_ELASTIC,
+        E_LAST
+    };
     // return values nominally in the -5 to 5 range from here
     inline float getNextShaped()
     {
@@ -365,7 +399,15 @@ public:
             if (hindex>=0 && hindex<m_histogram.size())
                 ++m_histogram[hindex];
         }
-        float out = ramp_adjustable(m_phase,quanstart,quanend,m_smoothpar0);
+        
+        float out = 0.0f;
+        if (m_smoothingMode == E_LINEAR)
+            out = ramp_adjustable(m_phase,quanstart,quanend,m_smoothpar0);
+        else if (m_smoothingMode == E_BOUNCE)
+            out = rescale(easing_bounce(m_phase),0.0f,1.0f,m_start_val,m_end_val);
+        else if (m_smoothingMode == E_OUT_ELASTIC)
+            out = rescale(easing_out_elastic(m_phase,m_smoothpar0),0.0f,1.0f,m_start_val,m_end_val);
+
         if (m_clipType == 0)
             out = rack::math::clamp(out,m_min_val,m_max_val);
         else if (m_clipType == 1)
@@ -395,6 +437,9 @@ public:
     void reset()
     {
         m_phase = 0.0;
+        m_rand_walk = 0.0f;
+        m_start_val = 0.0f;
+        m_end_val = 0.0f;
         setSeed(m_seed,true);
     }
     enum PROCMODES
@@ -406,6 +451,10 @@ public:
     void setProcessingMode(int m)
     {
         m_procMode = clamp(m,0,1);
+    }
+    void setSmoothingMode(int m)
+    {
+        m_smoothingMode = clamp(m,0,E_LAST-1);
     }
 private:
     double m_phase = 0.0;
@@ -429,6 +478,7 @@ private:
     int m_quantSteps = 65536*2;
     int m_procMode = PM_DIRECT;
     float m_rand_walk = 0.0f;
+    int m_smoothingMode = E_LINEAR;
     std::normal_distribution<float> m_dist_normal{0.0,1.0};
 };
 
@@ -450,6 +500,7 @@ public:
         PAR_SMOOTH_PAR1,
         PAR_QUANTIZESTEPS,
         PAR_PROCMODE,
+        PAR_SMOOTHINGMODE,
         PAR_LAST
     };
     enum INPUTS
@@ -483,7 +534,9 @@ public:
         configParam(PAR_SMOOTH_PAR1,0.0f,1.0f,0.5f,"Smoothing par 2");
         configParam(PAR_QUANTIZESTEPS,0.0f,1.0f,0.0f,"Quantize steps");
         configParam(PAR_PROCMODE,0.0f,1.0f,0.0f,"Processing mode");
+        configParam(PAR_SMOOTHINGMODE,0.0f,RandomEngine::E_LAST-1,0.0f,"Smoothing mode");
         m_updatediv.setDivision(8);
+        
     }
     void process(const ProcessArgs& args) override
     {
@@ -517,6 +570,8 @@ public:
             //m_eng.setQuantizeSteps()
             int procmode = params[PAR_PROCMODE].getValue();
             m_eng.setProcessingMode(procmode);
+            int smoothingmode = params[PAR_SMOOTHINGMODE].getValue();
+            m_eng.setSmoothingMode(smoothingmode);
             float eseed = params[PAR_ENTROPY_SEED].getValue();
             m_eng.setSeed(eseed);
         }
@@ -553,7 +608,8 @@ public:
             std::set<int> snappars{XRandomModule::PAR_ENTROPY_SOURCE,
                 XRandomModule::PAR_DIST_TYPE,
                 XRandomModule::PAR_LIMIT_TYPE,
-                XRandomModule::PAR_PROCMODE};
+                XRandomModule::PAR_PROCMODE,
+                XRandomModule::PAR_SMOOTHINGMODE};
             for (int i=0;i<m->paramQuantities.size();++i)
             {
                 int xpos = i % 4;
