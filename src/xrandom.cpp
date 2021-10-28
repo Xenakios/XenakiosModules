@@ -320,6 +320,7 @@ public:
         {
             float eshift = rack::math::rescale(m_distpar0,-1.0f,1.0f,-5.0,5.0f);
             float espread = rack::math::rescale(m_distpar1,0.0f,1.0f,0.0f,3.0f);
+            z = clamp(z,0.000001f,1.0f);
             return eshift+espread*std::log(std::tan((M_PI*z)/2.0f));
         }
             
