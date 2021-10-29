@@ -536,6 +536,7 @@ public:
         IN_D_PAR1_CV,
         IN_LIMMIN_CV,
         IN_LIMMAX_CV,
+        IN_TRIGGER,
         IN_LAST
     };
     enum OUTPUTS
@@ -602,13 +603,35 @@ public:
         }
         if (m_reset_trig.process(inputs[IN_RESET].getVoltage()))
             m_eng.reset();
+        m_tempo_phase+=args.sampleTime;
+        if (m_tempo_trig.process(inputs[IN_TRIGGER].getVoltage()))
+        {
+            double tdiff = m_tempo_phase-m_last_tempo_trig_time;
+            double tempo_est  = 60.0/tdiff;
+            m_tempo_estimate_accum += tempo_est;
+            m_last_tempo_trig_time = m_tempo_phase;
+            //m_tempo_phase = 0.0;
+            ++m_tempo_est_cnt;
+            m_tempo_estimate = m_tempo_estimate_accum/m_tempo_est_cnt;
+            m_tempo_estimate = tempo_est;
+            if (m_tempo_est_cnt==65536)
+            {
+                m_tempo_est_cnt = 0;
+                m_tempo_estimate_accum = m_tempo_estimate;
+            }
+        }
         outputs[OUT_MAIN].setVoltage(m_eng.getNext(args.sampleTime),0);
     }
     RandomEngine m_eng;
-    dsp::SchmittTrigger m_reset_trig;
-    dsp::ClockDivider m_updatediv;
+    double m_tempo_estimate = 60.0;
 private:
-
+    dsp::SchmittTrigger m_reset_trig;
+    dsp::SchmittTrigger m_tempo_trig;
+    dsp::ClockDivider m_updatediv;
+    double m_last_tempo_trig_time = 0.0;
+    double m_tempo_phase = 0.0;
+    double m_tempo_estimate_accum = 0.0f;
+    int m_tempo_est_cnt = 0;
 };
 
 class XRandomModuleWidget : public ModuleWidget
@@ -621,7 +644,7 @@ public:
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "X-RANDOM",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         auto port = new PortWithBackGround(m,this, XRandomModule::OUT_MAIN ,1,30,"OUT",true);
         new PortWithBackGround(m,this, XRandomModule::IN_RESET ,62,30,"RESET",false);
-        
+        new PortWithBackGround(m,this, XRandomModule::IN_TRIGGER ,31,30,"TRIG",false);
         if (m)
         {
             std::map<int,int> cvins;
@@ -670,7 +693,7 @@ public:
             auto thetext = entrname+" -> "+distname;
             if (m->params[XRandomModule::PAR_PROCMODE].getValue()>0.5)
                 thetext+=" (Random walk)";
-            thetext += " "+std::to_string(m->m_eng.getQuantizeStep());
+            thetext += " "+std::to_string(m->m_tempo_estimate);
             nvgFontSize(args.vg, 18);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
