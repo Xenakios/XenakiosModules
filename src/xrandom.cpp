@@ -401,18 +401,34 @@ public:
         }
         
         float out = 0.0f;
-        if (m_smoothingMode == E_LINEAR)
+        auto smoothf = [&]()
+        {
+            if (m_smoothingMode == E_LINEAR)
             out = ramp_adjustable(m_phase,quanstart,quanend,m_smoothpar0);
-        else if (m_smoothingMode == E_BOUNCE)
-            out = rescale(easing_bounce(m_phase),0.0f,1.0f,quanstart,quanend);
-        else if (m_smoothingMode == E_OUT_ELASTIC)
-            out = rescale(easing_out_elastic(m_phase,m_smoothpar0),0.0f,1.0f,quanstart,quanend);
-
-        if (m_clipType == 0)
+            else if (m_smoothingMode == E_BOUNCE)
+                out = rescale(easing_bounce(m_phase),0.0f,1.0f,quanstart,quanend);
+            else if (m_smoothingMode == E_OUT_ELASTIC)
+                out = rescale(easing_out_elastic(m_phase,m_smoothpar0),0.0f,1.0f,quanstart,quanend);
+        };
+        auto clipfn = [&]()
+        {
+            if (m_clipType == 0)
             out = rack::math::clamp(out,m_min_val,m_max_val);
-        else if (m_clipType == 1)
-            out = reflect_value_safe(m_min_val,out,m_max_val);
-        else out = wrap_value_safe(m_min_val,out,m_max_val);
+            else if (m_clipType == 1)
+                out = reflect_value_safe(m_min_val,out,m_max_val);
+            else out = wrap_value_safe(m_min_val,out,m_max_val);
+        };
+        int clipsmooth_order = 0;
+        if (clipsmooth_order == 0)
+        {
+            smoothf();
+            clipfn();
+        } else
+        {
+            clipfn();
+            smoothf();
+        }
+        
         m_rand_walk = out;
         return out;
     }
