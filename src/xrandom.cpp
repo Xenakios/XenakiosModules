@@ -404,9 +404,9 @@ public:
         if (m_smoothingMode == E_LINEAR)
             out = ramp_adjustable(m_phase,quanstart,quanend,m_smoothpar0);
         else if (m_smoothingMode == E_BOUNCE)
-            out = rescale(easing_bounce(m_phase),0.0f,1.0f,m_start_val,m_end_val);
+            out = rescale(easing_bounce(m_phase),0.0f,1.0f,quanstart,quanend);
         else if (m_smoothingMode == E_OUT_ELASTIC)
-            out = rescale(easing_out_elastic(m_phase,m_smoothpar0),0.0f,1.0f,m_start_val,m_end_val);
+            out = rescale(easing_out_elastic(m_phase,m_smoothpar0),0.0f,1.0f,quanstart,quanend);
 
         if (m_clipType == 0)
             out = rack::math::clamp(out,m_min_val,m_max_val);
