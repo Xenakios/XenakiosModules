@@ -432,10 +432,15 @@ public:
     }
     void setQuantizeSteps(float s)
     {
-        s = std::pow(s,3.0f);
-        float steps = std::pow(2.0f,rescale(s,0.0f,1.0f,17.0f,1.0f));
-        //float steps = rescale(s,0.0f,1.0f,65536.0f,1.0f);
-        m_quantSteps = steps;
+        if (s<0.05)
+            m_quantSteps = 16777216;
+        else if (s>=0.05)
+        {
+            s = rescale(s,0.05f,1.0f,0.0f,1.0f);
+            s = 1.0f-std::pow(1.0f-s,2.0f);
+            m_quantSteps = rescale(s,0.0f,1.0f,64.0f,2.0f);
+        }
+        
     }
     float getQuantizeStep() { return m_quantSteps; }
     void reset()
