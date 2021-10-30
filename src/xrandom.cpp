@@ -41,14 +41,17 @@ private:
 class LogisticChaos final : public EntropySource 
 {
 public:
-    LogisticChaos(float r) : m_r(r) 
+    LogisticChaos() 
     {
-        m_name = rack::string::f("Chaos %.4f",r);
+        
     }
-    std::string getName() override { return m_name; }
+    std::string getName() override 
+    { 
+        return rack::string::f("Chaos %.4f",m_r);
+    }
     void setSeed(float s, bool force) override
     {
-        m_x0 = s;
+        m_r = rescale(s,0.0f,1.0f,3.6f,3.99999f);
     }
     void generate(float* dest, int sz) override
     {
@@ -61,8 +64,9 @@ public:
     }
     
 private:
-    double m_x0 = 0.4f;
+    double m_x0 = 0.497f;
     double m_r = 3.9f;
+    double m_init_val = m_x0;
     std::string m_name;
 };
 
@@ -173,9 +177,8 @@ public:
         m_entsources.emplace_back(new LehmerRandom(17,89));
         m_entsources.emplace_back(new LehmerRandom(41,401));
         m_entsources.emplace_back(new LehmerRandom(16807,2147483647));
-        m_entsources.emplace_back(new LogisticChaos(3.8));
-        m_entsources.emplace_back(new LogisticChaos(3.91));
-        m_entsources.emplace_back(new LogisticChaos(3.9997));
+        m_entsources.emplace_back(new LogisticChaos);
+        
         for (int i=0;i<m_entbuf.size();++i)
             m_entbuf[i] = 0.0f;
         for (int i=0;i<m_histogram.size();++i)
