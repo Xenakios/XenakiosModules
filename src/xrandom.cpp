@@ -206,6 +206,7 @@ public:
     }
     void setSeed(float s, bool force=false)
     {
+        s = clamp(s,0.0f,1.0f);
         bool doit = false;
         if (s != m_seed && force==false)
             doit = true;
@@ -541,6 +542,7 @@ public:
         IN_LIMMIN_CV,
         IN_LIMMAX_CV,
         IN_TRIGGER,
+        IN_SEED,
         IN_LAST
     };
     enum OUTPUTS
@@ -603,6 +605,8 @@ public:
             int smoothingmode = params[PAR_SMOOTHINGMODE].getValue();
             m_eng.setSmoothingMode(smoothingmode);
             float eseed = params[PAR_ENTROPY_SEED].getValue();
+            if (esource!=0) // Mersenne Twister is very expensive to initialize, might be a good idea to prevent CV control...
+                eseed += inputs[IN_SEED].getVoltage()*0.1f;
             m_eng.setSeed(eseed);
         }
         if (m_reset_trig.process(inputs[IN_RESET].getVoltage()))
@@ -651,12 +655,13 @@ public:
         new PortWithBackGround(m,this, XRandomModule::IN_TRIGGER ,31,30,"TRIG",false);
         if (m)
         {
-            std::map<int,int> cvins;
-            cvins[XRandomModule::PAR_RATE] = XRandomModule::IN_RATE_CV;
-            cvins[XRandomModule::PAR_DIST_PAR0] = XRandomModule::IN_D_PAR0_CV;
-            cvins[XRandomModule::PAR_DIST_PAR1] = XRandomModule::IN_D_PAR1_CV;
-            cvins[XRandomModule::PAR_LIMIT_MIN] = XRandomModule::IN_LIMMIN_CV;
-            cvins[XRandomModule::PAR_LIMIT_MAX] = XRandomModule::IN_LIMMAX_CV;
+            std::map<int,std::pair<int,int>> cvins;
+            cvins[XRandomModule::PAR_RATE] = {XRandomModule::IN_RATE_CV,-1};
+            cvins[XRandomModule::PAR_DIST_PAR0] = {XRandomModule::IN_D_PAR0_CV,-1};
+            cvins[XRandomModule::PAR_DIST_PAR1] = {XRandomModule::IN_D_PAR1_CV,-1};
+            cvins[XRandomModule::PAR_LIMIT_MIN] = {XRandomModule::IN_LIMMIN_CV,-1};
+            cvins[XRandomModule::PAR_LIMIT_MAX] = {XRandomModule::IN_LIMMAX_CV,-1};
+            cvins[XRandomModule::PAR_ENTROPY_SEED] = {XRandomModule::IN_SEED,-1};
             std::set<int> snappars{XRandomModule::PAR_ENTROPY_SOURCE,
                 XRandomModule::PAR_DIST_TYPE,
                 XRandomModule::PAR_LIMIT_TYPE,
@@ -673,9 +678,14 @@ public:
                 if (snappars.count(i))
                     snap = true;
                 int cv = -1;
+                int attnpar = -1;
                 if (cvins.count(i))
-                    cv = cvins[i];
-                addChild(new KnobInAttnWidget(this,name,i,cv,-1,xcor,ycor,snap));
+                {
+                    cv = cvins[i].first;
+                    attnpar = cvins[i].second;
+                }
+                    
+                addChild(new KnobInAttnWidget(this,name,i,cv,attnpar,xcor,ycor,snap));
             }
         }
     }
