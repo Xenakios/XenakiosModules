@@ -169,6 +169,7 @@ public:
     RandomEngine()
     {
         m_entsources.emplace_back(new MersenneTwister);
+        m_entsources.emplace_back(new LehmerRandom(41,34));
         m_entsources.emplace_back(new LehmerRandom(17,89));
         m_entsources.emplace_back(new LehmerRandom(41,401));
         m_entsources.emplace_back(new LehmerRandom(16807,2147483647));
@@ -690,7 +691,7 @@ public:
         {
             auto entrname = m->m_eng.getEntropySourceName(-1);
             auto distname = m->m_eng.getDistributionName(-1);
-            auto thetext = entrname+" -> "+distname;
+            auto thetext = "["+entrname+"] -> ["+distname+"]";
             if (m->params[XRandomModule::PAR_PROCMODE].getValue()>0.5)
                 thetext+=" (Random walk)";
             thetext += " "+std::to_string(m->m_tempo_estimate);
