@@ -531,6 +531,7 @@ public:
         PAR_QUANTIZESTEPS,
         PAR_PROCMODE,
         PAR_SMOOTHINGMODE,
+        PAR_ATTN_RATE,
         PAR_LAST
     };
     enum INPUTS
@@ -567,6 +568,7 @@ public:
         configParam(PAR_QUANTIZESTEPS,0.0f,1.0f,0.0f,"Quantize steps");
         configParam(PAR_PROCMODE,0.0f,1.0f,0.0f,"Processing mode");
         configParam(PAR_SMOOTHINGMODE,0.0f,RandomEngine::E_LAST-1,0.0f,"Smoothing mode");
+        configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Rate attenuverter");
         m_updatediv.setDivision(8);
         
     }
@@ -575,7 +577,7 @@ public:
         if (m_updatediv.process())
         {
             float pitch = params[PAR_RATE].getValue();
-            pitch += inputs[IN_RATE_CV].getVoltage();
+            pitch += inputs[IN_RATE_CV].getVoltage()*params[PAR_ATTN_RATE].getValue();
             pitch = clamp(pitch,-8.0f,12.0f);
             pitch *= 12.0f;
             float rate = std::pow(2.0f,1.0f/12*pitch);
@@ -656,7 +658,7 @@ public:
         if (m)
         {
             std::map<int,std::pair<int,int>> cvins;
-            cvins[XRandomModule::PAR_RATE] = {XRandomModule::IN_RATE_CV,-1};
+            cvins[XRandomModule::PAR_RATE] = {XRandomModule::IN_RATE_CV,XRandomModule::PAR_ATTN_RATE};
             cvins[XRandomModule::PAR_DIST_PAR0] = {XRandomModule::IN_D_PAR0_CV,-1};
             cvins[XRandomModule::PAR_DIST_PAR1] = {XRandomModule::IN_D_PAR1_CV,-1};
             cvins[XRandomModule::PAR_LIMIT_MIN] = {XRandomModule::IN_LIMMIN_CV,-1};
@@ -667,6 +669,7 @@ public:
                 XRandomModule::PAR_LIMIT_TYPE,
                 XRandomModule::PAR_PROCMODE,
                 XRandomModule::PAR_SMOOTHINGMODE};
+            std::set<int> attnpars{XRandomModule::PAR_ATTN_RATE};
             for (int i=0;i<m->paramQuantities.size();++i)
             {
                 int xpos = i % 4;
@@ -684,8 +687,8 @@ public:
                     cv = cvins[i].first;
                     attnpar = cvins[i].second;
                 }
-                    
-                addChild(new KnobInAttnWidget(this,name,i,cv,attnpar,xcor,ycor,snap));
+                if (attnpars.count(i)==0)
+                    addChild(new KnobInAttnWidget(this,name,i,cv,attnpar,xcor,ycor,snap));
             }
         }
     }
