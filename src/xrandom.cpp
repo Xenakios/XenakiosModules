@@ -299,7 +299,11 @@ public:
     {
         float z = getNextEntropy();
         if (m_distType == D_UNIFORM) // uniform
-            return rack::math::rescale(z,0.0f,1.0f,-5.0f,5.0f);
+        {
+            float eshift = rack::math::rescale(m_distpar0,-1.0f,1.0f,-5.0,5.0f);
+            float espread = rack::math::rescale(m_distpar1,0.0f,1.0f,0.0,5.0f);
+            return rack::math::rescale(z, 0.0f, 1.0f, eshift-espread, eshift+espread);
+        }
         else if (m_distType == D_GAUSS) // Gauss
         {
             float nmean = rack::math::rescale(m_distpar0,-1.0f,1.0f,-5.0f,5.0f);
