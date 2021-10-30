@@ -409,7 +409,7 @@ public:
         auto smoothf = [&]()
         {
             if (m_smoothingMode == E_LINEAR)
-            out = ramp_adjustable(m_phase,quanstart,quanend,m_smoothpar0);
+                out = ramp_adjustable(m_phase,quanstart,quanend,m_smoothpar0);
             else if (m_smoothingMode == E_BOUNCE)
                 out = rescale(easing_bounce(m_phase),0.0f,1.0f,quanstart,quanend);
             else if (m_smoothingMode == E_OUT_ELASTIC)
@@ -644,51 +644,71 @@ private:
     int m_tempo_est_cnt = 0;
 };
 
+struct ParamEntry
+{
+    ParamEntry() {}
+    ParamEntry(int pin, std::string n, int x, int y, int cvi=-1, int apar=-1, bool sn=false) :
+        parIndex(pin), xCor(x), yCor(y), cvInput(cvi), attnPar(apar), snap(sn)
+    {
+
+    }
+    int parIndex = -1;
+    std::string name;
+    int xCor = 0;
+    int yCor = 0;
+    int cvInput = -1;
+    int attnPar = -1;
+    bool snap = false;
+};
+
 class XRandomModuleWidget : public ModuleWidget
 {
 public:
     XRandomModuleWidget(XRandomModule *m)
     {
+        using XR = XRandomModule;
         setModule(m);
         box.size.x = RACK_GRID_WIDTH * 24;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "X-RANDOM",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
-        auto port = new PortWithBackGround(m,this, XRandomModule::OUT_MAIN ,1,30,"OUT",true);
-        new PortWithBackGround(m,this, XRandomModule::IN_RESET ,62,30,"RESET",false);
-        new PortWithBackGround(m,this, XRandomModule::IN_TRIGGER ,31,30,"TRIG",false);
+        auto port = new PortWithBackGround(m,this, XR::OUT_MAIN ,1,30,"OUT",true);
+        new PortWithBackGround(m,this, XR::IN_RESET ,62,30,"RESET",false);
+        new PortWithBackGround(m,this, XR::IN_TRIGGER ,31,30,"TRIG",false);
         if (m)
         {
-            std::map<int,std::pair<int,int>> cvins;
-            cvins[XRandomModule::PAR_RATE] = {XRandomModule::IN_RATE_CV,XRandomModule::PAR_ATTN_RATE};
-            cvins[XRandomModule::PAR_DIST_PAR0] = {XRandomModule::IN_D_PAR0_CV,-1};
-            cvins[XRandomModule::PAR_DIST_PAR1] = {XRandomModule::IN_D_PAR1_CV,-1};
-            cvins[XRandomModule::PAR_LIMIT_MIN] = {XRandomModule::IN_LIMMIN_CV,-1};
-            cvins[XRandomModule::PAR_LIMIT_MAX] = {XRandomModule::IN_LIMMAX_CV,-1};
-            cvins[XRandomModule::PAR_ENTROPY_SEED] = {XRandomModule::IN_SEED,-1};
-            std::set<int> snappars{XRandomModule::PAR_ENTROPY_SOURCE,
-                XRandomModule::PAR_DIST_TYPE,
-                XRandomModule::PAR_LIMIT_TYPE,
-                XRandomModule::PAR_PROCMODE,
-                XRandomModule::PAR_SMOOTHINGMODE};
-            std::set<int> attnpars{XRandomModule::PAR_ATTN_RATE};
-            for (int i=0;i<m->paramQuantities.size();++i)
+            
+            std::vector<ParamEntry> pars;
+            pars.emplace_back(XR::PAR_RATE,"Frequency",0,0,XR::IN_RATE_CV,XR::PAR_ATTN_RATE);
+            pars.emplace_back(XR::PAR_ENTROPY_SOURCE,"Entropy source",1,0,-1,-1,true);
+            pars.emplace_back(XR::PAR_ENTROPY_SEED,"Entropy seed",2,0,XR::IN_SEED);
+            pars.emplace_back(XR::PAR_DIST_TYPE,"Distribution",0,1,-1,-1,true);
+            pars.emplace_back(XR::PAR_DIST_PAR0,"Dist par 1",1,1,XR::IN_D_PAR0_CV);
+            pars.emplace_back(XR::PAR_DIST_PAR1,"Dist par 2",2,1,XR::IN_D_PAR1_CV);
+
+            pars.emplace_back(XR::PAR_LIMIT_MIN,"Min limit",0,2,XR::IN_LIMMIN_CV);
+            pars.emplace_back(XR::PAR_LIMIT_MAX,"Max limit",1,2,XR::IN_LIMMAX_CV);
+            pars.emplace_back(XR::PAR_LIMIT_TYPE,"Limit mode",2,2,-1,-1,true);
+            pars.emplace_back(XR::PAR_PROCMODE,"Processing mode",3,2,-1,-1,true);
+            
+            pars.emplace_back(XR::PAR_SMOOTHINGMODE,"Smoothing mode",0,3,-1,-1,true);
+            pars.emplace_back(XR::PAR_SMOOTH_PAR0,"Smoothing par 1",1,3);
+            pars.emplace_back(XR::PAR_SMOOTH_PAR1,"Smoothing par 2",2,3);
+
+            pars.emplace_back(XR::PAR_QUANTIZESTEPS,"Quantize",3,3);
+
+            for (int i=0;i<pars.size();++i)
             {
-                int xpos = i % 4;
-                int ypos = i / 4;
+                const auto& par = pars[i];
+                int xpos = par.xCor;
+                int ypos = par.yCor;
                 float xcor = 5.0f+84.0f*xpos;
                 float ycor = 75.0f+48.0f*ypos;
-                auto name = m->paramQuantities[i]->label;
-                bool snap = false;
-                if (snappars.count(i))
-                    snap = true;
-                int cv = -1;
-                int attnpar = -1;
-                if (cvins.count(i))
-                {
-                    cv = cvins[i].first;
-                    attnpar = cvins[i].second;
-                }
-                if (attnpars.count(i)==0)
-                    addChild(new KnobInAttnWidget(this,name,i,cv,attnpar,xcor,ycor,snap));
+                auto name = m->paramQuantities[par.parIndex]->label;
+                if (par.name.empty()==false)
+                    name = par.name;
+                bool snap = par.snap;
+                int cv = par.cvInput;
+                int attnpar = par.attnPar;
+                addChild(new KnobInAttnWidget(this,name,par.parIndex,cv,attnpar,xcor,ycor,snap));
             }
         }
     }
