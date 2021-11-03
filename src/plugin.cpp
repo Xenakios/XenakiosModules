@@ -1,8 +1,8 @@
 #include "plugin.hpp"
-#include "weightedrandom.h"
-#include "keyframer.h"
+#include "old/weightedrandom.h"
+#include "old/keyframer.h"
 #include "xenutils.h"
-#include "audiostretcher.h"
+#include "old/audiostretcher.h"
 #include <array>
 
 Plugin *pluginInstance;
