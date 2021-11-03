@@ -1,4 +1,4 @@
-#include "plugin.hpp"
+#include "../plugin.hpp"
 
 extern std::shared_ptr<Font> g_font;
 

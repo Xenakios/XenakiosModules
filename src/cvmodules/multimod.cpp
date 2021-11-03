@@ -1,6 +1,6 @@
-#include "plugin.hpp"
-#include "helperwidgets.h"
-#include "modulationshaper.h"
+#include "../plugin.hpp"
+#include "../helperwidgets.h"
+#include "../modulationshaper.h"
 
 
 ModulationShaper g_shaper;

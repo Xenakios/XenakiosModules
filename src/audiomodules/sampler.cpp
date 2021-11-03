@@ -1,6 +1,6 @@
-#include "plugin.hpp"
-#include "wdl/resample.h"
-#include "helperwidgets.h"
+#include "../plugin.hpp"
+#include "../wdl/resample.h"
+#include "../helperwidgets.h"
 
 class SamplerVoice
 {

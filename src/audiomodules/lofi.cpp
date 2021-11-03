@@ -1,5 +1,5 @@
-#include "plugin.hpp"
-#include "helperwidgets.h"
+#include "../plugin.hpp"
+#include "../helperwidgets.h"
 #include <random>
 
 inline float sign(float in)

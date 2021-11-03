@@ -1,6 +1,6 @@
-#include "plugin.hpp"
-#include "helperwidgets.h"
-#include "jcdp_envelope.h"
+#include "../plugin.hpp"
+#include "../helperwidgets.h"
+#include "../jcdp_envelope.h"
 #include <atomic>
 #include <mutex>
 

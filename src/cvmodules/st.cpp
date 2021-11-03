@@ -1,8 +1,8 @@
-#include "plugin.hpp"
+#include "../plugin.hpp"
 #include <random>
 #include <array>
-#include "jcdp_envelope.h"
-#include "helperwidgets.h"
+#include "../jcdp_envelope.h"
+#include "../helperwidgets.h"
 
 extern std::shared_ptr<Font> g_font;
 

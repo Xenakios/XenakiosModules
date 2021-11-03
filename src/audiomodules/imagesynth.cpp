@@ -6,11 +6,11 @@
 #include <functional>
 #include <thread> 
 #include <mutex>
-#include "wtosc.h"
-#include "wdl/resample.h"
+#include "../wtosc.h"
+#include "../wdl/resample.h"
 #include <chrono>
 
-#include "grain_engine/grain_engine.h"
+#include "../grain_engine/grain_engine.h"
 
 extern std::shared_ptr<Font> g_font;
 

@@ -1,5 +1,5 @@
 #include "gendyn.h"
-#include "helperwidgets.h"
+#include "../helperwidgets.h"
 
 extern std::shared_ptr<Font> g_font;
 

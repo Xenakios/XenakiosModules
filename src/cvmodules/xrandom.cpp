@@ -1,7 +1,7 @@
-#include "plugin.hpp"
+#include "../plugin.hpp"
 #include <random>
 #include <array>
-#include "helperwidgets.h"
+#include "../helperwidgets.h"
 #include <set>
 
 class EntropySource
