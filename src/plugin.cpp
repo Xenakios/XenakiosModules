@@ -1,6 +1,5 @@
 #include "plugin.hpp"
 #include "old/weightedrandom.h"
-#include "old/keyframer.h"
 #include "old/xenutils.h"
 #include "old/audiostretcher.h"
 #include <array>
@@ -31,7 +30,7 @@ void init(Plugin *p) {
 	p->addModel(createModel<WeightedRandomModule,WeightedRandomWidget>("WeightedRandom"));
 	p->addModel(createModel<HistogramModule,HistogramModuleWidget>("Histogram"));
 	p->addModel(createModel<MatrixSwitchModule,MatrixSwitchWidget>("MatrixSwitcher"));
-	p->addModel(createModel<KeyFramerModule,KeyFramerWidget>("XKeyFramer"));
+	
 	p->addModel(modelRandomClock);
 	p->addModel(modelPolyClock);
 	p->addModel(createModel<ReducerModule,ReducerWidget>("Reduce"));

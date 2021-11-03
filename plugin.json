@@ -37,14 +37,6 @@
       ]
     },
     {
-      "slug": "XKeyFramer",
-      "name": "KeyFramer",
-      "description": "KeyFramer",
-      "tags": [
-        "Interpolation","Scenes"
-      ]
-    },
-    {
       "slug": "RandomClock",
       "name": "Random Clock",
       "description": "Random Clock",
