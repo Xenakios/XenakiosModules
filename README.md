@@ -12,21 +12,15 @@ instead of 2.
 Displays incoming signal as a histogram. Mostly useful for testing random/chaotic voltage sources but could also be used for things like 
 checking audio signals for DC offsets or other anomalies.
 
-## Matrix Switcher
-
-16 in, 16 out signal switcher.
-
-## KeyFramer
-
-Can store up to 32 snapshots of its 8 knob positions and recalls and interpolates between them.
-
 ## Random clock
 
 Produces 8 unquantized, randomly timed gate signals based on exponentially distributed time intervals.
 
 ## Poly clock
 
-Produces up to 8 gate signals based on dividing N sixteenth notes by M divisions.  
+Produces up to 8 gate signals based on dividing N sixteenth notes by M divisions. 
+What makes this a bit special is that the N and M can be decimal numbers, which allows
+for some highly unusual rhythms.
 
 ## Reduce
 
@@ -66,3 +60,15 @@ Although images like photographs could in principle be used directly, it's proba
 
 Future plans include a better granular engine and a spectral time/pitch changer as well as the ability to draw and manipulate images directly in the module. It might also be possible to make the image to sound synthesis work in real time, but with a very high CPU cost. 
 
+## ST
+
+Loosely based on Iannis Xenakis's ST(ochastic) program. Aims to be a complete solution to produce polyphonic random event sequences.
+
+## XRandom
+
+Random voltage generator.
+
+## ScaleOscillator
+
+Additive oscillator where the partials are tuned to a scale, somewhat in the vein of 4ms Ensemble
+Oscillator.
