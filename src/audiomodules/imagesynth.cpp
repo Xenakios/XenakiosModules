@@ -1521,7 +1521,11 @@ public:
     {
         m_ctx = args.vg;
         if (m_synth==nullptr)
+        {
+            ModuleWidget::draw(args);
             return;
+        }
+            
         nvgSave(args.vg);
         int imgw = 0; 
         int imgh = 0; 
