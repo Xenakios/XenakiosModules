@@ -1,6 +1,10 @@
 # XenakiosModules
 
-VCV Rack modules. To speed up development, minimal effort has been used on the GUIs. Work-in-progress : clone, build and use only at your own risk.
+VCV Rack modules. To speed up development, minimal effort has been used on the GUIs. 
+
+Work-in-progress : clone, build and use only at your own risk.
+
+First release with some of the modules enabled is planned for after Rack 2 has been publicly released.
 
 ## WeightedRandom
 
@@ -43,7 +47,9 @@ Sound mangler with input distortion, sample rate/bit depth reduction and glitch 
 
 The glitch generator has a gate output that is high when the glitch is active.
 
-The input has a "signal complexity" analyzer that outputs a unipolar voltage. This may be interesting for example to self patch into the module's drive and sample rate reduction CV inputs. The analysis is just a simple approximation done by making a spectrum analysis of the input and counting the number of peaks present in the spectrum.
+The following should really be a separate module...
+
+~~The input has a "signal complexity" analyzer that outputs a unipolar voltage. This may be interesting for example to self patch into the module's drive and sample rate reduction CV inputs. The analysis is just a simple approximation done by making a spectrum analysis of the input and counting the number of peaks present in the spectrum.~~
 
 
 ## Image Synth
