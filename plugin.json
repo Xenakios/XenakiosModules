@@ -29,14 +29,6 @@
       ]
     },
     {
-      "slug": "MatrixSwitcher",
-      "name": "Matrix Switcher",
-      "description": "16x16 switch",
-      "tags": [
-        "Matrix","Switcher","Router"
-      ]
-    },
-    {
       "slug": "RandomClock",
       "name": "Random Clock",
       "description": "Random Clock",
@@ -61,14 +53,6 @@
       ]
     },
     {
-      "slug": "DecahexCVTransformer",
-      "name": "DecahexCVTransformer",
-      "description": "Transforms up to 16 input voltages",
-      "tags": [
-        "Utility"
-      ]
-    },
-    {
       "slug": "GendynOsc",
       "name": "GendynOsc",
       "description": "Iannis Xenakis stochastic synthesis",
@@ -82,16 +66,6 @@
       "description": "Calculate 1st and 2nd derivate from input",
       "tags": [
         "Math"
-      ]
-    },
-    {
-      "slug": "XPolyRandom",
-      "disabled": true,
-      "name": "PolyRandom",
-      "description": "Polyphonic random based on VCV Fundamental Random",
-      "tags": [
-        "Random",
-        "Polyphonic"
       ]
     },
     {

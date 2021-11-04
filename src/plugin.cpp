@@ -29,21 +29,20 @@ void init(Plugin *p) {
 	//p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
 	p->addModel(createModel<WeightedRandomModule,WeightedRandomWidget>("WeightedRandom"));
 	p->addModel(createModel<HistogramModule,HistogramModuleWidget>("Histogram"));
-	p->addModel(createModel<MatrixSwitchModule,MatrixSwitchWidget>("MatrixSwitcher"));
+	
 	
 	p->addModel(modelRandomClock);
 	p->addModel(modelPolyClock);
 	p->addModel(createModel<ReducerModule,ReducerWidget>("Reduce"));
-	p->addModel(createModel<DecahexCVTransformer,DecahexCVTransformerWidget>("DecahexCVTransformer"));
+	
 	p->addModel(modelGendynOSC);
 	p->addModel(modelXRandom);
-	p->addModel(createModel<DerivatorModule,DerivatorWidget>("Derivator"));
+	p->addModel(modelXDerivator);
 #ifdef RBMODULE
 	p->addModel(createModel<AudioStretchModule,AudioStretchWidget>("XAudioStretch"));
 #endif
 	p->addModel(modelXQuantizer);
 	p->addModel(modelXPSynth);
-	//p->addModel(modelRandom);
 	p->addModel(modelInharmonics);
 	p->addModel(modelXStochastic);
 	p->addModel(modelXImageSynth);

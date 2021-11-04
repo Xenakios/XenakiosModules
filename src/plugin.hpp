@@ -387,7 +387,6 @@ private:
 extern Model* modelGendynOSC;
 extern Model* modelPolyClock;
 extern Model* modelRandomClock;
-extern Model *modelRandom;
 extern Model *modelXQuantizer;
 extern Model* modelXPSynth;
 extern Model* modelInharmonics;
@@ -401,3 +400,4 @@ extern Model* modelXCVShaper;
 extern Model* modelXSampler;
 extern Model* modelXScaleOscillator;
 extern Model* modelXRandom;
+extern Model* modelXDerivator;
