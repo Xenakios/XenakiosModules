@@ -698,7 +698,7 @@ public:
     XScaleOsc()
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
-        configParam(PAR_BALANCE,0.0f,1.0f,0.0f,"Balance");
+        configParam(PAR_BALANCE,0.0f,1.0f,0.4f,"Balance");
         configParam(PAR_ROOT,-36.0f,36.0f,0.0f,"Root");
         configParam(PAR_PITCH_OFFS,-36.0f,36.0f,0.0f,"Pitch offset");
         configParam(PAR_DETUNE,0.0f,1.0f,0.0f,"Detune");
