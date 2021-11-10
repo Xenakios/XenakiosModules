@@ -4,8 +4,6 @@
 #include <array>
 #include "../jcdp_envelope.h"
 
-int g_balance_stages = 7;
-
 inline simd::float_4 fmodex(simd::float_4 x)
 {
     x = simd::fmod(x,1.0f);
@@ -397,10 +395,6 @@ public:
             m_osc_freqs[i*2+1] = f1;
             
         }
-        float indfloat = m_balance*(g_balance_stages-1);
-        int index0 = std::floor(indfloat);
-        int index1 = index0+1;
-        float frac = indfloat-std::floor(indfloat);
         float xs0 = 0.0f;
         float xs1 = 1.0f;
         float ys0 = 1.0f;
