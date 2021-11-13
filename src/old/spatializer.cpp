@@ -162,8 +162,6 @@ public:
 	}
 };
 
-std::shared_ptr<Font> g_font;
-
 class SpatWidget : public TransparentWidget
 {
 public:
@@ -196,7 +194,7 @@ public:
 			nvgFill(args.vg);
 			
 			nvgFontSize(args.vg, 13);
-			nvgFontFaceId(args.vg, g_font->handle);
+			nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
 			nvgTextLetterSpacing(args.vg, -2);
 			nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
 			char buf[10];
@@ -216,8 +214,6 @@ public:
 	
 	MyModuleWidget(MyModule* module)
 	{
-		if (!g_font)
-			g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
 		setModule(module);
 		box.size.x = 500;
 		m_spatWidget = new SpatWidget(module);
@@ -253,10 +249,10 @@ public:
 		nvgFill(args.vg);
 		
 		auto mod = dynamic_cast<MyModule*>(this->module);
-		if (mod && g_font)
+		if (mod)
 		{
 			nvgFontSize(args.vg, 13);
-			nvgFontFaceId(args.vg, g_font->handle);
+			nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
 			nvgTextLetterSpacing(args.vg, -2);
 			nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
 			char buf[200];

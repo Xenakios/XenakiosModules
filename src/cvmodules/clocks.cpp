@@ -1,7 +1,5 @@
 #include "clocks.h"
 
-extern std::shared_ptr<Font> g_font;
-
 class RandomClockModule : public rack::Module
 {
 public:
@@ -82,8 +80,6 @@ void RandomClockModule::process(const ProcessArgs& args)
 
 RandomClockWidget::RandomClockWidget(RandomClockModule* m)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
     box.size.x = 130;
     m_mod = m;
@@ -110,7 +106,7 @@ void RandomClockWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Random clock", NULL);
@@ -219,8 +215,6 @@ public:
 
 DividerClockWidget::DividerClockWidget(DivisionClockModule* m)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
     box.size.x = RACK_GRID_WIDTH * 25;
     for (int i=0;i<8;++i)
@@ -259,7 +253,7 @@ void DividerClockWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Divider clock", NULL);

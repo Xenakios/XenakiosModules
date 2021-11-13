@@ -1,7 +1,9 @@
-#include "gendyn.h"
+#include <rack.hpp>
+#include "../plugin.hpp"
+#include <functional>
+#include <atomic>
+#include <random>
 #include "../helperwidgets.h"
-
-extern std::shared_ptr<Font> g_font;
 
 inline double custom_log(double value, double base)
 {
@@ -466,8 +468,6 @@ void GendynModule::process(const ProcessArgs& args)
 
 GendynWidget::GendynWidget(GendynModule* m)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
     box.size.x = RACK_GRID_WIDTH*23;
     auto port = new PortWithBackGround(m,this,GendynModule::OUT_AUDIO,1,30,"AUDIO OUT",true);
@@ -506,7 +506,7 @@ void GendynWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "GenDyn", NULL);

@@ -196,8 +196,6 @@ private:
     PermutationOscillator osc;
 };
 
-extern std::shared_ptr<Font> g_font;
-
 class XPSynthWidget : public ModuleWidget
 {
 public:
@@ -205,8 +203,6 @@ public:
     {
         setModule(m);
         box.size.x = 100;
-        if (!g_font)
-            g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         addOutput(createOutputCentered<PJ301MPort>(Vec(35, 30), m, 0));
         addInput(createInputCentered<PJ301MPort>(Vec(45, 60), m, 0));
         
@@ -232,7 +228,7 @@ public:
         nvgFill(args.vg);
 
         nvgFontSize(args.vg, 15);
-        nvgFontFaceId(args.vg, g_font->handle);
+        nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
         

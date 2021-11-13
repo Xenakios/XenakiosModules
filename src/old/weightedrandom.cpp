@@ -67,12 +67,8 @@ void WeightedRandomModule::process(const ProcessArgs& args)
     outputs[WR_NUM_OUTPUTS].setVoltage(m_cur_discrete_output);
 }
 
-extern std::shared_ptr<Font> g_font;
-
 WeightedRandomWidget::WeightedRandomWidget(WeightedRandomModule* mod)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(mod);
     box.size.x = 130;
     
@@ -98,7 +94,7 @@ void WeightedRandomWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Octauilli Gate", NULL);
@@ -170,8 +166,6 @@ void HistogramWidget::draw(const DrawArgs &args)
 
 HistogramModuleWidget::HistogramModuleWidget(HistogramModule* mod_)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     box.size.x = 500;
     setModule(mod_);
     addInput(createInput<PJ301MPort>(Vec(5, 20), module, 0));
@@ -195,7 +189,7 @@ void HistogramModuleWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Histogram", NULL);
@@ -351,8 +345,6 @@ void MatrixSwitchModule::setConnected(int x, int y, bool c)
 
 MatrixSwitchWidget::MatrixSwitchWidget(MatrixSwitchModule* module_)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(module_);
     box.size.x = 500;
     for (int i=0;i<18;++i)
@@ -387,7 +379,7 @@ void MatrixSwitchWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Matrix switch", NULL);
@@ -497,8 +489,6 @@ void ReducerModule::process(const ProcessArgs& args)
 
 ReducerWidget::ReducerWidget(ReducerModule* m)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
     box.size.x = 120;
     m_mod = m;
@@ -523,7 +513,7 @@ void ReducerWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Reducer", NULL);

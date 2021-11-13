@@ -4,8 +4,6 @@
 #include "../jcdp_envelope.h"
 #include "../helperwidgets.h"
 
-extern std::shared_ptr<Font> g_font;
-
 inline int randomDiscrete(std::mt19937& rng,std::vector<float>& whs)
 {
     std::uniform_real_distribution<float> dist(0.0f,1.0f);
@@ -686,8 +684,6 @@ public:
         setModule(m);
         box.size.x = RACK_GRID_WIDTH*28;
         
-        if (!g_font)
-        	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         float xc = 1;
         float yc = 15;
         PortWithBackGround* port = nullptr;
@@ -830,7 +826,7 @@ public:
         nvgFill(args.vg);
 
         nvgFontSize(args.vg, 15);
-        nvgFontFaceId(args.vg, g_font->handle);
+        nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
         nvgText(args.vg, 3 , 10, "ST(ochastic)", NULL);

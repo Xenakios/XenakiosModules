@@ -6,9 +6,6 @@
 
 const int NUM_QUANTIZERS = 8;
 
-
-extern std::shared_ptr<Font> g_font;
-
 class Quantizer
 {
 public:
@@ -605,7 +602,7 @@ public:
 #define DEBUG_MESSAGES_QUANTIZER 1
 #if DEBUG_MESSAGES_QUANTIZER
         nvgFontSize(args.vg, 15);
-        nvgFontFaceId(args.vg, g_font->handle);
+        nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
         char buf[100];
@@ -622,8 +619,6 @@ public:
     bool dummy = false;
     XQuantWidget(XQuantModule* m)
     {
-        if (!g_font)
-        	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
         setModule(m);
         box.size.x = 500;
         for (int i=0;i<8;++i)
@@ -668,7 +663,7 @@ public:
         nvgFill(args.vg);
 
         nvgFontSize(args.vg, 15);
-        nvgFontFaceId(args.vg, g_font->handle);
+        nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
         char buf[100];
