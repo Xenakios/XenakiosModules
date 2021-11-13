@@ -7,7 +7,12 @@ class SamplerVoice
 public:
     SamplerVoice()
     {
+        
+    #ifdef __APPLE__
+        const char* fn = "/Users/teemu/AudioProjects/sourcesamples/sheila.wav";
+    #else
         const char* fn = "C:\\MusicAudio\\sourcesamples\\sheila.wav";
+    #endif
         pSampleData = drwav_open_file_and_read_pcm_frames_f32(
             fn,
             &m_channels,
