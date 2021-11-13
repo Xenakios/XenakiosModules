@@ -12,8 +12,6 @@
 
 #include "../grain_engine/grain_engine.h"
 
-extern std::shared_ptr<Font> g_font;
-
 struct PanMode
 {
     PanMode(const char* d, int nch, int uc) : desc(d), numoutchans(nch), usecolors(uc) {}
@@ -1414,9 +1412,6 @@ public:
         setModule(m);
         m_synth = m;
         box.size.x = 620.0f;
-        if (!g_font)
-        	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
-        
         if (m)
         {
             m_osc_design_widget = new OscDesignerWidget(m);
@@ -1626,7 +1621,7 @@ public:
             nvgFill(args.vg);
 
             nvgFontSize(args.vg, 15);
-            nvgFontFaceId(args.vg, g_font->handle);
+            nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             char buf[1000];

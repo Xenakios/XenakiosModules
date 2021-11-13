@@ -518,8 +518,6 @@ private:
     OnePoleFilter m_smoother;
 };
 
-extern std::shared_ptr<Font> g_font;
-
 struct LabelEntry
 {
     LabelEntry() {}

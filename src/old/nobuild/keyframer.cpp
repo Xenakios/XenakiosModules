@@ -1,7 +1,5 @@
 #include "keyframer.h"
 
-extern std::shared_ptr<Font> g_font;
-
 KeyFramerModule::KeyFramerModule()
 {
     config(10,1,8);
@@ -89,7 +87,7 @@ public:
             return;
         nvgSave(args.vg);
 		nvgFontSize(args.vg, 13);
-		nvgFontFaceId(args.vg, g_font->handle);
+		nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
 		nvgTextLetterSpacing(args.vg, -2);
 		//float w = box.size.x;
 		//float h = box.size.y;
@@ -172,8 +170,6 @@ public:
 
 KeyFramerWidget::KeyFramerWidget(KeyFramerModule* m)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
     box.size.x = 255;
     addInput(createInput<PJ301MPort>(Vec(70, 35), module, 0));
@@ -202,7 +198,7 @@ void KeyFramerWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "KeyFramer", NULL);

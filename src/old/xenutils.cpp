@@ -1,7 +1,5 @@
 #include "xenutils.h"
 
-extern std::shared_ptr<Font> g_font;
-
 class DerivatorModule : public rack::Module
 {
 public:
@@ -42,8 +40,6 @@ Model* modelXDerivator = createModel<DerivatorModule,DerivatorWidget>("Derivator
 
 DecahexCVTransformerWidget::DecahexCVTransformerWidget(DecahexCVTransformer* m)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
     box.size.x = 550;
     
@@ -74,7 +70,7 @@ void DecahexCVTransformerWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "DecahexCVTransformer", NULL);
@@ -95,8 +91,6 @@ void DecahexCVTransformerWidget::draw(const DrawArgs &args)
 
 DerivatorWidget::DerivatorWidget(DerivatorModule* m)
 {
-    if (!g_font)
-    	g_font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
     setModule(m);
     box.size.x = 60;
     addInput(createInput<PJ301MPort>(Vec(5,30), m, 0));
@@ -117,7 +111,7 @@ void DerivatorWidget::draw(const DrawArgs &args)
     nvgFill(args.vg);
 
     nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, g_font->handle);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
     nvgTextLetterSpacing(args.vg, -1);
     nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
     nvgText(args.vg, 3 , 10, "Derivator", NULL);
