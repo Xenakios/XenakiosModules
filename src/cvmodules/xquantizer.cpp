@@ -297,7 +297,7 @@ public:
         {
             Rect r(rescale(quant.getVoltage(i),-5.0f,5.0f,0.0,box.size.x)-2.0f,0,4.0f,
                 box.size.y);
-            if (r.contains({xcor,ycor}))
+            if (r.contains(Vec{xcor,ycor}))
             {
                 return i;
             }
@@ -306,7 +306,7 @@ public:
     }
     void onDragStart(const event::DragStart& e) override
     {
-        dragX = APP->scene->rack->mousePos.x;
+        dragX = APP->scene->rack->getMousePos().x;
     }
     void onDragEnd(const event::DragEnd &e) override
     {
@@ -329,7 +329,7 @@ public:
         if (draggedValue_==-1)
             return;
         auto& quant = qmod->quantizers[which_];
-        float newDragX = APP->scene->rack->mousePos.x;
+        float newDragX = APP->scene->rack->getMousePos().x;
         float newPos = initX+(newDragX-dragX);
         float val = rescale(newPos,0.0f,box.size.x,-5.0,5.0);
         if (quantizeDrag)

@@ -45,11 +45,11 @@ void init(Plugin *p) {
 	p->addModel(modelXPSynth);
 	p->addModel(modelInharmonics);
 	p->addModel(modelXStochastic);
-	p->addModel(modelXImageSynth);
+	//p->addModel(modelXImageSynth);
 	p->addModel(modelXLOFI);
 	p->addModel(modelXMultiMod);
 	p->addModel(modelXGranular);
-	p->addModel(modelXEnvelope);
+	//p->addModel(modelXEnvelope);
 	p->addModel(modelXCVShaper);
 	p->addModel(modelXSampler);
 	p->addModel(modelXScaleOscillator);

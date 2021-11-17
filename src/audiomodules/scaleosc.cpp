@@ -247,7 +247,7 @@ public:
     {
         double root_freq = dsp::FREQ_C4/16.0;
         std::string dir = asset::plugin(pluginInstance, "res/scale_oscillator_scales");
-        auto scalafiles = rack::system::getEntriesRecursive(dir,3);
+        auto scalafiles = rack::system::getEntries(dir,3);
         for (auto& e : scalafiles)
         {
             auto pitches = loadScala(e,true,0.0,128);
@@ -259,7 +259,7 @@ public:
                 scale.push_back(freq);
             }
             m_scale_bank.push_back(scale);
-            m_scalenames.push_back(rack::string::filename(e));
+            m_scalenames.push_back(rack::system::getFilename(e));
         }
     }
     ScaleOscillator()
@@ -333,7 +333,7 @@ public:
                 scale.push_back(freq);
             }
             m_scale_bank.push_back(scale);
-            m_scalenames.push_back(rack::string::filename(e));
+            m_scalenames.push_back(rack::system::getFilename(e));
         }
         double freq = root_freq;
         std::vector<float> scale;
@@ -900,7 +900,7 @@ public:
         XScaleOsc* m = dynamic_cast<XScaleOsc*>(module);
         if (m)
         {
-            auto scalename = rack::string::filename(m->m_osc.getScaleName());
+            auto scalename = rack::system::getFilename(m->m_osc.getScaleName());
             nvgFontSize(args.vg, 20);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);

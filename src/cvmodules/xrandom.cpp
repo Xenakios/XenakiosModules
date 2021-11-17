@@ -706,7 +706,7 @@ public:
                 int ypos = par.yCor;
                 float xcor = 5.0f+84.0f*xpos;
                 float ycor = 75.0f+48.0f*ypos;
-                auto name = m->paramQuantities[par.parIndex]->label;
+                auto name = m->paramQuantities[par.parIndex]->getLabel();
                 if (par.name.empty()==false)
                     name = par.name;
                 bool snap = par.snap;
