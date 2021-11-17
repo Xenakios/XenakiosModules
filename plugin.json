@@ -114,7 +114,7 @@
       ]
     },
     {
-      
+      "disabled": true,
       "slug": "XImageSynth",
       "name": "ImageSynth",
       "description": "Synthesises audio from images",
@@ -148,6 +148,7 @@
       ]
     },
     {
+      "disabled": true,
       "slug": "XEnvelope",
       "name": "Envelope",
       "description": "Envelope",
