@@ -23,14 +23,14 @@ int ZoomScrollWidget::findDragObject(float xcor,float ycor)
 {
     float x0 = rescale(m_range_start,0.0f,1.0f,0.0f,box.size.x);
     Rect leftEdgeBox(x0,0.0f,10.0f,box.size.y);
-    if (leftEdgeBox.contains({xcor,ycor}))
+    if (leftEdgeBox.contains(Vec{xcor,ycor}))
         return 1;
     float x1 = rescale(m_range_end,0.0f,1.0f,0.0f,box.size.x);
     Rect rightEdgeBox(x1-10.0f,0.0f,10.0f,box.size.y);
-    if (rightEdgeBox.contains({xcor,ycor}))
+    if (rightEdgeBox.contains(Vec{xcor,ycor}))
         return 2;
     Rect middleBox(x0+10.0f,0.0f,(x1-x0)-20.0f,box.size.y);
-    if (middleBox.contains({xcor,ycor}))
+    if (middleBox.contains(Vec{xcor,ycor}))
         return 3;
     return 0;
 }
@@ -62,14 +62,14 @@ void ZoomScrollWidget::onButton(const event::Button& e)
 
 void ZoomScrollWidget::onDragStart(const event::DragStart& e)
 {
-    dragX = APP->scene->rack->mousePos.x;
+    dragX = APP->scene->rack->getMousePos().x;
 }
 
 void ZoomScrollWidget::onDragMove(const event::DragMove& e)
 {
     if (dragObject == 0)
         return;
-    float newDragX = APP->scene->rack->mousePos.x;
+    float newDragX = APP->scene->rack->getMousePos().x;
     float newPosX = initX+(newDragX-dragX);
     float xp = rescale(newPosX,0.0f,box.size.x,0.0f,1.0f);
     xp = clamp(xp,0.0f,1.0f);

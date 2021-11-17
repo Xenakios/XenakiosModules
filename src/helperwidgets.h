@@ -10,12 +10,12 @@ public:
     {
         
     }
-    void randomize() override 
+    void randomize() // override 
     {
         if (GetRandomizedValue)
         {
             float v = GetRandomizedValue();
-            this->paramQuantity->setValue(v);
+            this->getParamQuantity()->setValue(v);
         } 
     }
     std::function<float(void)> GetRandomizedValue;
@@ -25,7 +25,7 @@ class MyTrimPot : public Trimpot
 {
 public:
     MyTrimPot() : Trimpot() {}
-    void randomize() override 
+    void randomize() // override 
     {
         
     }

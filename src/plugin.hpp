@@ -2,6 +2,7 @@
 #include <rack.hpp>
 
 using namespace rack;
+#include <iostream>
 #include <fstream>
 #include <functional>
 #include "grain_engine/dr_wav.h"
