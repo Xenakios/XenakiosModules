@@ -1,7 +1,7 @@
 {
   "slug": "Xenakios",
   "name": "Xenakios",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "license": "GPL-3.0-only",
   "brand": "Xenakios",
   "author": "Xenakios",
@@ -69,17 +69,6 @@
       ]
     },
     {
-      "disabled": true,
-      "slug": "XAudioStretch",
-      "name": "AudioStretcher",
-      "description": "Audio time stretching and pitch shifting",
-      "tags": [
-        "Time",
-        "Pitch",
-        "Polyphonic"
-      ]
-    },
-    {
       "slug": "XQuantizer",
       "name": "XQuantizer",
       "description": "Freely adjustable quantizer",
@@ -114,15 +103,6 @@
       ]
     },
     {
-      "disabled": true,
-      "slug": "XImageSynth",
-      "name": "ImageSynth",
-      "description": "Synthesises audio from images",
-      "tags": [
-        "Synth"
-      ]
-    },
-    {
       
       "slug": "XLOFI",
       "name": "LOFI",
@@ -145,15 +125,6 @@
       "description": "Granular sampler",
       "tags": [
         "Sampler","Granular"
-      ]
-    },
-    {
-      "disabled": true,
-      "slug": "XEnvelope",
-      "name": "Envelope",
-      "description": "Envelope",
-      "tags": [
-        "Envelope"
       ]
     },
     {
