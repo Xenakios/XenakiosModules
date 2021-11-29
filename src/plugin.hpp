@@ -402,3 +402,4 @@ extern Model* modelXSampler;
 extern Model* modelXScaleOscillator;
 extern Model* modelXRandom;
 extern Model* modelXDerivator;
+extern Model* modelWeightGate;

@@ -1,21 +1,56 @@
 #include "weightedrandom.h"
+#include <random>
+
+class WeightedRandomModule : public rack::Module
+{
+public:
+    enum INPUTS
+    {
+        IN_GATE,
+        ENUMS(IN_PROB, 8),
+        IN_LAST
+    };
+    enum OUTPUTS
+    {
+        ENUMS(OUT_GATE, 8),
+        OUT_CHOICE,
+        OUT_LAST
+    };
+    enum paramids
+	{
+		ENUMS(PAR_W, 8),
+        PAR_NUMSTEPS,
+        LASTPAR
+	};
+    WeightedRandomModule();
+    void process(const ProcessArgs& args) override;
+private:
+    dsp::SchmittTrigger m_trig;
+    bool m_outcomes[8];
+    float m_cur_discrete_output = 0.0f;
+    bool m_in_trig_high = false;
+    std::mt19937 m_rnd;
+    std::uniform_real_distribution<float> m_unidist{0.0f,1.0f};
+};
 
 WeightedRandomModule::WeightedRandomModule()
 {
-    config(LASTPAR, 9, 9, 0);
-	for (int i=0;i<WR_NUM_OUTPUTS;++i)
+    config(LASTPAR, IN_LAST, OUT_LAST, 0);
+	for (int i=0;i<8;++i)
     {
         m_outcomes[i]=false;
         float defval = 0.0f;
         if (i == 0)
             defval = 50.0f;
-        configParam(W_0+i, 0.0f, 100.0f, defval, "Weight "+std::to_string(i+1), "", 0, 1.0);
+        configParam(PAR_W+i, 0.0f, 100.0f, defval, "Weight "+std::to_string(i+1), "", 0, 1.0);
     }
+    configParam(PAR_NUMSTEPS, 1.0f, 8.0f, 8.0f, "Num steps");
 }
 
 void WeightedRandomModule::process(const ProcessArgs& args)
 {
-    float trigscaled = rescale(inputs[0].getVoltage(), 0.1f, 2.f, 0.f, 1.f);
+    int numsteps = params[PAR_NUMSTEPS].getValue();
+    float trigscaled = rescale(inputs[IN_GATE].getVoltage(), 0.1f, 2.f, 0.f, 1.f);
     if (m_trig.process(trigscaled))
     {
         // This maybe isn't the most efficient way to do this but since it's only run when
@@ -24,19 +59,25 @@ void WeightedRandomModule::process(const ProcessArgs& args)
         m_in_trig_high = true;
         float accum = 0.0f;
         float scaledvalues[8];
-        for (int i=0;i<WR_NUM_OUTPUTS;++i)
+        for (int i=0;i<8;++i)
         {
-            float sv = params[W_0+i].getValue()+rescale(inputs[i+1].getVoltage(),0.0,10.0f,0.0,100.0f);
+            scaledvalues[i] = 0.0f;
+            m_outcomes[i] = false;
+        }
+            
+        for (int i=0;i<numsteps;++i)
+        {
+            float sv = params[PAR_W+i].getValue()+rescale(inputs[IN_PROB+i].getVoltage(),0.0,10.0f,0.0,100.0f);
             sv = clamp(sv,0.0,100.0f);
-            accum+=sv;
-            scaledvalues[i]=sv;
+            accum += sv;
+            scaledvalues[i] = sv;
         }
         if (accum>0.0f) // skip updates if all weights are zero. maybe need to handle this better?
         {
             float scaler = 1.0/accum;
-            float z = rack::random::uniform();
+            float z = m_unidist(m_rnd);
             accum = 0.0f;
-            for (int i=0;i<WR_NUM_OUTPUTS;++i)
+            for (int i=0;i<numsteps;++i)
             {
                 accum+=scaledvalues[i]*scaler;
                 if (accum>=z)
@@ -45,42 +86,57 @@ void WeightedRandomModule::process(const ProcessArgs& args)
                     break;
                 }
             }
-            if (result>=0 && result<WR_NUM_OUTPUTS)
+            if (result>=0 && result<numsteps)
             {
-                for (int i=0;i<WR_NUM_OUTPUTS;++i)
+                for (int i=0;i<numsteps;++i)
                 {
                     m_outcomes[i] = i == result;
                 }
-                m_cur_discrete_output = rescale(result,0,7,0.0f,10.0f);
+                if (numsteps>1)
+                    m_cur_discrete_output = rescale((float)result,0.0f,numsteps-1,0.0f,10.0f);
+                else m_cur_discrete_output = 0.0f;
             }
             
         }
         
     }
-    for (int i=0;i<WR_NUM_OUTPUTS;++i)
+    for (int i=0;i<8;++i)
     {
         if (m_outcomes[i])
-            outputs[i].setVoltage(inputs[0].getVoltage());    
+            outputs[OUT_GATE+i].setVoltage(inputs[IN_GATE].getVoltage());    
         else
-            outputs[i].setVoltage(0.0f);    
+            outputs[OUT_GATE+i].setVoltage(0.0f);    
     }
-    outputs[WR_NUM_OUTPUTS].setVoltage(m_cur_discrete_output);
+    outputs[OUT_CHOICE].setVoltage(m_cur_discrete_output);
 }
+
+class WeightedRandomWidget : public ModuleWidget
+{
+public:
+    WeightedRandomWidget(WeightedRandomModule* mod);
+    void draw(const DrawArgs &args) override;
+private:
+
+};
+
 
 WeightedRandomWidget::WeightedRandomWidget(WeightedRandomModule* mod)
 {
     setModule(mod);
-    box.size.x = 130;
+    box.size.x = 9*RACK_GRID_WIDTH;
     
-    addInput(createInput<PJ301MPort>(Vec(5, 20), module, 0));
-    addOutput(createOutput<PJ301MPort>(Vec(85, 20), module, WR_NUM_OUTPUTS));
-    for (int i=0;i<WR_NUM_OUTPUTS;++i)
+    addInput(createInput<PJ301MPort>(Vec(5, 20), module, WeightedRandomModule::IN_GATE));
+    addOutput(createOutput<PJ301MPort>(Vec(85, 20), module, WeightedRandomModule::OUT_CHOICE));
+    for (int i=0;i<8;++i)
     {
-        addInput(createInput<PJ301MPort>(Vec(5, 50+i*40), module, i+1));
-        addParam(createParam<RoundLargeBlackKnob>(Vec(38, 40+i*40), module, i));
-        addOutput(createOutput<PJ301MPort>(Vec(85, 50+i*40), module, i));
+        addInput(createInput<PJ301MPort>(Vec(5, 50+i*40), module, WeightedRandomModule::IN_PROB+i));
+        addParam(createParam<RoundLargeBlackKnob>(Vec(38, 40+i*40), module, WeightedRandomModule::PAR_W+i));
+        addOutput(createOutput<PJ301MPort>(Vec(85, 50+i*40), module, WeightedRandomModule::OUT_GATE+i));
         
     }
+    Trimpot* pot = nullptr;
+    addParam(pot = createParam<Trimpot>(Vec(38, 20), module, WeightedRandomModule::PAR_NUMSTEPS));
+    pot->snap = true;
 }
 
 void WeightedRandomWidget::draw(const DrawArgs &args)
@@ -102,6 +158,8 @@ void WeightedRandomWidget::draw(const DrawArgs &args)
     nvgRestore(args.vg);
 	ModuleWidget::draw(args);
 }
+
+Model* modelWeightGate = createModel<WeightedRandomModule,WeightedRandomWidget>("WeightedRandom");
 
 HistogramModule::HistogramModule()
 {
