@@ -17,7 +17,7 @@ std::shared_ptr<rack::Font> getDefaultFont(int which)
 		if (which == 0)
 			font = APP->window->loadFont(asset::plugin(pluginInstance, "res/Nunito-Bold.ttf"));
 		else if (which == 1)
-			font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/sudo.ttf"));
+			font = APP->window->loadFont(asset::plugin(pluginInstance, "res/sudo/Sudo.ttf"));
 		s_fonts[which] = font;
 	}
 	return s_fonts[which];

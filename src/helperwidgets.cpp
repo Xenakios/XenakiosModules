@@ -161,9 +161,11 @@ inline void KnobInAttnWidget::draw(const DrawArgs &args)
 {
 	nvgSave(args.vg);
 	nvgBeginPath(args.vg);
-    nvgStrokeColor(args.vg, nvgRGBA(0x70, 0x70, 0x70, 0xff));
+    nvgFillColor(args.vg, nvgRGBA(0x30, 0x30, 0x30, 0x40));
+    
     nvgRect(args.vg,m_xcor,m_ycor,box.size.x-2,box.size.y-2);
-    nvgStroke(args.vg);
+    
+    nvgFill(args.vg);
 	auto font = getDefaultFont(0);
 	nvgFontSize(args.vg, m_labfontsize);
     nvgFontFaceId(args.vg, font->handle);
