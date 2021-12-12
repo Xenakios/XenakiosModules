@@ -28,12 +28,12 @@ void init(Plugin *p) {
 	pluginInstance = p;
 	//p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
 	p->addModel(modelWeightGate);
-	p->addModel(createModel<HistogramModule,HistogramModuleWidget>("Histogram"));
+	p->addModel(modelHistogram);
 	
 	
 	p->addModel(modelRandomClock);
 	p->addModel(modelPolyClock);
-	p->addModel(createModel<ReducerModule,ReducerWidget>("Reduce"));
+	p->addModel(modelReducer);
 	
 	p->addModel(modelGendynOSC);
 	p->addModel(modelXRandom);

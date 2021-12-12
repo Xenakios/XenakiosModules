@@ -161,6 +161,177 @@ void WeightedRandomWidget::draw(const DrawArgs &args)
 
 Model* modelWeightGate = createModel<WeightedRandomModule,WeightedRandomWidget>("WeightedRandom");
 
+class MyParam : public ParamQuantity
+{
+public:
+    MyParam() : ParamQuantity() {}
+    float getDisplayValue() override
+    {
+        return getValue();
+    }
+};
+
+class ReducerModule : public rack::Module
+{
+public:
+    enum PARS
+    {
+        PAR_ALGO,
+        PAR_A,
+        PAR_B,
+        PAR_LAST
+    };
+    enum ALGOS
+    {
+        ALGO_ADD,
+        ALGO_AVG,
+        ALGO_MULT,
+        ALGO_MIN,
+        ALGO_MAX,
+        ALGO_AND,
+        ALGO_OR,
+        ALGO_XOR,
+        ALGO_DIFFERENCE,
+        ALGO_ROUNDROBIN,
+        ALGO_LAST
+    };
+    ReducerModule();
+    void process(const ProcessArgs& args) override;
+    const char* getAlgoName()
+    {
+        int algo = params[PAR_ALGO].getValue();
+        static const char* algonames[]={"Add","Avg","Mult","Min","Max","And","Or","Xor","Diff","RR"};
+        return algonames[algo];
+    }
+private:
+    RoundRobin m_rr;  
+};
+
+class ReducerWidget : public ModuleWidget
+{
+public:
+    ReducerWidget(ReducerModule*);
+    void draw(const DrawArgs &args) override;
+private:
+    ReducerModule* m_mod = nullptr;
+};
+
+ReducerModule::ReducerModule()
+{
+    config(3,8,1);
+    configParam(PAR_ALGO,0.0f,ALGO_LAST-1,0.0f);
+    configParam(PAR_A,0.0f,1.0f,0.0f);
+    configParam<MyParam>(PAR_B,0.0f,1.0f,0.0f);
+}
+
+void ReducerModule::process(const ProcessArgs& args)
+{
+    int algo = params[PAR_ALGO].getValue();
+    float p_a = params[PAR_A].getValue();
+    //float p_b = params[PAR_B].getValue();
+    float r = 0.0f;
+    if (algo == ALGO_ADD)
+        r = reduce_add(inputs,0.0f,0.0f);
+    else if (algo == ALGO_AVG)
+        r = reduce_average(inputs,0.0f,0.0f);
+    else if (algo == ALGO_MULT)
+        r = reduce_mult(inputs,p_a,0.0f);
+    else if (algo == ALGO_MIN)
+        r = reduce_min(inputs,0.0f,1.0f);
+    else if (algo == ALGO_MAX)
+        r = reduce_max(inputs,0.0f,1.0f);
+    else if (algo == ALGO_ROUNDROBIN)
+        r = m_rr.process(inputs);
+    else if (algo == ALGO_AND)
+        r = reduce_and(inputs,0.0f,0.0f);
+    else if (algo == ALGO_OR)
+        r = reduce_or(inputs,0.0f,0.0f);
+    else if (algo == ALGO_XOR)
+        r = reduce_xor(inputs,0.0f,0.0f);
+    else if (algo == ALGO_DIFFERENCE)
+        r = reduce_difference(inputs,p_a,0.0f);
+    outputs[0].setVoltage(clamp(r,-10.0f,10.0f));
+}
+
+ReducerWidget::ReducerWidget(ReducerModule* m)
+{
+    setModule(m);
+    box.size.x = 120;
+    m_mod = m;
+    for (int i=0;i<8;++i)
+    {
+        addInput(createInput<PJ301MPort>(Vec(5,30+30*i), module, i));
+    }
+    addOutput(createOutput<PJ301MPort>(Vec(5,30+8*30), module, 0));
+    addParam(createParam<RoundBlackKnob>(Vec(5, 30+30*9), module, ReducerModule::PAR_ALGO));    
+    addParam(createParam<RoundBlackKnob>(Vec(40, 30+30*9), module, ReducerModule::PAR_A));    
+    addParam(createParam<RoundBlackKnob>(Vec(75, 30+30*9), module, ReducerModule::PAR_B));    
+}
+
+void ReducerWidget::draw(const DrawArgs &args)
+{
+    nvgSave(args.vg);
+    float w = box.size.x;
+    float h = box.size.y;
+    nvgBeginPath(args.vg);
+    nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+    nvgRect(args.vg,0.0f,0.0f,w,h);
+    nvgFill(args.vg);
+
+    nvgFontSize(args.vg, 15);
+    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
+    nvgTextLetterSpacing(args.vg, -1);
+    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+    nvgText(args.vg, 3 , 10, "Reducer", NULL);
+    char buf[100];
+    if (m_mod)
+        sprintf(buf,"Xenakios %s",m_mod->getAlgoName());
+    else sprintf(buf,"Xenakios");
+    nvgText(args.vg, 3 , h-11, buf, NULL);
+    nvgRestore(args.vg);
+    ModuleWidget::draw(args);
+}
+
+Model* modelReducer = createModel<ReducerModule,ReducerWidget>("Reduce");
+
+class HistogramModule : public rack::Module
+{
+public:
+    HistogramModule();
+    void process(const ProcessArgs& args) override;
+    std::vector<int>* getData()
+    {
+        return &m_data;
+    }
+private:
+    std::vector<int> m_data;
+    int m_data_size = 128;
+    float m_volt_min = -10.0f;
+    float m_volt_max = 10.0f;
+    dsp::SchmittTrigger m_reset_trig;
+};
+
+class HistogramWidget : public TransparentWidget
+{
+public:
+    HistogramWidget(HistogramModule* m) { m_mod = m; }
+    void draw(const DrawArgs &args) override;
+    
+    
+private:
+    HistogramModule* m_mod = nullptr;
+};
+
+class HistogramModuleWidget : public ModuleWidget
+{
+public:
+    HistogramModuleWidget(HistogramModule* mod);
+    void draw(const DrawArgs &args) override;
+    
+private:
+    HistogramWidget* m_hwid = nullptr;
+};
+
 HistogramModule::HistogramModule()
 {
     m_data.resize(m_data_size);
@@ -256,332 +427,4 @@ void HistogramModuleWidget::draw(const DrawArgs &args)
     ModuleWidget::draw(args);
 }
 
-MatrixSwitchModule::MatrixSwitchModule()
-{
-    m_curoutputs.resize(32);
-    m_cd.setDivision(256);
-    config(0,18,16,0);
-    m_connections[0].reserve(128);
-    m_connections[1].reserve(128);
-    /*
-    m_connections.emplace_back(0,0);
-    m_connections.emplace_back(0,5);
-    m_connections.emplace_back(15,1);
-    m_connections.emplace_back(15,14);
-    m_connections.emplace_back(8,7);
-    */
-}
-
-void MatrixSwitchModule::process(const ProcessArgs& args)
-{
-    for (int i=0;i<(int)outputs.size();++i)
-    {
-        //outputs[i].setVoltage(0.0f);
-        m_curoutputs[i]=0.0f;
-    }
-    // this is very nasty, need to figure out some other way to deal with the thread safety
-    if (m_state == 1)
-    {
-        //return;
-    }
-    auto renderfunc = [this](const std::vector<connection>& cons, int xfade=0)
-    {
-        /*
-        float xfadegain = 1.0f;
-        if (xfade == 1)
-            xfadegain = 1.0f-1.0f/m_crossfadelen*m_crossfadecounter;
-        else if (xfade == 2)
-            xfadegain = 1.0f/m_crossfadelen*m_crossfadecounter;
-        */
-        for (int i=0;i<(int)cons.size();++i)
-        {
-            int src = cons[i].m_src;
-            int dest = cons[i].m_dest;
-            float v = m_curoutputs[dest];
-            v += inputs[src].getVoltage();
-            m_curoutputs[dest]=v;
-        }
-    };
-    if (m_state < 2)
-    {
-        renderfunc(m_connections[0],0);
-    }
-    if (m_state == 2)
-    {
-        
-        ++m_crossfadecounter;
-        if (m_crossfadecounter==m_crossfadelen)
-        {
-            m_crossfadecounter = 0;
-            m_state = 0;
-        }
-    }
-}
-
-json_t* MatrixSwitchModule::dataToJson()
-{
-    json_t* resultJ = json_object();
-    json_t* arrayJ = json_array();
-    for (int i=0;i<(int)m_connections[m_activeconnections].size();++i)
-    {
-        json_t* conJ = json_object();
-        json_object_set(conJ,"src",json_integer(m_connections[m_activeconnections][i].m_src));
-        json_object_set(conJ,"dest",json_integer(m_connections[m_activeconnections][i].m_dest));
-        json_array_append(arrayJ,conJ);
-    }
-    json_object_set(resultJ,"connections",arrayJ);
-    return resultJ;
-}
-
-void MatrixSwitchModule::dataFromJson(json_t* root)
-{
-    json_t* arrayJ = json_object_get(root,"connections");
-    if (arrayJ==nullptr)
-        return;
-    int numcons = json_array_size(arrayJ);
-    if (numcons>0 && numcons<256)
-    {
-        m_state = 1;
-        m_connections[m_activeconnections].clear();
-        for (int i=0;i<numcons;++i)
-        {
-            json_t* conJ = json_array_get(arrayJ,i);
-            int src = json_integer_value(json_object_get(conJ,"src"));
-            int dest = json_integer_value(json_object_get(conJ,"dest"));
-            m_connections[m_activeconnections].emplace_back(src,dest);
-        }
-        m_state = 0;
-    }
-}
-
-bool MatrixSwitchModule::isConnected(int x, int y)
-{
-    if (x<0 || x>18)
-        return false;
-    if (y<0 || y>16)
-        return false;
-    for (int i=0;i<(int)m_connections[m_activeconnections].size();++i)
-    {
-        if (m_connections[m_activeconnections][i].m_src == x && m_connections[m_activeconnections][i].m_dest == y)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-void MatrixSwitchModule::setConnected(int x, int y, bool c)
-{
-    if (x<0 || x>18)
-        return;
-    if (y<0 || y>16)
-        return;
-    if (c == true && isConnected(x,y))
-        return;
-    if (c == true)
-    {
-        m_state = 1;
-        m_connections[1]=m_connections[0];
-        m_connections[1].emplace_back(x,y);
-        m_state = 2; 
-    }
-    if (c == false)
-    {
-        for (int i=0;i<(int)m_connections[m_activeconnections].size();++i)
-        {
-            if (m_connections[m_activeconnections][i].m_src == x && m_connections[m_activeconnections][i].m_dest == y)
-            {
-                m_state = 1;
-                m_connections[1]=m_connections[0];
-                m_connections[1].erase(m_connections[1].begin()+i);
-                m_state = 2;
-                return;
-            }
-        }
-    }
-}
-
-MatrixSwitchWidget::MatrixSwitchWidget(MatrixSwitchModule* module_)
-{
-    setModule(module_);
-    box.size.x = 500;
-    for (int i=0;i<18;++i)
-    {
-        int x = i / 9;
-        int y = i % 9;
-        float ycor = 20.0f+y*25.0;
-        addInput(createInput<PJ301MPort>(Vec(5+25.0f*x, ycor), module, i));
-    }
-    for (int i=0;i<16;++i)
-    {
-        int x = i / 8;
-        int y = i % 8;
-        float ycor = 20.0f+y*25.0;
-        addOutput(createOutput<PJ301MPort>(Vec(450.0+25.0f*x, ycor), module, i));
-    }
-    MatrixGridWidget* grid = new MatrixGridWidget(module_);
-    grid->box.pos.x = 60;
-    grid->box.pos.y = 20;
-    grid->box.size.x = 330;
-    addChild(grid);
-}
-
-void MatrixSwitchWidget::draw(const DrawArgs &args)
-{
-    nvgSave(args.vg);
-    float w = box.size.x;
-    float h = box.size.y;
-    nvgBeginPath(args.vg);
-    nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
-    nvgRect(args.vg,0.0f,0.0f,w,h);
-    nvgFill(args.vg);
-
-    nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
-    nvgTextLetterSpacing(args.vg, -1);
-    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-    nvgText(args.vg, 3 , 10, "Matrix switch", NULL);
-    nvgText(args.vg, 3 , h-11, "Xenakios", NULL);
-    nvgRestore(args.vg);
-    ModuleWidget::draw(args);
-}
-
-MatrixGridWidget::MatrixGridWidget(MatrixSwitchModule* mod_)
-{
-    m_mod = mod_;
-}
-
-void MatrixGridWidget::onButton(const event::Button& e)
-{
-    float w = box.size.x;
-    float boxsize = w/16;
-    if (e.action==GLFW_PRESS)
-    {
-        int x = (e.pos.x/boxsize);
-        int y = (e.pos.y/boxsize);
-        bool isconnected = m_mod->isConnected(x,y);
-        m_mod->setConnected(x,y,!isconnected);
-    }
-    
-}
-
-void MatrixGridWidget::draw(const DrawArgs &args)
-{
-    if (m_mod==nullptr)
-        return;
-    nvgSave(args.vg);
-    float w = box.size.x;
-    //float h = box.size.y;
-    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-    float boxsize = w/16.0-1.0;
-    for (int i=0;i<18;++i)
-    {
-        for (int j=0;j<16;++j)
-        {
-            float xcor = w/16*i;
-            float ycor = w/16*j;
-            nvgBeginPath(args.vg);
-            nvgRect(args.vg,xcor,ycor,boxsize,boxsize);
-            nvgFill(args.vg);
-        }
-    }
-    nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0xff));
-    auto& cons = m_mod->getConnections();
-    for (auto& con : cons)
-    {
-        float xcor = w/16*con.m_src;
-        float ycor = w/16*con.m_dest;
-        nvgBeginPath(args.vg);
-        nvgRoundedRect(args.vg,xcor,ycor,boxsize,boxsize,8.0f);
-        nvgFill(args.vg);
-    }
-    nvgRestore(args.vg);
-}
-
-class MyParam : public ParamQuantity
-{
-public:
-    MyParam() : ParamQuantity() {}
-    float getDisplayValue() override
-    {
-        return getValue();
-    }
-};
-
-ReducerModule::ReducerModule()
-{
-    config(3,8,1);
-    configParam(PAR_ALGO,0.0f,ALGO_LAST-1,0.0f);
-    configParam(PAR_A,0.0f,1.0f,0.0f);
-    configParam<MyParam>(PAR_B,0.0f,1.0f,0.0f);
-}
-
-void ReducerModule::process(const ProcessArgs& args)
-{
-    int algo = params[PAR_ALGO].getValue();
-    float p_a = params[PAR_A].getValue();
-    //float p_b = params[PAR_B].getValue();
-    float r = 0.0f;
-    if (algo == ALGO_ADD)
-        r = reduce_add(inputs,0.0f,0.0f);
-    else if (algo == ALGO_AVG)
-        r = reduce_average(inputs,0.0f,0.0f);
-    else if (algo == ALGO_MULT)
-        r = reduce_mult(inputs,p_a,0.0f);
-    else if (algo == ALGO_MIN)
-        r = reduce_min(inputs,0.0f,1.0f);
-    else if (algo == ALGO_MAX)
-        r = reduce_max(inputs,0.0f,1.0f);
-    else if (algo == ALGO_ROUNDROBIN)
-        r = m_rr.process(inputs);
-    else if (algo == ALGO_AND)
-        r = reduce_and(inputs,0.0f,0.0f);
-    else if (algo == ALGO_OR)
-        r = reduce_or(inputs,0.0f,0.0f);
-    else if (algo == ALGO_XOR)
-        r = reduce_xor(inputs,0.0f,0.0f);
-    else if (algo == ALGO_DIFFERENCE)
-        r = reduce_difference(inputs,p_a,0.0f);
-    outputs[0].setVoltage(clamp(r,-10.0f,10.0f));
-}
-
-ReducerWidget::ReducerWidget(ReducerModule* m)
-{
-    setModule(m);
-    box.size.x = 120;
-    m_mod = m;
-    for (int i=0;i<8;++i)
-    {
-        addInput(createInput<PJ301MPort>(Vec(5,30+30*i), module, i));
-    }
-    addOutput(createOutput<PJ301MPort>(Vec(5,30+8*30), module, 0));
-    addParam(createParam<RoundBlackKnob>(Vec(5, 30+30*9), module, ReducerModule::PAR_ALGO));    
-    addParam(createParam<RoundBlackKnob>(Vec(40, 30+30*9), module, ReducerModule::PAR_A));    
-    addParam(createParam<RoundBlackKnob>(Vec(75, 30+30*9), module, ReducerModule::PAR_B));    
-}
-
-void ReducerWidget::draw(const DrawArgs &args)
-{
-    nvgSave(args.vg);
-    float w = box.size.x;
-    float h = box.size.y;
-    nvgBeginPath(args.vg);
-    nvgFillColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
-    nvgRect(args.vg,0.0f,0.0f,w,h);
-    nvgFill(args.vg);
-
-    nvgFontSize(args.vg, 15);
-    nvgFontFaceId(args.vg, getDefaultFont(1)->handle);
-    nvgTextLetterSpacing(args.vg, -1);
-    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-    nvgText(args.vg, 3 , 10, "Reducer", NULL);
-    char buf[100];
-    if (m_mod)
-        sprintf(buf,"Xenakios %s",m_mod->getAlgoName());
-    else sprintf(buf,"Xenakios");
-    nvgText(args.vg, 3 , h-11, buf, NULL);
-    nvgRestore(args.vg);
-    ModuleWidget::draw(args);
-}
-
-
+Model* modelHistogram = createModel<HistogramModule,HistogramModuleWidget>("Histogram");
