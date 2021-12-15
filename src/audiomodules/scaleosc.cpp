@@ -280,7 +280,8 @@ public:
             fms[i] = 0.0f;
         }
         m_norm_smoother.setAmount(0.999);
-        
+        double root_freq = dsp::FREQ_C4/16.0;
+        /*
         std::array<float,9> ratios{81.0f/80.0f,9.0f/8.0f,1.2f,1.25f,1.333333f,1.5f,9.0f/5.0f,15.0f/8.0f,2.0f};
         m_scale_bank.push_back(std::vector<float>());
         m_scalenames.push_back("Continuum");
@@ -293,7 +294,7 @@ public:
         m_scalenames.push_back("Minor seventh JI");
         m_scalenames.push_back("Major seventh JI");
         m_scalenames.push_back("Octave");
-        double root_freq = dsp::FREQ_C4/16.0;
+        
         for (int i=0;i<ratios.size();++i)
         {
             double freq = root_freq;
@@ -305,8 +306,13 @@ public:
             }
             m_scale_bank.push_back(scale);
         }
+        */
         std::vector<std::string> scalafiles;
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
+        scalafiles.push_back(dir+"/continuum.scl");
+        scalafiles.push_back(dir+"/syntonic_comma.scl");
+        scalafiles.push_back(dir+"/major_tone_ji.scl");
+        scalafiles.push_back(dir+"/pure fifths.scl");
         scalafiles.push_back(dir+"/penta_opt.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Enharmonic.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Diatonic.scl");
@@ -328,7 +334,7 @@ public:
             std::vector<float> scale;
             for (int i=0;i<pitches.size();++i)
             {
-                double p = pitches[i]; //rescale(scale[i],-5.0f,5.0f,0.0f,120.0f);
+                double p = pitches[i]; 
                 double freq = root_freq * std::pow(1.05946309436,p);
                 scale.push_back(freq);
             }
@@ -703,15 +709,19 @@ public:
         configParam(PAR_PITCH_OFFS,-36.0f,36.0f,0.0f,"Pitch offset");
         configParam(PAR_DETUNE,0.0f,1.0f,0.0f,"Detune");
         configParam(PAR_NUM_OSCS,1.0f,16.0f,16.0f,"Num oscillators");
+        getParamQuantity(PAR_NUM_OSCS)->snapEnabled = true;
         configParam(PAR_FOLD,0.0f,1.0f,0.0f,"Fold");
         configParam(PAR_SPREAD,0.0f,1.0f,0.5f,"Spread");
         configParam(PAR_WARP,0.0f,1.0f,0.0f,"Warp");
         configParam(PAR_FM_AMT,0.0f,1.0f,0.0f,"FM Amount");
         configParam(PAR_FM_MODE,0.0f,2.0f,0.0f,"FM Mode");
+        getParamQuantity(PAR_FM_MODE)->snapEnabled = true;
         configParam(PAR_SCALE,0.0f,1.0f,0.0f,"Scale");
         configParam(PAR_SCALE_BANK,0.0f,1.0f,0.0f,"Scale bank");
         configParam(PAR_WARP_MODE,0.0f,2.0f,0.0f,"Warp Mode");
+        getParamQuantity(PAR_WARP_MODE)->snapEnabled = true;
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Num outputs");
+        getParamQuantity(PAR_NUM_OUTPUTS)->snapEnabled = true;
         configParam(PAR_FREQSMOOTH,0.0f,1.0f,0.1f,"Pitch smoothing");
         configParam(PAR_SPREAD_DIST,0.0f,1.0f,0.5f,"Spread distribution");
         
