@@ -54,8 +54,16 @@ public:
             }
             m_src.ResampleOut(srcOutBuffer.data(),wanted,mUpdateLen,m_channels);
         }
-        for (int i=0;i<m_channels;++i)
-            outbuf[i] = srcOutBuffer[mUpdateCounter*m_channels+i];
+        if (outchans == m_channels)
+        {
+            for (int i=0;i<m_channels;++i)
+                outbuf[i] = srcOutBuffer[mUpdateCounter*m_channels+i];
+        }
+        if (outchans == 2 && m_channels == 1)
+        {
+            for (int i=0;i<outchans;++i)
+                outbuf[i] = srcOutBuffer[mUpdateCounter];
+        }
         ++mUpdateCounter;
     }
 private:
@@ -90,17 +98,19 @@ public:
     enum PARAMS
     {
         PAR_PITCH,
+        PAR_OUTPUTCHANSMODE,
         PAR_LAST
     };
     XSampler()
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_PITCH,-60.0f,60.0f,0.0f);
+        configParam(PAR_OUTPUTCHANSMODE,0.0f,1.0f,1.0f);
     }
     void process(const ProcessArgs& args) override
     {
         float pitch = params[PAR_PITCH].getValue();
-        float sum = 0.0f;
+        
         int numvoices = inputs[IN_PITCH].getChannels();
         if (numvoices==0)
             numvoices = 1;
@@ -110,18 +120,31 @@ public:
             linrate = inputs[IN_LIN_RATE].getVoltage()*0.2f;
             linrate = clamp(linrate,-1.0f,1.0f);
         }
-        
+        float sum[2] = {0.0f,0.0f};
+        int omode = params[PAR_OUTPUTCHANSMODE].getValue();
+        int voicechans = 2;
         for (int i=0;i<numvoices;++i)
         {
             float vpitch = pitch+inputs[IN_PITCH].getVoltage(i)*12.0f;
             vpitch = clamp(vpitch,-60.0f,60.0f);
             float trig = inputs[IN_TRIG].getVoltage(i);
             float abuf[2] = {0.0f,0.0f};
-            m_voices[i].process(abuf,2,args.sampleTime,args.sampleRate,vpitch,trig,linrate);
-            sum += (abuf[0]+abuf[1])*0.5f;
+            m_voices[i].process(abuf,voicechans,args.sampleTime,args.sampleRate,vpitch,trig,linrate);
+            sum[0] += abuf[0];
+            sum[1] += abuf[1];
         }
-        sum *= 0.5;
-        outputs[OUT_AUDIO].setVoltage(sum*5.0f);
+        
+        if (omode == 0)
+        {
+            outputs[OUT_AUDIO].setChannels(1);
+            outputs[OUT_AUDIO].setVoltage((sum[0]+sum[1])*5.0f,0);
+        }
+        else
+        {
+            outputs[OUT_AUDIO].setChannels(2);
+            outputs[OUT_AUDIO].setVoltage(sum[0]*5.0f,0);
+            outputs[OUT_AUDIO].setVoltage(sum[1]*5.0f,1);
+        }
     }
 private:
     SamplerVoice m_voices[16];
