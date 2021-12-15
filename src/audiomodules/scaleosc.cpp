@@ -281,38 +281,19 @@ public:
         }
         m_norm_smoother.setAmount(0.999);
         double root_freq = dsp::FREQ_C4/16.0;
-        /*
-        std::array<float,9> ratios{81.0f/80.0f,9.0f/8.0f,1.2f,1.25f,1.333333f,1.5f,9.0f/5.0f,15.0f/8.0f,2.0f};
-        m_scale_bank.push_back(std::vector<float>());
-        m_scalenames.push_back("Continuum");
-        m_scalenames.push_back("Syntonic comma");
-        m_scalenames.push_back("Major tone (JI)");
-        m_scalenames.push_back("Minor third JI");
-        m_scalenames.push_back("Major third JI");
-        m_scalenames.push_back("Fourth JI");
-        m_scalenames.push_back("Fifth JI");
-        m_scalenames.push_back("Minor seventh JI");
-        m_scalenames.push_back("Major seventh JI");
-        m_scalenames.push_back("Octave");
         
-        for (int i=0;i<ratios.size();++i)
-        {
-            double freq = root_freq;
-            std::vector<float> scale;
-            while (freq<21000.0)
-            {
-                scale.push_back(freq);
-                freq *= ratios[i];
-            }
-            m_scale_bank.push_back(scale);
-        }
-        */
         std::vector<std::string> scalafiles;
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
         scalafiles.push_back(dir+"/continuum.scl");
         scalafiles.push_back(dir+"/syntonic_comma.scl");
         scalafiles.push_back(dir+"/major_tone_ji.scl");
+        scalafiles.push_back(dir+"/minor_third_ji.scl");
+        scalafiles.push_back(dir+"/major_third_ji.scl");
+        scalafiles.push_back(dir+"/fourth_ji.scl");
         scalafiles.push_back(dir+"/pure fifths.scl");
+        scalafiles.push_back(dir+"/minor_seventh_ji.scl");
+        scalafiles.push_back(dir+"/major_seventh_ji.scl");
+        scalafiles.push_back(dir+"/octave.scl");
         scalafiles.push_back(dir+"/penta_opt.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Enharmonic.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Diatonic.scl");
