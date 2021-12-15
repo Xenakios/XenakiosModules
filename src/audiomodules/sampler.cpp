@@ -39,7 +39,7 @@ public:
             if (arate<0.001)
                 arate = 0.001;
             float result[2] = {0.0,0.0};
-            m_src.SetRates(m_srcsampleRate,m_srcsampleRate/(ratio*arate));
+            m_src.SetRates(m_srcsampleRate,outsamplerate/(ratio*arate));
             float* rsinbuf = nullptr;
             int wanted = m_src.ResamplePrepare(mUpdateLen,m_channels,&rsinbuf);
             for (int i=0;i<wanted;++i)
