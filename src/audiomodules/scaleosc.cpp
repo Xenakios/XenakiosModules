@@ -299,6 +299,9 @@ public:
         scalafiles.push_back(dir+"/Ancient Greek Archytas Diatonic.scl");
         scalafiles.push_back(dir+"/octone.scl");
         scalafiles.push_back(dir+"/Chopi Xylophone.scl");
+        scalafiles.push_back(dir+"/Indonesian Pelog.scl");
+        scalafiles.push_back(dir+"/05-19.scl");
+        scalafiles.push_back(dir+"/13-19.scl");
         scalafiles.push_back(dir+"/bohlen_quintuple_j.scl");
         scalafiles.push_back(dir+"/equally tempered minor.scl");
         scalafiles.push_back(dir+"/12tet.scl");
