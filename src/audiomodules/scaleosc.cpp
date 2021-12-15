@@ -284,13 +284,15 @@ public:
         
         std::vector<std::string> scalafiles;
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
-        scalafiles.push_back(dir+"/continuum.scl");
+        scalafiles.push_back(dir+"/continuum.scl"); // file doesn't actually exist but we get back an empty vector anyway
         scalafiles.push_back(dir+"/syntonic_comma.scl");
         scalafiles.push_back(dir+"/major_tone_ji.scl");
         scalafiles.push_back(dir+"/minor_third_ji.scl");
         scalafiles.push_back(dir+"/major_third_ji.scl");
         scalafiles.push_back(dir+"/fourth_ji.scl");
         scalafiles.push_back(dir+"/pure fifths.scl");
+        scalafiles.push_back(dir+"/minor_sixth_ji.scl");
+        scalafiles.push_back(dir+"/major_sixth_ji.scl");
         scalafiles.push_back(dir+"/minor_seventh_ji.scl");
         scalafiles.push_back(dir+"/major_seventh_ji.scl");
         scalafiles.push_back(dir+"/octave.scl");
