@@ -7,14 +7,9 @@ class SamplerVoice
 public:
     SamplerVoice()
     {
-        
-    #ifdef __APPLE__
-        const char* fn = "/Users/teemu/AudioProjects/sourcesamples/sheila.wav";
-    #else
-        const char* fn = "C:\\MusicAudio\\sourcesamples\\sheila.wav";
-    #endif
+        std::string fn = asset::plugin(pluginInstance, "res/samples/kampitam1.wav");
         pSampleData = drwav_open_file_and_read_pcm_frames_f32(
-            fn,
+            fn.c_str(),
             &m_channels,
             &m_srcsampleRate,
             &m_totalPCMFrameCount,
