@@ -53,7 +53,7 @@
       ]
     },
     {
-      "disabled": true,
+      "disabled": false,
       "slug": "GendynOsc",
       "name": "GendynOsc",
       "description": "Iannis Xenakis stochastic synthesis",

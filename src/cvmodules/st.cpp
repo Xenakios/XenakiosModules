@@ -830,7 +830,7 @@ public:
         nvgTextLetterSpacing(args.vg, -1);
         nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
         nvgText(args.vg, 3 , 10, "ST(ochastic)", NULL);
-        char buf[100];
+        char buf[200];
         XStochastic* sm = dynamic_cast<XStochastic*>(module);
         if (sm)
             sprintf(buf,"Xenakios %d voices, %d events %d %d",sm->m_NumUsedVoices,sm->m_eventCounter,hovEtype,hovE);
