@@ -22,7 +22,7 @@ public:
     {
         drwav_free(pSampleData,nullptr);
     }
-    float process(float deltatime, float outsamplerate, float pitch, float trig, float lin_rate)
+    void process(float* outbuf, int outchans, float deltatime, float outsamplerate, float pitch, float trig, float lin_rate)
     {
         if (m_trig.process(rescale(trig,0.0f,10.0f,0.0f,1.0f)))
         {
@@ -41,21 +41,22 @@ public:
             float result[2] = {0.0,0.0};
             m_src.SetRates(m_srcsampleRate,m_srcsampleRate/(ratio*arate));
             float* rsinbuf = nullptr;
-            int wanted = m_src.ResamplePrepare(mUpdateLen,1,&rsinbuf);
+            int wanted = m_src.ResamplePrepare(mUpdateLen,m_channels,&rsinbuf);
             for (int i=0;i<wanted;++i)
             {
-                rsinbuf[i] = pSampleData[m_phase];
+                for (int j=0;j<m_channels;++j)
+                    rsinbuf[i*m_channels+j] = pSampleData[m_phase*m_channels+j];
                 m_phase += samp_inc;
                 if (m_phase>=(int)m_totalPCMFrameCount)
                     m_phase = 0;
                 if (m_phase<0)
                     m_phase = m_totalPCMFrameCount-1;    
             }
-            m_src.ResampleOut(srcOutBuffer.data(),wanted,mUpdateLen,1);
+            m_src.ResampleOut(srcOutBuffer.data(),wanted,mUpdateLen,m_channels);
         }
-        float os = srcOutBuffer[mUpdateCounter];
+        for (int i=0;i<m_channels;++i)
+            outbuf[i] = srcOutBuffer[mUpdateCounter*m_channels+i];
         ++mUpdateCounter;
-        return os;
     }
 private:
     WDL_Resampler m_src;
@@ -115,8 +116,9 @@ public:
             float vpitch = pitch+inputs[IN_PITCH].getVoltage(i)*12.0f;
             vpitch = clamp(vpitch,-60.0f,60.0f);
             float trig = inputs[IN_TRIG].getVoltage(i);
-            float s = m_voices[i].process(args.sampleTime,args.sampleRate,vpitch,trig,linrate);
-            sum += s;
+            float abuf[2] = {0.0f,0.0f};
+            m_voices[i].process(abuf,2,args.sampleTime,args.sampleRate,vpitch,trig,linrate);
+            sum += (abuf[0]+abuf[1])*0.5f;
         }
         sum *= 0.5;
         outputs[OUT_AUDIO].setVoltage(sum*5.0f);
