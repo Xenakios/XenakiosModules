@@ -646,7 +646,6 @@ public:
     enum OUTPUTS
     {
         OUT_AUDIO_1,
-        OUT_DEBUG,
         OUT_LAST
     };
     enum INPUTS
@@ -793,9 +792,6 @@ public:
         m_osc.processNextFrame(outs,args.sampleRate);
         int numOutputs = params[PAR_NUM_OUTPUTS].getValue();
         int numOscs = m_osc.getOscCount();
-        outputs[OUT_DEBUG].setChannels(16);
-        for (int i=0;i<16;++i)
-            outputs[OUT_DEBUG].setVoltage(m_osc.m_osc_gains[i],i);
         outputs[OUT_AUDIO_1].setChannels(numOutputs);
         
         float mixed[16];
@@ -832,7 +828,6 @@ public:
         box.size.x = RACK_GRID_WIDTH * 23;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "SCALE OSCILLATOR",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         auto port = new PortWithBackGround(m,this,XScaleOsc::OUT_AUDIO_1,1,30,"AUDIO OUT 1",true);
-        new PortWithBackGround(m,this,XScaleOsc::OUT_DEBUG,32,30,"DEBUG OUT",true);
         float xc = 1.0f;
         float yc = 80.0f;
         KnobInAttnWidget* kwid = nullptr;
