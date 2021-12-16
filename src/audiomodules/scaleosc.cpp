@@ -296,6 +296,8 @@ public:
         scalafiles.push_back(dir+"/minor_seventh_ji.scl");
         scalafiles.push_back(dir+"/major_seventh_ji.scl");
         scalafiles.push_back(dir+"/octave.scl");
+        scalafiles.push_back(dir+"/ninth1_ji.scl");
+        scalafiles.push_back(dir+"/ninth2_ji.scl");
         scalafiles.push_back(dir+"/penta_opt.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Enharmonic.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Diatonic.scl");
