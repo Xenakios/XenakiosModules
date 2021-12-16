@@ -233,7 +233,7 @@ public:
 class ScaleOscillator
 {
 public:
-    float m_gain_smooth_amt = 0.995f;
+    float m_gain_smooth_amt = 0.9995f;
     std::string getScaleName()
     {
         if (m_curScale>=0 && m_curScale<m_scalenames.size())
@@ -477,7 +477,7 @@ public:
             m_oscils[lastosci].setFrequencies(hz0,hz1,samplerate);
         }
             
-        float foldgain = m_fold_smoother.process((1.0f+m_fold*5.0f));
+        float foldgain = m_fold_smoother.process((1.0f+m_fold*8.0f));
         for (int i=0;i<m_oscils.size();++i)
         {
             float gain0 = m_osc_gain_smoothers[i*2+0].process(m_osc_gains[i*2+0]);
@@ -917,20 +917,20 @@ public:
                 float gain = m->m_osc.m_osc_gains[i];
                 float xcor = rescale(pitch,0.0f,120.0f,1.0f,box.size.x-1);
                 xcor = clamp(xcor,0.0f,box.size.x);
-                float ybase = myoffs + (i % 4) * 20.0f;
+                float ybase = myoffs + (i % 2) * 40.0f;
                 nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-                nvgMoveTo(args.vg,xcor,ybase+20.0f-(20.0*gain));
-                nvgLineTo(args.vg,xcor,ybase+20.0f);
+                nvgMoveTo(args.vg,xcor,ybase+40.0f-(40.0*gain));
+                nvgLineTo(args.vg,xcor,ybase+40.0f);
                 
             }
             nvgStroke(args.vg);
             nvgBeginPath(args.vg);
-            for (int i=0;i<4;++i)
+            for (int i=0;i<2;++i)
             {
                 nvgStrokeColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
-                float ybase = myoffs + i * 20.0f;
-                nvgMoveTo(args.vg,0,ybase + 20.0f);
-                nvgLineTo(args.vg,box.size.x,ybase + 20.0f);
+                float ybase = myoffs + i * 40.0f;
+                nvgMoveTo(args.vg,0,ybase + 40.0f);
+                nvgLineTo(args.vg,box.size.x,ybase + 40.0f);
             }        
             nvgStroke(args.vg);
         }
