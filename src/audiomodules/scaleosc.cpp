@@ -613,10 +613,11 @@ public:
     }
     OnePoleFilter m_norm_smoother;
     std::array<float,32> m_osc_gains;
+    std::array<float,32> m_osc_freqs;
 private:
     std::array<SIMDSimpleOsc,16> m_oscils;
     
-    std::array<float,32> m_osc_freqs;
+    
     std::array<OnePoleFilter,32> m_osc_gain_smoothers;
     std::array<OnePoleFilter,32> m_osc_freq_smoothers;
     
@@ -889,9 +890,11 @@ public:
         addChild(new KnobInAttnWidget(this,"PITCH SMOOTHING",XScaleOsc::PAR_FREQSMOOTH,
             -1,-1,xc,yc,false));
         xc += 82.0f;
-        addChild(new KnobInAttnWidget(this,"SPREAD DISTRIBUTION",XScaleOsc::PAR_SPREAD_DIST,
+        addChild(kwid = new KnobInAttnWidget(this,"SPREAD DISTRIBUTION",XScaleOsc::PAR_SPREAD_DIST,
             -1,-1,xc,yc,false));
+        myoffs = yc+45.0f; // kwid->box.pos.y+kwid->box.size.y;
     }
+    float myoffs = 0.0f;
     void draw(const DrawArgs &args) override
     {
         nvgSave(args.vg);
@@ -909,7 +912,32 @@ public:
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            nvgText(args.vg,1.0f,h-20.0f,scalename.c_str(),nullptr);
+            nvgText(args.vg,60.0f,30.0f,scalename.c_str(),nullptr);
+            nvgBeginPath(args.vg);
+            
+            for (int i=0;i<m->m_osc.getOscCount()*2;++i)
+            {
+                float hz = m->m_osc.m_osc_freqs[i];
+                float pitch = 12.0f * log2f(hz/(dsp::FREQ_C4/16.0f));
+                float gain = m->m_osc.m_osc_gains[i];
+                float xcor = rescale(pitch,0.0f,120.0f,1.0f,box.size.x-1);
+                xcor = clamp(xcor,0.0f,box.size.x);
+                float ybase = myoffs + (i % 4) * 20.0f;
+                nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+                nvgMoveTo(args.vg,xcor,ybase+20.0f-(20.0*gain));
+                nvgLineTo(args.vg,xcor,ybase+20.0f);
+                
+            }
+            nvgStroke(args.vg);
+            nvgBeginPath(args.vg);
+            for (int i=0;i<4;++i)
+            {
+                nvgStrokeColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
+                float ybase = myoffs + i * 20.0f;
+                nvgMoveTo(args.vg,0,ybase + 20.0f);
+                nvgLineTo(args.vg,box.size.x,ybase + 20.0f);
+            }        
+            nvgStroke(args.vg);
         }
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
