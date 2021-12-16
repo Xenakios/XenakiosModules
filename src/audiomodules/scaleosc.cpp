@@ -345,6 +345,7 @@ public:
         
         updateOscFrequencies();
     }
+    int mXFadeMode = 1;
     void updateOscFrequencies()
     {
         double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
@@ -373,7 +374,19 @@ public:
             float f1 = f;
             float diff = 0.5f;
             quantize_to_scale(f,m_scale,f0,f1,diff);
-            xfades[i] = diff;
+            if (mXFadeMode == 0)
+                xfades[i] = 0.0f;
+            else if (mXFadeMode == 1)
+            {
+                if (diff<0.25f)
+                    diff = 0.0f;
+                else if (diff>=0.25f && diff<0.75f)
+                    diff = rescale(diff,0.25f,0.75f,0.0f,1.0f);
+                else diff = 1.0f;
+                xfades[i] = diff;
+            }
+            else if (mXFadeMode == 2)
+                xfades[i] = diff;
             //f = quantize_to_grid(f,m_scale,1.0);
             float detun0 = rescale((float)i,0,m_active_oscils,0.0f,f0*0.10f*m_detune);
             float detun1 = rescale((float)i,0,m_active_oscils,0.0f,f1*0.10f*m_detune);
