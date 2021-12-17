@@ -49,6 +49,18 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
     outdiff = 1.0f;
 }
 
+inline float averterMap(float x, float shape)
+{
+    if (shape == 0.0f)
+        return x;
+    if (x<0.0f)
+    {
+        x += 1.0f;
+        float temp = 1.0f-std::pow(1.0f-x,shape);
+        return temp - 1.0f;
+    }
+    return std::pow(x,shape);
+}
 
 class SIMDSimpleOsc
 {
@@ -99,7 +111,9 @@ public:
         amt = clamp(amt,0.0f,1.0f);
         m_warp_mode = mode;
         m_warp_steps = std::pow(2.0f,2.0f+(1.0f-amt)*4.0f);
-        m_warp = std::pow(amt,2.0f);
+        if (m_warp_mode<2)
+            m_warp = std::pow(amt,2.0f);
+        else m_warp = 1.0f-std::pow(1.0f-amt,2.0f);
     }
     simd::float_4 processSample(float)
     {
@@ -121,7 +135,7 @@ public:
         }
         else
         {
-            /*
+            
             for (int i=0;i<4;++i)
             {
                 float ph = m_phase[i];
@@ -130,7 +144,7 @@ public:
                 ph = warp3table[ind];
                 phase_to_use[i] = (1.0f-m_warp) * phase_to_use[i] + m_warp * ph;
             }
-            */
+            /*
             float multip = 1.0+std::round(m_warp*8.0f);
             for (int i=0;i<4;++i)
             {
@@ -141,6 +155,7 @@ public:
                 //ph = warp3table[ind];
                 phase_to_use[i] = ph; // (1.0f-m_warp) * phase_to_use[i] + m_warp * ph;
             }
+            */
         }
 //#endif
         simd::float_4 rs = simd::sin(simd::float_4(2*3.14159265359)*phase_to_use);
@@ -787,7 +802,8 @@ public:
         }
         if (m_pardiv.process())
         {
-            float bal = getModParValue(PAR_BALANCE,IN_BALANCE,PAR_BAL_ATTN);
+            float bal = params[PAR_BALANCE].getValue(); // getModParValue(PAR_BALANCE,IN_BALANCE,PAR_BAL_ATTN);
+            bal += inputs[IN_BALANCE].getVoltage()*0.1f*averterMap(params[PAR_BAL_ATTN].getValue(),0.0f);
             m_osc.setBalance(bal);
             float detune = getModParValue(PAR_DETUNE,IN_DETUNE,PAR_DETUNE_ATTN);
             m_osc.setDetune(detune);
