@@ -121,6 +121,7 @@ public:
         }
         else
         {
+            /*
             for (int i=0;i<4;++i)
             {
                 float ph = m_phase[i];
@@ -129,9 +130,17 @@ public:
                 ph = warp3table[ind];
                 phase_to_use[i] = (1.0f-m_warp) * phase_to_use[i] + m_warp * ph;
             }
-            //float pmult = rescale(m_warp,0.0f,1.0f,1.0f,8.0f);
-            //gain = 1.0f-simd::fmod(m_phase,1.0f);
-            //phase_to_use = simd::fmod(pmult*m_phase,simd::float_4(1.0f));
+            */
+            float multip = 1.0+std::round(m_warp*8.0f);
+            for (int i=0;i<4;++i)
+            {
+                float ph = wrap_value(0.0f,m_phase[i]*multip,1.0f);
+                
+                //int ind = ph * (warp3table.size()-1);
+                //ind = clamp(ind,0,warp3table.size()-1);
+                //ph = warp3table[ind];
+                phase_to_use[i] = ph; // (1.0f-m_warp) * phase_to_use[i] + m_warp * ph;
+            }
         }
 //#endif
         simd::float_4 rs = simd::sin(simd::float_4(2*3.14159265359)*phase_to_use);
