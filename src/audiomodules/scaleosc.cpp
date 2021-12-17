@@ -287,6 +287,7 @@ public:
             m_osc_freqs[i*2+0] = 440.0f;
             m_osc_freqs[i*2+1] = 440.0f;
             fms[i] = 0.0f;
+            m_unquant_freqs[i] = 1.0f;
         }
         m_norm_smoother.setAmount(0.999);
         double root_freq = dsp::FREQ_C4/16.0;
@@ -354,7 +355,7 @@ public:
         
         updateOscFrequencies();
     }
-    int mXFadeMode = 1;
+    
     void updateOscFrequencies()
     {
         double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
@@ -378,6 +379,7 @@ public:
             }
             float pitch = rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
             float f = rack::dsp::FREQ_C4*std::pow(1.05946309436,pitch);
+            m_unquant_freqs[i] = f;
             //float f = rescale(normpos,0.0f,1.0f,roothz,roothz+12000.0f*m_spread);
             float f0 = f;
             float f1 = f;
@@ -633,9 +635,14 @@ public:
             m_freq_smooth = s;
         }
     }
+    void setXFadeMode(int m)
+    {
+        mXFadeMode = m;
+    }
     OnePoleFilter m_norm_smoother;
     std::array<float,32> m_osc_gains;
     std::array<float,32> m_osc_freqs;
+    std::array<float,32> m_unquant_freqs;
 private:
     std::array<SIMDSimpleOsc,16> m_oscils;
     
@@ -657,6 +664,7 @@ private:
     int m_fm_mode = 0;
     float m_freq_smooth = -1.0f;
     float m_spread_dist = 0.5f;
+    int mXFadeMode = 2;
     std::vector<std::vector<float>> m_scale_bank;
 };
 
@@ -711,6 +719,7 @@ public:
         PAR_DETUNE_ATTN,
         PAR_FOLD_ATTN,
         PAR_WARP_ATTN,
+        PAR_XFADEMODE,
         PAR_LAST
     };
     XScaleOsc()
@@ -747,6 +756,8 @@ public:
         configParam(PAR_WARP_ATTN,-1.0f,1.0f,0.0f,"Warp CV level");
         configParam(PAR_DETUNE_ATTN,-1.0f,1.0f,0.0f,"Detune CV level");
 
+        configParam(PAR_XFADEMODE,0.0f,2.0f,1.0f,"Crossfade mode");
+        getParamQuantity(PAR_XFADEMODE)->snapEnabled = true;
         m_pardiv.setDivision(16);
         
     }
@@ -808,6 +819,8 @@ public:
             m_osc.setScale(scale);
             float psmooth = params[PAR_FREQSMOOTH].getValue();
             m_osc.setFrequencySmoothing(psmooth);
+            int xfmode = params[PAR_XFADEMODE].getValue();
+            m_osc.setXFadeMode(xfmode);
             m_osc.updateOscFrequencies();
         }
         float outs[16];
@@ -907,7 +920,10 @@ public:
         addChild(new KnobInAttnWidget(this,"PITCH SMOOTHING",XScaleOsc::PAR_FREQSMOOTH,
             -1,-1,xc,yc,false));
         xc += 82.0f;
-        addChild(kwid = new KnobInAttnWidget(this,"SPREAD DISTRIBUTION",XScaleOsc::PAR_SPREAD_DIST,
+        addChild(kwid = new KnobInAttnWidget(this,"SPREAD DISTR",XScaleOsc::PAR_SPREAD_DIST,
+            -1,-1,xc,yc,false));
+        xc += 82.0f;
+        addChild(kwid = new KnobInAttnWidget(this,"XFADE MODE",XScaleOsc::PAR_XFADEMODE,
             -1,-1,xc,yc,false));
         myoffs = yc+45.0f; // kwid->box.pos.y+kwid->box.size.y;
     }
@@ -943,7 +959,15 @@ public:
                 nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
                 nvgMoveTo(args.vg,xcor,ybase+40.0f-(40.0*gain));
                 nvgLineTo(args.vg,xcor,ybase+40.0f);
-                
+                /*
+                // draw unquantized ticks
+                hz = m->m_osc.m_unquant_freqs[i];
+                pitch = 12.0f * log2f(hz/(dsp::FREQ_C4/16.0f));
+                xcor = rescale(pitch,0.0f,120.0f,1.0f,box.size.x-1);
+                xcor = clamp(xcor,0.0f,box.size.x);
+                nvgMoveTo(args.vg,xcor,ybase+81.0f);
+                nvgLineTo(args.vg,xcor,ybase+84.0f);
+                */
             }
             nvgStroke(args.vg);
             nvgBeginPath(args.vg);
@@ -955,6 +979,7 @@ public:
                 nvgLineTo(args.vg,box.size.x,ybase + 40.0f);
             }        
             nvgStroke(args.vg);
+
         }
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
