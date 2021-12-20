@@ -2,32 +2,56 @@
 #include "../wdl/resample.h"
 #include "../helperwidgets.h"
 
-class SamplerVoice
+class SampleData
 {
 public:
-    SamplerVoice()
+    SampleData() {}
+    ~SampleData() 
     {
-        std::string fn = asset::plugin(pluginInstance, "res/samples/kampitam1.wav");
+        drwav_free(pSampleData,nullptr);
+    }
+    void loadFile(std::string fn)
+    {
+        //std::string fn = asset::plugin(pluginInstance, "res/samples/kampitam1.wav");
         pSampleData = drwav_open_file_and_read_pcm_frames_f32(
             fn.c_str(),
             &m_channels,
-            &m_srcsampleRate,
-            &m_totalPCMFrameCount,
+            &m_srcSamplerate,
+            &m_frameCount,
             nullptr);
+    }
+    float* pSampleData = nullptr;
+    unsigned int m_channels = 0;
+    unsigned int m_srcSamplerate = 0;
+    drwav_uint64 m_frameCount;
+
+};
+
+class SamplerVoice
+{
+public:
+    std::shared_ptr<SampleData> m_sampleData;
+    SamplerVoice(std::shared_ptr<SampleData> sd) : m_sampleData(sd)
+    {
+        
         srcInBuffer.resize(64);
         srcOutBuffer.resize(64);
         //m_src.SetMode(false,0,false);
     }
     ~SamplerVoice()
     {
-        drwav_free(pSampleData,nullptr);
+        
     }
+    std::atomic<float*> mNewSampleData{nullptr};
     void process(float* outbuf, int outchans, float deltatime, float outsamplerate, float pitch, float trig, float lin_rate)
     {
+        if (m_sampleData == nullptr)
+            return;
         if (m_trig.process(rescale(trig,0.0f,10.0f,0.0f,1.0f)))
         {
             m_phase = 0;
         }
+        int srcChannels = m_sampleData->m_channels;
         if (mUpdateCounter == mUpdateLen)
         {
             mUpdateCounter = 0;
@@ -39,27 +63,30 @@ public:
             if (arate<0.001)
                 arate = 0.001;
             float result[2] = {0.0,0.0};
-            m_src.SetRates(m_srcsampleRate,outsamplerate/(ratio*arate));
+            m_src.SetRates(m_sampleData->m_srcSamplerate,outsamplerate/(ratio*arate));
             float* rsinbuf = nullptr;
-            int wanted = m_src.ResamplePrepare(mUpdateLen,m_channels,&rsinbuf);
+            
+            float* samplePtr = m_sampleData->pSampleData;
+            auto numFrames = m_sampleData->m_frameCount;
+            int wanted = m_src.ResamplePrepare(mUpdateLen, srcChannels,&rsinbuf);
             for (int i=0;i<wanted;++i)
             {
-                for (int j=0;j<m_channels;++j)
-                    rsinbuf[i*m_channels+j] = pSampleData[m_phase*m_channels+j];
+                for (int j=0;j<srcChannels;++j)
+                    rsinbuf[i*srcChannels+j] = samplePtr[m_phase*srcChannels+j];
                 m_phase += samp_inc;
-                if (m_phase>=(int)m_totalPCMFrameCount)
+                if (m_phase>=(int)numFrames)
                     m_phase = 0;
                 if (m_phase<0)
-                    m_phase = m_totalPCMFrameCount-1;    
+                    m_phase = numFrames-1;    
             }
-            m_src.ResampleOut(srcOutBuffer.data(),wanted,mUpdateLen,m_channels);
+            m_src.ResampleOut(srcOutBuffer.data(),wanted,mUpdateLen,srcChannels);
         }
-        if (outchans == m_channels)
+        if (outchans == srcChannels)
         {
-            for (int i=0;i<m_channels;++i)
-                outbuf[i] = srcOutBuffer[mUpdateCounter*m_channels+i];
+            for (int i=0;i<srcChannels;++i)
+                outbuf[i] = srcOutBuffer[mUpdateCounter*srcChannels+i];
         }
-        if (outchans == 2 && m_channels == 1)
+        if (outchans == 2 && srcChannels == 1)
         {
             for (int i=0;i<outchans;++i)
                 outbuf[i] = srcOutBuffer[mUpdateCounter];
@@ -68,10 +95,6 @@ public:
     }
 private:
     WDL_Resampler m_src;
-    float* pSampleData = nullptr;
-    unsigned int m_channels = 0;
-    unsigned int m_srcsampleRate = 0;
-    drwav_uint64 m_totalPCMFrameCount = 0;
     int m_phase = 0;
     std::vector<float> srcInBuffer;
     std::vector<float> srcOutBuffer;
@@ -101,11 +124,19 @@ public:
         PAR_OUTPUTCHANSMODE,
         PAR_LAST
     };
+    std::shared_ptr<SampleData> m_zone0;
     XSampler()
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_PITCH,-60.0f,60.0f,0.0f);
         configParam(PAR_OUTPUTCHANSMODE,0.0f,1.0f,1.0f);
+        std::string fn = asset::plugin(pluginInstance, "res/samples/kampitam1.wav");
+        m_zone0 = std::make_shared<SampleData>();
+        m_zone0->loadFile(fn);
+        for (int i=0;i<16;++i)
+        {
+            m_voices.emplace_back(std::make_shared<SamplerVoice>(m_zone0));
+        }
     }
     void process(const ProcessArgs& args) override
     {
@@ -129,7 +160,7 @@ public:
             vpitch = clamp(vpitch,-60.0f,60.0f);
             float trig = inputs[IN_TRIG].getVoltage(i);
             float abuf[2] = {0.0f,0.0f};
-            m_voices[i].process(abuf,voicechans,args.sampleTime,args.sampleRate,vpitch,trig,linrate);
+            m_voices[i]->process(abuf,voicechans,args.sampleTime,args.sampleRate,vpitch,trig,linrate);
             sum[0] += abuf[0];
             sum[1] += abuf[1];
         }
@@ -147,7 +178,7 @@ public:
         }
     }
 private:
-    SamplerVoice m_voices[16];
+    std::vector<std::shared_ptr<SamplerVoice>> m_voices;
 };
 
 class XSamplerWidget : public ModuleWidget
