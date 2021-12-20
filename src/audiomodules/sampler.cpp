@@ -1,6 +1,7 @@
 #include "../plugin.hpp"
 #include "../wdl/resample.h"
 #include "../helperwidgets.h"
+#include <osdialog.h>
 
 class SampleData
 {
@@ -12,19 +13,32 @@ public:
     }
     void loadFile(std::string fn)
     {
-        //std::string fn = asset::plugin(pluginInstance, "res/samples/kampitam1.wav");
-        pSampleData = drwav_open_file_and_read_pcm_frames_f32(
+        unsigned int chans = 0;
+        unsigned int sr = 0;
+        drwav_uint64 len = 0;
+        float* data = drwav_open_file_and_read_pcm_frames_f32(
             fn.c_str(),
-            &m_channels,
-            &m_srcSamplerate,
-            &m_frameCount,
+            &chans,
+            &sr,
+            &len,
             nullptr);
+        if (data)
+        {
+            m_lock.lock();
+            pSampleData = data;
+            m_channels = chans;
+            m_srcSamplerate = sr;
+            m_frameCount = len;
+            m_lock.unlock();
+        }
     }
+
+//private:
     float* pSampleData = nullptr;
     unsigned int m_channels = 0;
     unsigned int m_srcSamplerate = 0;
     drwav_uint64 m_frameCount;
-
+    spinlock m_lock;
 };
 
 class SamplerVoice
@@ -47,10 +61,14 @@ public:
     {
         if (m_sampleData == nullptr)
             return;
+        m_sampleData->m_lock.lock();
+        if (m_phase>=m_sampleData->m_frameCount)
+            m_phase = 0;
         if (m_trig.process(rescale(trig,0.0f,10.0f,0.0f,1.0f)))
         {
             m_phase = 0;
         }
+        
         int srcChannels = m_sampleData->m_channels;
         if (mUpdateCounter == mUpdateLen)
         {
@@ -92,6 +110,7 @@ public:
                 outbuf[i] = srcOutBuffer[mUpdateCounter];
         }
         ++mUpdateCounter;
+        m_sampleData->m_lock.unlock();
     }
 private:
     WDL_Resampler m_src;
@@ -158,7 +177,10 @@ public:
         {
             float vpitch = pitch+inputs[IN_PITCH].getVoltage(i)*12.0f;
             vpitch = clamp(vpitch,-60.0f,60.0f);
-            float trig = inputs[IN_TRIG].getVoltage(i);
+            float trig = 0.0f;
+            if (inputs[IN_TRIG].getChannels()>1)
+                trig = inputs[IN_TRIG].getVoltage(i);
+            else trig = inputs[IN_TRIG].getVoltage(0);
             float abuf[2] = {0.0f,0.0f};
             m_voices[i]->process(abuf,voicechans,args.sampleTime,args.sampleRate,vpitch,trig,linrate);
             sum[0] += abuf[0];
@@ -217,6 +239,36 @@ public:
         
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
+    }
+    struct LoadFileItem : MenuItem
+    {
+    XSampler* m_mod = nullptr;
+    void onAction(const event::Action &e) override
+    {
+        std::string dir = asset::plugin(pluginInstance, "/res");
+        osdialog_filters* filters = osdialog_filters_parse("WAV file:wav");
+        char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
+        osdialog_filters_free(filters);
+        if (!pathC) {
+            return;
+        }
+        std::string path = pathC;
+        std::free(pathC);
+        m_mod->m_zone0->loadFile(path);
+    }
+};
+    void appendContextMenu(Menu *menu) override 
+    {
+		auto loadItem = createMenuItem<LoadFileItem>("Import .wav file...");
+		loadItem->m_mod = dynamic_cast<XSampler*>(module);
+		menu->addChild(loadItem);
+        /*
+        auto drsrc = dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
+        auto normItem = createMenuItem([this,drsrc](){ drsrc->normalize(1.0f); },"Normalize buffer");
+        menu->addChild(normItem);
+        auto revItem = createMenuItem([this,drsrc](){ drsrc->reverse(); },"Reverse buffer");
+        menu->addChild(revItem);
+        */
     }
 };
 
