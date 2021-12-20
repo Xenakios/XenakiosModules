@@ -25,11 +25,12 @@ public:
         if (data)
         {
             m_lock.lock();
-            pSampleData = data;
+            std::swap(pSampleData,data);
             m_channels = chans;
             m_srcSamplerate = sr;
             m_frameCount = len;
             m_lock.unlock();
+            drwav_free(data,nullptr);
         }
     }
 
