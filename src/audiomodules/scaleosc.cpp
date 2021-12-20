@@ -3,6 +3,8 @@
 #include "../wtosc.h"
 #include <array>
 #include "../jcdp_envelope.h"
+#include "../Tunings.h"
+
 
 inline simd::float_4 fmodex(simd::float_4 x)
 {
@@ -252,7 +254,40 @@ public:
     }
 };
 
-
+inline std::vector<double> semitonesFromScaleScale(Tunings::Scale& thescale,
+    double startPitch,double endPitch)
+{
+    bool finished = false;
+    std::vector<double> voltScale;
+    int sanity = 0;
+    double volts = startPitch;
+    voltScale.push_back(volts);
+    double endvalue = endPitch;
+    while (volts < endvalue)
+    {
+        float last = 0.0f;
+        for (auto& e : thescale.tones)
+        {
+            double cents = e.cents;
+            double evolt = cents/100.0; // 1.0f/1200*cents;
+            if (volts + evolt > endvalue)
+            {
+                finished = true;
+                break;
+            }
+            voltScale.push_back(volts + evolt);
+            last = evolt;
+        }
+        volts += last;
+        if (finished)
+            break;
+        ++sanity;
+        if (sanity>1000)
+            break;
+    }
+    voltScale.erase(std::unique(voltScale.begin(), voltScale.end()), voltScale.end());
+    return voltScale;
+}
 
 class ScaleOscillator
 {
@@ -309,7 +344,7 @@ public:
         
         std::vector<std::string> scalafiles;
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
-        scalafiles.push_back(dir+"/continuum.scl"); // file doesn't actually exist but we get back an empty vector anyway
+        //scalafiles.push_back(dir+"/continuum.scl"); // file doesn't actually exist but we get back an empty vector anyway
         scalafiles.push_back(dir+"/syntonic_comma.scl");
         scalafiles.push_back(dir+"/major_tone_ji.scl");
         scalafiles.push_back(dir+"/minor_third_ji.scl");
@@ -343,7 +378,8 @@ public:
         
         for (auto& e : scalafiles)
         {
-            auto pitches = loadScala(e,true,0.0,128);
+            auto thescale = Tunings::readSCLFile(e);
+            auto pitches = semitonesFromScaleScale(thescale,0.0,128.0);  //loadScala(e,true,0.0,128);
             std::vector<float> scale;
             for (int i=0;i<pitches.size();++i)
             {
@@ -352,7 +388,7 @@ public:
                 scale.push_back(freq);
             }
             m_scale_bank.push_back(scale);
-            m_scalenames.push_back(rack::system::getFilename(e));
+            m_scalenames.push_back(thescale.name);
         }
         double freq = root_freq;
         std::vector<float> scale;
