@@ -375,7 +375,8 @@ public:
         scalafiles.push_back(dir+"/major_chord_ji.scl");
         scalafiles.push_back(dir+"/minor_chord_et.scl");
         scalafiles.push_back(dir+"/minor_chord_ji.scl");
-        
+        m_scale_bank.push_back({});
+        m_scalenames.push_back("Continuum");
         for (auto& e : scalafiles)
         {
             auto thescale = Tunings::readSCLFile(e);
