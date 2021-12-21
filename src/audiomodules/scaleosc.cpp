@@ -269,7 +269,7 @@ inline std::vector<double> semitonesFromScaleScale(Tunings::Scale& thescale,
         for (auto& e : thescale.tones)
         {
             double cents = e.cents;
-            double evolt = cents/100.0; // 1.0f/1200*cents;
+            double evolt = cents/100.0; 
             if (volts + evolt > endvalue)
             {
                 finished = true;
@@ -344,7 +344,6 @@ public:
         
         std::vector<std::string> scalafiles;
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
-        //scalafiles.push_back(dir+"/continuum.scl"); // file doesn't actually exist but we get back an empty vector anyway
         scalafiles.push_back(dir+"/syntonic_comma.scl");
         scalafiles.push_back(dir+"/major_tone_ji.scl");
         scalafiles.push_back(dir+"/minor_third_ji.scl");
@@ -423,7 +422,6 @@ public:
         int lastoscili = m_active_oscils-1;
         if (lastoscili==0)
             lastoscili = 1;
-        //float roothz = rack::dsp::FREQ_C4*std::pow(1.05946309436,m_root_pitch);
         for (int i=0;i<m_active_oscils;++i)
         {
             float normpos = rescale((float)i,0,lastoscili,0.0f,1.0f);
@@ -458,7 +456,6 @@ public:
             }
             else if (mXFadeMode == 2)
                 xfades[i] = diff;
-            //f = quantize_to_grid(f,m_scale,1.0);
             float detun0 = rescale((float)i,0,m_active_oscils,0.0f,f0*0.10f*m_detune);
             float detun1 = rescale((float)i,0,m_active_oscils,0.0f,f1*0.10f*m_detune);
             if (i % 2 == 1)
@@ -507,25 +504,6 @@ public:
             float bypassgain = 0.0f;
             if (i<m_active_oscils)
                 bypassgain = 1.0f;
-            /*
-            int gtindex = rescale((float)i,0,m_active_oscils-1,0.0f,16.0f);
-            if (gtindex>16) 
-                gtindex = 16;
-            if (gtindex<0)
-                gtindex = 0;
-            float g0 = g_balance_tables[index0][gtindex];
-            float g1 = g_balance_tables[index1][gtindex];
-            float g2 = g0+(g1-g0)*frac;
-            float db = rescale(g2,0.0f,1.0f,-60.0f,0.0f);
-            //float db = rescale((float)i,0,m_active_oscils,gain0,gain1);
-            */
-            /*
-            float f = m_osc_freqs[i];
-            float f2 = f*f;
-            float awamp = ((424.36f + f2) * std::sqrt((11599.3f + f2) * (544496.f + f2)) * (148693636.f + f2)) / (148693636.f * f2 * f2);
-            awamp *= (1.0f/17);
-            awamp = clamp(awamp,0.0f,1.0f);
-            */
             float normx = rescale((float)i,0,lastoscili,0.0f,1.0f);
             float amp = 0.0f;
             if (normx<=1.0f)
@@ -533,11 +511,7 @@ public:
                 amp = rescale(normx,xs0,xs1,ys0,ys1);
                 amp = clamp(amp,0.0f,1.0f);
             }
-            
-            //amp *= awamp;
-            //float db = rescale(amp,0.0f,1.0f,-72.0,0.0f);
-            //if (db<-72.0f) db = -72.0f;
-            float gain = amp*bypassgain; //rack::dsp::dbToAmplitude(db)*bypassgain;
+            float gain = amp*bypassgain;
             m_osc_gains[i*2+0] = gain*(1.0-xfades[i]);
             m_osc_gains[i*2+1] = gain*xfades[i];
         }
@@ -643,13 +617,11 @@ public:
     {
         p = clamp(p,-36.0f,36.0f);
         m_root_pitch = p; 
-        //updateOscFrequencies();
     }
     void setPitchOffset(float p)
     {
         p = clamp(p,-36.0f,36.0f);
         m_freqratio = std::pow(1.05946309436,p);
-        //updateOscFrequencies();
     }
     void setBalance(float b)
     {
@@ -666,9 +638,7 @@ public:
     }
     void setOscCount(int c)
     {
-        if (c<1) c = 1;
-        if (c>16) c = 16;
-        m_active_oscils = c;
+        m_active_oscils = clamp(c,1,16);
     }
     int getOscCount()
     {
@@ -676,9 +646,7 @@ public:
     }
     void setFMMode(int m)
     {
-        if (m<0) m = 0;
-        if (m>2) m = 2;
-        m_fm_mode = m;
+        m_fm_mode = clamp(m,0,2);
     }
     void setSpreadDistribution(float x)
     {
@@ -1017,18 +985,9 @@ public:
                 float xcor = rescale(pitch,0.0f,120.0f,1.0f,box.size.x-1);
                 xcor = clamp(xcor,0.0f,box.size.x);
                 float ybase = myoffs + (i % 2) * 40.0f;
-                nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+                nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 127));
                 nvgMoveTo(args.vg,xcor,ybase+40.0f-(40.0*gain));
                 nvgLineTo(args.vg,xcor,ybase+40.0f);
-                /*
-                // draw unquantized ticks
-                hz = m->m_osc.m_unquant_freqs[i];
-                pitch = 12.0f * log2f(hz/(dsp::FREQ_C4/16.0f));
-                xcor = rescale(pitch,0.0f,120.0f,1.0f,box.size.x-1);
-                xcor = clamp(xcor,0.0f,box.size.x);
-                nvgMoveTo(args.vg,xcor,ybase+81.0f);
-                nvgLineTo(args.vg,xcor,ybase+84.0f);
-                */
             }
             nvgStroke(args.vg);
             nvgBeginPath(args.vg);
