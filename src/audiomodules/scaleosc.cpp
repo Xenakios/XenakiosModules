@@ -299,7 +299,7 @@ public:
         {
             return m_scalenames[m_curScale];
         }
-        return "No scale name";
+        return "Invalid scale index";
     }
     std::vector<std::string> m_scalenames;
     void initScales()
@@ -379,17 +379,25 @@ public:
         m_scalenames.push_back("Continuum");
         for (auto& e : scalafiles)
         {
-            auto thescale = Tunings::readSCLFile(e);
-            auto pitches = semitonesFromScaleScale(thescale,0.0,128.0);  //loadScala(e,true,0.0,128);
-            std::vector<float> scale;
-            for (int i=0;i<pitches.size();++i)
+            try
             {
-                double p = pitches[i]; 
-                double freq = root_freq * std::pow(1.05946309436,p);
-                scale.push_back(freq);
+                auto thescale = Tunings::readSCLFile(e);
+                auto pitches = semitonesFromScaleScale(thescale,0.0,128.0);  //loadScala(e,true,0.0,128);
+                std::vector<float> scale;
+                for (int i=0;i<pitches.size();++i)
+                {
+                    double p = pitches[i]; 
+                    double freq = root_freq * std::pow(1.05946309436,p);
+                    scale.push_back(freq);
+                }
+                m_scale_bank.push_back(scale);
+                m_scalenames.push_back(thescale.name);
             }
-            m_scale_bank.push_back(scale);
-            m_scalenames.push_back(thescale.name);
+            catch (std::exception& excep)
+            {
+                m_scale_bank.push_back({});
+                m_scalenames.push_back("Continuum (with error)");
+            }
         }
         double freq = root_freq;
         std::vector<float> scale;
