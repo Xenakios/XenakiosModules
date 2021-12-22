@@ -698,7 +698,12 @@ public:
     }
     void setFreezeEnabled(bool b)
     {
-        mFreeze_enabled = b;
+        // ignore first set so that the oscillator frequencies will be updated at start
+        if (mFreezeRunCount>0)
+        {
+            mFreeze_enabled = b;
+        }
+        ++mFreezeRunCount;
     }
     void setFreezeMode(int m)
     {
@@ -733,6 +738,7 @@ private:
     bool mFreeze_enabled = false;
     int mFreeze_mode = 0;
     std::vector<std::vector<float>> m_scale_bank;
+    int mFreezeRunCount = 0;
 };
 
 
@@ -1005,8 +1011,8 @@ public:
         addChild(kwid = new KnobInAttnWidget(this,"XFADE MODE",XScaleOsc::PAR_XFADEMODE,
             -1,-1,xc,yc,false));
         myoffs = yc+45.0f; // kwid->box.pos.y+kwid->box.size.y;
-        addParam(createParam<BefacoSwitch>(Vec(35.0, 30.0), module, XScaleOsc::PAR_FREEZE_ENABLED));
-        addParam(createParam<BefacoSwitch>(Vec(60.0, 30.0), module, XScaleOsc::PAR_FREEZE_MODE));
+        addParam(createParam<NKK>(Vec(35.0, 30.0), module, XScaleOsc::PAR_FREEZE_ENABLED));
+        addParam(createParam<NKK>(Vec(64.0, 30.0), module, XScaleOsc::PAR_FREEZE_MODE));
     }
     float myoffs = 0.0f;
     void draw(const DrawArgs &args) override
