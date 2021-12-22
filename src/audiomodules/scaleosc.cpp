@@ -939,6 +939,16 @@ public:
     dsp::TBiquadFilter<float> m_hpfilts[16];
 };
 
+class MyLatchButton : public VCVButton
+{
+public:
+    MyLatchButton() : VCVButton()
+    {
+        this->latch = true;
+        this->momentary = false;
+    }
+};
+
 class XScaleOscWidget : public ModuleWidget
 {
 public:
@@ -1011,8 +1021,8 @@ public:
         addChild(kwid = new KnobInAttnWidget(this,"XFADE MODE",XScaleOsc::PAR_XFADEMODE,
             -1,-1,xc,yc,false));
         myoffs = yc+45.0f; // kwid->box.pos.y+kwid->box.size.y;
-        addParam(createParam<NKK>(Vec(35.0, 30.0), module, XScaleOsc::PAR_FREEZE_ENABLED));
-        addParam(createParam<NKK>(Vec(64.0, 30.0), module, XScaleOsc::PAR_FREEZE_MODE));
+        addParam(createParam<CKSS>(Vec(35.0, 32.0), module, XScaleOsc::PAR_FREEZE_ENABLED));
+        addParam(createParam<CKSSThree>(Vec(64.0, 32.0), module, XScaleOsc::PAR_FREEZE_MODE));
     }
     float myoffs = 0.0f;
     void draw(const DrawArgs &args) override
