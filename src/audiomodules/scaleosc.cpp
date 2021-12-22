@@ -466,8 +466,37 @@ public:
                 
             f0 = clamp(f0*m_freqratio+detun0,1.0f,20000.0f);
             f1 = clamp(f1*m_freqratio+detun1,1.0f,20000.0f);
-            m_osc_freqs[i*2+0] = f0;
-            m_osc_freqs[i*2+1] = f1;
+            if (mFreeze_enabled == false)
+            {
+                m_osc_freqs[i*2+0] = f0;
+                m_osc_freqs[i*2+1] = f1;
+            } else
+            {
+                if (mFreeze_mode == 0)
+                {
+                    if (i % 2 == 1)
+                    {
+                        m_osc_freqs[i*2+0] = f0;
+                        m_osc_freqs[i*2+1] = f1;
+                    }
+                }
+                else if (mFreeze_mode == 1)
+                {
+                    if (i>=m_active_oscils/2)
+                    {
+                        m_osc_freqs[i*2+0] = f0;
+                        m_osc_freqs[i*2+1] = f1;
+                    }
+                } else
+                {
+                    if (i > 0)
+                    {
+                        m_osc_freqs[i*2+0] = f0;
+                        m_osc_freqs[i*2+1] = f1;
+                    }
+                }
+            }
+            
             
         }
         float xs0 = 0.0f;
@@ -667,6 +696,14 @@ public:
     {
         mXFadeMode = m;
     }
+    void setFreezeEnabled(bool b)
+    {
+        mFreeze_enabled = b;
+    }
+    void setFreezeMode(int m)
+    {
+        mFreeze_mode = m;
+    }
     OnePoleFilter m_norm_smoother;
     std::array<float,32> m_osc_gains;
     std::array<float,32> m_osc_freqs;
@@ -693,6 +730,8 @@ private:
     float m_freq_smooth = -1.0f;
     float m_spread_dist = 0.5f;
     int mXFadeMode = 2;
+    bool mFreeze_enabled = false;
+    int mFreeze_mode = 0;
     std::vector<std::vector<float>> m_scale_bank;
 };
 
@@ -748,6 +787,8 @@ public:
         PAR_FOLD_ATTN,
         PAR_WARP_ATTN,
         PAR_XFADEMODE,
+        PAR_FREEZE_ENABLED,
+        PAR_FREEZE_MODE,
         PAR_LAST
     };
     XScaleOsc()
@@ -786,6 +827,11 @@ public:
 
         configParam(PAR_XFADEMODE,0.0f,2.0f,1.0f,"Crossfade mode");
         getParamQuantity(PAR_XFADEMODE)->snapEnabled = true;
+        
+        configSwitch(PAR_FREEZE_ENABLED,0.0f,1.0f,0.0f,"Freeze frequencies",{"Off","On"});
+        configSwitch(PAR_FREEZE_MODE,0.0f,2.0f,0.0f,"Freeze mode",
+            {"Odd oscillators","Bottom oscillators","Lowest oscillator"});
+        
         m_pardiv.setDivision(16);
         
     }
@@ -850,6 +896,10 @@ public:
             m_osc.setFrequencySmoothing(psmooth);
             int xfmode = params[PAR_XFADEMODE].getValue();
             m_osc.setXFadeMode(xfmode);
+            bool freezeEnabled = params[PAR_FREEZE_ENABLED].getValue();
+            m_osc.setFreezeEnabled(freezeEnabled);
+            int freezeMode = params[PAR_FREEZE_MODE].getValue();
+            m_osc.setFreezeMode(freezeMode);
             m_osc.updateOscFrequencies();
         }
         float outs[16];
@@ -955,6 +1005,8 @@ public:
         addChild(kwid = new KnobInAttnWidget(this,"XFADE MODE",XScaleOsc::PAR_XFADEMODE,
             -1,-1,xc,yc,false));
         myoffs = yc+45.0f; // kwid->box.pos.y+kwid->box.size.y;
+        addParam(createParam<BefacoSwitch>(Vec(35.0, 30.0), module, XScaleOsc::PAR_FREEZE_ENABLED));
+        addParam(createParam<BefacoSwitch>(Vec(60.0, 30.0), module, XScaleOsc::PAR_FREEZE_MODE));
     }
     float myoffs = 0.0f;
     void draw(const DrawArgs &args) override
