@@ -370,6 +370,7 @@ public:
         scalafiles.push_back(dir+"/12tet.scl");
         scalafiles.push_back(dir+"/tritones.scl");
         scalafiles.push_back(dir+"/tetra01.scl");
+        scalafiles.push_back(dir+"/xenakis_jonchaies.scl");
         scalafiles.push_back(dir+"/major_chord_et.scl");
         scalafiles.push_back(dir+"/major_chord_ji.scl");
         scalafiles.push_back(dir+"/minor_chord_et.scl");
