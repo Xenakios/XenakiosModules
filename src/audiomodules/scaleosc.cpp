@@ -4,7 +4,7 @@
 #include <array>
 #include "../jcdp_envelope.h"
 #include "../Tunings.h"
-
+#include <osdialog.h>
 
 inline simd::float_4 fmodex(simd::float_4 x)
 {
@@ -411,6 +411,8 @@ public:
         }
         m_scale_bank.push_back(scale);
         m_scalenames.push_back("Overtones");
+        m_scale_bank.push_back({});
+        m_scalenames.push_back("Load from file");
         /*
         scale.clear();
         freq = 16384.0;
@@ -458,7 +460,9 @@ public:
             float f0 = f;
             float f1 = f;
             float diff = 0.5f;
+            m_lock.lock();
             quantize_to_scale(f,m_scale,f0,f1,diff);
+            m_lock.unlock();
             if (mXFadeMode == 0)
                 xfades[i] = 0.0f;
             else if (mXFadeMode == 1)
@@ -637,6 +641,36 @@ public:
             m_scale = m_scale_bank[m_curScale];
         }
     }
+    void loadScaleFromFile(std::string fn)
+    {
+        if (m_curScale==m_scale_bank.size()-1)
+        {
+            double root_freq = dsp::FREQ_C4/16.0;
+            try
+            {
+                auto thescale = Tunings::readSCLFile(fn);
+                auto pitches = semitonesFromScaleScale(thescale,0.0,128.0);  //loadScala(e,true,0.0,128);
+                std::vector<float> scale;
+                for (int i=0;i<pitches.size();++i)
+                {
+                    double p = pitches[i]; 
+                    double freq = root_freq * std::pow(1.05946309436,p);
+                    scale.push_back(freq);
+                }
+                m_scale_bank.back()=scale;
+                m_lock.lock();
+                m_scale = scale;
+                m_lock.unlock();
+                m_scalenames.back()=thescale.name;
+                mCustomScaleFileName = fn;
+            }
+            catch (std::exception& excep)
+            {
+                
+            }
+        }
+    }
+    std::string mCustomScaleFileName;
     void setFMAmount(float a)
     {
         a = clamp(a,0.0f,1.0f);
@@ -755,6 +789,7 @@ private:
     int mFreeze_mode = 0;
     std::vector<std::vector<float>> m_scale_bank;
     int mFreezeRunCount = 0;
+    spinlock m_lock;
 };
 
 
@@ -965,9 +1000,34 @@ public:
     }
 };
 
+struct MyLoadFileItem : MenuItem
+{
+    XScaleOsc* m_mod = nullptr;
+    void onAction(const event::Action &e) override
+    {
+        std::string dir; // = asset::plugin(pluginInstance, "/res");
+        //osdialog_filters* filters = osdialog_filters_parse("SCALA file:wav");
+        osdialog_filters* filters = osdialog_filters_parse("Scala File:scl");
+        char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
+        osdialog_filters_free(filters);
+        if (!pathC) {
+            return;
+        }
+        std::string path = pathC;
+        std::free(pathC);
+        m_mod->m_osc.loadScaleFromFile(path);
+    }
+};
+
 class XScaleOscWidget : public ModuleWidget
 {
 public:
+    void appendContextMenu(Menu *menu) override 
+    {
+		auto loadItem = createMenuItem<MyLoadFileItem>("Import .scl (Scala) file...");
+		loadItem->m_mod = dynamic_cast<XScaleOsc*>(module);
+		menu->addChild(loadItem);
+    }
     XScaleOscWidget(XScaleOsc* m)
     {
         setModule(m);
