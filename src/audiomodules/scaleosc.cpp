@@ -643,7 +643,7 @@ public:
     }
     void loadScaleFromFile(std::string fn)
     {
-        if (m_curScale==m_scale_bank.size()-1)
+        //if (m_curScale==m_scale_bank.size()-1)
         {
             double root_freq = dsp::FREQ_C4/16.0;
             try
@@ -658,9 +658,13 @@ public:
                     scale.push_back(freq);
                 }
                 m_scale_bank.back()=scale;
-                m_lock.lock();
-                m_scale = scale;
-                m_lock.unlock();
+                if (m_curScale==m_scale_bank.size()-1)
+                {
+                    m_lock.lock();
+                    m_scale = scale;
+                    m_lock.unlock();
+                }
+                
                 m_scalenames.back()=thescale.name;
                 mCustomScaleFileName = fn;
             }
@@ -984,7 +988,21 @@ public:
             outputs[OUT_AUDIO_1].setVoltage(outsample,i);
         }
     }
-    
+    json_t* dataToJson() override
+    {
+        json_t* resultJ = json_object();
+        json_object_set(resultJ,"scalafile0",json_string(m_osc.mCustomScaleFileName.c_str()));
+        return resultJ;
+    }
+    void dataFromJson(json_t* root) override
+    {
+        json_t* fnj = json_object_get(root,"scalafile0");
+        if (fnj)
+        {
+            std::string filename(json_string_value(fnj));
+            m_osc.loadScaleFromFile(filename);
+        }
+    }
     ScaleOscillator m_osc;
     dsp::ClockDivider m_pardiv;
     dsp::TBiquadFilter<float> m_hpfilts[16];
