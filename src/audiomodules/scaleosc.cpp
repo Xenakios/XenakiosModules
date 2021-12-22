@@ -374,6 +374,7 @@ public:
         scalafiles.push_back(dir+"/major_chord_ji.scl");
         scalafiles.push_back(dir+"/minor_chord_et.scl");
         scalafiles.push_back(dir+"/minor_chord_ji.scl");
+        scalafiles.push_back(dir+"/dominant 7th 1.scl");
         m_scale_bank.push_back({});
         m_scalenames.push_back("Continuum");
         for (auto& e : scalafiles)
@@ -956,7 +957,7 @@ public:
     {
         setModule(m);
         box.size.x = RACK_GRID_WIDTH * 23;
-        addChild(new LabelWidget({{1,6},{box.size.x,1}}, "SCALE OSCILLATOR",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
+        addChild(new LabelWidget({{1,6},{box.size.x,1}}, "KLANG",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         auto port = new PortWithBackGround(m,this,XScaleOsc::OUT_AUDIO_1,1,30,"AUDIO OUT 1",true);
         float xc = 1.0f;
         float yc = 80.0f;
