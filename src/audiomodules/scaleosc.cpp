@@ -440,6 +440,11 @@ public:
         int lastoscili = m_active_oscils-1;
         if (lastoscili==0)
             lastoscili = 1;
+        if (mDoScaleChange==true)
+        {
+            mDoScaleChange = false;
+            m_scale = mScaleToChangeTo;
+        }
         for (int i=0;i<m_active_oscils;++i)
         {
             float normpos = rescale((float)i,0,lastoscili,0.0f,1.0f);
@@ -460,9 +465,9 @@ public:
             float f0 = f;
             float f1 = f;
             float diff = 0.5f;
-            m_lock.lock();
+            //m_lock.lock();
             quantize_to_scale(f,m_scale,f0,f1,diff);
-            m_lock.unlock();
+            //m_lock.unlock();
             if (mXFadeMode == 0)
                 xfades[i] = 0.0f;
             else if (mXFadeMode == 1)
@@ -660,9 +665,11 @@ public:
                 m_scale_bank.back()=scale;
                 if (m_curScale==m_scale_bank.size()-1)
                 {
-                    m_lock.lock();
-                    m_scale = scale;
-                    m_lock.unlock();
+                    //m_lock.lock();
+                    //m_scale = scale;
+                    //m_lock.unlock();
+                    mScaleToChangeTo = scale;
+                    mDoScaleChange = true;
                 }
                 
                 m_scalenames.back()=thescale.name;
@@ -794,6 +801,8 @@ private:
     std::vector<std::vector<float>> m_scale_bank;
     int mFreezeRunCount = 0;
     spinlock m_lock;
+    std::atomic<bool> mDoScaleChange{false};
+    std::vector<float> mScaleToChangeTo;
 };
 
 
@@ -1003,6 +1012,7 @@ public:
             m_osc.loadScaleFromFile(filename);
         }
     }
+    
     ScaleOscillator m_osc;
     dsp::ClockDivider m_pardiv;
     dsp::TBiquadFilter<float> m_hpfilts[16];
