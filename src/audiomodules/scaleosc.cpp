@@ -969,6 +969,7 @@ public:
         XScaleOsc* m = dynamic_cast<XScaleOsc*>(module);
         if (m)
         {
+            
             auto scalename = rack::system::getFilename(m->m_osc.getScaleName());
             nvgFontSize(args.vg, 20);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
@@ -976,20 +977,32 @@ public:
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             nvgText(args.vg,60.0f,30.0f,scalename.c_str(),nullptr);
             nvgBeginPath(args.vg);
-            
-            for (int i=0;i<m->m_osc.getOscCount()*2;++i)
+            nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
+            nvgRect(args.vg,0.0f,myoffs,w,80.0f);
+            nvgFill(args.vg);
+            for (int j=0;j<2;++j)
             {
-                float hz = m->m_osc.m_osc_freqs[i];
-                float pitch = 12.0f * log2f(hz/(dsp::FREQ_C4/16.0f));
-                float gain = m->m_osc.m_osc_gains[i];
-                float xcor = rescale(pitch,0.0f,120.0f,1.0f,box.size.x-1);
-                xcor = clamp(xcor,0.0f,box.size.x);
-                float ybase = myoffs + (i % 2) * 40.0f;
-                nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 127));
-                nvgMoveTo(args.vg,xcor,ybase+40.0f-(40.0*gain));
-                nvgLineTo(args.vg,xcor,ybase+40.0f);
+                nvgBeginPath(args.vg);
+                nvgStrokeWidth(args.vg,1.5f);
+                if (j == 0)
+                    nvgStrokeColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 200));
+                else
+                    nvgStrokeColor(args.vg, nvgRGBA(0xff, 0x00, 0x00, 200));
+                for (int i=0;i<m->m_osc.getOscCount();++i)
+                {
+                    float hz = m->m_osc.m_osc_freqs[i*2+j];
+                    float pitch = 12.0f * log2f(hz/(dsp::FREQ_C4/16.0f));
+                    float gain = m->m_osc.m_osc_gains[i*2+j];
+                    float xcor = rescale(pitch,0.0f,120.0f,1.0f,box.size.x-1);
+                    xcor = clamp(xcor,0.0f,box.size.x);
+                    float ybase = myoffs;// + (i % 2) * 40.0f;
+                    
+                    nvgMoveTo(args.vg,xcor,ybase+80.0f-(80.0*gain));
+                    nvgLineTo(args.vg,xcor,ybase+80.0f);
+                }
+                nvgStroke(args.vg);
             }
-            nvgStroke(args.vg);
+            /*
             nvgBeginPath(args.vg);
             for (int i=0;i<2;++i)
             {
@@ -999,7 +1012,7 @@ public:
                 nvgLineTo(args.vg,box.size.x,ybase + 40.0f);
             }        
             nvgStroke(args.vg);
-
+            */
         }
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
