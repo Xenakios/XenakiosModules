@@ -409,7 +409,21 @@ public:
             ++i;
         }
         m_scale_bank.push_back(scale);
-        m_scalenames.push_back("Harmonic series");
+        m_scalenames.push_back("Overtones");
+        /*
+        scale.clear();
+        freq = 16384.0;
+        i = 1;
+        while (freq>15.0)
+        {
+            freq = 16384.0/i;
+            scale.push_back(freq);
+            ++i;
+        }
+        std::sort(scale.begin(),scale.end());
+        m_scale_bank.push_back(scale);
+        m_scalenames.push_back("Undertones");
+        */
         m_scale.reserve(2048);
         m_scale = m_scale_bank[0];
         
