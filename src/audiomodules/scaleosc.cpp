@@ -432,11 +432,18 @@ public:
         for (int i=0;i<mExpFMPowerTable.size();++i)
         {
             float x = rescale(i,0,mExpFMPowerTable.size()-1,-60.0f,60.0f);
-            //x = 
+            x = std::pow(2.0f,x/12.0f);
+            mExpFMPowerTable[i] = x;
         }
         updateOscFrequencies();
     }
-    
+    inline float getExpFMDepth(float semitones)
+    {
+        float x = rescale(semitones,-60.0f,60.0f,0.0f,(float)mExpFMPowerTable.size()-1);
+        int index = x;
+        index = clamp(index,0,mExpFMPowerTable.size()-1);
+        return mExpFMPowerTable[index];
+    }
     void updateOscFrequencies()
     {
         double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
@@ -612,7 +619,8 @@ public:
             if (mode == 0)
                 basefreq += fms[mi]*m_fm_amt*basefreq*2.0f;
             else if (mode == 1)
-                basefreq *= std::pow(dsp::FREQ_SEMITONE,fms[mi]*m_fm_amt*60.0f);
+                basefreq *= getExpFMDepth(fms[mi]*m_fm_amt*60.0f);
+                //basefreq *= std::pow(dsp::FREQ_SEMITONE,fms[mi]*m_fm_amt*60.0f);
             else if (mode == 2)
                 basefreq += dsp::FREQ_C4*fms[mi]*m_fm_amt*5.0f;  
         };
