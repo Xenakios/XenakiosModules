@@ -603,11 +603,14 @@ public:
             outbuf[i] = s2;
         }
         int fm_mode = m_fm_algo;
-        auto fmfunc = [this](int mode, float basefreq, int mi)
+        auto fmfunc = [this](int mode, float& basefreq, int mi)
         {
             if (mode == 0)
-                return fms[mi]*m_fm_amt*basefreq*2.0f;
-            return dsp::FREQ_C4*fms[mi]*m_fm_amt*5.0f;  
+                basefreq += fms[mi]*m_fm_amt*basefreq*2.0f;
+            else if (mode == 1)
+                basefreq *= std::pow(dsp::FREQ_SEMITONE,fms[mi]*m_fm_amt*60.0f);
+            else if (mode == 2)
+                basefreq += dsp::FREQ_C4*fms[mi]*m_fm_amt*5.0f;  
         };
         
         if (fm_mode == 0)
@@ -615,11 +618,9 @@ public:
             for (int i=1;i<m_active_oscils;++i)
             {
                 float hz0 = m_osc_freq_smoothers[i*2+0].process(m_osc_freqs[i*2+0]);
-                //hz0 = hz0+(fms[0]*m_fm_amt*hz0*2.0f);
-                hz0 += fmfunc(m_fm_mod_mode,hz0,0);
+                fmfunc(m_fm_mod_mode,hz0,0);
                 float hz1 = m_osc_freq_smoothers[i*2+1].process(m_osc_freqs[i*2+1]);
-                hz1 += fmfunc(m_fm_mod_mode,hz1,0);
-                //hz1 = hz1+(fms[0]*m_fm_amt*hz1*2.0f);
+                fmfunc(m_fm_mod_mode,hz1,0);
                 m_oscils[i].setFrequencies(hz0,hz1,samplerate);
             }
         } else if (fm_mode == 1)
@@ -627,11 +628,9 @@ public:
             for (int i=1;i<m_active_oscils;++i)
             {
                 float hz0 = m_osc_freq_smoothers[i*2+0].process(m_osc_freqs[i*2+0]);
-                //hz0 = hz0+(fms[i-1]*m_fm_amt*hz0);
-                hz0 += fmfunc(m_fm_mod_mode,hz0,i-1);
+                fmfunc(m_fm_mod_mode,hz0,i-1);
                 float hz1 = m_osc_freq_smoothers[i*2+1].process(m_osc_freqs[i*2+1]);
-                //hz1 = hz1+(fms[i-1]*m_fm_amt*hz1);
-                hz1 += fmfunc(m_fm_mod_mode,hz1,i-1);
+                fmfunc(m_fm_mod_mode,hz1,i-1);
                 m_oscils[i].setFrequencies(hz0,hz1,samplerate);
             }
         } else if (fm_mode == 2)
@@ -639,11 +638,9 @@ public:
             for (int i=0;i<m_active_oscils-1;++i)
             {
                 float hz0 = m_osc_freq_smoothers[i*2+0].process(m_osc_freqs[i*2+0]);
-                //hz0 = hz0+(fms[lastosci]*m_fm_amt*hz0*2.0f);
-                hz0 += fmfunc(m_fm_mod_mode,hz0,lastosci);
+                fmfunc(m_fm_mod_mode,hz0,lastosci);
                 float hz1 = m_osc_freq_smoothers[i*2+1].process(m_osc_freqs[i*2+1]);
-                //hz1 = hz1+(fms[lastosci]*m_fm_amt*hz1*2.0f);
-                hz1 += fmfunc(m_fm_mod_mode,hz1,lastosci);
+                fmfunc(m_fm_mod_mode,hz1,lastosci);
                 m_oscils[i].setFrequencies(hz0,hz1,samplerate);
             }
         }
@@ -753,7 +750,7 @@ public:
     }
     void setFMMode(int m)
     {
-        m_fm_mod_mode = clamp(m,0,1);
+        m_fm_mod_mode = clamp(m,0,2);
     }
     void setSpreadDistribution(float x)
     {
@@ -922,8 +919,14 @@ public:
         configSwitch(PAR_FREEZE_ENABLED,0.0f,1.0f,0.0f,"Freeze frequencies",{"Off","On"});
         configSwitch(PAR_FREEZE_MODE,0.0f,2.0f,0.0f,"Freeze mode",
             {"Odd oscillators","Bottom oscillators","Lowest oscillator"});
-        configSwitch(PAR_FM_MODE,0.0f,1.0f,0.0f,"FM Algorithm", 
-            {"Modulation frequency based on carrier frequency","Modulation frequency based on C4"});
+        configParam(PAR_FM_MODE,0.0f,2.0f,0.0f,"FM Mode"); 
+        getParamQuantity(PAR_FM_MODE)->snapEnabled = true;
+            /*
+            {"Linear around carrier frequency",
+            "Exponential around carrier frequency"
+            "Linear around C4",
+            
+            */
         m_pardiv.setDivision(16);
         
     }
@@ -1165,7 +1168,7 @@ public:
         addParam(createParam<CKSS>(Vec(35.0, 32.0), module, XScaleOsc::PAR_FREEZE_ENABLED));
         addInput(createInput<PJ301MPort>(Vec(35.0f, 55.0f), module, XScaleOsc::IN_FREEZE));
         addParam(createParam<CKSSThree>(Vec(64.0, 32.0), module, XScaleOsc::PAR_FREEZE_MODE));
-        addParam(createParam<CKSS>(Vec(93.0, 32.0), module, XScaleOsc::PAR_FM_MODE));
+        addParam(createParam<Trimpot>(Vec(93.0, 32.0), module, XScaleOsc::PAR_FM_MODE));
     }
     float myoffs = 0.0f;
     void draw(const DrawArgs &args) override
