@@ -766,6 +766,7 @@ public:
         }
         ++mFreezeRunCount;
     }
+    bool freezeEnabled() const { return mFreeze_enabled; }
     void setFreezeMode(int m)
     {
         mFreeze_mode = m;
@@ -827,6 +828,7 @@ public:
         IN_FM_AMT,
         IN_WARP,
         IN_SCALE,
+        IN_FREEZE,
         IN_LAST
     };
     enum PARAMETERS
@@ -917,6 +919,8 @@ public:
             p = clamp(p,clampMin,clampMax);
         return p;
     } 
+
+    bool mDoFreezeToggle = false;
     void process(const ProcessArgs& args) override
     {
         if (m_samplerate!=args.sampleRate)
@@ -928,6 +932,11 @@ public:
                 m_hpfilts[i].setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
             }
             m_samplerate = args.sampleRate;
+        }
+        bool tempFz = m_freezeTrigger.process(inputs[IN_FREEZE].getVoltage(),0.0f,10.0f);
+        if (tempFz == true && mDoFreezeToggle == false)
+        {
+            mDoFreezeToggle = true;
         }
         if (m_pardiv.process())
         {
@@ -966,9 +975,20 @@ public:
             m_osc.setFrequencySmoothing(psmooth);
             int xfmode = params[PAR_XFADEMODE].getValue();
             m_osc.setXFadeMode(xfmode);
-            bool freezeEnabled = params[PAR_FREEZE_ENABLED].getValue();
-            m_osc.setFreezeEnabled(freezeEnabled);
+            if (mDoFreezeToggle)
+            {
+                m_osc.setFreezeEnabled(!m_osc.freezeEnabled());
+                mDoFreezeToggle = false;
+            } else
+            {
+                if (inputs[IN_FREEZE].isConnected()==false)
+                    m_osc.setFreezeEnabled((bool)params[PAR_FREEZE_ENABLED].getValue());
+            }
+                
+            
+            
             int freezeMode = params[PAR_FREEZE_MODE].getValue();
+            
             m_osc.setFreezeMode(freezeMode);
             m_osc.updateOscFrequencies();
         }
@@ -1016,6 +1036,7 @@ public:
     ScaleOscillator m_osc;
     dsp::ClockDivider m_pardiv;
     dsp::TBiquadFilter<float> m_hpfilts[16];
+    dsp::SchmittTrigger m_freezeTrigger;
 };
 
 class MyLatchButton : public VCVButton
@@ -1126,6 +1147,7 @@ public:
             -1,-1,xc,yc,false));
         myoffs = yc+45.0f; // kwid->box.pos.y+kwid->box.size.y;
         addParam(createParam<CKSS>(Vec(35.0, 32.0), module, XScaleOsc::PAR_FREEZE_ENABLED));
+        addInput(createInput<PJ301MPort>(Vec(35.0f, 55.0f), module, XScaleOsc::IN_FREEZE));
         addParam(createParam<CKSSThree>(Vec(64.0, 32.0), module, XScaleOsc::PAR_FREEZE_MODE));
     }
     float myoffs = 0.0f;
