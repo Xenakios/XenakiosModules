@@ -920,7 +920,7 @@ public:
         return p;
     } 
 
-    bool mDoFreezeToggle = false;
+    
     void process(const ProcessArgs& args) override
     {
         if (m_samplerate!=args.sampleRate)
@@ -934,9 +934,12 @@ public:
             m_samplerate = args.sampleRate;
         }
         bool tempFz = m_freezeTrigger.process(inputs[IN_FREEZE].getVoltage(),0.0f,10.0f);
-        if (tempFz == true && mDoFreezeToggle == false)
+        if (tempFz == true) 
         {
-            mDoFreezeToggle = true;
+            
+            if (params[PAR_FREEZE_ENABLED].getValue()>0.0f)
+                params[PAR_FREEZE_ENABLED].setValue(0.0f);
+            else params[PAR_FREEZE_ENABLED].setValue(1.0f);
         }
         if (m_pardiv.process())
         {
@@ -975,16 +978,7 @@ public:
             m_osc.setFrequencySmoothing(psmooth);
             int xfmode = params[PAR_XFADEMODE].getValue();
             m_osc.setXFadeMode(xfmode);
-            if (mDoFreezeToggle)
-            {
-                m_osc.setFreezeEnabled(!m_osc.freezeEnabled());
-                mDoFreezeToggle = false;
-            } else
-            {
-                if (inputs[IN_FREEZE].isConnected()==false)
-                    m_osc.setFreezeEnabled((bool)params[PAR_FREEZE_ENABLED].getValue());
-            }
-                
+            m_osc.setFreezeEnabled((bool)params[PAR_FREEZE_ENABLED].getValue());
             
             
             int freezeMode = params[PAR_FREEZE_MODE].getValue();
