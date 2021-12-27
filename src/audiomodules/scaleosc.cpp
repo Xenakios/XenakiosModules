@@ -429,7 +429,11 @@ public:
         */
         m_scale.reserve(2048);
         m_scale = m_scale_bank[0];
-        
+        for (int i=0;i<mExpFMPowerTable.size();++i)
+        {
+            float x = rescale(i,0,mExpFMPowerTable.size()-1,-60.0f,60.0f);
+            //x = 
+        }
         updateOscFrequencies();
     }
     
@@ -819,6 +823,7 @@ private:
     spinlock m_lock;
     std::atomic<bool> mDoScaleChange{false};
     std::vector<float> mScaleToChangeTo;
+    std::array<float,4096> mExpFMPowerTable;
 };
 
 
