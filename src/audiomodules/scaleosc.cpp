@@ -44,9 +44,19 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
             return;
         }
         if (quant_fade_mode==0)
-            outdiff = rescale(x,out1,out2,1.0,0.0);
-        else
+        {
             outdiff = rescale(x,out1,out2,0.0,1.0);
+        }
+        else
+        {
+            int stepindex = std::distance(g.begin(),t0);
+            if (stepindex % 2 == 0)
+                outdiff = rescale(x,out1,out2,1.0,0.0);
+            else
+                outdiff = rescale(x,out1,out2,0.0,1.0);
+
+        }
+            
         return;
     }
     out1 = g.back();
