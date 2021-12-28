@@ -46,6 +46,12 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
         if (quant_fade_mode==0)
         {
             outdiff = rescale(x,out1,out2,0.0,1.0);
+            /*
+            const float th = 0.95f;
+            if (outdiff<th)
+                outdiff = rescale(outdiff,0.0f,th,0.0f,1.0f);
+            else outdiff = rescale(outdiff,th,1.0f,1.0f,0.0f);
+            */
         }
         else
         {
