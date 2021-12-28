@@ -14,7 +14,7 @@ inline simd::float_4 fmodex(simd::float_4 x)
     return simd::ifelse(neg,x,a);
 }
 
-int quant_fade_mode = 1;
+int quant_fade_mode = 0;
 
 inline void quantize_to_scale(float x, const std::vector<float>& g,
     float& out1, float& out2, float& outdiff)
@@ -40,7 +40,7 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
         out2 = *t1;
         if (out1 == out2)
         {
-            outdiff = 1.0f;
+            outdiff = 0.0f;
             return;
         }
         if (quant_fade_mode==0)
