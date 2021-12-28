@@ -14,6 +14,7 @@ inline simd::float_4 fmodex(simd::float_4 x)
     return simd::ifelse(neg,x,a);
 }
 
+int quant_fade_mode = 0;
 
 inline void quantize_to_scale(float x, const std::vector<float>& g,
     float& out1, float& out2, float& outdiff)
@@ -42,8 +43,10 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
             outdiff = 1.0f;
             return;
         }
-        outdiff = rescale(x,out1,out2,0.0,1.0);
-        
+        if (quant_fade_mode==0)
+            outdiff = rescale(x,out1,out2,1.0,0.0);
+        else
+            outdiff = rescale(x,out1,out2,0.0,1.0);
         return;
     }
     out1 = g.back();
@@ -941,7 +944,6 @@ public:
             
             */
         m_pardiv.setDivision(16);
-        
     }
     float m_samplerate = 0.0f;
     inline float getModParValue(int parId, int inId, int attnId=-1, bool doClamp=false, float clampMin = 0.0f, float clampMax = 0.0f)
@@ -1106,8 +1108,16 @@ public:
     void appendContextMenu(Menu *menu) override 
     {
 		auto loadItem = createMenuItem<MyLoadFileItem>("Import .scl (Scala) file...");
-		loadItem->m_mod = dynamic_cast<XScaleOsc*>(module);
+		XScaleOsc* themod = dynamic_cast<XScaleOsc*>(module);
+        loadItem->m_mod = themod;
 		menu->addChild(loadItem);
+        std::string righttext;
+        menu->addChild(createMenuItem([themod]()
+        {
+            if (quant_fade_mode == 0)
+                quant_fade_mode = 1;
+            else quant_fade_mode = 0;
+        },"Old XFade mode",CHECKMARK(quant_fade_mode==1)));
     }
     XScaleOscWidget(XScaleOsc* m)
     {
