@@ -487,7 +487,14 @@ public:
             bank_c.scales.emplace_back(fn);
         }
         m_all_banks.push_back(bank_c);
-
+        KlangScaleBank bank_d;
+        bank_d.description = "User bank";
+        for (int i=0;i<8;++i)
+        {
+            bank_d.scales.push_back(KlangScale());
+            bank_d.scales.back().name = "Slot "+std::to_string(i+1);
+        }
+        m_all_banks.push_back(bank_d);
         /*
         double freq = root_freq;
         std::vector<float> scale;
@@ -520,6 +527,7 @@ public:
         index = clamp(index,0,mExpFMPowerTable.size()-1);
         return mExpFMPowerTable[index];
     }
+    int getNumBanks() { return m_all_banks.size(); }
     void updateOscFrequencies()
     {
         double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
@@ -748,40 +756,66 @@ public:
     }
     void loadScaleFromFile(std::string fn)
     {
-        #ifdef VALMISTA
-        //if (m_curScale==m_scale_bank.size()-1)
+        if (m_cur_bank == m_all_banks.size()-1)
         {
-            double root_freq = dsp::FREQ_C4/16.0;
-            try
+            KlangScale scale(fn);
+            auto& s = getScaleChecked(m_cur_bank,m_curScale);
+            if (s.name.empty()==false)
             {
-                auto thescale = Tunings::readSCLFile(fn);
-                auto pitches = semitonesFromScaleScale(thescale,0.0,128.0);  //loadScala(e,true,0.0,128);
-                std::vector<float> scale;
-                for (int i=0;i<pitches.size();++i)
-                {
-                    double p = pitches[i]; 
-                    double freq = root_freq * std::pow(1.05946309436,p);
-                    scale.push_back(freq);
-                }
-                m_scale_bank.back()=scale;
-                if (m_curScale==m_scale_bank.size()-1)
-                {
-                    //m_lock.lock();
-                    //m_scale = scale;
-                    //m_lock.unlock();
-                    mScaleToChangeTo = scale;
-                    mDoScaleChange = true;
-                }
-                
-                m_scalenames.back()=thescale.name;
-                mCustomScaleFileName = fn;
-            }
-            catch (std::exception& excep)
-            {
-                
+                s = scale;
+                mScaleToChangeTo = scale.hzvalues;
+                mDoScaleChange = true;
             }
         }
-        #endif
+        
+        
+    }
+    json_t* dataToJson() 
+    {
+        json_t* resultJ = json_object();
+        json_t* slotsJ = json_array();
+        auto& bank = m_all_banks.back();
+        for (int i=0;i<bank.scales.size();++i)
+        {
+            auto& scale = bank.scales[i];
+            auto stringj = json_string(scale.name.c_str());
+            json_array_append(slotsJ,stringj);
+        }
+        json_object_set(resultJ,"userscalafiles",slotsJ);
+        return resultJ;
+    }
+    void dataFromJson(json_t* root)
+    {
+        if (!root)
+            return;
+        auto& bank = m_all_banks.back();
+        auto slotsJ = json_object_get(root,"userscalafiles");
+        if (slotsJ)
+        {
+            int sz = json_array_size(slotsJ);
+            for (int i=0;i<sz;++i)
+            {
+                auto sj = json_array_get(slotsJ,i);
+                if (sj)
+                {
+                    std::string fn(json_string_value(sj));
+                    if (i<bank.scales.size())
+                    {
+                        KlangScale scale(fn);
+                        if (scale.name.empty()==false)
+                        {
+                            bank.scales[i] = scale;
+                            if (i == m_curScale)
+                            {
+                                mScaleToChangeTo = scale.hzvalues;
+                                mDoScaleChange = true;
+                            }
+                        }
+                            
+                    }
+                }
+            }
+        }
     }
     std::string mCustomScaleFileName;
     void setFMAmount(float a)
@@ -1031,7 +1065,7 @@ public:
             "Linear around C4",
             
             */
-        configParam(PAR_SCALE_BANK,0,2,0,"Scale bank");
+        configParam(PAR_SCALE_BANK,0,m_osc.getNumBanks()-1,0,"Scale bank");
         getParamQuantity(PAR_SCALE_BANK)->snapEnabled = true;
         m_pardiv.setDivision(16);
     }
@@ -1146,16 +1180,20 @@ public:
     json_t* dataToJson() override
     {
         json_t* resultJ = json_object();
-        json_object_set(resultJ,"scalafile0",json_string(m_osc.mCustomScaleFileName.c_str()));
+        //json_object_set(resultJ,"scalafile0",json_string(m_osc.mCustomScaleFileName.c_str()));
+        auto ob = m_osc.dataToJson();
+        if (ob)
+        {
+            json_object_set(resultJ,"osccustomdata0",ob);
+        }
         return resultJ;
     }
     void dataFromJson(json_t* root) override
     {
-        json_t* fnj = json_object_get(root,"scalafile0");
-        if (fnj)
+        json_t* ob = json_object_get(root,"osccustomdata0");
+        if (ob)
         {
-            std::string filename(json_string_value(fnj));
-            m_osc.loadScaleFromFile(filename);
+            m_osc.dataFromJson(ob);
         }
     }
     
