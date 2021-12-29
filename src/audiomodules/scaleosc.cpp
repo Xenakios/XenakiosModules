@@ -6,6 +6,27 @@
 #include "../Tunings.h"
 #include <osdialog.h>
 
+inline float chebyshev(float x, const std::array<float,16>& A, int order)
+{
+	// To = 1
+	// T1 = x
+	// Tn = 2.x.Tn-1 - Tn-2
+	// out = sum(Ai*Ti(x)) , i C {1,..,order} 
+	float Tn_2 = 1.0f; 
+	float Tn_1 = x;
+	float Tn;
+	float out = A[0]*Tn_1;
+
+	for(int n=2;n<=order;n++)
+	{
+		Tn	 =	2.0f*x*Tn_1 - Tn_2;
+		out	 +=	A[n-1]*Tn;		
+		Tn_2 =	Tn_1;
+		Tn_1 =  Tn;
+	}
+	return out;
+}
+
 inline simd::float_4 fmodex(simd::float_4 x)
 {
     x = simd::fmod(x,1.0f);
@@ -352,7 +373,7 @@ class ScaleOscillator
 public:
     float m_gain_smooth_amt = 0.9995f;
     KlangScale fallBackScale;
-
+    std::array<float,16> mChebyCoeffs;
     KlangScale& getScaleChecked(int banknum, int scalenum)
     {
         if (banknum>=0 && banknum<m_all_banks.size())
@@ -380,6 +401,9 @@ public:
     
     ScaleOscillator()
     {
+        for (int i=0;i<mChebyCoeffs.size();++i)
+            mChebyCoeffs[i] = 0.0f;
+        mChebyCoeffs[1] = 0.5f;
         m_fold_smoother.setAmount(0.99);
         for (int i=0;i<m_oscils.size();++i)
         {
@@ -685,7 +709,8 @@ public:
             float s1 = ss[1];
             fms[i] = s0;
             float s2 = s0 * gain0 + s1 * gain1;
-            s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
+            //s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
+            s2 = chebyshev(s2,mChebyCoeffs,8);
             outbuf[i] = s2;
         }
         int fm_mode = m_fm_algo;
@@ -855,6 +880,14 @@ public:
     void setFold(float f)
     {
         f = clamp(f,0.0f,1.0f);
+        mChebyCoeffs[0] = 1.0f;
+        mChebyCoeffs[1] = 0.0f;
+        mChebyCoeffs[2] = 0.5f*f;
+        mChebyCoeffs[3] = 0.4f*f;
+        mChebyCoeffs[4] = 0.0f;
+        mChebyCoeffs[5] = 0.0f;
+        mChebyCoeffs[6] = 0.0f;
+        mChebyCoeffs[7] = 0.6f*f;
         m_fold = std::pow(f,3.0f);
     }
     void setOscCount(int c)
