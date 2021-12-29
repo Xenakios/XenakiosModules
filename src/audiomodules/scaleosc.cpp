@@ -533,6 +533,7 @@ public:
             x = std::pow(2.0f,x/12.0f);
             mExpFMPowerTable[i] = x;
         }
+        mChebyMorphSmoother.setAmount(0.999);
         updateOscFrequencies();
     }
     inline float getExpFMDepth(float semitones)
@@ -698,7 +699,23 @@ public:
             float hz1 = m_osc_freq_smoothers[lastosci*2+1].process(m_osc_freqs[lastosci*2+1]);
             m_oscils[lastosci].setFrequencies(hz0,hz1,samplerate);
         }
+        if (m_fold_algo == 1)
+        {
+            float smorph = mChebyMorphSmoother.process(mChebyMorph);
+            int i0 = smorph * 3;
+            int i1 = i0 + 1;
+            float temp = smorph * 3.0f;
+            float xfrac = temp - (int)temp;
+            for (int i=0;i<8;++i)
+            {
+                float y0 = chebyMorphCoeffs[i0][i];
+                float y1 = chebyMorphCoeffs[i1][i];
+                float interpolated = y0+(y1-y0)*xfrac;
+                mChebyCoeffs[i] = interpolated;
+            }
             
+        }
+        
         float foldgain = m_fold_smoother.process((1.0f+m_fold*8.0f));
         for (int i=0;i<m_oscils.size();++i)
         {
@@ -892,24 +909,12 @@ public:
         {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f},
         {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f}
     };
+    OnePoleFilter mChebyMorphSmoother;
+    float mChebyMorph = 0.0f;
     void setFold(float f)
     {
         f = clamp(f,0.0f,1.0f);
-        if (m_fold_algo == 1)
-        {
-            int i0 = f * 3;
-            int i1 = i0 + 1;
-            float temp = f * 3.0f;
-            float xfrac = temp - (int)temp;
-            for (int i=0;i<8;++i)
-            {
-                float y0 = chebyMorphCoeffs[i0][i];
-                float y1 = chebyMorphCoeffs[i1][i];
-                float interpolated = y0+(y1-y0)*xfrac;
-                mChebyCoeffs[i] = interpolated;
-            }
-            
-        }
+        mChebyMorph = f;
         
         m_fold = std::pow(f,3.0f);
     }
