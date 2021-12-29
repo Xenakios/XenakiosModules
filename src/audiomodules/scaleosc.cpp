@@ -709,8 +709,15 @@ public:
             float s1 = ss[1];
             fms[i] = s0;
             float s2 = s0 * gain0 + s1 * gain1;
-            //s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
-            s2 = chebyshev(s2,mChebyCoeffs,8);
+            if (m_fold_algo == 0)
+            {
+                s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
+            }
+            else
+            {
+                s2 = chebyshev(s2,mChebyCoeffs,8);
+            }
+            
             outbuf[i] = s2;
         }
         int fm_mode = m_fm_algo;
@@ -880,14 +887,18 @@ public:
     void setFold(float f)
     {
         f = clamp(f,0.0f,1.0f);
-        mChebyCoeffs[0] = 1.0f;
-        mChebyCoeffs[1] = 0.0f;
-        mChebyCoeffs[2] = 0.5f*f;
-        mChebyCoeffs[3] = 0.4f*f;
-        mChebyCoeffs[4] = 0.0f;
-        mChebyCoeffs[5] = 0.0f;
-        mChebyCoeffs[6] = 0.0f;
-        mChebyCoeffs[7] = 0.6f*f;
+        if (m_fold_algo == 1)
+        {
+            mChebyCoeffs[0] = 1.0f;
+            mChebyCoeffs[1] = 0.0f;
+            mChebyCoeffs[2] = 0.5f*f;
+            mChebyCoeffs[3] = 0.4f*f;
+            mChebyCoeffs[4] = 0.0f;
+            mChebyCoeffs[5] = 0.0f;
+            mChebyCoeffs[6] = 0.0f;
+            mChebyCoeffs[7] = 0.6f*f;
+        }
+        
         m_fold = std::pow(f,3.0f);
     }
     void setOscCount(int c)
@@ -949,6 +960,10 @@ public:
         }
         
     }
+    void setFoldAlgo(int a)
+    {
+        m_fold_algo = clamp(a,0,1);
+    }
     OnePoleFilter m_norm_smoother;
     std::array<float,32> m_osc_gains;
     std::array<float,32> m_osc_freqs;
@@ -972,6 +987,7 @@ private:
     int m_active_oscils = 16;
     float m_warp = 1.1f;    
     int m_fm_algo = 0;
+    int m_fold_algo = 0;
     float m_freq_smooth = -1.0f;
     float m_spread_dist = 0.5f;
     int mXFadeMode = 2;
@@ -1043,6 +1059,7 @@ public:
         PAR_FREEZE_ENABLED,
         PAR_FREEZE_MODE,
         PAR_FM_MODE,
+        PAR_FOLD_MODE,
         PAR_LAST
     };
     XScaleOsc()
@@ -1095,6 +1112,8 @@ public:
             */
         configParam(PAR_SCALE_BANK,0,m_osc.getNumBanks()-1,0,"Scale bank");
         getParamQuantity(PAR_SCALE_BANK)->snapEnabled = true;
+        configParam(PAR_FOLD_MODE,0,1,0,"Fold mode");
+        getParamQuantity(PAR_FOLD_MODE)->snapEnabled = true;
         m_pardiv.setDivision(16);
     }
     float m_samplerate = 0.0f;
@@ -1138,6 +1157,8 @@ public:
             m_osc.setBalance(bal);
             float detune = getModParValue(PAR_DETUNE,IN_DETUNE,PAR_DETUNE_ATTN);
             m_osc.setDetune(detune);
+            int foldmode = params[PAR_FOLD_MODE].getValue();
+            m_osc.setFoldAlgo(foldmode);
             float fold = getModParValue(PAR_FOLD,IN_FOLD,PAR_FOLD_ATTN);
             m_osc.setFold(fold);
             float pitch = params[PAR_PITCH_OFFS].getValue();
@@ -1350,6 +1371,7 @@ public:
         addInput(createInput<PJ301MPort>(Vec(35.0f, 55.0f), module, XScaleOsc::IN_FREEZE));
         addParam(createParam<CKSSThree>(Vec(64.0, 32.0), module, XScaleOsc::PAR_FREEZE_MODE));
         addParam(createParam<Trimpot>(Vec(93.0, 32.0), module, XScaleOsc::PAR_FM_MODE));
+        addParam(createParam<Trimpot>(Vec(93.0, 52.0), module, XScaleOsc::PAR_FOLD_MODE));
         addParam(createParam<Trimpot>(Vec(120.0, 32.0), module, XScaleOsc::PAR_SCALE_BANK));
     }
     float myoffs = 0.0f;
