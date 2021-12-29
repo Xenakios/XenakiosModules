@@ -312,6 +312,7 @@ class KlangScale
 {
 public:
     KlangScale() {}
+    // Construct from Scale file 
     KlangScale(std::string fn)
     {
         double root_freq = dsp::FREQ_C4/16.0;
@@ -326,14 +327,13 @@ public:
                     double freq = root_freq * std::pow(1.05946309436,p);
                     scale.push_back(freq);
                 }
-                this->hzvalues = scale;
-                this->name = thescale.name;
+                hzvalues = scale;
+                name = thescale.name;
                 
             }
             catch (std::exception& excep)
             {
-                
-                name = "Continuum (with error)";
+                name = "Continuum";
             }
     }
     std::vector<float> hzvalues;
@@ -790,6 +790,7 @@ public:
             return;
         auto& bank = m_all_banks.back();
         auto slotsJ = json_object_get(root,"userscalafiles");
+        int lastbindex = m_all_banks.size()-1;
         if (slotsJ)
         {
             int sz = json_array_size(slotsJ);
@@ -801,17 +802,20 @@ public:
                     std::string fn(json_string_value(sj));
                     if (i<bank.scales.size())
                     {
-                        KlangScale scale(fn);
-                        if (scale.name.empty()==false)
+                        auto& temp = getScaleChecked(lastbindex,i);
+                        if (temp.name!=fn)
                         {
-                            bank.scales[i] = scale;
-                            if (i == m_curScale)
+                            KlangScale scale(fn);
+                            if (scale.name.empty()==false)
                             {
-                                mScaleToChangeTo = scale.hzvalues;
-                                mDoScaleChange = true;
+                                bank.scales[i] = scale;
+                                if (m_cur_bank == lastbindex && i == m_curScale)
+                                {
+                                    mScaleToChangeTo = scale.hzvalues;
+                                    mDoScaleChange = true;
+                                }
                             }
                         }
-                            
                     }
                 }
             }
