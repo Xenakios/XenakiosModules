@@ -377,27 +377,7 @@ public:
         return "Invalid scale index";
     }
     
-    void initScales()
-    {
-        /*
-        double root_freq = dsp::FREQ_C4/16.0;
-        std::string dir = asset::plugin(pluginInstance, "res/scale_oscillator_scales");
-        auto scalafiles = rack::system::getEntries(dir,3);
-        for (auto& e : scalafiles)
-        {
-            auto pitches = loadScala(e,true,0.0,128);
-            std::vector<float> scale;
-            for (int i=0;i<pitches.size();++i)
-            {
-                double p = pitches[i]; //rescale(scale[i],-5.0f,5.0f,0.0f,120.0f);
-                double freq = root_freq * std::pow(1.05946309436,p);
-                scale.push_back(freq);
-            }
-            m_scale_bank.push_back(scale);
-            m_scalenames.push_back(rack::system::getFilename(e));
-        }
-        */
-    }
+    
     ScaleOscillator()
     {
         m_fold_smoother.setAmount(0.99);
@@ -468,6 +448,17 @@ public:
         {
             bank_b.scales.emplace_back(fn);
         }
+        double freq = root_freq;
+        KlangScale scale;
+        scale.name = "Harmonics";
+        int i=1;
+        while (freq<20000.0)
+        {
+            freq = i * root_freq;
+            scale.hzvalues.push_back(freq);
+            ++i;
+        }
+        bank_b.scales.push_back(scale);
         m_all_banks.push_back(bank_b);
         scalafiles.clear();
         
