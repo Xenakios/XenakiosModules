@@ -308,21 +308,78 @@ inline std::vector<double> semitonesFromScaleScale(Tunings::Scale& thescale,
     return voltScale;
 }
 
+class KlangScale
+{
+public:
+    KlangScale() {}
+    KlangScale(std::string fn)
+    {
+        double root_freq = dsp::FREQ_C4/16.0;
+        try
+            {
+                auto thescale = Tunings::readSCLFile(fn);
+                auto pitches = semitonesFromScaleScale(thescale,0.0,128.0);
+                std::vector<float> scale;
+                for (int i=0;i<pitches.size();++i)
+                {
+                    double p = pitches[i]; 
+                    double freq = root_freq * std::pow(1.05946309436,p);
+                    scale.push_back(freq);
+                }
+                this->hzvalues = scale;
+                this->name = thescale.name;
+                
+            }
+            catch (std::exception& excep)
+            {
+                
+                name = "Continuum (with error)";
+            }
+    }
+    std::vector<float> hzvalues;
+    std::string name;
+};
+
+class KlangScaleBank
+{
+public:
+    std::vector<KlangScale> scales;
+    std::string description;
+};
+
 class ScaleOscillator
 {
 public:
     float m_gain_smooth_amt = 0.9995f;
+    KlangScale fallBackScale;
+
+    KlangScale& getScaleChecked(int banknum, int scalenum)
+    {
+        if (banknum>=0 && banknum<m_all_banks.size())
+        {
+            auto& curbank = m_all_banks[banknum];
+            if (scalenum>=0 && scalenum<curbank.scales.size())
+            {
+                return curbank.scales[scalenum];
+            }
+        }
+        return fallBackScale;
+    }
+    KlangScale& getCurrentScale()
+    {
+        return getScaleChecked(m_cur_bank,m_curScale);
+    }
     std::string getScaleName()
     {
-        if (m_curScale>=0 && m_curScale<m_scalenames.size())
-        {
-            return m_scalenames[m_curScale];
-        }
+        auto& s = getCurrentScale();
+        if (s.name.empty()==false)
+            return s.name;
         return "Invalid scale index";
     }
-    std::vector<std::string> m_scalenames;
+    
     void initScales()
     {
+        /*
         double root_freq = dsp::FREQ_C4/16.0;
         std::string dir = asset::plugin(pluginInstance, "res/scale_oscillator_scales");
         auto scalafiles = rack::system::getEntries(dir,3);
@@ -339,6 +396,7 @@ public:
             m_scale_bank.push_back(scale);
             m_scalenames.push_back(rack::system::getFilename(e));
         }
+        */
     }
     ScaleOscillator()
     {
@@ -360,6 +418,11 @@ public:
         }
         m_norm_smoother.setAmount(0.999);
         double root_freq = dsp::FREQ_C4/16.0;
+        KlangScaleBank bank_a;
+        bank_a.description = "Just intoned stacked intervals";
+        KlangScale continuumScale;
+        continuumScale.name = "Continuum";
+        bank_a.scales.push_back(continuumScale);
         
         std::vector<std::string> scalafiles;
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
@@ -376,6 +439,16 @@ public:
         scalafiles.push_back(dir+"/octave.scl");
         scalafiles.push_back(dir+"/ninth1_ji.scl");
         scalafiles.push_back(dir+"/ninth2_ji.scl");
+
+        for(auto& fn : scalafiles)
+        {
+            bank_a.scales.emplace_back(fn);
+        }
+        m_all_banks.push_back(bank_a);
+        scalafiles.clear();
+        KlangScaleBank bank_b;
+        bank_b.description = "Sundry scales";
+
         scalafiles.push_back(dir+"/penta_opt.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Enharmonic.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Diatonic.scl");
@@ -390,6 +463,17 @@ public:
         scalafiles.push_back(dir+"/tritones.scl");
         scalafiles.push_back(dir+"/tetra01.scl");
         scalafiles.push_back(dir+"/xenakis_jonchaies.scl");
+
+        for(auto& fn : scalafiles)
+        {
+            bank_b.scales.emplace_back(fn);
+        }
+        m_all_banks.push_back(bank_b);
+        scalafiles.clear();
+        
+        KlangScaleBank bank_c;
+        bank_c.description = "Chords";
+
         scalafiles.push_back(dir+"/major_chord_et.scl");
         scalafiles.push_back(dir+"/major_chord_ji.scl");
         scalafiles.push_back(dir+"/minor_chord_et.scl");
@@ -397,30 +481,14 @@ public:
         scalafiles.push_back(dir+"/dominant 7th 1.scl");
         scalafiles.push_back(dir+"/ninth_chord_et.scl");
         scalafiles.push_back(dir+"/ninth_chord2_et.scl");
-        m_scale_bank.push_back({});
-        m_scalenames.push_back("Continuum");
-        for (auto& e : scalafiles)
+        
+        for(auto& fn : scalafiles)
         {
-            try
-            {
-                auto thescale = Tunings::readSCLFile(e);
-                auto pitches = semitonesFromScaleScale(thescale,0.0,128.0);  //loadScala(e,true,0.0,128);
-                std::vector<float> scale;
-                for (int i=0;i<pitches.size();++i)
-                {
-                    double p = pitches[i]; 
-                    double freq = root_freq * std::pow(1.05946309436,p);
-                    scale.push_back(freq);
-                }
-                m_scale_bank.push_back(scale);
-                m_scalenames.push_back(thescale.name);
-            }
-            catch (std::exception& excep)
-            {
-                m_scale_bank.push_back({});
-                m_scalenames.push_back("Continuum (with error)");
-            }
+            bank_c.scales.emplace_back(fn);
         }
+        m_all_banks.push_back(bank_c);
+
+        /*
         double freq = root_freq;
         std::vector<float> scale;
         int i=1;
@@ -434,22 +502,9 @@ public:
         m_scalenames.push_back("Overtones");
         m_scale_bank.push_back({});
         m_scalenames.push_back("Load from file");
-        /*
-        scale.clear();
-        freq = 16384.0;
-        i = 1;
-        while (freq>15.0)
-        {
-            freq = 16384.0/i;
-            scale.push_back(freq);
-            ++i;
-        }
-        std::sort(scale.begin(),scale.end());
-        m_scale_bank.push_back(scale);
-        m_scalenames.push_back("Undertones");
         */
         m_scale.reserve(2048);
-        m_scale = m_scale_bank[0];
+        m_scale = getScaleChecked(0,1).hzvalues;
         for (int i=0;i<mExpFMPowerTable.size();++i)
         {
             float x = rescale(i,0,mExpFMPowerTable.size()-1,-60.0f,60.0f);
@@ -681,16 +736,19 @@ public:
     int m_curScale = 0;
     void setScale(float x)
     {
+        
         x = clamp(x,0.0f,1.0f);
-        int i = x * (m_scale_bank.size()-1);
+        auto& bank = m_all_banks[m_cur_bank];
+        int i = x * (bank.scales.size()-1);
         if (i!=m_curScale)
         {
             m_curScale = i;
-            m_scale = m_scale_bank[m_curScale];
+            m_scale = getScaleChecked(m_cur_bank,m_curScale).hzvalues;
         }
     }
     void loadScaleFromFile(std::string fn)
     {
+        #ifdef VALMISTA
         //if (m_curScale==m_scale_bank.size()-1)
         {
             double root_freq = dsp::FREQ_C4/16.0;
@@ -723,6 +781,7 @@ public:
                 
             }
         }
+        #endif
     }
     std::string mCustomScaleFileName;
     void setFMAmount(float a)
@@ -847,7 +906,8 @@ private:
     bool mFreeze_enabled = false;
     int mFreeze_mode = 0;
     int m_fm_mod_mode = 0;
-    std::vector<std::vector<float>> m_scale_bank;
+    std::vector<KlangScaleBank> m_all_banks;
+    int m_cur_bank = 0;
     int mFreezeRunCount = 0;
     spinlock m_lock;
     std::atomic<bool> mDoScaleChange{false};
