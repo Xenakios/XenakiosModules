@@ -6,6 +6,10 @@
 #include "../Tunings.h"
 #include <osdialog.h>
 
+/*
+Adapted from code by "mdsp" in https://www.kvraudio.com/forum/viewtopic.php?t=70372
+*/
+
 inline float chebyshev(float x, const std::array<float,16>& A, int order)
 {
 	// To = 1
@@ -534,6 +538,15 @@ public:
             mExpFMPowerTable[i] = x;
         }
         mChebyMorphSmoother.setAmount(0.999);
+        for (int i=0;i<chebyMorphCount+1;++i)
+        {
+            double sum = 0.0;
+            for (int j=0;j<8;++j)
+                sum+=chebyMorphCoeffs[i][j];
+            double gain = 1.0/sum;
+            for (int j=0;j<8;++j)
+                chebyMorphCoeffs[i][j] *= gain;
+        }
         updateOscFrequencies();
     }
     inline float getExpFMDepth(float semitones)
@@ -902,14 +915,16 @@ public:
     {
         m_detune = clamp(d,0.0f,1.0f);
     }
-    static const int chebyMorphCount = 5;
-    const float chebyMorphCoeffs[chebyMorphCount+1][8] =
+    static const int chebyMorphCount = 7;
+    float chebyMorphCoeffs[chebyMorphCount+1][8] =
     {
         {1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
         {1.0f,1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
+        {1.0f,0.0f,1.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
+        {1.0f,0.4f,0.0f,0.2f,0.0f,0.0f,0.5f,0.5f},
         {1.0f,0.4f,0.0f,0.2f,0.0f,0.0f,1.0f,0.0f},
-        {1.0f,0.9f,0.8f,0.7f,0.6f,0.5f,0.4f,0.3f},
-        {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f},
+        {1.0f,0.7f,0.6f,0.5f,0.4f,0.3f,0.2f,0.1f},
+        {0.1f,0.0f,0.2f,0.0f,0.0f,0.0f,0.0f,0.7f},
         {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f}
     };
     OnePoleFilter mChebyMorphSmoother;
