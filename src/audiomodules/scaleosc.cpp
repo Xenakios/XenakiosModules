@@ -702,9 +702,10 @@ public:
         if (m_fold_algo == 1)
         {
             float smorph = mChebyMorphSmoother.process(mChebyMorph);
-            int i0 = smorph * 3;
+            const int h = chebyMorphCount-1;
+            int i0 = smorph * h;
             int i1 = i0 + 1;
-            float temp = smorph * 3.0f;
+            float temp = smorph * h;
             float xfrac = temp - (int)temp;
             for (int i=0;i<8;++i)
             {
@@ -901,11 +902,13 @@ public:
     {
         m_detune = clamp(d,0.0f,1.0f);
     }
-    const float chebyMorphCoeffs[5][8] =
+    static const int chebyMorphCount = 5;
+    const float chebyMorphCoeffs[chebyMorphCount+1][8] =
     {
         {1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
         {1.0f,1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
         {1.0f,0.4f,0.0f,0.2f,0.0f,0.0f,1.0f,0.0f},
+        {1.0f,0.9f,0.8f,0.7f,0.6f,0.5f,0.4f,0.3f},
         {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f},
         {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f}
     };
@@ -1406,7 +1409,7 @@ public:
         {
             
             auto scalename = rack::system::getFilename(m->m_osc.getScaleName());
-            nvgFontSize(args.vg, 20);
+            nvgFontSize(args.vg, 18);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
