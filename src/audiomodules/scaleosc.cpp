@@ -884,19 +884,31 @@ public:
     {
         m_detune = clamp(d,0.0f,1.0f);
     }
+    const float chebyMorphCoeffs[5][8] =
+    {
+        {1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
+        {1.0f,1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
+        {1.0f,0.4f,0.0f,0.2f,0.0f,0.0f,1.0f,0.0f},
+        {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f},
+        {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f}
+    };
     void setFold(float f)
     {
         f = clamp(f,0.0f,1.0f);
         if (m_fold_algo == 1)
         {
-            mChebyCoeffs[0] = 1.0f;
-            mChebyCoeffs[1] = 0.0f;
-            mChebyCoeffs[2] = 0.5f*f;
-            mChebyCoeffs[3] = 0.4f*f;
-            mChebyCoeffs[4] = 0.0f;
-            mChebyCoeffs[5] = 0.0f;
-            mChebyCoeffs[6] = 0.0f;
-            mChebyCoeffs[7] = 0.6f*f;
+            int i0 = f * 3;
+            int i1 = i0 + 1;
+            float temp = f * 3.0f;
+            float xfrac = temp - (int)temp;
+            for (int i=0;i<8;++i)
+            {
+                float y0 = chebyMorphCoeffs[i0][i];
+                float y1 = chebyMorphCoeffs[i1][i];
+                float interpolated = y0+(y1-y0)*xfrac;
+                mChebyCoeffs[i] = interpolated;
+            }
+            
         }
         
         m_fold = std::pow(f,3.0f);
