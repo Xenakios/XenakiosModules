@@ -877,6 +877,16 @@ public:
     {
         mFreeze_mode = m;
     }
+    void setScaleBank(int b)
+    {
+        b = clamp(b,0,m_all_banks.size()-1);
+        if (m_cur_bank!=b)
+        {
+            m_cur_bank = b;
+            m_scale = getScaleChecked(m_cur_bank,m_curScale).hzvalues;
+        }
+        
+    }
     OnePoleFilter m_norm_smoother;
     std::array<float,32> m_osc_gains;
     std::array<float,32> m_osc_freqs;
@@ -989,7 +999,7 @@ public:
         configParam(PAR_FM_ALGO,0.0f,2.0f,0.0f,"FM Algorithm");
         getParamQuantity(PAR_FM_ALGO)->snapEnabled = true;
         configParam(PAR_SCALE,0.0f,1.0f,0.0f,"Scale");
-        configParam(PAR_SCALE_BANK,0.0f,1.0f,0.0f,"Scale bank");
+        
         configParam(PAR_WARP_MODE,0.0f,2.0f,0.0f,"Warp Mode");
         getParamQuantity(PAR_WARP_MODE)->snapEnabled = true;
         configParam(PAR_NUM_OUTPUTS,1.0f,16.0f,1.0f,"Num outputs");
@@ -1021,6 +1031,8 @@ public:
             "Linear around C4",
             
             */
+        configParam(PAR_SCALE_BANK,0,2,0,"Scale bank");
+        getParamQuantity(PAR_SCALE_BANK)->snapEnabled = true;
         m_pardiv.setDivision(16);
     }
     float m_samplerate = 0.0f;
@@ -1090,6 +1102,8 @@ public:
             m_osc.setFMAlgo(fmalgo);
             int fmmode = params[PAR_FM_MODE].getValue();
             m_osc.setFMMode(fmmode);
+            int bank = params[PAR_SCALE_BANK].getValue();
+            m_osc.setScaleBank(bank);
             float scale = getModParValue(PAR_SCALE,IN_SCALE,PAR_SCALE_ATTN);
             m_osc.setScale(scale);
             float psmooth = params[PAR_FREQSMOOTH].getValue();
@@ -1270,6 +1284,7 @@ public:
         addInput(createInput<PJ301MPort>(Vec(35.0f, 55.0f), module, XScaleOsc::IN_FREEZE));
         addParam(createParam<CKSSThree>(Vec(64.0, 32.0), module, XScaleOsc::PAR_FREEZE_MODE));
         addParam(createParam<Trimpot>(Vec(93.0, 32.0), module, XScaleOsc::PAR_FM_MODE));
+        addParam(createParam<Trimpot>(Vec(120.0, 32.0), module, XScaleOsc::PAR_SCALE_BANK));
     }
     float myoffs = 0.0f;
     void draw(const DrawArgs &args) override
