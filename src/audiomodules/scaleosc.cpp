@@ -391,7 +391,7 @@ class ScaleOscillator
 public:
     float m_gain_smooth_amt = 0.9995f;
     KlangScale fallBackScale;
-    std::array<float,16> mChebyCoeffs;
+    alignas(16) std::array<float,16> mChebyCoeffs;
     KlangScale& getScaleChecked(int banknum, int scalenum)
     {
         if (banknum>=0 && banknum<m_all_banks.size())
@@ -727,13 +727,14 @@ public:
             m_oscils[lastosci].setFrequencies(hz0,hz1,samplerate);
         }
         float smorph = mChebyMorphSmoother.process(mChebyMorph);
-        if (m_fold_algo == 1)
+        if (m_fold_algo == 1 && smorph>0.00001f)
         {
             const int h = chebyMorphCount-1;
             int i0 = smorph * h;
             int i1 = i0 + 1;
             float temp = smorph * h;
             float xfrac = temp - (int)temp;
+            /*
             for (int i=0;i<16;++i)
             {
                 float y0 = chebyMorphCoeffs[i0][i];
@@ -741,7 +742,14 @@ public:
                 float interpolated = y0+(y1-y0)*xfrac;
                 mChebyCoeffs[i] = interpolated;
             }
-            
+            */
+            for (int i=0;i<16;i+=4)
+            {
+                simd::float_4 y0 = simd::float_4::load(&chebyMorphCoeffs[i0][i]);
+                simd::float_4 y1 = simd::float_4::load(&chebyMorphCoeffs[i1][i]);
+                simd::float_4 interpolated = y0 + (y1 - y0) * xfrac;
+                interpolated.store(&mChebyCoeffs[i]);
+            }
         }
         
         float foldgain = m_fold_smoother.process((1.0f+m_fold*8.0f));
@@ -942,7 +950,7 @@ public:
         m_detune = clamp(d,0.0f,1.0f);
     }
     static const int chebyMorphCount = 7;
-    float chebyMorphCoeffs[chebyMorphCount+1][16] =
+    alignas(16) float chebyMorphCoeffs[chebyMorphCount+1][16] =
     {
         {1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0,0,0,0,0,0,0,0},
         {1.0f,1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0,0,0,0,0,0,0,0},
