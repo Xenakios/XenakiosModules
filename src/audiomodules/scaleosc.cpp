@@ -12,10 +12,6 @@ Adapted from code by "mdsp" in https://www.kvraudio.com/forum/viewtopic.php?t=70
 
 inline float chebyshev(float x, const std::array<float,16>& A, int order)
 {
-	// To = 1
-	// T1 = x
-	// Tn = 2.x.Tn-1 - Tn-2
-	// out = sum(Ai*Ti(x)) , i C {1,..,order} 
 	float Tn_2 = 1.0f; 
 	float Tn_1 = x;
 	float Tn;
@@ -30,6 +26,24 @@ inline float chebyshev(float x, const std::array<float,16>& A, int order)
 	}
 	return out;
 }
+
+inline simd::float_4 chebyshev(simd::float_4 x, const std::array<float,16>& A, int order)
+{
+	simd::float_4 Tn_2 = 1.0f; 
+	simd::float_4 Tn_1 = x;
+	simd::float_4 Tn;
+    simd::float_4 out = A[0]*Tn_1;
+
+	for(int n=2;n<=order;n++)
+	{
+		Tn	 =	2.0f*x*Tn_1 - Tn_2;
+		out	 +=	A[n-1]*Tn;		
+		Tn_2 =	Tn_1;
+		Tn_1 =  Tn;
+	}
+	return out;
+}
+
 
 inline simd::float_4 fmodex(simd::float_4 x)
 {
@@ -740,16 +754,21 @@ public:
             float s1 = ss[1];
             fms[i] = s0;
             float s2 = s0 * gain0 + s1 * gain1;
+            // do this here because no SIMD implementation for reflect yet...
             if (m_fold_algo == 0)
             {
                 s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
-            }
-            else
-            {
-                s2 = chebyshev(s2,mChebyCoeffs,8);
-            }
-            
+            } 
             outbuf[i] = s2;
+        }
+        if (m_fold_algo == 1 && mChebyMorph>0.0f)
+        {
+            for (int i=0;i<m_oscils.size();i+=4)
+            {
+                simd::float_4 x = simd::float_4::load(&outbuf[i]);
+                x = chebyshev(x,mChebyCoeffs,8);
+                x.store(&outbuf[i]);
+            }
         }
         int fm_mode = m_fm_algo;
         auto fmfunc = [this](int mode, float& basefreq, int mi)
