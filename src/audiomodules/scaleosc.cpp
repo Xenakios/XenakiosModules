@@ -10,7 +10,8 @@
 Adapted from code by "mdsp" in https://www.kvraudio.com/forum/viewtopic.php?t=70372
 */
 
-inline float chebyshev(float x, const std::array<float,16>& A, int order)
+template<size_t CoeffSz>
+inline float chebyshev(float x, const std::array<float,CoeffSz>& A, int order)
 {
 	float Tn_2 = 1.0f; 
 	float Tn_1 = x;
