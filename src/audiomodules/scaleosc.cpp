@@ -555,10 +555,10 @@ public:
         for (int i=0;i<chebyMorphCount+1;++i)
         {
             double sum = 0.0;
-            for (int j=0;j<8;++j)
+            for (int j=0;j<16;++j)
                 sum+=chebyMorphCoeffs[i][j];
             double gain = 1.0/sum;
-            for (int j=0;j<8;++j)
+            for (int j=0;j<16;++j)
                 chebyMorphCoeffs[i][j] *= gain;
         }
         updateOscFrequencies();
@@ -734,7 +734,7 @@ public:
             int i1 = i0 + 1;
             float temp = smorph * h;
             float xfrac = temp - (int)temp;
-            for (int i=0;i<8;++i)
+            for (int i=0;i<16;++i)
             {
                 float y0 = chebyMorphCoeffs[i0][i];
                 float y1 = chebyMorphCoeffs[i1][i];
@@ -759,6 +759,13 @@ public:
             {
                 s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
             } 
+            /*
+            else
+            {
+                if (mChebyMorph>0.0f)
+                    s2 = chebyshev(s2,mChebyCoeffs,16);
+            }
+            */
             outbuf[i] = s2;
         }
         if (m_fold_algo == 1 && mChebyMorph>0.0f)
@@ -766,7 +773,7 @@ public:
             for (int i=0;i<m_oscils.size();i+=4)
             {
                 simd::float_4 x = simd::float_4::load(&outbuf[i]);
-                x = chebyshev(x,mChebyCoeffs,8);
+                x = chebyshev(x,mChebyCoeffs,16);
                 x.store(&outbuf[i]);
             }
         }
@@ -935,16 +942,16 @@ public:
         m_detune = clamp(d,0.0f,1.0f);
     }
     static const int chebyMorphCount = 7;
-    float chebyMorphCoeffs[chebyMorphCount+1][8] =
+    float chebyMorphCoeffs[chebyMorphCount+1][16] =
     {
-        {1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
-        {1.0f,1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
-        {1.0f,0.0f,1.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
-        {1.0f,0.4f,0.0f,0.2f,0.0f,0.0f,0.5f,0.5f},
-        {1.0f,0.4f,0.0f,0.2f,0.0f,0.0f,1.0f,0.0f},
-        {1.0f,0.7f,0.6f,0.5f,0.4f,0.3f,0.2f,0.1f},
-        {0.1f,0.0f,0.2f,0.0f,0.0f,0.0f,0.0f,0.7f},
-        {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f}
+        {1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0,0,0,0,0,0,0,0},
+        {1.0f,1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0,0,0,0,0,0,0,0},
+        {1.0f,0.0f,1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0,1,0,0,0,0,0,0},
+        {1.0f,0.4f,0.0f,0.2f,0.0f,0.0f,0.5f,0.5f,0,0,0,0,0,0,1,0},
+        {1.0f,0.4f,0.0f,0.2f,0.0f,0.0f,1.0f,0.0f,0,0,0,0,0,0,0,0},
+        {1.0f,0.7f,0.6f,0.5f,0.4f,0.3f,0.2f,0.1f,0,0,0,0,0,0,0,0},
+        {0.1f,0.0f,0.2f,0.0f,0.0f,0.0f,0.0f,0.7f,0,0,0,0,0,0,0,0},
+        {0.2f,0.0f,0.3f,0.0f,0.0f,0.0f,0.0f,1.0f,0,0,0,0,0,0,0,0}
     };
     OnePoleFilter mChebyMorphSmoother;
     float mChebyMorph = 0.0f;
@@ -1255,7 +1262,7 @@ public:
             m_osc.setFreezeMode(freezeMode);
             m_osc.updateOscFrequencies();
         }
-        float outs[16];
+        alignas(16) float outs[16];
         m_osc.processNextFrame(outs,args.sampleRate);
         int numOutputs = params[PAR_NUM_OUTPUTS].getValue();
         int numOscs = m_osc.getOscCount();
