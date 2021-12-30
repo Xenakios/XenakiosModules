@@ -27,7 +27,8 @@ inline float chebyshev(float x, const std::array<float,16>& A, int order)
 	return out;
 }
 
-inline simd::float_4 chebyshev(simd::float_4 x, const std::array<float,16>& A, int order)
+template<size_t CoeffSz>
+inline simd::float_4 chebyshev(simd::float_4 x, const std::array<float,CoeffSz>& A, int order)
 {
 	simd::float_4 Tn_2 = 1.0f; 
 	simd::float_4 Tn_1 = x;
@@ -391,7 +392,7 @@ class ScaleOscillator
 public:
     float m_gain_smooth_amt = 0.9995f;
     KlangScale fallBackScale;
-    alignas(16) std::array<float,16> mChebyCoeffs;
+    alignas(16) std::array<float,32> mChebyCoeffs;
     KlangScale& getScaleChecked(int banknum, int scalenum)
     {
         if (banknum>=0 && banknum<m_all_banks.size())
@@ -421,7 +422,6 @@ public:
     {
         for (int i=0;i<mChebyCoeffs.size();++i)
             mChebyCoeffs[i] = 0.0f;
-        mChebyCoeffs[1] = 0.5f;
         m_fold_smoother.setAmount(0.99);
         for (int i=0;i<m_oscils.size();++i)
         {
