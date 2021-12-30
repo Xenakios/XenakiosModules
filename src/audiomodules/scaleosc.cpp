@@ -726,9 +726,9 @@ public:
             float hz1 = m_osc_freq_smoothers[lastosci*2+1].process(m_osc_freqs[lastosci*2+1]);
             m_oscils[lastosci].setFrequencies(hz0,hz1,samplerate);
         }
+        float smorph = mChebyMorphSmoother.process(mChebyMorph);
         if (m_fold_algo == 1)
         {
-            float smorph = mChebyMorphSmoother.process(mChebyMorph);
             const int h = chebyMorphCount-1;
             int i0 = smorph * h;
             int i1 = i0 + 1;
@@ -768,7 +768,7 @@ public:
             */
             outbuf[i] = s2;
         }
-        if (m_fold_algo == 1 && mChebyMorph>0.0f)
+        if (m_fold_algo == 1 && smorph>0.00001f)
         {
             for (int i=0;i<m_oscils.size();i+=4)
             {
