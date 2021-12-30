@@ -485,7 +485,7 @@ public:
         scalafiles.push_back(dir+"/tritones.scl");
         scalafiles.push_back(dir+"/tetra01.scl");
         scalafiles.push_back(dir+"/xenakis_jonchaies.scl");
-
+        scalafiles.push_back(dir+"/xenakis_mists.scl");
         for(auto& fn : scalafiles)
         {
             bank_b.scales.emplace_back(fn);
