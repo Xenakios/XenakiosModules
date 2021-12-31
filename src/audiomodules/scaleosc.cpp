@@ -1130,6 +1130,7 @@ public:
         PAR_FREEZE_MODE,
         PAR_FM_MODE,
         PAR_FOLD_MODE,
+        PAR_HIPASSFREQ,
         PAR_LAST
     };
     XScaleOsc()
@@ -1184,6 +1185,7 @@ public:
         getParamQuantity(PAR_SCALE_BANK)->snapEnabled = true;
         configParam(PAR_FOLD_MODE,0,1,0,"Fold mode");
         getParamQuantity(PAR_FOLD_MODE)->snapEnabled = true;
+        configParam(PAR_HIPASSFREQ,10.0f,200.0f,10.0f,"Low cut filter frequency");
         m_pardiv.setDivision(16);
     }
     float m_samplerate = 0.0f;
@@ -1199,18 +1201,26 @@ public:
         return p;
     } 
 
-    
+    float mLastHPCutoff = 0.0f;
     void process(const ProcessArgs& args) override
     {
-        if (m_samplerate!=args.sampleRate)
+        float hphz = params[PAR_HIPASSFREQ].getValue();
+        if (m_samplerate!=args.sampleRate || mLastHPCutoff!=hphz)
         {
-            for (int i=0;i<16;++i)
+            // we don't want to calculate the coeffs for all filter instances
+            float normfreq = hphz/args.sampleRate;
+            float q = sqrt(2.0)/2.0;
+            m_hpfilts[0].setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
+            for (int i=1;i<16;++i)
             {
-                float normfreq = 25.0/args.sampleRate;
-                float q = sqrt(2.0)/2.0;
-                m_hpfilts[i].setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
+                m_hpfilts[i].a[0] = m_hpfilts[0].a[0];
+                m_hpfilts[i].a[1] = m_hpfilts[0].a[1];
+                m_hpfilts[i].b[0] = m_hpfilts[0].b[0];
+                m_hpfilts[i].b[1] = m_hpfilts[0].b[1];
+                m_hpfilts[i].b[2] = m_hpfilts[0].b[2];
             }
             m_samplerate = args.sampleRate;
+            mLastHPCutoff = hphz;
         }
         bool tempFz = m_freezeTrigger.process(inputs[IN_FREEZE].getVoltage(),0.0f,10.0f);
         if (tempFz == true) 
@@ -1443,6 +1453,7 @@ public:
         addParam(createParam<Trimpot>(Vec(93.0, 32.0), module, XScaleOsc::PAR_FM_MODE));
         addParam(createParam<Trimpot>(Vec(93.0, 52.0), module, XScaleOsc::PAR_FOLD_MODE));
         addParam(createParam<Trimpot>(Vec(120.0, 32.0), module, XScaleOsc::PAR_SCALE_BANK));
+        addParam(createParam<Trimpot>(Vec(120.0, 52.0), module, XScaleOsc::PAR_HIPASSFREQ));
     }
     float myoffs = 0.0f;
     void draw(const DrawArgs &args) override
@@ -1508,4 +1519,3 @@ public:
 };
 
 Model* modelXScaleOscillator = createModel<XScaleOsc, XScaleOscWidget>("XScaleOscillator");
-
