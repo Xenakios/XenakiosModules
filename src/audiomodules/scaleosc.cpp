@@ -487,6 +487,8 @@ public:
         scalafiles.push_back(dir+"/tetra01.scl");
         scalafiles.push_back(dir+"/xenakis_jonchaies.scl");
         scalafiles.push_back(dir+"/xenakis_mists.scl");
+        scalafiles.push_back(dir+"/19tet_sieve01.scl");
+        scalafiles.push_back(dir+"/19tet_sieve02.scl");
         for(auto& fn : scalafiles)
         {
             bank_b.scales.emplace_back(fn);
