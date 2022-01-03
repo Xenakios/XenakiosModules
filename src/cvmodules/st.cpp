@@ -3,6 +3,7 @@
 #include <array>
 #include "../jcdp_envelope.h"
 #include "../helperwidgets.h"
+#include <osdialog.h>
 
 inline int randomDiscrete(std::mt19937& rng,std::vector<float>& whs)
 {
@@ -113,10 +114,13 @@ public:
             m_activeOuts[i] = false;
             m_Outs[i] = 0.0f;
         }
-        std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
-        std::string fn = dir+"/pure fifths.scl";
-        auto thescale = Tunings::readSCLFile(fn);
-        m_quanScale = semitonesFromScalaScale(thescale,-60.0,60.0);
+        
+        m_quanScale.resize(4096);
+    }
+    void setScale(std::vector<double> sc)
+    {
+        m_scaleToChangeTo = sc;
+        m_doScaleChange = true;
     }
     void process(float deltatime)
     {
@@ -151,6 +155,11 @@ public:
             else
                 penvphase = std::pow(normphase,rescale(m_pitch_env_warp,0.0f,1.0f,1.0f,4.0f));
             */
+            if (m_doScaleChange == true)
+            {
+                m_quanScale = m_scaleToChangeTo;
+                m_doScaleChange = false;
+            }
             float penvvalue = m_pitch_env.GetInterpolatedEnvelopeValue(penvphase);
             float qpitch = m_pitch;
             if (mPitchQAmount>0.0f)
@@ -195,6 +204,8 @@ public:
         return m_available;
     }
     std::vector<double> m_quanScale;
+    std::vector<double> m_scaleToChangeTo;
+    std::atomic<bool> m_doScaleChange{false};
     void start(float dur, float centerpitch,float spreadpitch, breakpoint_envelope* ampenv,
         float glissprob, float gliss_spread, int penv, float aenvwspr, float penvwspr)
     {
@@ -347,13 +358,22 @@ public:
     };
     int m_numAmpEnvs = 11;
     int m_lastAllocatedVoice = 0;
-    XStochastic()
+    void loadScaleFromFile(std::string fn)
     {
+        auto thescale = Tunings::readSCLFile(fn);
+        auto sc = semitonesFromScalaScale(thescale,-60.0,60.0);
         for (int i=0;i<16;++i)
         {
             m_voices[i].m_rng = &m_rng;
             m_voices[i].m_chaos = 0.417+0.2/16*i;
+            m_voices[i].setScale(sc);
         }
+    }
+    XStochastic()
+    {
+        std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
+        std::string fn = dir+"/pure fifths.scl";
+        loadScaleFromFile(fn);
         m_amp_envelopes[0].AddNode({0.0,0.0,2});
         m_amp_envelopes[0].AddNode({0.5,1.0,2});
         m_amp_envelopes[0].AddNode({1.0,0.0});
@@ -834,6 +854,20 @@ public:
             for (int i=0;i<16;++i)
                 sm->params[XStochastic::PAR_DISPLAY_WEIGHT2+i].setValue(1.0f);
         },"Set pitch envelope probabilities to 1"));
+        menu->addChild(createMenuItem([sm]()
+        {
+            
+                std::string dir = asset::plugin(pluginInstance, "/res");
+                osdialog_filters* filters = osdialog_filters_parse("Scala File:scl");
+                char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
+                osdialog_filters_free(filters);
+                if (!pathC) {
+                    return;
+                }
+                std::string path = pathC;
+                std::free(pathC);
+                sm->loadScaleFromFile(path);
+        },"Load Scala tuning file..."));   
     }
     void draw(const DrawArgs &args) override
     {
