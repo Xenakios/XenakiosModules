@@ -481,6 +481,7 @@ public:
         scalafiles.push_back(dir+"/05-19.scl");
         scalafiles.push_back(dir+"/13-19.scl");
         scalafiles.push_back(dir+"/bohlen_quintuple_j.scl");
+        scalafiles.push_back(dir+"/bohlen_11.scl");
         scalafiles.push_back(dir+"/equally tempered minor.scl");
         scalafiles.push_back(dir+"/12tet.scl");
         scalafiles.push_back(dir+"/tritones.scl");
