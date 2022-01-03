@@ -84,7 +84,7 @@ public:
     std::array<float,66> pitchwarp_table;
     StocVoice()
     {
-        cd.setDivision(4);
+        cd.setDivision(8);
         for (int i=0;i<ampwarp_table.size()-2;++i)
         {
             ampwarp_table[i] = rescale((float)i,0.0f,(float)ampwarp_table.size()-2,0.0f,1.0f);
@@ -142,7 +142,7 @@ public:
             m_Outs[2] = rescale(gain,0.0f,1.0f,0.0f,10.0f);
         }
         
-        if (m_activeOuts[1])
+        if (m_activeOuts[1] && cd.process())
         {
             float penvphase = normphase;
             /*
@@ -152,7 +152,10 @@ public:
                 penvphase = std::pow(normphase,rescale(m_pitch_env_warp,0.0f,1.0f,1.0f,4.0f));
             */
             float penvvalue = m_pitch_env.GetInterpolatedEnvelopeValue(penvphase);
-            m_Outs[1] = reflect_value<float>(-60.0f,m_pitch + penvvalue,60.0f);
+            float qpitch = m_pitch;
+            if (mPitchQAmount>0.0f)
+                qpitch = quantize_to_grid(m_pitch,m_quanScale,mPitchQAmount);
+            m_Outs[1] = reflect_value<float>(-60.0f,qpitch + penvvalue,60.0f);
         }
         if (m_activeOuts[3])
         {
@@ -182,6 +185,11 @@ public:
             m_available = true;
         }
     }
+    float mPitchQAmount = 1.0f;
+    void setPitchQuantAount(float a)
+    {
+        mPitchQAmount = clamp(a,0.0f,1.0f);
+    }
     bool isAvailable()
     {
         return m_available;
@@ -197,7 +205,7 @@ public:
         m_phase = 0.0;
         m_len = dur;
         m_pitch = rescale(dist(*m_rng),0.0f,1.0f,centerpitch-spreadpitch,centerpitch+spreadpitch);
-        m_pitch = quantize_to_grid(m_pitch,m_quanScale);
+        
         float glissdest = 0.0;
         auto& pt0 = m_pitch_env.GetNodeAtIndex(0);
         auto& pt1 = m_pitch_env.GetNodeAtIndex(1);
@@ -334,6 +342,7 @@ public:
         PAR_PITCH_ENV_WARP_SPREAD,
         ENUMS(PAR_DISPLAY_WEIGHT,16),
         ENUMS(PAR_DISPLAY_WEIGHT2,16),
+        PAR_PITCHQUANAMOUNT,
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -440,7 +449,7 @@ public:
             configParam(PAR_DISPLAY_WEIGHT+i,0.0f,1.0f,1.0,"Envelope selection weight "+std::to_string(i));
             configParam(PAR_DISPLAY_WEIGHT2+i,0.0f,1.0f,1.0,"Envelope selection weight2 "+std::to_string(i));
         }
-            
+        configParam(PAR_PITCHQUANAMOUNT,0.0f,1.0f,1.0f,"Pitch quantization amount");
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -554,6 +563,7 @@ public:
         outputs[OUT_AUX3].setChannels(numvoices);
         double chaos_amt = params[PAR_AUX3_CHAOS].getValue();
         double chaos_rate = std::pow(2.0,params[PAR_AUX3_CHAOS_RATE].getValue());
+        float pqamt = params[PAR_PITCHQUANAMOUNT].getValue();
         for (int i=0;i<numvoices;++i)
         {
             std::array<float,6> vouts{0.0f,0.0f,0.0f,0.0f,0.0f,0.0f};
@@ -561,6 +571,7 @@ public:
             {
                 m_voices[i].m_chaos_amt = chaos_amt;
                 m_voices[i].m_chaos_rate = chaos_rate;
+                m_voices[i].setPitchQuantAount(pqamt);
                 m_voices[i].process(args.sampleTime);
                 
                 //float aresp = m_pitch_amp_response.GetInterpolatedEnvelopeValue(vouts[1]); 
@@ -759,6 +770,9 @@ public:
             -1,-1,xc,yc,false,8.0f));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"GLISS ENV WARP SPR",XStochastic::PAR_PITCH_ENV_WARP_SPREAD,
+            -1,-1,xc,yc,false,8.0f));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"PITCH QUANT",XStochastic::PAR_PITCHQUANAMOUNT,
             -1,-1,xc,yc,false,8.0f));
         yc += 47;
         syc = yc;
