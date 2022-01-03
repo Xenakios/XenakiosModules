@@ -113,6 +113,10 @@ public:
             m_activeOuts[i] = false;
             m_Outs[i] = 0.0f;
         }
+        std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
+        std::string fn = dir+"/pure fifths.scl";
+        auto thescale = Tunings::readSCLFile(fn);
+        m_quanScale = semitonesFromScalaScale(thescale,-60.0,60.0);
     }
     void process(float deltatime)
     {
@@ -182,6 +186,7 @@ public:
     {
         return m_available;
     }
+    std::vector<double> m_quanScale;
     void start(float dur, float centerpitch,float spreadpitch, breakpoint_envelope* ampenv,
         float glissprob, float gliss_spread, int penv, float aenvwspr, float penvwspr)
     {
@@ -192,6 +197,7 @@ public:
         m_phase = 0.0;
         m_len = dur;
         m_pitch = rescale(dist(*m_rng),0.0f,1.0f,centerpitch-spreadpitch,centerpitch+spreadpitch);
+        m_pitch = quantize_to_grid(m_pitch,m_quanScale);
         float glissdest = 0.0;
         auto& pt0 = m_pitch_env.GetNodeAtIndex(0);
         auto& pt1 = m_pitch_env.GetNodeAtIndex(1);

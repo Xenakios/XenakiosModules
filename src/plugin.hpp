@@ -6,6 +6,7 @@ using namespace rack;
 #include <fstream>
 #include <functional>
 #include "grain_engine/dr_wav.h"
+#include "Tunings.h"
 // Declare the Plugin, defined in plugin.cpp
 extern Plugin *pluginInstance;
 
@@ -156,6 +157,41 @@ inline std::vector<double> parse_scala(std::vector<std::string>& input,
 		
 	}
 	return result;
+}
+
+inline std::vector<double> semitonesFromScalaScale(Tunings::Scale& thescale,
+    double startPitch,double endPitch)
+{
+    bool finished = false;
+    std::vector<double> voltScale;
+    int sanity = 0;
+    double volts = startPitch;
+    voltScale.push_back(volts);
+    double endvalue = endPitch;
+    while (volts < endvalue)
+    {
+        float last = 0.0f;
+        for (auto& e : thescale.tones)
+        {
+            double cents = e.cents;
+            double evolt = cents/100.0; 
+            if (volts + evolt > endvalue)
+            {
+                finished = true;
+                break;
+            }
+            voltScale.push_back(volts + evolt);
+            last = evolt;
+        }
+        volts += last;
+        if (finished)
+            break;
+        ++sanity;
+        if (sanity>1000)
+            break;
+    }
+    voltScale.erase(std::unique(voltScale.begin(), voltScale.end()), voltScale.end());
+    return voltScale;
 }
 
 inline std::vector<float> loadScala(std::string path, 

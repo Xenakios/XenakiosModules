@@ -314,40 +314,7 @@ public:
     }
 };
 
-inline std::vector<double> semitonesFromScaleScale(Tunings::Scale& thescale,
-    double startPitch,double endPitch)
-{
-    bool finished = false;
-    std::vector<double> voltScale;
-    int sanity = 0;
-    double volts = startPitch;
-    voltScale.push_back(volts);
-    double endvalue = endPitch;
-    while (volts < endvalue)
-    {
-        float last = 0.0f;
-        for (auto& e : thescale.tones)
-        {
-            double cents = e.cents;
-            double evolt = cents/100.0; 
-            if (volts + evolt > endvalue)
-            {
-                finished = true;
-                break;
-            }
-            voltScale.push_back(volts + evolt);
-            last = evolt;
-        }
-        volts += last;
-        if (finished)
-            break;
-        ++sanity;
-        if (sanity>1000)
-            break;
-    }
-    voltScale.erase(std::unique(voltScale.begin(), voltScale.end()), voltScale.end());
-    return voltScale;
-}
+
 
 class KlangScale
 {
@@ -360,7 +327,7 @@ public:
         try
             {
                 auto thescale = Tunings::readSCLFile(fn);
-                auto pitches = semitonesFromScaleScale(thescale,0.0,128.0);
+                auto pitches = semitonesFromScalaScale(thescale,0.0,128.0);
                 std::vector<float> scale;
                 for (int i=0;i<pitches.size();++i)
                 {
