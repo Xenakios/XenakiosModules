@@ -358,8 +358,10 @@ public:
     };
     int m_numAmpEnvs = 11;
     int m_lastAllocatedVoice = 0;
+    std::string mScalaFilename;
     void loadScaleFromFile(std::string fn)
     {
+        mScalaFilename = fn;
         auto thescale = Tunings::readSCLFile(fn);
         auto sc = semitonesFromScalaScale(thescale,-60.0,60.0);
         for (int i=0;i<16;++i)
@@ -618,6 +620,23 @@ public:
             }
         }
         m_phase += args.sampleTime;
+    }
+    json_t* dataToJson() 
+    {
+        json_t* resultJ = json_object();
+        json_object_set(resultJ,"scalafile",json_string(mScalaFilename.c_str()));
+        return resultJ;
+    }
+    void dataFromJson(json_t* root)
+    {
+        if (!root)
+            return;
+        auto sj = json_object_get(root,"scalafile");
+        if (sj)
+        {
+            std::string fn(json_string_value(sj));
+            loadScaleFromFile(fn);
+        }
     }
     unsigned int m_randSeed = 1;
     std::vector<float> ampEnvWhs;
