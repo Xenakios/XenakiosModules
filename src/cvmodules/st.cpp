@@ -361,6 +361,8 @@ public:
     std::string mScalaFilename;
     void loadScaleFromFile(std::string fn)
     {
+        if (fn==mScalaFilename)
+            return;
         mScalaFilename = fn;
         auto thescale = Tunings::readSCLFile(fn);
         auto sc = semitonesFromScalaScale(thescale,-60.0,60.0);
