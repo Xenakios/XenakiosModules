@@ -442,6 +442,7 @@ public:
         scalafiles.push_back(dir+"/penta_opt.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Enharmonic.scl");
         scalafiles.push_back(dir+"/Ancient Greek Archytas Diatonic.scl");
+        scalafiles.push_back(dir+"/partch_43.scl");
         scalafiles.push_back(dir+"/octone.scl");
         scalafiles.push_back(dir+"/Chopi Xylophone.scl");
         scalafiles.push_back(dir+"/Indonesian Pelog.scl");
