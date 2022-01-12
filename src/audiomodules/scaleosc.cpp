@@ -512,7 +512,13 @@ public:
             for (int j=0;j<16;++j)
                 chebyMorphCoeffs[i][j] *= gain;
         }
+        refreshChebyCoeffs();
         updateOscFrequencies();
+    }
+    void refreshChebyCoeffs()
+    {
+        std::string chebyfn = asset::plugin(pluginInstance, "res/klang_cheby_table.txt");
+        loadChebyshevCoefficients(chebyfn);
     }
     inline float getExpFMDepth(float semitones)
     {
@@ -522,6 +528,57 @@ public:
         return mExpFMPowerTable[index];
     }
     int getNumBanks() { return m_all_banks.size(); }
+    void loadChebyshevCoefficients(std::string fn)
+    {
+        for (int i=0;i<chebyMorphCount+1;++i)
+            {
+                for (int j=0;j<16;++j)
+                {
+                    if (j == 0)
+                        chebyMorphCoeffs[i][j] = 1.0f;
+                    else chebyMorphCoeffs[i][j] = 0.0f;
+                }
+                    
+                
+            }
+        std::fstream instream{fn};
+        if (instream.is_open())
+	    {
+            
+            std::vector<std::string> lines;
+            char buf[4096];
+            while (instream.eof() == false)
+            {
+                instream.getline(buf, 4096);
+                lines.push_back(buf);
+            }
+            DEBUG("KLANG num cheby lines %d",lines.size());
+            for (int j=0;j<lines.size();++j)
+            {
+                if (j==chebyMorphCount)
+                    break;
+                auto tokens = string::split(lines[j],",");
+                DEBUG("KLANG num tokens %d %d",j,tokens.size());
+                for(int i=0;i<tokens.size();++i)
+                {
+                    float coeff = std::atof(tokens[i].c_str());
+                    if (i<16)
+                    {
+                        chebyMorphCoeffs[j][i] = clamp(coeff,0.0f,1.0f);
+                    }
+                    if (j == 0)
+                    {
+                        DEBUG("KLANG cheby %f",chebyMorphCoeffs[j][i]);
+                    }
+                }
+            }
+            for (int i=0;i<16;++i)
+            {
+                chebyMorphCoeffs[chebyMorphCount][i] = chebyMorphCoeffs[chebyMorphCount-1][i];
+            }
+                
+        }
+    }
     void updateOscFrequencies()
     {
         double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
@@ -694,7 +751,7 @@ public:
                 mChebyCoeffs[i] = interpolated;
             }
             */
-            /*
+            
             for (int i=0;i<16;i+=4)
             {
                 simd::float_4 y0 = simd::float_4::load(&chebyMorphCoeffs[i0][i]);
@@ -702,7 +759,7 @@ public:
                 simd::float_4 interpolated = y0 + (y1 - y0) * xfrac;
                 interpolated.store(&mChebyCoeffs[i]);
             }
-            */
+            
            /*
            float xs0 = 0.0f;
            float ys0 = rescale(smorph,0.0f,1.0f,1.0f,0.0f);
@@ -740,7 +797,7 @@ public:
                 }
                 if (left<0.0f)
                 {
-                    float gain = rescale(middle,0.0f,right,0.0f,1.0f);
+                    //float gain = rescale(middle,0.0f,right,0.0f,1.0f);
                     //result *= gain;
                 }
                     
@@ -753,10 +810,10 @@ public:
             {
                 float x = rescale((float)i,0,15,0.0f,1.0f);
                 x = bfunc(x,zzz,0.25f);
-                mChebyCoeffs[i] = clamp(x,0.0f,1.0f);
-                bs += mChebyCoeffs[i];
+                //mChebyCoeffs[i] = clamp(x,0.0f,1.0f);
+                //bs += mChebyCoeffs[i];
             }
-            bs = 1.0f/bs;
+            //bs = 1.0f/bs;
             //for (int i=0;i<16;++i)
             //    mChebyCoeffs[i] *= bs;
             
@@ -1379,6 +1436,11 @@ public:
 		XScaleOsc* themod = dynamic_cast<XScaleOsc*>(module);
         loadItem->m_mod = themod;
 		menu->addChild(loadItem);
+        auto chebyItem = createMenuItem([themod]()
+        {
+            themod->m_osc.refreshChebyCoeffs();
+        },"Update Chebyshev coeffs");
+        menu->addChild(chebyItem);
     }
     XScaleOscWidget(XScaleOsc* m)
     {
