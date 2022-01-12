@@ -509,8 +509,8 @@ public:
             for (int j=0;j<16;++j)
                 sum+=chebyMorphCoeffs[i][j];
             double gain = 1.0/sum;
-            //for (int j=0;j<16;++j)
-            //    chebyMorphCoeffs[i][j] *= gain;
+            for (int j=0;j<16;++j)
+                chebyMorphCoeffs[i][j] *= gain;
         }
         updateOscFrequencies();
     }
@@ -694,7 +694,7 @@ public:
                 mChebyCoeffs[i] = interpolated;
             }
             */
-            /*
+            
             for (int i=0;i<16;i+=4)
             {
                 simd::float_4 y0 = simd::float_4::load(&chebyMorphCoeffs[i0][i]);
@@ -702,19 +702,27 @@ public:
                 simd::float_4 interpolated = y0 + (y1 - y0) * xfrac;
                 interpolated.store(&mChebyCoeffs[i]);
             }
-            */
+            
+           /*
            float xs0 = 0.0f;
-           float ys0 = 1.0f;
+           float ys0 = rescale(smorph,0.0f,1.0f,1.0f,0.0f);
            float xs1 = rescale(smorph,0.0f,1.0f,0.01f,1.0f);
-           float ys1 = rescale(smorph,0.0f,1.0f,0.00f,0.25f);
-           float gainshape = rescale(smorph,0.0f,1.0f,1.0f,0.125f);
-           
+           float ys1 = 0.0f; //rescale(smorph,0.0f,1.0f,0.00f,0.25f);
+           //float gainshape = rescale(smorph,0.0f,1.0f,1.0f,0.125f);
+           float csum = 0.0f;
            for (int i=0;i<16;++i)
            {
                float z0 = rescale((float)i,0,15,0.0f,1.0f);
                float interpolated = rescale(z0,xs0,xs1,ys0,ys1);
-               mChebyCoeffs[i] = gainshape * clamp(interpolated,0.0f,1.0f);
+               mChebyCoeffs[i] = clamp(interpolated,0.0f,1.0f);
+               csum += mChebyCoeffs[i];
            }
+           csum = 1.0f/csum;
+           for (int i=0;i<16;++i)
+           {
+               mChebyCoeffs[i] *= csum;
+           }
+           */
         }
         
         float foldgain = m_fold_smoother.process((1.0f+m_fold*8.0f));
@@ -1458,6 +1466,22 @@ public:
                 }
                 nvgStroke(args.vg);
             }
+            nvgBeginPath(args.vg);
+            int numNodes = 60;
+            nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            nvgRect(args.vg,200,15,numNodes,numNodes);
+            for (int i=0;i<numNodes;++i)
+            {
+                float x = rescale((float)i,0,numNodes-1,-1.0f,1.0f);
+                float y = std::sin(3.141592653*x);
+                y = chebyshev(y,m->m_osc.mChebyCoeffs,16);
+                y = rescale(y,-1.0f,1.0f,numNodes,0.0f);
+                if (i == 0)
+                    nvgMoveTo(args.vg,200+i,y+15);
+                else
+                    nvgLineTo(args.vg,200+i,y+15);
+            }
+            nvgStroke(args.vg);
             /*
             nvgBeginPath(args.vg);
             for (int i=0;i<2;++i)
