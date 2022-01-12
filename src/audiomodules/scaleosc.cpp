@@ -694,6 +694,7 @@ public:
                 mChebyCoeffs[i] = interpolated;
             }
             */
+            /*
             for (int i=0;i<16;i+=4)
             {
                 simd::float_4 y0 = simd::float_4::load(&chebyMorphCoeffs[i0][i]);
@@ -701,6 +702,19 @@ public:
                 simd::float_4 interpolated = y0 + (y1 - y0) * xfrac;
                 interpolated.store(&mChebyCoeffs[i]);
             }
+            */
+           float xs0 = 0.0f;
+           float ys0 = 1.0f;
+           float xs1 = rescale(smorph,0.0f,1.0f,0.01f,1.0f);
+           float ys1 = rescale(smorph,0.0f,1.0f,0.00f,0.25f);
+           float gainshape = rescale(smorph,0.0f,1.0f,1.0f,0.125f);
+           
+           for (int i=0;i<16;++i)
+           {
+               float z0 = rescale((float)i,0,15,0.0f,1.0f);
+               float interpolated = rescale(z0,xs0,xs1,ys0,ys1);
+               mChebyCoeffs[i] = gainshape * clamp(interpolated,0.0f,1.0f);
+           }
         }
         
         float foldgain = m_fold_smoother.process((1.0f+m_fold*8.0f));
