@@ -678,7 +678,7 @@ public:
             m_oscils[lastosci].setFrequencies(hz0,hz1,samplerate);
         }
         float smorph = mChebyMorphSmoother.process(mChebyMorph);
-        if (m_fold_algo == 1 && smorph>0.00001f)
+        if (m_fold_algo == 1) // && smorph>0.00001f)
         {
             const int h = chebyMorphCount-1;
             int i0 = smorph * h;
@@ -694,7 +694,7 @@ public:
                 mChebyCoeffs[i] = interpolated;
             }
             */
-            
+            /*
             for (int i=0;i<16;i+=4)
             {
                 simd::float_4 y0 = simd::float_4::load(&chebyMorphCoeffs[i0][i]);
@@ -702,7 +702,7 @@ public:
                 simd::float_4 interpolated = y0 + (y1 - y0) * xfrac;
                 interpolated.store(&mChebyCoeffs[i]);
             }
-            
+            */
            /*
            float xs0 = 0.0f;
            float ys0 = rescale(smorph,0.0f,1.0f,1.0f,0.0f);
@@ -723,6 +723,43 @@ public:
                mChebyCoeffs[i] *= csum;
            }
            */
+            auto bfunc=[](float x, float middle, float width)
+            {
+                const float maxlev = 0.5f;
+                if (x<=0.0f)
+                    return maxlev;
+                float result = 0.0f;
+                float left = middle-width;
+                float right = middle+width;
+                if (x>=left && x<middle)
+                {
+                    result = rescale(x,left,middle,0.0f,maxlev);
+                } else if (x>=middle && x<right)
+                {
+                    result = rescale(x,middle,right,maxlev,0.0f);
+                }
+                if (left<0.0f)
+                {
+                    float gain = rescale(middle,0.0f,right,0.0f,1.0f);
+                    //result *= gain;
+                }
+                    
+                return result;
+                return 0.0f;
+            };
+            float bs = 0.0f;
+            float zzz = rescale(smorph,0.0f,1.0f,-0.25f,1.0f);
+            for (int i=0;i<16;++i)
+            {
+                float x = rescale((float)i,0,15,0.0f,1.0f);
+                x = bfunc(x,zzz,0.25f);
+                mChebyCoeffs[i] = clamp(x,0.0f,1.0f);
+                bs += mChebyCoeffs[i];
+            }
+            bs = 1.0f/bs;
+            //for (int i=0;i<16;++i)
+            //    mChebyCoeffs[i] *= bs;
+            
         }
         
         float foldgain = m_fold_smoother.process((1.0f+m_fold*8.0f));
@@ -749,7 +786,7 @@ public:
             */
             outbuf[i] = s2;
         }
-        if (m_fold_algo == 1 && smorph>0.00001f)
+        if (m_fold_algo == 1) // && smorph>0.00001f)
         {
             for (int i=0;i<m_oscils.size();i+=4)
             {
@@ -1466,6 +1503,7 @@ public:
                 }
                 nvgStroke(args.vg);
             }
+            /*
             nvgBeginPath(args.vg);
             int numNodes = 60;
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
@@ -1480,6 +1518,17 @@ public:
                     nvgMoveTo(args.vg,200+i,y+15);
                 else
                     nvgLineTo(args.vg,200+i,y+15);
+            }
+            nvgStroke(args.vg);
+            */
+            nvgBeginPath(args.vg);
+            nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            for (int i=0;i<16;++i)
+            {
+                float y = m->m_osc.mChebyCoeffs[i];
+                y = rescale(y,0.0f,1.0f,y+50,y);
+                nvgMoveTo(args.vg,200+i*2,y);
+                nvgLineTo(args.vg,200+i*2,50);
             }
             nvgStroke(args.vg);
             /*
