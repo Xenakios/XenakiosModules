@@ -517,7 +517,9 @@ public:
     }
     void refreshChebyCoeffs()
     {
-        std::string chebyfn = asset::plugin(pluginInstance, "res/klang_cheby_table.txt");
+        std::string chebyfn = asset::userDir+"/klang_cheby_table.txt";
+        DEBUG("KLANG user dir %s",chebyfn.c_str());
+        //std::string chebyfn = asset::plugin(pluginInstance, "res/klang_cheby_table.txt");
         loadChebyshevCoefficients(chebyfn);
     }
     inline float getExpFMDepth(float semitones)
@@ -552,13 +554,13 @@ public:
                 instream.getline(buf, 4096);
                 lines.push_back(buf);
             }
-            DEBUG("KLANG num cheby lines %d",lines.size());
+            //DEBUG("KLANG num cheby lines %d",lines.size());
             for (int j=0;j<lines.size();++j)
             {
                 if (j==chebyMorphCount)
                     break;
                 auto tokens = string::split(lines[j],",");
-                DEBUG("KLANG num tokens %d %d",j,tokens.size());
+                //DEBUG("KLANG num tokens %d %d",j,tokens.size());
                 for(int i=0;i<tokens.size();++i)
                 {
                     float coeff = std::atof(tokens[i].c_str());
@@ -568,7 +570,7 @@ public:
                     }
                     if (j == 0)
                     {
-                        DEBUG("KLANG cheby %f",chebyMorphCoeffs[j][i]);
+                        //DEBUG("KLANG cheby %f",chebyMorphCoeffs[j][i]);
                     }
                 }
             }
