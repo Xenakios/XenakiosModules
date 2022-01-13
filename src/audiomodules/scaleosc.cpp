@@ -532,6 +532,7 @@ public:
     int getNumBanks() { return m_all_banks.size(); }
     void loadChebyshevCoefficients(std::string fn)
     {
+        // fill default morph table in case opening the file fails
         for (int i=0;i<chebyMorphCount+1;++i)
             {
                 for (int j=0;j<16;++j)
@@ -574,11 +575,27 @@ public:
                     }
                 }
             }
+            // copy second to last array to last array for interpolation
             for (int i=0;i<16;++i)
             {
                 chebyMorphCoeffs[chebyMorphCount][i] = chebyMorphCoeffs[chebyMorphCount-1][i];
             }
-                
+            // normalize
+            for (int i=0;i<chebyMorphCount+1;++i)
+            {
+                float sum = 0.0f;
+                for (int j=0;j<16;++j)
+                {
+                    sum += chebyMorphCoeffs[i][j];
+                }
+                if (sum>0.0f)
+                    sum = 1.0f / sum;
+                else sum = 1.0f;
+                for (int j=0;j<16;++j)
+                {
+                    chebyMorphCoeffs[i][j] *= sum;
+                }
+            }
         }
     }
     void updateOscFrequencies()
@@ -1018,7 +1035,7 @@ public:
     {
         m_detune = clamp(d,0.0f,1.0f);
     }
-    static const int chebyMorphCount = 7;
+    static const int chebyMorphCount = 8;
     alignas(16) float chebyMorphCoeffs[chebyMorphCount+1][16] =
     {
         {1.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0,0,0,0,0,0,0,0},
