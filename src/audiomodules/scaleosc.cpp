@@ -6,6 +6,8 @@
 #include "../Tunings.h"
 #include <osdialog.h>
 
+// Taken from Surge synth src/common/dsp/QuadFilterWaveshapers.cpp
+
 template <int pts> struct FolderADAA
 {
     FolderADAA(std::initializer_list<float> xi, std::initializer_list<float> yi)
@@ -137,6 +139,8 @@ __m128 ADAA(QuadFilterWaveshaperState *__restrict s, __m128 x)
 
     return r;
 }
+
+// End Surge waveshaper code
 
 /*
 Adapted from code by "mdsp" in https://www.kvraudio.com/forum/viewtopic.php?t=70372
