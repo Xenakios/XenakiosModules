@@ -6,6 +6,138 @@
 #include "../Tunings.h"
 #include <osdialog.h>
 
+template <int pts> struct FolderADAA
+{
+    FolderADAA(std::initializer_list<float> xi, std::initializer_list<float> yi)
+    {
+        auto xiv = xi.begin();
+        auto yiv = yi.begin();
+        for (int i = 0; i < pts; ++i)
+        {
+            xs[i] = *xiv;
+            ys[i] = *yiv;
+
+            xiv++;
+            yiv++;
+        }
+
+        slopes[pts - 1] = 0;
+        dxs[pts - 1] = 0;
+
+        intercepts[0] = -xs[0] * ys[0];
+        for (int i = 0; i < pts - 1; ++i)
+        {
+            dxs[i] = xs[i + 1] - xs[i];
+            slopes[i] = (ys[i + 1] - ys[i]) / dxs[i];
+            auto vLeft = slopes[i] * dxs[i] * dxs[i] / 2 + ys[i] * xs[i + 1] + intercepts[i];
+            auto vRight = ys[i + 1] * xs[i + 1];
+            intercepts[i + 1] = -vRight + vLeft;
+        }
+
+        for (int i = 0; i < pts; ++i)
+        {
+            xS[i] = _mm_set1_ps(xs[i]);
+            yS[i] = _mm_set1_ps(ys[i]);
+            mS[i] = _mm_set1_ps(slopes[i]);
+            cS[i] = _mm_set1_ps(intercepts[i]);
+        }
+    }
+
+    inline void evaluate(__m128 x, __m128 &f, __m128 &adf)
+    {
+        static const auto p05 = _mm_set1_ps(0.5f);
+        __m128 rangeMask[pts - 1], val[pts - 1], adVal[pts - 1];
+
+        for (int i = 0; i < pts - 1; ++i)
+        {
+            rangeMask[i] = _mm_and_ps(_mm_cmpge_ps(x, xS[i]), _mm_cmplt_ps(x, xS[i + 1]));
+            auto ox = _mm_sub_ps(x, xS[i]);
+            val[i] = _mm_add_ps(_mm_mul_ps(mS[i], ox), yS[i]);
+            adVal[i] = _mm_add_ps(_mm_mul_ps(_mm_mul_ps(ox, ox), _mm_mul_ps(mS[i], p05)),
+                                  _mm_add_ps(_mm_mul_ps(yS[i], x), cS[i]));
+#if DEBUG_WITH_PRINT
+            if (rangeMask[i][0] != 0)
+                std::cout << _D(x[0]) << _D(rangeMask[i][0]) << _D(xS[i][0]) << _D(xS[i + 1][0])
+                          << _D(ox[0]) << _D(cS[i][0]) << _D(mS[i][0]) << _D(yS[i][0])
+                          << _D(val[i][0]) << _D(adVal[i][0]) << std::endl;
+#endif
+        }
+        auto res = _mm_and_ps(rangeMask[0], val[0]);
+        auto adres = _mm_and_ps(rangeMask[0], adVal[0]);
+        for (int i = 1; i < pts - 1; ++i)
+        {
+            res = _mm_add_ps(res, _mm_and_ps(rangeMask[i], val[i]));
+            adres = _mm_add_ps(adres, _mm_and_ps(rangeMask[i], adVal[i]));
+        }
+        f = res;
+        adf = adres;
+    }
+    float xs[pts], ys[pts], dxs[pts], slopes[pts], intercepts[pts];
+
+    __m128 xS[pts], yS[pts], dxS[pts], mS[pts], cS[pts];
+};
+
+void singleFoldADAA(__m128 x, __m128 &f, __m128 &adf)
+{
+    static auto folder = FolderADAA<4>({-10, -0.7, 0.7, 10}, {-1, 1, -1, 1});
+    folder.evaluate(x, f, adf);
+}
+
+void westCoastFoldADAA(__m128 x, __m128 &f, __m128 &adf)
+{
+    // Factors based on
+    // DAFx-17 DAFX-194 Virtual Analog Buchla 259 Wavefolder
+    // by Sequeda, Pontynen, Valimaki and Parker
+    static auto folder = FolderADAA<14>(
+        {-10, -2, -1.0919091909190919, -0.815881588158816, -0.5986598659865987, -0.3598359835983597,
+         -0.11981198119811971, 0.11981198119811971, 0.3598359835983597, 0.5986598659865987,
+         0.8158815881588157, 1.0919091909190919, 2, 10},
+        {1, 0.9, -0.679765619488133, 0.5309659972270625, -0.6255506631744251, 0.5991799179917987,
+         -0.5990599059905986, 0.5990599059905986, -0.5991799179917987, 0.6255506631744251,
+         -0.5309659972270642, 0.679765619488133, -0.9, -1});
+    folder.evaluate(x, f, adf);
+}
+
+const int n_filter_registers = 16;
+const int n_waveshaper_registers = 4;
+
+struct alignas(16) QuadFilterWaveshaperState
+{
+    __m128 R[n_waveshaper_registers];
+    __m128 init;
+};
+
+template <void FandADF(__m128, __m128 &, __m128 &), int xR, int aR, bool updateInit = true>
+__m128 ADAA(QuadFilterWaveshaperState *__restrict s, __m128 x)
+{
+    auto xPrior = s->R[xR];
+    auto adPrior = s->R[aR];
+
+    __m128 f, ad;
+    FandADF(x, f, ad);
+
+    auto dx = _mm_sub_ps(x, xPrior);
+    auto dad = _mm_sub_ps(ad, adPrior);
+
+    const static auto tolF = 0.0001;
+    const static auto tol = _mm_set1_ps(tolF), ntol = _mm_set1_ps(-tolF);
+    auto ltt = _mm_and_ps(_mm_cmplt_ps(dx, tol), _mm_cmpgt_ps(dx, ntol)); // dx < tol && dx > -tol
+    ltt = _mm_or_ps(ltt, s->init);
+    auto dxDiv = _mm_rcp_ps(_mm_add_ps(_mm_and_ps(ltt, tol), _mm_andnot_ps(ltt, dx)));
+
+    auto fFromAD = _mm_mul_ps(dad, dxDiv);
+    auto r = _mm_add_ps(_mm_and_ps(ltt, f), _mm_andnot_ps(ltt, fFromAD));
+
+    s->R[xR] = x;
+    s->R[aR] = ad;
+    if (updateInit)
+    {
+        s->init = _mm_setzero_ps();
+    }
+
+    return r;
+}
+
 /*
 Adapted from code by "mdsp" in https://www.kvraudio.com/forum/viewtopic.php?t=70372
 */
@@ -847,7 +979,8 @@ public:
             
         }
         
-        float foldgain = m_fold_smoother.process((1.0f+m_fold*8.0f));
+        //float foldgain = m_fold_smoother.process((1.0f+m_fold*8.0f));
+        float foldgain = m_fold_smoother.process(m_fold);
         for (int i=0;i<m_oscils.size();++i)
         {
             float gain0 = m_osc_gain_smoothers[i*2+0].process(m_osc_gains[i*2+0]);
@@ -873,10 +1006,11 @@ public:
         }
         if (m_fold_algo == 0)
         {
+            float foldg = (1.0f+foldgain*8.0f);
             for (int i=0;i<m_oscils.size();i+=4)
             {
                 simd::float_4 x = simd::float_4::load(&outbuf[i]);
-                x = reflectx(x*foldgain);
+                x = reflectx(x*foldg);
                 x.store(&outbuf[i]);
             }
         } 
@@ -886,6 +1020,16 @@ public:
             {
                 simd::float_4 x = simd::float_4::load(&outbuf[i]);
                 x = chebyshev(x,mChebyCoeffs,16);
+                x.store(&outbuf[i]);
+            }
+        } else if (m_fold_algo == 2)
+        {
+            float foldg = (0.15f+foldgain*4.0f);
+            for (int i=0;i<m_oscils.size();i+=4)
+            {
+                simd::float_4 x = simd::float_4::load(&outbuf[i]);
+                x *= foldg;
+                x = ADAA<westCoastFoldADAA,0,1>(&mShaperStates[i],x.v);
                 x.store(&outbuf[i]);
             }
         }
@@ -1135,7 +1279,7 @@ public:
     }
     void setFoldAlgo(int a)
     {
-        m_fold_algo = clamp(a,0,1);
+        m_fold_algo = clamp(a,0,2);
     }
     OnePoleFilter m_norm_smoother;
     std::array<float,32> m_osc_gains;
@@ -1148,6 +1292,8 @@ private:
     std::array<OnePoleFilter,32> m_osc_gain_smoothers;
     std::array<OnePoleFilter,32> m_osc_freq_smoothers;
     
+    QuadFilterWaveshaperState mShaperStates[16];    
+
     OnePoleFilter m_fold_smoother;
     std::vector<float> m_scale;
     float m_spread = 1.0f;
@@ -1286,7 +1432,7 @@ public:
             */
         configParam(PAR_SCALE_BANK,0,m_osc.getNumBanks()-1,0,"Scale bank");
         getParamQuantity(PAR_SCALE_BANK)->snapEnabled = true;
-        configParam(PAR_FOLD_MODE,0,1,0,"Fold mode");
+        configParam(PAR_FOLD_MODE,0,2,0,"Fold mode");
         getParamQuantity(PAR_FOLD_MODE)->snapEnabled = true;
         configParam(PAR_HIPASSFREQ,10.0f,200.0f,10.0f,"Low cut filter frequency");
         m_pardiv.setDivision(16);
