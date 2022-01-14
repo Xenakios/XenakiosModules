@@ -248,7 +248,7 @@ inline float averterMap(float x, float shape)
     return std::pow(x,shape);
 }
 
-class SIMDSimpleOsc
+class alignas(16) SIMDSimpleOsc
 {
 public:
     std::array<float,512> warp3table;
@@ -1290,13 +1290,13 @@ public:
     std::array<float,32> m_osc_freqs;
     std::array<float,32> m_unquant_freqs;
 private:
-    std::array<SIMDSimpleOsc,16> m_oscils;
+    alignas(16) std::array<SIMDSimpleOsc,16> m_oscils;
     
     
     std::array<OnePoleFilter,32> m_osc_gain_smoothers;
     std::array<OnePoleFilter,32> m_osc_freq_smoothers;
     
-    QuadFilterWaveshaperState mShaperStates[16];    
+    alignas(16) QuadFilterWaveshaperState mShaperStates[16];    
 
     OnePoleFilter m_fold_smoother;
     std::vector<float> m_scale;
