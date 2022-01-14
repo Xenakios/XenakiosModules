@@ -46,13 +46,22 @@ inline simd::float_4 chebyshev(simd::float_4 x, const std::array<float,CoeffSz>&
 	return out;
 }
 
-
-inline simd::float_4 fmodex(simd::float_4 x)
+inline simd::float_4 fmodex(simd::float_4 x, float y=1.0f)
 {
-    x = simd::fmod(x,1.0f);
-    simd::float_4 a = 1.0f - (-1.0f * x);
+    x = simd::fmod(x,y);
+    simd::float_4 a = y - (-y * x);
     simd::float_4 neg = x >= 0.0f;
     return simd::ifelse(neg,x,a);
+}
+
+// fold value to range -1,1
+inline simd::float_4 reflectx(simd::float_4 x)
+{
+    x = 0.5f*(x-1.0f);
+    simd::float_4 temp = simd::fmod(x,2.0f);
+    simd::float_4 temp2 = temp + 2.0f;
+    simd::float_4 temp3 = simd::ifelse(x >= 0.0f,temp,temp2);  
+    return -1.0f + 2.0f * simd::abs(temp3-1.0f);
 }
 
 inline void quantize_to_scale(float x, const std::vector<float>& g,
@@ -851,7 +860,7 @@ public:
             // do this here because no SIMD implementation for reflect yet...
             if (m_fold_algo == 0)
             {
-                s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
+                //s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
             } 
             /*
             else
@@ -862,7 +871,16 @@ public:
             */
             outbuf[i] = s2;
         }
-        if (m_fold_algo == 1) // && smorph>0.00001f)
+        if (m_fold_algo == 0)
+        {
+            for (int i=0;i<m_oscils.size();i+=4)
+            {
+                simd::float_4 x = simd::float_4::load(&outbuf[i]);
+                x = reflectx(x*foldgain);
+                x.store(&outbuf[i]);
+            }
+        } 
+        else if (m_fold_algo == 1) // && smorph>0.00001f)
         {
             for (int i=0;i<m_oscils.size();i+=4)
             {
