@@ -2,7 +2,7 @@
   "slug": "Xenakios",
   "name": "Xenakios",
   "version": "2.0.0",
-  "license": "GPL-3.0-or-later",
+  "license": "GPL-3.0-only",
   "brand": "Xenakios",
   "author": "Xenakios",
   "authorEmail": "xenakios@gmail.com",
