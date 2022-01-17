@@ -744,6 +744,11 @@ public:
             }
         }
     }
+    int m_pitchQuantizeMode = 1;
+    void setPitchQuantizeMode(int m)
+    {
+        m_pitchQuantizeMode = clamp(m,0,1);
+    }
     void updateOscFrequencies()
     {
         double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
@@ -770,15 +775,42 @@ public:
                 float sh = rescale(m_spread_dist,0.5f,1.0f,1.0f,3.0f);
                 normpos = 1.0f-std::pow(1.0f-normpos,sh);
             }
-            float pitch = 36.0f + rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
+            float pitch = 0.0f;
+            float p0 = 0.0f;
+            float p1 = 0.0f;
+            float diff = 0.5f;
+            if (m_pitchQuantizeMode == 0)
+            {
+                pitch = 36.0f + rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
+                quantize_to_scale(pitch,m_scale,p0,p1,diff);
+            }
+            else if (m_pitchQuantizeMode == 1) // get pitch directly from scale
+            {
+                if (m_scale.empty() == false)
+                {
+                    float steproot = rescale(m_root_pitch,-36.0f,36.0f,0.0f,(m_scale.size()-1));
+                    float scalestepf = steproot + rescale(normpos,0.0f , 1.0f , 0.0f, (m_scale.size()-1)*m_spread);
+                    scalestepf = clamp(scalestepf,0.0f,m_scale.size()-1);
+                    int scalestepi0 = scalestepf;
+                    int scalestepi1 = scalestepi0 + 1;
+                    if (scalestepi1>m_scale.size()-1)
+                        scalestepi1 = m_scale.size()-1;
+                    diff = scalestepf-(int)scalestepf;
+                    p0 = m_scale[scalestepi0];
+                    p1 = m_scale[scalestepi1];
+                } else
+                {
+                    pitch = 36.0f + rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
+                    quantize_to_scale(pitch,m_scale,p0,p1,diff);
+                }
+                
+            }
             //float f = rack::dsp::FREQ_C4*std::pow(1.05946309436,pitch);
             m_unquant_freqs[i] = pitch;
-            //float f = rescale(normpos,0.0f,1.0f,roothz,roothz+12000.0f*m_spread);
-            float p0 = pitch;
-            float p1 = pitch;
-            float diff = 0.5f;
+            
+            
             //m_lock.lock();
-            quantize_to_scale(pitch,m_scale,p0,p1,diff);
+            
             float f0 = rootf*std::pow(1.05946309436,p0);
             float f1 = rootf*std::pow(1.05946309436,p1);
             //m_lock.unlock();
@@ -1637,6 +1669,14 @@ public:
             themod->m_osc.refreshChebyCoeffs();
         },"Update Chebyshev coeffs");
         menu->addChild(chebyItem);
+        bool tick = themod->m_osc.m_pitchQuantizeMode == 1;
+        auto quantitem = createMenuItem([themod]()
+        {
+            if (themod->m_osc.m_pitchQuantizeMode == 0)
+                themod->m_osc.m_pitchQuantizeMode = 1;
+            else themod->m_osc.m_pitchQuantizeMode = 0;
+        },"Quantize directly to scale steps",CHECKMARK(tick));
+        menu->addChild(quantitem);
     }
     XScaleOscWidget(XScaleOsc* m)
     {
