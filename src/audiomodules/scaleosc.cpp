@@ -206,6 +206,10 @@ inline void quantize_to_scale(float x, const std::vector<float>& g,
     if (g.empty()) // special handling for no scale
     {
         out1 = x;
+        out2 = x;
+        outdiff = 0.5f;
+        return;
+        out1 = x;
         float maxd = 10.0f;
         float dtune = rescale(x,rack::dsp::FREQ_C4/16.0f,20000.0f,0.0f,maxd);
         dtune = clamp(dtune,0.0f,maxd);
@@ -451,15 +455,18 @@ public:
         try
             {
                 auto thescale = Tunings::readSCLFile(fn);
-                auto pitches = semitonesFromScalaScale(thescale,0.0,128.0);
-                std::vector<float> scale;
-                for (int i=0;i<pitches.size();++i)
+                auto ps = semitonesFromScalaScale(thescale,0.0,128.0);
+                
+                //std::vector<float> scale;
+                for (int i=0;i<ps.size();++i)
                 {
-                    double p = pitches[i]; 
-                    double freq = root_freq * std::pow(1.05946309436,p);
-                    scale.push_back(freq);
+                    //double p = pitches[i]; 
+                    //double freq = root_freq * std::pow(1.05946309436,p);
+                    //scale.push_back(freq);
+                    pitches.push_back(ps[i]);
                 }
-                hzvalues = scale;
+                //hzvalues = scale;
+                //pitches = scale;
                 name = thescale.name;
                 
             }
@@ -468,7 +475,7 @@ public:
                 name = "Continuum";
             }
     }
-    std::vector<float> hzvalues;
+    std::vector<float> pitches;
     std::string name;
 };
 
@@ -587,6 +594,7 @@ public:
             bank_b.scales.emplace_back(fn);
         }
         double freq = root_freq;
+        /*
         KlangScale scale;
         scale.name = "Harmonics";
         int i=1;
@@ -597,6 +605,7 @@ public:
             ++i;
         }
         bank_b.scales.push_back(scale);
+        */
         m_all_banks.push_back(bank_b);
         scalafiles.clear();
         
@@ -640,7 +649,7 @@ public:
         m_scalenames.push_back("Load from file");
         */
         m_scale.reserve(2048);
-        m_scale = getScaleChecked(0,1).hzvalues;
+        m_scale = getScaleChecked(0,1).pitches;
         for (int i=0;i<mExpFMPowerTable.size();++i)
         {
             float x = rescale(i,0,mExpFMPowerTable.size()-1,-60.0f,60.0f);
@@ -755,6 +764,7 @@ public:
             mDoScaleChange = false;
             m_scale = mScaleToChangeTo;
         }
+        double rootf = rack::dsp::FREQ_C4/16.0;
         for (int i=0;i<m_active_oscils;++i)
         {
             float normpos = rescale((float)i,0,lastoscili,0.0f,1.0f);
@@ -768,15 +778,17 @@ public:
                 float sh = rescale(m_spread_dist,0.5f,1.0f,1.0f,3.0f);
                 normpos = 1.0f-std::pow(1.0f-normpos,sh);
             }
-            float pitch = rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
-            float f = rack::dsp::FREQ_C4*std::pow(1.05946309436,pitch);
-            m_unquant_freqs[i] = f;
+            float pitch = 48.0f + rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
+            //float f = rack::dsp::FREQ_C4*std::pow(1.05946309436,pitch);
+            m_unquant_freqs[i] = pitch;
             //float f = rescale(normpos,0.0f,1.0f,roothz,roothz+12000.0f*m_spread);
-            float f0 = f;
-            float f1 = f;
+            float p0 = pitch;
+            float p1 = pitch;
             float diff = 0.5f;
             //m_lock.lock();
-            quantize_to_scale(f,m_scale,f0,f1,diff);
+            quantize_to_scale(pitch,m_scale,p0,p1,diff);
+            float f0 = rootf*std::pow(1.05946309436,p0);
+            float f1 = rootf*std::pow(1.05946309436,p1);
             //m_lock.unlock();
             if (mXFadeMode == 0)
                 xfades[i] = 0.0f;
@@ -1096,7 +1108,7 @@ public:
         if (i!=m_curScale)
         {
             m_curScale = i;
-            m_scale = getScaleChecked(m_cur_bank,m_curScale).hzvalues;
+            m_scale = getScaleChecked(m_cur_bank,m_curScale).pitches;
         }
     }
     void loadScaleFromFile(std::string fn)
@@ -1108,7 +1120,7 @@ public:
             if (s.name.empty()==false)
             {
                 s = scale;
-                mScaleToChangeTo = scale.hzvalues;
+                mScaleToChangeTo = scale.pitches;
                 mDoScaleChange = true;
             }
         }
@@ -1156,7 +1168,7 @@ public:
                                 bank.scales[i] = scale;
                                 if (m_cur_bank == lastbindex && i == m_curScale)
                                 {
-                                    mScaleToChangeTo = scale.hzvalues;
+                                    mScaleToChangeTo = scale.pitches;
                                     mDoScaleChange = true;
                                 }
                             }
@@ -1282,7 +1294,7 @@ public:
         if (m_cur_bank!=b)
         {
             m_cur_bank = b;
-            m_scale = getScaleChecked(m_cur_bank,m_curScale).hzvalues;
+            m_scale = getScaleChecked(m_cur_bank,m_curScale).pitches;
         }
         
     }
