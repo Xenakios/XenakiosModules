@@ -791,6 +791,11 @@ public:
             }
             else if (mXFadeMode == 2)
                 xfades[i] = diff;
+            else 
+            {
+                float temp = clamp(diff,0.0f,1.0f);
+                xfades[i] = std::sqrt(temp);
+            }
             float detun0 = rescale((float)i,0,m_active_oscils,0.0f,f0*0.10f*m_detune);
             float detun1 = rescale((float)i,0,m_active_oscils,0.0f,f1*0.10f*m_detune);
             if (i % 2 == 1)
@@ -1420,7 +1425,7 @@ public:
         configParam(PAR_WARP_ATTN,-1.0f,1.0f,0.0f,"Warp CV level");
         configParam(PAR_DETUNE_ATTN,-1.0f,1.0f,0.0f,"Detune CV level");
 
-        configParam(PAR_XFADEMODE,0.0f,2.0f,1.0f,"Crossfade mode");
+        configParam(PAR_XFADEMODE,0.0f,3.0f,1.0f,"Crossfade mode");
         getParamQuantity(PAR_XFADEMODE)->snapEnabled = true;
         
         configSwitch(PAR_FREEZE_ENABLED,0.0f,1.0f,0.0f,"Freeze frequencies",{"Off","On"});
