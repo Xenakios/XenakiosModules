@@ -538,7 +538,7 @@ public:
             m_unquant_freqs[i] = 1.0f;
         }
         m_norm_smoother.setAmount(0.999);
-        double root_freq = dsp::FREQ_C4/16.0;
+        
         KlangScaleBank bank_a;
         bank_a.description = "Just intoned stacked intervals";
         KlangScale continuumScale;
@@ -593,19 +593,22 @@ public:
         {
             bank_b.scales.emplace_back(fn);
         }
+        double root_freq = dsp::FREQ_C4/8.0;
         double freq = root_freq;
-        /*
         KlangScale scale;
         scale.name = "Harmonics";
         int i=1;
         while (freq<20000.0)
         {
             freq = i * root_freq;
-            scale.hzvalues.push_back(freq);
+            double p = 12.0 * log2(freq/root_freq);
+            if (p>128.0f)
+                break;
+            scale.pitches.push_back(p);
             ++i;
         }
         bank_b.scales.push_back(scale);
-        */
+        
         m_all_banks.push_back(bank_b);
         scalafiles.clear();
         
@@ -633,21 +636,10 @@ public:
             bank_d.scales.back().name = "Slot "+std::to_string(i+1);
         }
         m_all_banks.push_back(bank_d);
-        /*
-        double freq = root_freq;
-        std::vector<float> scale;
-        int i=1;
-        while (freq<20000.0)
-        {
-            freq = i * root_freq;
-            scale.push_back(freq);
-            ++i;
-        }
-        m_scale_bank.push_back(scale);
-        m_scalenames.push_back("Overtones");
-        m_scale_bank.push_back({});
-        m_scalenames.push_back("Load from file");
-        */
+        
+        
+        
+        
         m_scale.reserve(2048);
         m_scale = getScaleChecked(0,1).pitches;
         for (int i=0;i<mExpFMPowerTable.size();++i)
@@ -778,7 +770,7 @@ public:
                 float sh = rescale(m_spread_dist,0.5f,1.0f,1.0f,3.0f);
                 normpos = 1.0f-std::pow(1.0f-normpos,sh);
             }
-            float pitch = 48.0f + rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
+            float pitch = 36.0f + rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
             //float f = rack::dsp::FREQ_C4*std::pow(1.05946309436,pitch);
             m_unquant_freqs[i] = pitch;
             //float f = rescale(normpos,0.0f,1.0f,roothz,roothz+12000.0f*m_spread);
