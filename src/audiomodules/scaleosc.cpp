@@ -1599,15 +1599,13 @@ public:
         {
             json_object_set(resultJ,"osccustomdata0",ob);
         }
+        json_object_set(resultJ,"directscale",json_integer(m_osc.m_pitchQuantizeMode));
         return resultJ;
     }
     void dataFromJson(json_t* root) override
     {
-        json_t* ob = json_object_get(root,"osccustomdata0");
-        if (ob)
-        {
-            m_osc.dataFromJson(ob);
-        }
+        if (auto ob = json_object_get(root,"osccustomdata0")) m_osc.dataFromJson(ob);
+        if (auto ij = json_object_get(root,"directscale")) m_osc.m_pitchQuantizeMode = json_integer_value(ij);
     }
     
     ScaleOscillator m_osc;
@@ -1665,7 +1663,7 @@ public:
             if (themod->m_osc.m_pitchQuantizeMode == 0)
                 themod->m_osc.m_pitchQuantizeMode = 1;
             else themod->m_osc.m_pitchQuantizeMode = 0;
-        },"Quantize directly to scale steps",CHECKMARK(tick));
+        },"Use scale steps directly",CHECKMARK(tick));
         menu->addChild(quantitem);
     }
     XScaleOscWidget(XScaleOsc* m)
