@@ -1782,7 +1782,7 @@ public:
             for (int j=0;j<2;++j)
             {
                 nvgBeginPath(args.vg);
-                nvgStrokeWidth(args.vg,1.5f);
+                nvgStrokeWidth(args.vg,3.0f);
                 if (j == 0)
                     nvgStrokeColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 200));
                 else
