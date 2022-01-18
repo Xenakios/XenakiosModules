@@ -365,7 +365,7 @@ public:
             return;
         mScalaFilename = fn;
         auto thescale = Tunings::readSCLFile(fn);
-        auto sc = semitonesFromScalaScale(thescale,-60.0,60.0);
+        auto sc = semitonesFromScalaScale<double>(thescale,-60.0,60.0);
         for (int i=0;i<16;++i)
         {
             m_voices[i].m_rng = &m_rng;

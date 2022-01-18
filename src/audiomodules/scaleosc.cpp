@@ -455,18 +455,7 @@ public:
         try
             {
                 auto thescale = Tunings::readSCLFile(fn);
-                auto ps = semitonesFromScalaScale(thescale,0.0,128.0);
-                
-                //std::vector<float> scale;
-                for (int i=0;i<ps.size();++i)
-                {
-                    //double p = pitches[i]; 
-                    //double freq = root_freq * std::pow(1.05946309436,p);
-                    //scale.push_back(freq);
-                    pitches.push_back(ps[i]);
-                }
-                //hzvalues = scale;
-                //pitches = scale;
+                pitches = semitonesFromScalaScale<float>(thescale,0.0,128.0);
                 name = thescale.name;
                 
             }

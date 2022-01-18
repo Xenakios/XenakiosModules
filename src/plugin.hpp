@@ -159,18 +159,19 @@ inline std::vector<double> parse_scala(std::vector<std::string>& input,
 	return result;
 }
 
-inline std::vector<double> semitonesFromScalaScale(Tunings::Scale& thescale,
+template<typename ResultType>
+inline std::vector<ResultType> semitonesFromScalaScale(Tunings::Scale& thescale,
     double startPitch,double endPitch)
 {
     bool finished = false;
-    std::vector<double> voltScale;
+    std::vector<ResultType> voltScale;
     int sanity = 0;
     double volts = startPitch;
     voltScale.push_back(volts);
     double endvalue = endPitch;
     while (volts < endvalue)
     {
-        float last = 0.0f;
+        double last = 0.0;
         for (auto& e : thescale.tones)
         {
             double cents = e.cents;
