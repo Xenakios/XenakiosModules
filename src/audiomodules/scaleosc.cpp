@@ -200,7 +200,8 @@ inline simd::float_4 reflectx(simd::float_4 x)
     return -1.0f + 2.0f * simd::abs(temp3-1.0f);
 }
 
-inline void quantize_to_scale(float x, const std::vector<float>& g,
+template<typename GridT>
+inline void quantize_to_scale(float x, const std::vector<GridT>& g,
     float& out1, float& out2, float& outdiff)
 {
     if (g.empty()) // special handling for no scale
@@ -455,7 +456,7 @@ public:
         try
             {
                 auto thescale = Tunings::readSCLFile(fn);
-                pitches = semitonesFromScalaScale<float>(thescale,0.0,128.0);
+                pitches = semitonesFromScalaScale<double>(thescale,0.0,128.0);
                 name = thescale.name;
                 
             }
@@ -464,7 +465,7 @@ public:
                 name = "Continuum";
             }
     }
-    std::vector<float> pitches;
+    std::vector<double> pitches;
     std::string name;
 };
 
@@ -1329,7 +1330,7 @@ private:
     alignas(16) QuadFilterWaveshaperState mShaperStates[16];    
 
     OnePoleFilter m_fold_smoother;
-    std::vector<float> m_scale;
+    std::vector<double> m_scale;
     float m_spread = 1.0f;
     float m_root_pitch = 0.0f;
     float m_freqratio = 1.0f;
@@ -1352,7 +1353,7 @@ private:
     int mFreezeRunCount = 0;
     spinlock m_lock;
     std::atomic<bool> mDoScaleChange{false};
-    std::vector<float> mScaleToChangeTo;
+    std::vector<double> mScaleToChangeTo;
     std::array<float,4096> mExpFMPowerTable;
 };
 
