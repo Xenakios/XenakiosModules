@@ -5,6 +5,7 @@
 #include "../jcdp_envelope.h"
 #include "../Tunings.h"
 #include <osdialog.h>
+#include <thread>
 
 // Taken from Surge synth src/common/dsp/QuadFilterWaveshapers.cpp
 
@@ -1136,6 +1137,8 @@ public:
                 s = scale;
                 mScaleToChangeTo = scale.pitches;
                 mDoScaleChange = true;
+                // sleep here so that we won't get back here while the switch is done in the audio thread
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }
         
