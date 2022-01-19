@@ -480,7 +480,7 @@ public:
 class ScaleOscillator
 {
 public:
-    float m_gain_smooth_amt = 0.9995f;
+    float m_gain_smooth_amt = 0.999f;
     KlangScale fallBackScale;
     alignas(16) std::array<float,32> mChebyCoeffs;
     KlangScale& getScaleChecked(int banknum, int scalenum)
@@ -1578,7 +1578,7 @@ public:
         float mixed[16];
         for (int i=0;i<numOutputs;++i)
             mixed[i] = 0.0f;
-        for (int i=0;i<numOscs;++i)
+        for (int i=0;i<16;++i)
         {
             int outindex = i % numOutputs;
             mixed[outindex] += outs[i];
