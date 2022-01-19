@@ -292,10 +292,9 @@ public:
         simd::float_4 hzs(hz0,hz1,hz0,hz1);
         m_phase_inc = simd::float_4(1.0f/samplerate)*hzs;
     }
-    void setFrequency(float hz, float samplerate)
+    void setFrequencies(simd::float_4 hzs, float samplerate)
     {
-        simd::float_4 hzs(hz);
-        m_phase_inc = 1.0/samplerate*hzs;
+        m_phase_inc = simd::float_4(1.0f/samplerate)*hzs;
     }
     float m_warp_steps = 128.0f;
     void setPhaseWarp(int mode, float amt)
