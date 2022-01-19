@@ -1026,18 +1026,6 @@ public:
             float s1 = ss[1];
             fms[i] = s0;
             float s2 = s0 * gain0 + s1 * gain1;
-            // do this here because no SIMD implementation for reflect yet...
-            if (m_fold_algo == 0)
-            {
-                //s2 = reflect_value(-1.0f,s2*foldgain,1.0f);
-            } 
-            /*
-            else
-            {
-                if (mChebyMorph>0.0f)
-                    s2 = chebyshev(s2,mChebyCoeffs,16);
-            }
-            */
             outbuf[i] = s2;
         }
         if (m_fold_algo == 0)
