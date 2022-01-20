@@ -349,7 +349,7 @@ public:
             */
         }
 //#endif
-        simd::float_4 rs = simd::sin(simd::float_4(2*3.14159265359)*phase_to_use);
+        simd::float_4 rs = simd::sin(simd::float_4(2*g_pi)*phase_to_use);
         //float r = std::sin(2*3.14159265359*phase_to_use);
         m_phase += m_phase_inc;
         //m_phase = std::fmod(m_phase,1.0);
@@ -433,7 +433,7 @@ public:
             double pmult = rescale(m_warp,0.0f,1.0f,0.5f,2.0f);
             phase_to_use = std::fmod(pmult*m_phase,1.0);
         }
-        float r = std::sin(2*3.14159265359*phase_to_use);
+        float r = std::sin(2*g_pi*phase_to_use);
         m_phase += m_phase_inc;
         //m_phase = std::fmod(m_phase,1.0);
         m_phase = wrap_value(0.0,m_phase,1.0);

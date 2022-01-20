@@ -10,7 +10,7 @@ using namespace rack;
 // Declare the Plugin, defined in plugin.cpp
 extern Plugin *pluginInstance;
 
-const float g_pi = 3.14159265358979;
+const double g_pi = 3.14159265358979;
 
 template<typename T, size_t Sz>
 inline std::array<T, Sz> makeArray()
