@@ -64,6 +64,8 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
+        int numouts = clamp(inputs[IN_ORDER_CV].getChannels(),1,8);
+        outputs[OUT_VOLT].setChannels(numouts);
         if (m_step_trig.process(inputs[IN_TRIG].getVoltage()))
         {
             ++m_cur_step;
@@ -74,21 +76,34 @@ public:
             }
             
             
-            float ord = params[PAR_ORDER].getValue();
-            ord += rescale(inputs[IN_ORDER_CV].getVoltage(),-5.0f,5.0f,-12.0,12.0);
-            ord = clamp(ord,1.0f,24.0f);
-            int iord = ord-1;
-            int index = g_permuts[iord][m_cur_step]-1;
-            float stepval = params[PAR_VOLTS+index].getValue();
-            m_cur_outs[0] = stepval;
-            for (int i=0;i<8;++i)
+            float ordbase = params[PAR_ORDER].getValue();
+            for (int i=0;i<numouts;++i)
             {
-                if (i == index)
-                    lights[i].setBrightness(1.0f);
-                else lights[i].setBrightness(0.0f);
+                float ord = ordbase + rescale(inputs[IN_ORDER_CV].getVoltage(i),-5.0f,5.0f,-12.0,12.0);
+                ord = clamp(ord,1.0f,24.0f);
+                int iord = ord-1;
+                int index = g_permuts[iord][m_cur_step]-1;
+                float stepval = params[PAR_VOLTS+index].getValue();
+                m_cur_outs[i] = stepval;
+                if (i == 0)
+                {
+                    for (int j=0;j<8;++j)
+                    {
+                        if (j == index)
+                            lights[j].setBrightness(1.0f);
+                        else lights[j].setBrightness(0.0f);
+                    }
+                }
+                
             }
+            
+            
         }
-        outputs[OUT_VOLT].setVoltage(m_cur_outs[0]);
+        for (int i=0;i<numouts;++i)
+        {
+            outputs[OUT_VOLT].setVoltage(m_cur_outs[i],i);
+        }
+        
         float eocv = (float)m_eoc_gen.process(args.sampleTime)*10.0f;
         outputs[OUT_EOC].setVoltage(eocv);
     }
