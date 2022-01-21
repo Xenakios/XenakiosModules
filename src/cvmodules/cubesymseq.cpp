@@ -176,6 +176,47 @@ public:
     OnePoleFilter m_slews[16];
 };
 
+class CSSButtonGroupWidget : public rack::TransparentWidget
+{
+public:
+    CSSButtonGroupWidget(CubeSymSeq* s) : m_s(s)
+    {
+
+    }
+    float m_gridsize = 10.0f;
+    void onButton(const event::Button& e) override
+    {
+        int x = e.pos.x / m_gridsize;
+        int y = e.pos.y / m_gridsize;
+        int permut = clamp(y*8+x,0,23);
+        m_s->params[CubeSymSeq::PAR_ORDER].setValue(permut+1);
+    }
+    void draw(const DrawArgs &args) override
+    {
+        if (m_s==nullptr)
+            return;
+        nvgSave(args.vg);
+        
+        for (int i=0;i<24;++i)
+        {
+            nvgBeginPath(args.vg);
+            int x = i % 8;
+            int y = i / 8;
+            int s = m_s->params[CubeSymSeq::PAR_ORDER].getValue()-1;
+            if (i == s)
+                nvgFillColor(args.vg,nvgRGB(200,200,200));
+            else nvgFillColor(args.vg,nvgRGB(0,0,0));
+            float xcor = x * m_gridsize;
+            float ycor = y * m_gridsize;
+            nvgCircle(args.vg,xcor,ycor,m_gridsize/2);
+            nvgFill(args.vg);
+        }
+        nvgRestore(args.vg);
+    }
+private:
+    CubeSymSeq* m_s = nullptr;
+};
+
 class CSSStepsWidget : public rack::TransparentWidget
 {
 public:
@@ -186,6 +227,8 @@ public:
     }
     void draw(const DrawArgs &args) override
     {
+        if (m_mod == nullptr)
+            return;
         nvgSave(args.vg);
         for (int i=0;i<16;++i)
         {
@@ -234,18 +277,23 @@ public:
             {
                 auto w = new CSSStepsWidget(m,i);
                 addChild(w);
-                w->box.pos = {32,i*32+46};
+                w->box.pos = {32.0f,(float)i*32+46};
                 //w->box.size = {16*8,8};
             }
             
         }
-        addParam(createParam<RoundBigBlackKnob>(Vec(1.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_ORDER));
+        RoundBigBlackKnob* knob;
+        addParam(knob = createParam<RoundBigBlackKnob>(Vec(1.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_ORDER));
         LightWidget* lw;
         addChild(lw = createLight<RedLight>(Vec(50.0, 8*32.0f+70.0f),module,CubeSymSeq::LIGHT_PENDING_CHANGE));
         lw->box.size = {6.0f,6.0f};
         addInput(createInput<PJ301MPort>(Vec(50.0, 8*32+40), module, CubeSymSeq::IN_ORDER_CV));
         addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_SMOOTH));
         addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+70.0f), module, CubeSymSeq::PAR_POLYCHANS));
+        auto butgr = new CSSButtonGroupWidget(m);
+        addChild(butgr);
+        butgr->box.size = {80.0f,30.0f};
+        butgr->box.pos = {knob->box.getLeft()+5,knob->box.getBottom()+5};
     }
     void draw(const DrawArgs &args) override
     {
