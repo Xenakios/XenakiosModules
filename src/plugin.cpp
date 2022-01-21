@@ -42,4 +42,5 @@ void init(Plugin *p) {
 	p->addModel(modelXCVShaper);
 	p->addModel(modelXSampler);
 	p->addModel(modelXScaleOscillator);
+	p->addModel(modelCubeSymSeq);
 }

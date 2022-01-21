@@ -475,4 +475,4 @@ extern Model* modelXDerivator;
 extern Model* modelWeightGate;
 extern Model* modelHistogram;
 extern Model* modelReducer;
-
+extern Model* modelCubeSymSeq;

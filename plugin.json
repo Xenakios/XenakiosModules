@@ -163,6 +163,15 @@
         "Random",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "XCubeSymSeq",
+      "name": "CubeSymSeq",
+      "description": "Sequencer",
+      "tags": [
+        "Sequencer",
+        "Polyphonic"
+      ]
     }
     
 
