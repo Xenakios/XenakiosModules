@@ -45,6 +45,7 @@ public:
     {
         IN_TRIG,
         IN_ORDER_CV,
+        IN_RESET,
         IN_LAST
     };
     enum OUTPUTS
@@ -74,6 +75,11 @@ public:
     {
         int numouts = clamp(inputs[IN_ORDER_CV].getChannels(),1,16);
         outputs[OUT_VOLT].setChannels(numouts);
+        if (m_reset_trig.process(inputs[IN_RESET].getVoltage()))
+        {
+            m_cur_step = 0;
+            m_eoc_gen.trigger();
+        }
         if (m_step_trig.process(inputs[IN_TRIG].getVoltage()))
         {
             ++m_cur_step;
@@ -122,6 +128,7 @@ public:
     float m_cur_outs[16];
     int m_cur_step = 0;
     dsp::SchmittTrigger m_step_trig;
+    dsp::SchmittTrigger m_reset_trig;
     dsp::PulseGenerator m_eoc_gen;
     OnePoleFilter m_slews[16];
 };
@@ -132,7 +139,7 @@ public:
     CubeSymSeqWidget(CubeSymSeq* m)
     {
         setModule(m);
-        box.size.x = RACK_GRID_WIDTH * 8;
+        box.size.x = RACK_GRID_WIDTH * 10;
         float xc = 1.0f;
         float yc = 1.0f;
         PortWithBackGround* port = nullptr;
@@ -141,6 +148,8 @@ public:
         port = new PortWithBackGround(m,this,CubeSymSeq::OUT_EOC,xc,yc,"EOC",true);
         xc = port->box.getRight()+2;
         port = new PortWithBackGround(m,this,CubeSymSeq::IN_TRIG,xc,yc,"TRIG",false);
+        xc = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,CubeSymSeq::IN_RESET,xc,yc,"RESET",false);
         xc = port->box.getRight()+2;
         for (int i=0;i<8;++i)
         {
