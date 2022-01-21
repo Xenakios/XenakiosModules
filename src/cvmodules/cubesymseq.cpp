@@ -210,6 +210,10 @@ public:
             float ycor = y * m_gridsize;
             nvgCircle(args.vg,xcor,ycor,m_gridsize/2);
             nvgFill(args.vg);
+            nvgBeginPath(args.vg);
+            nvgRect(args.vg,xcor,ycor,10.0f,10.0f);
+            nvgFillColor(args.vg,nvgRGB(0,255,0));
+            nvgStroke(args.vg);
         }
         nvgRestore(args.vg);
     }
