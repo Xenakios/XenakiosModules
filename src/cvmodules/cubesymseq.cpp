@@ -183,7 +183,7 @@ public:
         }
         addParam(createParam<RoundBigBlackKnob>(Vec(1.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_ORDER));
         LightWidget* lw;
-        addChild(lw = createLight<RedLight>(Vec(80.0, 8*32.0f+50.0f),module,CubeSymSeq::LIGHT_PENDING_CHANGE));
+        addChild(lw = createLight<RedLight>(Vec(50.0, 8*32.0f+70.0f),module,CubeSymSeq::LIGHT_PENDING_CHANGE));
         lw->box.size = {6.0f,6.0f};
         addInput(createInput<PJ301MPort>(Vec(50.0, 8*32+40), module, CubeSymSeq::IN_ORDER_CV));
         addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_SMOOTH));
