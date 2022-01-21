@@ -88,7 +88,7 @@ public:
             {
                 float ord = ordbase + rescale(inputs[IN_ORDER_CV].getVoltage(i),-5.0f,5.0f,-12.0,12.0);
                 ord = clamp(ord,1.0f,24.0f);
-                int iord = ord-1;
+                int iord = (int)ord-1;
                 int index = g_permuts[iord][m_cur_step]-1;
                 float stepval = params[PAR_VOLTS+index].getValue();
                 m_cur_outs[i] = stepval;
