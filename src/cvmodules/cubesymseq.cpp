@@ -112,8 +112,6 @@ public:
                 m_eoc_gen.trigger();
                 
             }
-            
-            
             for (int i=0;i<numouts;++i)
             {
                 float ord = ordbase + rescale(inputs[IN_ORDER_CV].getVoltage(i),-5.0f,5.0f,-12.0,12.0);
@@ -134,22 +132,13 @@ public:
                 int index = g_permuts[iord][m_cur_step]-1;
                 float stepval = params[PAR_VOLTS+index].getValue();
                 m_cur_outs[i] = stepval;
-                
-                //if (i == 0)
+                for (int j=0;j<8;++j)
                 {
-                    for (int j=0;j<8;++j)
+                    if (j == index)
                     {
-                        if (j == index)
-                        {
-                            m_step_states[i][j] = 1;
-                        } else
-                        {
-                            m_step_states[i][j] = 0;
-                        }
-                            
-                    }
+                        m_step_states[i][j] = 1;
+                    } 
                 }
-                
             }
             
             
