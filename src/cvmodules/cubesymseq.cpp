@@ -39,6 +39,7 @@ public:
         ENUMS(PAR_VOLTS,8),
         PAR_ORDER,
         PAR_SMOOTH,
+        PAR_POLYCHANS,
         PAR_LAST
     };
     enum INPUTS
@@ -81,12 +82,20 @@ public:
         configParam(PAR_ORDER,1,24,1,"Step order");
         getParamQuantity(PAR_ORDER)->snapEnabled = true;
         configParam(PAR_SMOOTH,0.0,1.0,0.0,"Output smoothing");
+        configParam(PAR_POLYCHANS,1.0,16.0,1.0,"Poly channels");
     }
     float m_cur_permuts[16];
     
     void process(const ProcessArgs& args) override
     {
         int numouts = clamp(inputs[IN_ORDER_CV].getChannels(),1,16);
+        bool genoffsets = false;
+        int manouts = params[PAR_POLYCHANS].getValue();
+        if (manouts>numouts)
+        {
+            numouts = manouts;
+            genoffsets = true;
+        }
         outputs[OUT_VOLT].setChannels(numouts);
         
         if (m_reset_trig.process(inputs[IN_RESET].getVoltage()))
@@ -116,6 +125,7 @@ public:
             {
                 float ord = ordbase + rescale(inputs[IN_ORDER_CV].getVoltage(i),-5.0f,5.0f,-12.0,12.0);
                 ord = clamp(ord,1.0f,24.0f);
+                
                 if (ord!=m_cur_permuts[i])
                 {
                     if (m_cur_step == 0)
@@ -129,6 +139,8 @@ public:
                     
                 } 
                 int iord = (int)m_cur_permuts[i]-1;
+                if (genoffsets) // generate poly permutation number offsets for manual poly count
+                    iord = (iord + i) % 24;
                 int index = g_permuts[iord][m_cur_step]-1;
                 float stepval = params[PAR_VOLTS+index].getValue();
                 m_cur_outs[i] = stepval;
@@ -233,6 +245,7 @@ public:
         lw->box.size = {6.0f,6.0f};
         addInput(createInput<PJ301MPort>(Vec(50.0, 8*32+40), module, CubeSymSeq::IN_ORDER_CV));
         addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_SMOOTH));
+        addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+70.0f), module, CubeSymSeq::PAR_POLYCHANS));
     }
     void draw(const DrawArgs &args) override
     {
