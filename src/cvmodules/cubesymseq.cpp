@@ -37,6 +37,7 @@ public:
     {
         ENUMS(PAR_VOLTS,8),
         PAR_ORDER,
+        PAR_SMOOTH,
         PAR_LAST
     };
     enum INPUTS
@@ -57,14 +58,20 @@ public:
         for (int i=0;i<8;++i)
         {
             configParam(PAR_VOLTS+i,-5.0f,5.0f,0.0f);
-            m_cur_outs[i] = 0.0f;
         }
+        for (int i=0;i<16;++i)
+        {
+            m_cur_outs[i] = 0.0f;
+            m_slews[i].setAmount(0.999);
+        }
+            
         configParam(PAR_ORDER,1,24,1,"Step order");
         getParamQuantity(PAR_ORDER)->snapEnabled = true;
+        configParam(PAR_SMOOTH,0.0,1.0,0.0,"Output smoothing");
     }
     void process(const ProcessArgs& args) override
     {
-        int numouts = clamp(inputs[IN_ORDER_CV].getChannels(),1,8);
+        int numouts = clamp(inputs[IN_ORDER_CV].getChannels(),1,16);
         outputs[OUT_VOLT].setChannels(numouts);
         if (m_step_trig.process(inputs[IN_TRIG].getVoltage()))
         {
@@ -99,18 +106,23 @@ public:
             
             
         }
+        float samt = rescale(params[PAR_SMOOTH].getValue(),0.0f,1.0f,0.99f,0.9995f);
         for (int i=0;i<numouts;++i)
         {
-            outputs[OUT_VOLT].setVoltage(m_cur_outs[i],i);
+            m_slews[i].setAmount(samt);
+            if (samt>0.99f)
+                outputs[OUT_VOLT].setVoltage(m_slews[i].process(m_cur_outs[i]),i);
+            else outputs[OUT_VOLT].setVoltage(m_cur_outs[i],i);
         }
         
         float eocv = (float)m_eoc_gen.process(args.sampleTime)*10.0f;
         outputs[OUT_EOC].setVoltage(eocv);
     }
-    float m_cur_outs[8];
+    float m_cur_outs[16];
     int m_cur_step = 0;
     dsp::SchmittTrigger m_step_trig;
     dsp::PulseGenerator m_eoc_gen;
+    OnePoleFilter m_slews[16];
 };
 
 class CubeSymSeqWidget : public rack::ModuleWidget
@@ -138,6 +150,7 @@ public:
         }
         addParam(createParam<RoundBigBlackKnob>(Vec(1.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_ORDER));
         addInput(createInput<PJ301MPort>(Vec(50.0, 8*32+40), module, CubeSymSeq::IN_ORDER_CV));
+        addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_SMOOTH));
     }
     void draw(const DrawArgs &args) override
     {
