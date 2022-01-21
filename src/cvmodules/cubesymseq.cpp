@@ -1,4 +1,5 @@
 #include "../plugin.hpp"
+#include "../helperwidgets.h"
 
 const int g_permuts[24][8] =
 {
@@ -35,6 +36,7 @@ public:
     enum PARAMS
     {
         ENUMS(PAR_VOLTS,8),
+        PAR_ORDER,
         PAR_LAST
     };
     enum INPUTS
@@ -54,12 +56,28 @@ public:
         for (int i=0;i<8;++i)
         {
             configParam(PAR_VOLTS+i,-5.0f,5.0f,0.0f);
+            m_cur_outs[i] = 0.0f;
         }
+        configParam(PAR_ORDER,1,24,1,"Step order");
+        getParamQuantity(PAR_ORDER)->snapEnabled = true;
     }
     void process(const ProcessArgs& args) override
     {
-
+        if (m_step_trig.process(inputs[IN_TRIG].getVoltage()))
+        {
+            ++m_cur_step;
+            if (m_cur_step == 8)
+            {
+                m_cur_step = 0;
+            }
+            int ord = params[PAR_ORDER].getValue();
+            int index = g_permuts[ord-1][m_cur_step]-1;
+            float stepval = params[PAR_VOLTS+index].getValue();
+            m_cur_outs[0] = stepval;
+        }
+        outputs[OUT_VOLT].setVoltage(m_cur_outs[0]);
     }
+    float m_cur_outs[8];
     int m_cur_step = 0;
     dsp::SchmittTrigger m_step_trig;
 };
@@ -71,6 +89,32 @@ public:
     {
         setModule(m);
         box.size.x = RACK_GRID_WIDTH * 8;
+        float xc = 1.0f;
+        float yc = 1.0f;
+        PortWithBackGround* port = nullptr;
+        port = new PortWithBackGround(m,this,CubeSymSeq::OUT_VOLT,xc,yc,"VOLTS",true);
+        xc = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,CubeSymSeq::OUT_EOC,xc,yc,"EOC",true);
+        xc = port->box.getRight()+2;
+        port = new PortWithBackGround(m,this,CubeSymSeq::IN_TRIG,xc,yc,"TRIG",false);
+        xc = port->box.getRight()+2;
+        for (int i=0;i<8;++i)
+        {
+            addParam(createParam<RoundBlackKnob>(Vec(1.0, i*32.0f+35.0f), module, CubeSymSeq::PAR_VOLTS+i));
+        }
+        addParam(createParam<RoundBlackKnob>(Vec(1.0, 8*32.0f+35.0f), module, CubeSymSeq::PAR_ORDER));
+    }
+    void draw(const DrawArgs &args) override
+    {
+        nvgSave(args.vg);
+        float w = box.size.x;
+        float h = box.size.y;
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg, nvgRGBA(0x50, 0x50, 0x50, 0xff));
+        nvgRect(args.vg,0.0f,0.0f,w,h);
+        nvgFill(args.vg);
+        nvgRestore(args.vg);
+        ModuleWidget::draw(args);
     }
 };
 
