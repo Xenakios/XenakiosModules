@@ -54,9 +54,15 @@ public:
         OUT_EOC,
         OUT_LAST
     };
+    enum LIGHTS
+    {
+        ENUMS(LIGHT_ACTSTEP,8),
+        LIGHT_PENDING_CHANGE,
+        LIGHT_LAST
+    };
     CubeSymSeq()
     {
-        config(PAR_LAST,IN_LAST,OUT_LAST,8);
+        config(PAR_LAST,IN_LAST,OUT_LAST,LIGHT_LAST);
         for (int i=0;i<8;++i)
         {
             configParam(PAR_VOLTS+i,-5.0f,5.0f,0.0f);
@@ -65,12 +71,14 @@ public:
         {
             m_cur_outs[i] = 0.0f;
             m_slews[i].setAmount(0.999);
+            m_cur_permuts[i] = 1.0f;
         }
             
         configParam(PAR_ORDER,1,24,1,"Step order");
         getParamQuantity(PAR_ORDER)->snapEnabled = true;
         configParam(PAR_SMOOTH,0.0,1.0,0.0,"Output smoothing");
     }
+    float m_cur_permuts[16];
     void process(const ProcessArgs& args) override
     {
         int numouts = clamp(inputs[IN_ORDER_CV].getChannels(),1,16);
@@ -80,32 +88,47 @@ public:
             m_cur_step = 0;
             m_eoc_gen.trigger();
         }
+        
         if (m_step_trig.process(inputs[IN_TRIG].getVoltage()))
         {
+            float ordbase = params[PAR_ORDER].getValue();
             ++m_cur_step;
             if (m_cur_step == 8)
             {
                 m_cur_step = 0;
                 m_eoc_gen.trigger();
+                
             }
             
             
-            float ordbase = params[PAR_ORDER].getValue();
             for (int i=0;i<numouts;++i)
             {
                 float ord = ordbase + rescale(inputs[IN_ORDER_CV].getVoltage(i),-5.0f,5.0f,-12.0,12.0);
                 ord = clamp(ord,1.0f,24.0f);
-                int iord = (int)ord-1;
+                if (ord!=m_cur_permuts[i])
+                {
+                    if (m_cur_step == 0)
+                    {
+                        lights[LIGHT_PENDING_CHANGE].setBrightness(0.0f);
+                        m_cur_permuts[i] = ord;
+                    } else
+                    {
+                        lights[LIGHT_PENDING_CHANGE].setBrightness(1.0f);
+                    }
+                    
+                } 
+                int iord = (int)m_cur_permuts[i]-1;
                 int index = g_permuts[iord][m_cur_step]-1;
                 float stepval = params[PAR_VOLTS+index].getValue();
                 m_cur_outs[i] = stepval;
+                
                 if (i == 0)
                 {
                     for (int j=0;j<8;++j)
                     {
                         if (j == index)
-                            lights[j].setBrightness(1.0f);
-                        else lights[j].setBrightness(0.0f);
+                            lights[j+LIGHT_ACTSTEP].setBrightness(1.0f);
+                        else lights[j+LIGHT_ACTSTEP].setBrightness(0.0f);
                     }
                 }
                 
@@ -155,10 +178,13 @@ public:
         {
             addParam(createParam<RoundBlackKnob>(Vec(1.0, i*32.0f+40.0f), module, CubeSymSeq::PAR_VOLTS+i));
             LightWidget* lw;
-            addChild(lw = createLight<GreenLight>(Vec(32.0, i*32.0f+43.0f),module,i));
+            addChild(lw = createLight<GreenLight>(Vec(32.0, i*32.0f+43.0f),module,CubeSymSeq::LIGHT_ACTSTEP+i));
             lw->box.size = {6.0f,6.0f};
         }
         addParam(createParam<RoundBigBlackKnob>(Vec(1.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_ORDER));
+        LightWidget* lw;
+        addChild(lw = createLight<RedLight>(Vec(80.0, 8*32.0f+50.0f),module,CubeSymSeq::LIGHT_PENDING_CHANGE));
+        lw->box.size = {6.0f,6.0f};
         addInput(createInput<PJ301MPort>(Vec(50.0, 8*32+40), module, CubeSymSeq::IN_ORDER_CV));
         addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_SMOOTH));
     }
