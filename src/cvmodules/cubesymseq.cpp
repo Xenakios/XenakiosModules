@@ -42,6 +42,7 @@ public:
     enum INPUTS
     {
         IN_TRIG,
+        IN_ORDER_CV,
         IN_LAST
     };
     enum OUTPUTS
@@ -52,7 +53,7 @@ public:
     };
     CubeSymSeq()
     {
-        config(PAR_LAST,IN_LAST,OUT_LAST);
+        config(PAR_LAST,IN_LAST,OUT_LAST,8);
         for (int i=0;i<8;++i)
         {
             configParam(PAR_VOLTS+i,-5.0f,5.0f,0.0f);
@@ -69,17 +70,32 @@ public:
             if (m_cur_step == 8)
             {
                 m_cur_step = 0;
+                m_eoc_gen.trigger();
             }
-            int ord = params[PAR_ORDER].getValue();
-            int index = g_permuts[ord-1][m_cur_step]-1;
+            
+            
+            float ord = params[PAR_ORDER].getValue();
+            ord += rescale(inputs[IN_ORDER_CV].getVoltage(),-5.0f,5.0f,-12.0,12.0);
+            ord = clamp(ord,1.0f,24.0f);
+            int iord = ord-1;
+            int index = g_permuts[iord][m_cur_step]-1;
             float stepval = params[PAR_VOLTS+index].getValue();
             m_cur_outs[0] = stepval;
+            for (int i=0;i<8;++i)
+            {
+                if (i == index)
+                    lights[i].setBrightness(1.0f);
+                else lights[i].setBrightness(0.0f);
+            }
         }
         outputs[OUT_VOLT].setVoltage(m_cur_outs[0]);
+        float eocv = (float)m_eoc_gen.process(args.sampleTime)*10.0f;
+        outputs[OUT_EOC].setVoltage(eocv);
     }
     float m_cur_outs[8];
     int m_cur_step = 0;
     dsp::SchmittTrigger m_step_trig;
+    dsp::PulseGenerator m_eoc_gen;
 };
 
 class CubeSymSeqWidget : public rack::ModuleWidget
@@ -100,9 +116,13 @@ public:
         xc = port->box.getRight()+2;
         for (int i=0;i<8;++i)
         {
-            addParam(createParam<RoundBlackKnob>(Vec(1.0, i*32.0f+35.0f), module, CubeSymSeq::PAR_VOLTS+i));
+            addParam(createParam<RoundBlackKnob>(Vec(1.0, i*32.0f+40.0f), module, CubeSymSeq::PAR_VOLTS+i));
+            LightWidget* lw;
+            addChild(lw = createLight<GreenLight>(Vec(32.0, i*32.0f+43.0f),module,i));
+            lw->box.size = {10.0f,10.0f};
         }
-        addParam(createParam<RoundBlackKnob>(Vec(1.0, 8*32.0f+35.0f), module, CubeSymSeq::PAR_ORDER));
+        addParam(createParam<RoundBigBlackKnob>(Vec(1.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_ORDER));
+        addInput(createInput<PJ301MPort>(Vec(50.0, 8*32+40), module, CubeSymSeq::IN_ORDER_CV));
     }
     void draw(const DrawArgs &args) override
     {
