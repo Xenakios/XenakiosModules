@@ -72,6 +72,10 @@ public:
             m_cur_outs[i] = 0.0f;
             m_slews[i].setAmount(0.999);
             m_cur_permuts[i] = 1.0f;
+            for (int j=0;j<8;++j)
+            {
+                m_step_states[i][j] = 0;
+            }
         }
             
         configParam(PAR_ORDER,1,24,1,"Step order");
@@ -79,10 +83,12 @@ public:
         configParam(PAR_SMOOTH,0.0,1.0,0.0,"Output smoothing");
     }
     float m_cur_permuts[16];
+    
     void process(const ProcessArgs& args) override
     {
         int numouts = clamp(inputs[IN_ORDER_CV].getChannels(),1,16);
         outputs[OUT_VOLT].setChannels(numouts);
+        
         if (m_reset_trig.process(inputs[IN_RESET].getVoltage()))
         {
             m_cur_step = 0;
@@ -91,6 +97,13 @@ public:
         
         if (m_step_trig.process(inputs[IN_TRIG].getVoltage()))
         {
+            for (int i=0;i<16;++i)
+            {
+                for (int j=0;j<8;++j)
+                {
+                    m_step_states[i][j] = 0;
+                }
+            }
             float ordbase = params[PAR_ORDER].getValue();
             ++m_cur_step;
             if (m_cur_step == 8)
@@ -122,13 +135,18 @@ public:
                 float stepval = params[PAR_VOLTS+index].getValue();
                 m_cur_outs[i] = stepval;
                 
-                if (i == 0)
+                //if (i == 0)
                 {
                     for (int j=0;j<8;++j)
                     {
                         if (j == index)
-                            lights[j+LIGHT_ACTSTEP].setBrightness(1.0f);
-                        else lights[j+LIGHT_ACTSTEP].setBrightness(0.0f);
+                        {
+                            m_step_states[i][j] = 1;
+                        } else
+                        {
+                            m_step_states[i][j] = 0;
+                        }
+                            
                     }
                 }
                 
@@ -150,10 +168,41 @@ public:
     }
     float m_cur_outs[16];
     int m_cur_step = 0;
+    int m_step_states[16][8];
     dsp::SchmittTrigger m_step_trig;
     dsp::SchmittTrigger m_reset_trig;
     dsp::PulseGenerator m_eoc_gen;
     OnePoleFilter m_slews[16];
+};
+
+class CSSStepsWidget : public rack::TransparentWidget
+{
+public:
+    CSSStepsWidget(CubeSymSeq* s, int row) : m_mod(s), m_row(row)
+    {
+        box.size.x = 16 * 3;
+        box.size.y = 5;
+    }
+    void draw(const DrawArgs &args) override
+    {
+        nvgSave(args.vg);
+        for (int i=0;i<16;++i)
+        {
+            
+            int s = m_mod->m_step_states[i][m_row];
+            nvgBeginPath(args.vg);
+            if (s == 0)
+                nvgFillColor(args.vg,nvgRGB(0,0,0));
+            else nvgFillColor(args.vg,nvgRGB(0,255,0));
+            nvgCircle(args.vg,i*6.5f,0.0f,3.0f);
+            nvgFill(args.vg);
+            
+        }
+        nvgRestore(args.vg);
+    }
+private:
+    CubeSymSeq* m_mod = nullptr;
+    int m_row = 0;
 };
 
 class CubeSymSeqWidget : public rack::ModuleWidget
@@ -177,9 +226,17 @@ public:
         for (int i=0;i<8;++i)
         {
             addParam(createParam<RoundBlackKnob>(Vec(1.0, i*32.0f+40.0f), module, CubeSymSeq::PAR_VOLTS+i));
-            LightWidget* lw;
-            addChild(lw = createLight<GreenLight>(Vec(32.0, i*32.0f+43.0f),module,CubeSymSeq::LIGHT_ACTSTEP+i));
-            lw->box.size = {6.0f,6.0f};
+            //LightWidget* lw;
+            //addChild(lw = createLight<GreenLight>(Vec(32.0, i*32.0f+43.0f),module,CubeSymSeq::LIGHT_ACTSTEP+i));
+            //lw->box.size = {6.0f,6.0f};
+            if (m)
+            {
+                auto w = new CSSStepsWidget(m,i);
+                addChild(w);
+                w->box.pos = {32,i*32+46};
+                //w->box.size = {16*8,8};
+            }
+            
         }
         addParam(createParam<RoundBigBlackKnob>(Vec(1.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_ORDER));
         LightWidget* lw;
