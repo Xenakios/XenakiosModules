@@ -196,7 +196,10 @@ public:
         if (m_s==nullptr)
             return;
         nvgSave(args.vg);
-        
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg,nvgRGB(0,0,0));
+        nvgRect(args.vg,0,0,box.size.x,box.size.y);
+        nvgFill(args.vg);
         for (int i=0;i<24;++i)
         {
             nvgBeginPath(args.vg);
@@ -205,15 +208,15 @@ public:
             int s = m_s->params[CubeSymSeq::PAR_ORDER].getValue()-1;
             if (i == s)
                 nvgFillColor(args.vg,nvgRGB(200,200,200));
-            else nvgFillColor(args.vg,nvgRGB(0,0,0));
+            else nvgFillColor(args.vg,nvgRGB(100,100,100));
             float xcor = x * m_gridsize;
             float ycor = y * m_gridsize;
-            nvgCircle(args.vg,xcor,ycor,m_gridsize/2);
+            nvgCircle(args.vg,xcor+m_gridsize/2,ycor+m_gridsize/2,m_gridsize/2);
             nvgFill(args.vg);
-            nvgBeginPath(args.vg);
-            nvgRect(args.vg,xcor,ycor,10.0f,10.0f);
-            nvgFillColor(args.vg,nvgRGB(0,255,0));
-            nvgStroke(args.vg);
+            //nvgBeginPath(args.vg);
+            //nvgRect(args.vg,xcor,ycor,m_gridsize,m_gridsize);
+            //nvgStrokeColor(args.vg,nvgRGB(0,255,0));
+            //nvgStroke(args.vg);
         }
         nvgRestore(args.vg);
     }
