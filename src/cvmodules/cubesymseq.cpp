@@ -198,7 +198,7 @@ public:
                     iord = (iord + i) % 24;
                 m_cur_ipermuts[i] = iord;
                 int index = 0; 
-                int whichtable = 1;
+                int whichtable = 0;
                 if (whichtable == 0)
                     index = g_permuts[iord][m_cur_step]-1;
                 else
