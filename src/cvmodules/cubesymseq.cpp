@@ -31,6 +31,37 @@ const int g_permuts[24][8] =
     {5,6,8,7,1,2,4,3}
 };
 
+const int g_call_changes[24][8] =
+{
+    {1,2,3,4,5,6,7,8},
+    {1,2,3,4,5,7,6,8},
+    {1,2,3,4,7,5,6,8},
+    {1,2,3,7,4,5,6,8},
+    {1,2,7,3,4,5,6,8},
+    {1,2,7,3,5,4,6,8},
+    
+    {1,2,7,5,3,4,6,8},
+    {1,2,5,7,3,4,6,8},
+    {1,2,5,3,7,4,6,8},
+    {1,2,3,5,7,4,6,8},
+    {1,3,2,5,7,4,6,8},
+    {1,3,5,2,7,4,6,8},
+    
+    {1,3,5,7,2,4,6,8},
+    {1,5,3,7,2,4,6,8},
+    {1,5,3,2,7,4,6,8},
+    {1,5,2,3,7,4,6,8},
+    {1,5,2,3,7,6,4,8},
+    {1,5,2,3,6,7,4,8},
+    
+    {1,5,2,6,3,7,4,8},
+    {1,2,5,6,3,7,4,8},
+    {1,2,5,3,6,7,4,8},
+    {1,2,3,5,6,7,4,8},
+    {1,2,3,5,6,4,7,8},
+    {1,2,3,5,4,6,7,8}
+};
+
 class CubeSymSeq : public rack::Module
 {
 public:
@@ -146,7 +177,12 @@ public:
                 if (genoffsets) // generate poly permutation number offsets for manual poly count
                     iord = (iord + i) % 24;
                 m_cur_ipermuts[i] = iord;
-                int index = g_permuts[iord][m_cur_step]-1;
+                int index = 0; 
+                int whichtable = 1;
+                if (whichtable == 0)
+                    index = g_permuts[iord][m_cur_step]-1;
+                else
+                    index = g_call_changes[iord][m_cur_step]-1;
                 float stepval = params[PAR_VOLTS+index].getValue();
                 m_cur_outs[i] = stepval;
                 for (int j=0;j<8;++j)
