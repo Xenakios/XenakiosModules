@@ -73,6 +73,7 @@ public:
             m_cur_outs[i] = 0.0f;
             m_slews[i].setAmount(0.999);
             m_cur_permuts[i] = 1.0f;
+            m_cur_ipermuts[i] = 0;
             for (int j=0;j<8;++j)
             {
                 m_step_states[i][j] = 0;
@@ -83,9 +84,11 @@ public:
         getParamQuantity(PAR_ORDER)->snapEnabled = true;
         configParam(PAR_SMOOTH,0.0,1.0,0.0,"Output smoothing");
         configParam(PAR_POLYCHANS,1.0,16.0,1.0,"Poly channels");
+        getParamQuantity(PAR_POLYCHANS)->snapEnabled = true;
     }
     float m_cur_permuts[16];
-    
+    int m_cur_num_outs = 0;
+    int m_cur_ipermuts[16];
     void process(const ProcessArgs& args) override
     {
         int numouts = clamp(inputs[IN_ORDER_CV].getChannels(),1,16);
@@ -96,6 +99,7 @@ public:
             numouts = manouts;
             genoffsets = true;
         }
+        m_cur_num_outs = numouts;
         outputs[OUT_VOLT].setChannels(numouts);
         
         if (m_reset_trig.process(inputs[IN_RESET].getVoltage()))
@@ -141,6 +145,7 @@ public:
                 int iord = (int)m_cur_permuts[i]-1;
                 if (genoffsets) // generate poly permutation number offsets for manual poly count
                     iord = (iord + i) % 24;
+                m_cur_ipermuts[i] = iord;
                 int index = g_permuts[iord][m_cur_step]-1;
                 float stepval = params[PAR_VOLTS+index].getValue();
                 m_cur_outs[i] = stepval;
@@ -168,6 +173,7 @@ public:
         outputs[OUT_EOC].setVoltage(eocv);
     }
     float m_cur_outs[16];
+    
     int m_cur_step = 0;
     int m_step_states[16][8];
     dsp::SchmittTrigger m_step_trig;
@@ -208,15 +214,25 @@ public:
             int s = m_s->params[CubeSymSeq::PAR_ORDER].getValue()-1;
             if (i == s)
                 nvgFillColor(args.vg,nvgRGB(200,200,200));
-            else nvgFillColor(args.vg,nvgRGB(100,100,100));
+            else nvgFillColor(args.vg,nvgRGB(50,50,50));
             float xcor = x * m_gridsize;
             float ycor = y * m_gridsize;
-            nvgCircle(args.vg,xcor+m_gridsize/2,ycor+m_gridsize/2,m_gridsize/2);
+            nvgCircle(args.vg,xcor+m_gridsize/2,ycor+m_gridsize/2,m_gridsize/2-1);
             nvgFill(args.vg);
-            //nvgBeginPath(args.vg);
-            //nvgRect(args.vg,xcor,ycor,m_gridsize,m_gridsize);
-            //nvgStrokeColor(args.vg,nvgRGB(0,255,0));
-            //nvgStroke(args.vg);
+            
+        }
+        
+        for (int i=0;i<m_s->m_cur_num_outs;++i)
+        {
+            int perm = m_s->m_cur_ipermuts[i];
+            int x = perm % 8;
+            int y = perm / 8;
+            nvgBeginPath(args.vg);
+            nvgFillColor(args.vg,nvgRGB(0,255,255));
+            float xcor = x * m_gridsize;
+            float ycor = y * m_gridsize;
+            nvgCircle(args.vg,xcor+m_gridsize/2,ycor+m_gridsize/2,m_gridsize/2-3);
+            nvgFill(args.vg);
         }
         nvgRestore(args.vg);
     }
