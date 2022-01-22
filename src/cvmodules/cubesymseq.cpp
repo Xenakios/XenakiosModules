@@ -76,7 +76,7 @@ public:
     enum INPUTS
     {
         IN_TRIG,
-        IN_ORDER_CV,
+        IN_MULTIPURPOSE1,
         IN_RESET,
         IN_LAST
     };
@@ -122,7 +122,7 @@ public:
     int m_cur_ipermuts[16];
     void process(const ProcessArgs& args) override
     {
-        int numouts = clamp(inputs[IN_ORDER_CV].getChannels(),1,16);
+        int numouts = clamp(inputs[IN_MULTIPURPOSE1].getChannels(),1,16);
         bool genoffsets = false;
         int manouts = params[PAR_POLYCHANS].getValue();
         if (manouts>numouts)
@@ -138,7 +138,25 @@ public:
             m_cur_step = 0;
             m_eoc_gen.trigger();
         }
-        
+        if (m_in_cv_mode > 0)
+        {
+            
+            if (m_adv_trig.process(inputs[IN_MULTIPURPOSE1].getVoltage()))
+            {
+                float pardelta = 0.0f;
+                float oparval = params[PAR_ORDER].getValue();
+                if (m_in_cv_mode == 1)  
+                    oparval += 1.0f;
+                if (m_in_cv_mode == 2)  
+                    oparval -= 1.0f;
+                if (oparval>24.0f)
+                    oparval = 1.0f;
+                else if (oparval<1.0f)
+                    oparval = 24.0f;
+                params[PAR_ORDER].setValue(oparval);
+            }
+                
+        }
         if (m_step_trig.process(inputs[IN_TRIG].getVoltage()))
         {
             for (int i=0;i<16;++i)
@@ -158,7 +176,9 @@ public:
             }
             for (int i=0;i<numouts;++i)
             {
-                float ord = ordbase + rescale(inputs[IN_ORDER_CV].getVoltage(i),-5.0f,5.0f,-12.0,12.0);
+                float ord = ordbase;
+                if (m_in_cv_mode == 0)
+                    ord += rescale(inputs[IN_MULTIPURPOSE1].getVoltage(i),-5.0f,5.0f,-12.0,12.0);
                 ord = clamp(ord,1.0f,24.0f);
                 
                 if (ord!=m_cur_permuts[i])
@@ -214,6 +234,8 @@ public:
     int m_step_states[16][8];
     dsp::SchmittTrigger m_step_trig;
     dsp::SchmittTrigger m_reset_trig;
+    dsp::SchmittTrigger m_adv_trig;
+    int m_in_cv_mode = 1;
     dsp::PulseGenerator m_eoc_gen;
     OnePoleFilter m_slews[16];
 };
@@ -346,7 +368,7 @@ public:
         LightWidget* lw;
         addChild(lw = createLight<RedLight>(Vec(50.0, 8*32.0f+70.0f),module,CubeSymSeq::LIGHT_PENDING_CHANGE));
         lw->box.size = {6.0f,6.0f};
-        addInput(createInput<PJ301MPort>(Vec(50.0, 8*32+40), module, CubeSymSeq::IN_ORDER_CV));
+        addInput(createInput<PJ301MPort>(Vec(50.0, 8*32+40), module, CubeSymSeq::IN_MULTIPURPOSE1));
         addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_SMOOTH));
         addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+70.0f), module, CubeSymSeq::PAR_POLYCHANS));
         auto butgr = new CSSButtonGroupWidget(m);
