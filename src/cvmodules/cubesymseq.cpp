@@ -301,6 +301,7 @@ private:
 class CSSStepsWidget : public rack::TransparentWidget
 {
 public:
+    
     CSSStepsWidget(CubeSymSeq* s, int row) : m_mod(s), m_row(row)
     {
         box.size.x = 16 * 3;
@@ -330,9 +331,92 @@ private:
     int m_row = 0;
 };
 
+struct MyFloatQuantity : Quantity 
+{
+    MyFloatQuantity(std::string lab, float minval, float maxval, float defval,std::function<void(float)> setValueCallback) :
+        m_lab(lab), m_minval(minval),m_maxval(maxval),m_defval(defval),svCallback(setValueCallback)
+    {
+        m_value = defval;
+    }   
+    std::string m_lab;
+    float m_minval = 0.0f;
+    float m_maxval = 1.0f;
+    float m_defval = 0.0f;   
+    float m_value = 0.0f;                
+    std::function<void(float)> svCallback;
+    void setValue(float value) override 
+    {
+        m_value = clamp(value,m_minval,m_maxval);
+        if (svCallback)
+            svCallback(m_value);    
+    }
+    float getValue() override {
+        return m_value;
+    }
+    float getDefaultValue() override {
+        return m_defval;
+    }
+    float getDisplayValue() override {
+        return getValue();
+    }
+    void setDisplayValue(float displayValue) override {
+        setValue(displayValue);
+    }
+    std::string getLabel() override {
+        return m_lab;
+    }
+    std::string getUnit() override {
+        return "";
+    }
+    int getDisplayPrecision() override {
+        return 3;
+    }
+    float getMaxValue() override {
+        return m_maxval;
+    }
+    float getMinValue() override {
+        return m_minval;
+    }
+};
+
+struct MyValueSlider : ui::Slider
+{
+    MyValueSlider(std::string lab, float minval, float maxval, float defval, std::function<void(float)> cb)
+    {
+        this->quantity = new MyFloatQuantity(lab,minval,maxval,defval,cb);
+    }
+    ~MyValueSlider()
+    {
+        delete this->quantity;
+    }
+};
+
 class CubeSymSeqWidget : public rack::ModuleWidget
 {
 public:
+    float m_gen_minv = -5.0f;
+    float m_gen_maxv = 5.0f;
+    float m_gen_shape = 1.0f;
+    void appendContextMenu(Menu* menu) override
+    {
+        menu->addChild(new MenuSeparator);
+        auto slid = new MyValueSlider("Lowest value",-5.0f,5.0f,m_gen_minv,[this](float x){ m_gen_minv = x; });
+        slid->box.size = {150.0f,20.0f};
+        menu->addChild(slid);
+        slid = new MyValueSlider("Highest value",-5.0f,5.0f,m_gen_maxv,[this](float x){ m_gen_maxv = x; });
+        slid->box.size = {150.0f,20.0f};
+        menu->addChild(slid);
+        CubeSymSeq* sm = dynamic_cast<CubeSymSeq*>(module);
+        menu->addChild(createMenuItem([this,sm]()
+        {
+            for (int i=0;i<8;++i)
+            {
+                float norm = rescale((float)i,0,7,0.0f,1.0f);
+                float val = rescale(norm,0.0f,1.0f,m_gen_minv,m_gen_maxv);
+                sm->params[CubeSymSeq::PAR_VOLTS+i].setValue(val);
+            }
+        },"Generate step values"));
+    }
     CubeSymSeqWidget(CubeSymSeq* m)
     {
         setModule(m);
