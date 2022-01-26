@@ -113,9 +113,12 @@ public:
             
         configParam(PAR_ORDER,1,24,1,"Step order");
         getParamQuantity(PAR_ORDER)->snapEnabled = true;
+        getParamQuantity(PAR_ORDER)->randomizeEnabled = false;
         configParam(PAR_SMOOTH,0.0,1.0,0.0,"Output smoothing");
+        getParamQuantity(PAR_SMOOTH)->randomizeEnabled = false;
         configParam(PAR_POLYCHANS,1.0,16.0,1.0,"Poly channels");
         getParamQuantity(PAR_POLYCHANS)->snapEnabled = true;
+        getParamQuantity(PAR_POLYCHANS)->randomizeEnabled = false;
     }
     float m_cur_permuts[16];
     int m_cur_num_outs = 0;
