@@ -119,13 +119,16 @@ public:
         configParam(PAR_POLYCHANS,1.0,16.0,1.0,"Poly channels");
         getParamQuantity(PAR_POLYCHANS)->snapEnabled = true;
         getParamQuantity(PAR_POLYCHANS)->randomizeEnabled = false;
-        
-        std::mt19937 rng((size_t)this);
+        reShuffle();
+    } 
+    void reShuffle()
+    {
         std::array<int,24> temp;
         std::iota(temp.begin(),temp.end(),0);
-        std::shuffle(temp.begin()+1,temp.end(),rng);
+        std::shuffle(temp.begin()+1,temp.end(),m_rng);
         std::copy(temp.begin(),temp.begin()+16,m_rand_offsets.begin());
-    }   
+    }  
+    std::mt19937 m_rng{(size_t)this};
     float m_cur_permuts[16];
     int m_cur_num_outs = 0;
     int m_cur_ipermuts[16];
@@ -435,6 +438,16 @@ public:
                 sm->params[CubeSymSeq::PAR_VOLTS+i].setValue(val);
             }
         },"Generate step values"));
+        menu->addChild(createMenuItem([sm]()
+        {
+            if (sm->m_polyoffset_algo == 0)
+                sm->m_polyoffset_algo = 1;
+            else sm->m_polyoffset_algo = 0;
+        },"Randomized polyphonic permutations", CHECKMARK(sm->m_polyoffset_algo == 1) ));
+        menu->addChild(createMenuItem([sm]()
+        {
+            sm->reShuffle();
+        },"Re-randomize polyphonic permutations"));
     }
     CubeSymSeqWidget(CubeSymSeq* m)
     {
