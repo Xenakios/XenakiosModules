@@ -121,14 +121,16 @@ public:
         getParamQuantity(PAR_POLYCHANS)->randomizeEnabled = false;
         
         std::mt19937 rng((size_t)this);
-        std::iota(m_rand_offsets.begin(),m_rand_offsets.end(),0);
-        std::shuffle(m_rand_offsets.begin()+1,m_rand_offsets.end(),rng);
+        std::array<int,24> temp;
+        std::iota(temp.begin(),temp.end(),0);
+        std::shuffle(temp.begin()+1,temp.end(),rng);
+        std::copy(temp.begin(),temp.begin()+16,m_rand_offsets.begin());
     }   
     float m_cur_permuts[16];
     int m_cur_num_outs = 0;
     int m_cur_ipermuts[16];
-    // 16 would be enough but the algorithm to generate the shuffled offsets is cleaner if 24 here
-    std::array<int,24> m_rand_offsets;
+    
+    std::array<int,16> m_rand_offsets;
     int m_polyoffset_algo = 1;
     void process(const ProcessArgs& args) override
     {
