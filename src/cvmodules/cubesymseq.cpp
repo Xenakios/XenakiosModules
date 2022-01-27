@@ -119,20 +119,16 @@ public:
         configParam(PAR_POLYCHANS,1.0,16.0,1.0,"Poly channels");
         getParamQuantity(PAR_POLYCHANS)->snapEnabled = true;
         getParamQuantity(PAR_POLYCHANS)->randomizeEnabled = false;
-        // somewhat convoluted way to generate 16 random offsets, where first element has to be 0
-        // there might be a better way to do this...
+        
         std::mt19937 rng((size_t)this);
-        std::array<int,24> temp;
-        std::iota(temp.begin(),temp.end(),0);
-        std::shuffle(temp.begin(),temp.end(),rng);
-        auto it = std::find(temp.begin(),temp.end(),0);
-        std::iter_swap(it,temp.begin());
-        std::copy(temp.begin(),temp.begin()+16,m_rand_offsets.begin());
+        std::iota(m_rand_offsets.begin(),m_rand_offsets.end(),0);
+        std::shuffle(m_rand_offsets.begin()+1,m_rand_offsets.end(),rng);
     }   
     float m_cur_permuts[16];
     int m_cur_num_outs = 0;
     int m_cur_ipermuts[16];
-    std::array<int,16> m_rand_offsets;
+    // 16 would be enough but the algorithm to generate the shuffled offsets is cleaner if 24 here
+    std::array<int,24> m_rand_offsets;
     int m_polyoffset_algo = 1;
     void process(const ProcessArgs& args) override
     {
