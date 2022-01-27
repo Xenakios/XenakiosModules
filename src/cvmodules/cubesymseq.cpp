@@ -62,6 +62,8 @@ const int g_call_changes[24][8] =
     {1,2,3,5,4,6,7,8}
 };
 
+unsigned int g_css_seed = 1;
+
 class CubeSymSeq : public rack::Module
 {
 public:
@@ -94,6 +96,7 @@ public:
     };
     CubeSymSeq()
     {
+        ++g_css_seed;
         config(PAR_LAST,IN_LAST,OUT_LAST,LIGHT_LAST);
         for (int i=0;i<8;++i)
         {
@@ -128,7 +131,7 @@ public:
         std::shuffle(temp.begin()+1,temp.end(),m_rng);
         std::copy(temp.begin(),temp.begin()+16,m_rand_offsets.begin());
     }  
-    std::mt19937 m_rng{(size_t)this};
+    std::mt19937 m_rng{g_css_seed};
     float m_cur_permuts[16];
     int m_cur_num_outs = 0;
     int m_cur_ipermuts[16];
