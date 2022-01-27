@@ -119,10 +119,21 @@ public:
         configParam(PAR_POLYCHANS,1.0,16.0,1.0,"Poly channels");
         getParamQuantity(PAR_POLYCHANS)->snapEnabled = true;
         getParamQuantity(PAR_POLYCHANS)->randomizeEnabled = false;
-    }
+        // somewhat convoluted way to generate 16 random offsets, where first element has to be 0
+        // there might be a better way to do this...
+        std::mt19937 rng((size_t)this);
+        std::array<int,24> temp;
+        std::iota(temp.begin(),temp.end(),0);
+        std::shuffle(temp.begin(),temp.end(),rng);
+        auto it = std::find(temp.begin(),temp.end(),0);
+        std::iter_swap(it,temp.begin());
+        std::copy(temp.begin(),temp.begin()+16,m_rand_offsets.begin());
+    }   
     float m_cur_permuts[16];
     int m_cur_num_outs = 0;
     int m_cur_ipermuts[16];
+    std::array<int,16> m_rand_offsets;
+    int m_polyoffset_algo = 1;
     void process(const ProcessArgs& args) override
     {
         int numouts = clamp(inputs[IN_MULTIPURPOSE1].getChannels(),1,16);
@@ -197,8 +208,15 @@ public:
                     
                 } 
                 int iord = (int)m_cur_permuts[i]-1;
+                
                 if (genoffsets) // generate poly permutation number offsets for manual poly count
-                    iord = (iord + i) % 24;
+                {
+                    if (m_polyoffset_algo == 0)
+                        iord = (iord + i) % 24;
+                    else if (m_polyoffset_algo == 1)
+                        iord = (iord + m_rand_offsets[i]) % 24;
+                }
+                    
                 m_cur_ipermuts[i] = iord;
                 int index = 0; 
                 int whichtable = 0;
