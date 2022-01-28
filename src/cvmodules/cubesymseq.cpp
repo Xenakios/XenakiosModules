@@ -260,11 +260,13 @@ public:
         std::stringstream ss;
         ss << m_rng;
         json_object_set(resultJ,"rngstate",json_string(ss.str().c_str()));
+        json_object_set(resultJ,"mpin",json_integer(m_in_cv_mode));
         return resultJ;
     }
     void dataFromJson(json_t* root) override
     {
         if (auto j = json_object_get(root,"poa")) m_polyoffset_algo = json_integer_value(j);
+        if (auto j = json_object_get(root,"mpin")) m_in_cv_mode = json_integer_value(j);
         if (auto j = json_object_get(root,"rngstate"))
         {
             std::string s = json_string_value(j);
@@ -281,7 +283,7 @@ public:
     dsp::SchmittTrigger m_step_trig;
     dsp::SchmittTrigger m_reset_trig;
     dsp::SchmittTrigger m_adv_trig;
-    int m_in_cv_mode = 1;
+    int m_in_cv_mode = 0;
     dsp::PulseGenerator m_eoc_gen;
     OnePoleFilter m_slews[16];
 };
@@ -472,6 +474,22 @@ public:
         {
             sm->reShuffle();
         },"Re-randomize polyphonic permutations"));
+        auto subm = createSubmenuItem("Step Order CV Mode","",[=](Menu* m)
+        {
+            m->addChild(createMenuItem([=]()
+            {
+                sm->m_in_cv_mode = 0;
+            },"CV adds to parameter value",CHECKMARK(sm->m_in_cv_mode==0)));
+            m->addChild(createMenuItem([=]()
+            {
+                sm->m_in_cv_mode = 1;
+            },"Trigger increases parameter value by 1",CHECKMARK(sm->m_in_cv_mode==1)));
+            m->addChild(createMenuItem([=]()
+            {
+                sm->m_in_cv_mode = 2;
+            },"Trigger decreases parameter value by 1",CHECKMARK(sm->m_in_cv_mode==2)));
+        });
+        menu->addChild(subm);
     }
     CubeSymSeqWidget(CubeSymSeq* m)
     {
