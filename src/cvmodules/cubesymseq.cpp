@@ -131,13 +131,13 @@ public:
         std::shuffle(temp.begin()+1,temp.end(),m_rng);
         std::copy(temp.begin(),temp.begin()+16,m_rand_offsets.begin());
     }  
-    std::mt19937 m_rng{g_css_seed};
+    std::minstd_rand m_rng{g_css_seed};
     float m_cur_permuts[16];
     int m_cur_num_outs = 0;
     int m_cur_ipermuts[16];
     
     std::array<int,16> m_rand_offsets;
-    int m_polyoffset_algo = 1;
+    int m_polyoffset_algo = 0;
     void process(const ProcessArgs& args) override
     {
         int numouts = clamp(inputs[IN_MULTIPURPOSE1].getChannels(),1,16);
@@ -252,6 +252,27 @@ public:
         
         float eocv = (float)m_eoc_gen.process(args.sampleTime)*10.0f;
         outputs[OUT_EOC].setVoltage(eocv);
+    }
+    json_t* dataToJson() override
+    {
+        json_t* resultJ = json_object();
+        json_object_set(resultJ,"poa",json_integer(m_polyoffset_algo));
+        std::stringstream ss;
+        ss << m_rng;
+        json_object_set(resultJ,"rngstate",json_string(ss.str().c_str()));
+        return resultJ;
+    }
+    void dataFromJson(json_t* root) override
+    {
+        if (auto j = json_object_get(root,"poa")) m_polyoffset_algo = json_integer_value(j);
+        if (auto j = json_object_get(root,"rngstate"))
+        {
+            std::string s = json_string_value(j);
+            std::stringstream ss;
+            ss << s;
+            ss >> m_rng;
+            reShuffle();
+        }
     }
     float m_cur_outs[16];
     
