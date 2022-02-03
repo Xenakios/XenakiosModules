@@ -295,7 +295,7 @@ public:
     {
 
     }
-    float m_gridsize = 10.0f;
+    float m_gridsize = 17.0f;
     void onButton(const event::Button& e) override
     {
         int x = e.pos.x / m_gridsize;
@@ -307,6 +307,7 @@ public:
     {
         if (m_s==nullptr)
             return;
+        m_gridsize = box.size.x / 8.0f - 0.5f;
         nvgSave(args.vg);
         nvgBeginPath(args.vg);
         nvgFillColor(args.vg,nvgRGB(0,0,0));
@@ -334,10 +335,10 @@ public:
             int x = perm % 8;
             int y = perm / 8;
             nvgBeginPath(args.vg);
-            nvgFillColor(args.vg,nvgRGB(0,255,255));
+            nvgFillColor(args.vg,nvgRGB(0,200,200));
             float xcor = x * m_gridsize;
             float ycor = y * m_gridsize;
-            nvgCircle(args.vg,xcor+m_gridsize/2,ycor+m_gridsize/2,m_gridsize/2-3);
+            nvgCircle(args.vg,xcor+m_gridsize/2,ycor+m_gridsize/2,m_gridsize/2-5);
             nvgFill(args.vg);
         }
         nvgRestore(args.vg);
@@ -521,18 +522,14 @@ public:
             }
             
         }
-        RoundBigBlackKnob* knob;
-        addParam(knob = createParam<RoundBigBlackKnob>(Vec(1.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_ORDER));
-        LightWidget* lw;
-        addChild(lw = createLight<RedLight>(Vec(50.0, 8*32.0f+70.0f),module,CubeSymSeq::LIGHT_PENDING_CHANGE));
-        lw->box.size = {6.0f,6.0f};
-        addInput(createInput<PJ301MPort>(Vec(50.0, 8*32+40), module, CubeSymSeq::IN_MULTIPURPOSE1));
-        addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+40.0f), module, CubeSymSeq::PAR_SMOOTH));
-        addParam(createParam<RoundBlackKnob>(Vec(85.0, 8*32.0f+70.0f), module, CubeSymSeq::PAR_POLYCHANS));
         auto butgr = new CSSButtonGroupWidget(m);
         addChild(butgr);
-        butgr->box.size = {80.0f,30.0f};
-        butgr->box.pos = {knob->box.getLeft()+5,knob->box.getBottom()+5};
+        butgr->box.size = {box.size.x-2.0f,56.0f};
+        butgr->box.pos = {1.0, 8*32.0f+40.0f};
+        addInput(createInput<PJ301MPort>(Vec(1.0, butgr->box.getBottom()+1.0f), module, CubeSymSeq::IN_MULTIPURPOSE1));
+        addParam(createParam<RoundSmallBlackKnob>(Vec(25.0f, butgr->box.getBottom()+1.0f), module, CubeSymSeq::PAR_SMOOTH));
+        addParam(createParam<RoundSmallBlackKnob>(Vec(50.0, butgr->box.getBottom()+1.0f), module, CubeSymSeq::PAR_POLYCHANS));
+        
     }
     void draw(const DrawArgs &args) override
     {
