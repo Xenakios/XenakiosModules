@@ -1383,9 +1383,9 @@ public:
         
         ui::Menu *menu = createMenu();
         std::vector<std::string> namelist;
-        namelist.push_back("Harmonic series");
-        namelist.push_back("Linear");
         namelist.push_back("Equal tempered per pixel row");
+        namelist.push_back("Linear");
+        namelist.push_back("Harmonic series");
         for (auto& e : m_syn->m_scala_scales)
             namelist.push_back(e);
         int i=0;
