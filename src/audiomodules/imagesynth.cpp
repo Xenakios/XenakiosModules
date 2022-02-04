@@ -1098,7 +1098,7 @@ public:
         float pitch = params[PAR_PITCH].getValue();
         pitch += inputs[IN_PITCH_CV].getVoltage()*12.0f;
         pitch = clamp(pitch,-36.0,36.0);
-        m_src.SetRates(44100 ,44100/pow(2.0,1.0/12*pitch));
+        m_src.SetRates(44100 , args.sampleRate / pow(2.0,1.0/12*pitch));
         if (params[PAR_DESIGNER_ACTIVE].getValue()>0.5)
         {
             float preview_freq = rack::dsp::FREQ_C4 * pow(2.0, 1.0 / 12 * pitch);
@@ -1113,7 +1113,7 @@ public:
         loopMode = params[PAR_LOOPMODE].getValue();
         if (loopMode==0)
             loopDir = 1;
-        int outlensamps = m_out_dur*args.sampleRate;
+        int outlensamps = m_out_dur*44100;
         loopstart = params[PAR_LOOP_START].getValue();
         loopstart += inputs[IN_LOOPSTART_CV].getVoltage()/5.0f;
         loopstart = clamp(loopstart,0.0f,1.0f);
@@ -1244,7 +1244,7 @@ public:
             }
         }
         
-        m_playpos = m_bufferplaypos / args.sampleRate;
+        m_playpos = m_bufferplaypos / 44100.0f;
         
     }
     float m_out_dur = 10.0f;
@@ -1414,7 +1414,7 @@ public:
     {
         setModule(m);
         m_synth = m;
-        box.size.x = 620.0f;
+        box.size.x = 42*RACK_GRID_WIDTH;
         if (m)
         {
             m_osc_design_widget = new OscDesignerWidget(m);
