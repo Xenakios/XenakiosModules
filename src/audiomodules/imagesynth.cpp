@@ -914,13 +914,17 @@ public:
         configParam(PAR_PITCH,-24,24,0.0,"Playback pitch");
         configParam(PAR_FREQMAPPING,0,2+(m_scala_scales.size()),0.0,"Frequency mapping type");
         configParam(PAR_WAVEFORMTYPE,0,3,0.0,"Oscillator type");
+        getParamQuantity(PAR_WAVEFORMTYPE)->snapEnabled = true;
         configParam(PAR_PRESET_IMAGE,0,presetImages.size()-1,0.0,"Preset image");
+        getParamQuantity(PAR_PRESET_IMAGE)->snapEnabled = true;
         configParam(PAR_LOOP_START,0.0,0.99,0.0,"Loop start");
         configParam(PAR_LOOP_LEN,0.00,1.00,1.0,"Loop length");
         configParam(PAR_FREQUENCY_BALANCE,0.00,1.00,0.25,"Frequency balance");
         configParam(PAR_HARMONICS_FUNDAMENTAL,-72.0,0.00,-24.00,"Harmonics fundamental");
         configParam(PAR_PAN_MODE,0.0,6.0,1.00,"Frequency panning mode");
+        getParamQuantity(PAR_PAN_MODE)->snapEnabled = true;
         configParam(PAR_NUMOUTCHANS,0.0,6.0,0.00,"Output channels configuration");
+        getParamQuantity(PAR_NUMOUTCHANS)->snapEnabled = true;
         configParam(PAR_DESIGNER_ACTIVE,0,1,0,"Edit oscillator waveform");
         configParam(PAR_DESIGNER_VOLUME,-24.0,3.0,-12.0,"Oscillator editor volume");
         configParam(PAR_ENVELOPE_SHAPE,0.0,1.0,0.95,"Envelope shape");
