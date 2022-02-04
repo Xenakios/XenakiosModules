@@ -172,6 +172,15 @@
         "Sequencer",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "XImageSynth",
+      "name": "ImageSynth",
+      "description": "Image synth",
+      "tags": [
+        "Oscillator",
+        "Polyphonic"
+      ]
     }
     
 

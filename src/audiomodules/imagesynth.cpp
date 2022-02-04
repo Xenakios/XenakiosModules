@@ -232,7 +232,7 @@ class ImgSynth : public GrainAudioSource
 {
 public:
     std::mt19937 m_rng{ 99937 };
-    std::list<std::string> m_scala_scales;
+    std::vector<std::string> m_scala_scales;
     ImgSynth()
     {
         
@@ -889,7 +889,7 @@ public:
         PAR_LAST
     };
     int m_comp = 0;
-    std::list<std::string> presetImages;
+    std::vector<std::string> presetImages;
     std::vector<stbi_uc> m_backupdata; 
     dsp::BooleanTrigger reloadTrigger;
     std::atomic<bool> m_renderingImage;
@@ -897,7 +897,7 @@ public:
     float looplen = 1.0f;
     
     OscillatorBuilder m_oscBuilder{32};
-    std::list<std::string> m_scala_scales;
+    std::vector<std::string> m_scala_scales;
     dsp::DoubleRingBuffer<dsp::Frame<5>, 256> outputBuffer;
     std::vector<float> srcOutBuffer;
     OnePoleFilter gainSmoother;
@@ -1378,10 +1378,12 @@ public:
             return;
         
         ui::Menu *menu = createMenu();
-        auto namelist = m_syn->m_scala_scales;
-        namelist.push_front("Harmonic series");
-        namelist.push_front("Linear");
-        namelist.push_front("Equal tempered per pixel row");
+        std::vector<std::string> namelist;
+        namelist.push_back("Harmonic series");
+        namelist.push_back("Linear");
+        namelist.push_back("Equal tempered per pixel row");
+        for (auto& e : m_syn->m_scala_scales)
+            namelist.push_back(e);
         int i=0;
         for (auto& name : namelist)
         {
@@ -1390,7 +1392,8 @@ public:
              {
                 check = CHECKMARK_STRING;
              }
-             ChooseScaleItem* item = createMenuItem<ChooseScaleItem>(rack::string::filename(name),check);
+             ChooseScaleItem* item = createMenuItem<ChooseScaleItem>(
+                 rack::system::getFilename(name),check);
              item->syn = m_syn;
              item->m_index = i;
              menu->addChild(item);
@@ -1476,8 +1479,8 @@ public:
     
     ~XImageSynthWidget()
     {
-        if (m_ctx && m_image!=0)
-            nvgDeleteImage(m_ctx,m_image);
+        //if (m_ctx && m_image!=0)
+        //    nvgDeleteImage(m_ctx,m_image);
     }
     int imageCreateCounter = 0;
     bool imgDirty = false;
@@ -1626,7 +1629,7 @@ public:
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             char buf[1000];
             float dirtyElapsed = m_synth->m_syn.getDirtyElapsedTime();
-            auto scalefile = rack::string::filename(m_synth->m_syn.currentScalaFile);
+            auto scalefile = rack::system::getFilename(m_synth->m_syn.currentScalaFile);
             if ((int)m_synth->params[XImageSynth::PAR_FREQMAPPING].getValue()<3)
                 scalefile = "";
             int freqIndex = rescale(hoverYCor,0.0f,300.0f,0.0f,599.0f);

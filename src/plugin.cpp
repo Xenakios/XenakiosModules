@@ -34,7 +34,7 @@ void init(Plugin *p) {
 	p->addModel(modelXPSynth);
 	p->addModel(modelInharmonics);
 	p->addModel(modelXStochastic);
-	//p->addModel(modelXImageSynth);
+	p->addModel(modelXImageSynth);
 	p->addModel(modelXLOFI);
 	p->addModel(modelXMultiMod);
 	p->addModel(modelXGranular);
