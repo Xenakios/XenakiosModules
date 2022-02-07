@@ -905,6 +905,7 @@ public:
     {
         srcOutBuffer.resize(16*64);
         m_scala_scales = rack::system::getEntries(asset::plugin(pluginInstance, "res/scala_scales"));
+        std::sort(m_scala_scales.begin(),m_scala_scales.end());
         m_syn.m_scala_scales = m_scala_scales;
         m_renderingImage = false;
         presetImages = rack::system::getEntries(asset::plugin(pluginInstance, "res/image_synth_images"));
