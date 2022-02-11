@@ -43,4 +43,5 @@ void init(Plugin *p) {
 	p->addModel(modelXSampler);
 	p->addModel(modelXScaleOscillator);
 	p->addModel(modelCubeSymSeq);
+	p->addModel(modelTimeSeq);
 }

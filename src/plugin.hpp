@@ -476,3 +476,4 @@ extern Model* modelWeightGate;
 extern Model* modelHistogram;
 extern Model* modelReducer;
 extern Model* modelCubeSymSeq;
+extern Model* modelTimeSeq;
