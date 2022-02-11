@@ -25,7 +25,19 @@ public:
         {
             float normtime = 0.0f;
             if (m_algo == 0)
+            {
                 normtime = rescale((float)i,0,numevents-1,0.0f,1.0f);
+                if (m_par1<0.5f)
+                {
+                    float d = rescale(m_par1,0.0f,0.5f,4.0f,1.0f);
+                    normtime = std::pow(normtime,d);
+                } else
+                {
+                    float d = rescale(m_par1,0.5f,1.0f,1.0f,4.0f);
+                    normtime = 1.0f-std::pow(1.0f-normtime,d);
+                }
+            }
+                
             else
                 normtime = rack::random::uniform();
             float t = m_dur * normtime;
@@ -79,12 +91,22 @@ public:
     {
         m_algo = clamp(a,0,1);
     }
+    void setPar1(float p)
+    {
+        m_par1 = clamp(p,0.0f,1.0f);
+    }
+    void setPar2(float p)
+    {
+        m_par2 = clamp(p,0.0f,1.0f);
+    }
 //private:
     std::vector<TimeSeqEvent> m_events;
     float m_dur = 5.0f;
     float m_density = 4.0f;
     float m_gatelen = 0.5f;
     int m_algo = 0;
+    float m_par1 = 0.5f;
+    float m_par2 = 0.5f;
     int m_cur_event = 0;
     int m_num_events = 0;
     double m_seqphase = 0.0;
@@ -99,6 +121,8 @@ public:
         PAR_SEQDUR,
         PAR_SEQDENSITY,
         PAR_ALGO,
+        PAR_PAR1,
+        PAR_PAR2,
         PAR_LAST
     };
     enum INPUTS
@@ -119,6 +143,7 @@ public:
         configParam(PAR_SEQDENSITY,-2.f, 6.f, 1.f, "Density", " events per second", 2, 1);
         configParam(PAR_ALGO,0.0f,1.0f,0.0f,"Sequence algorithm");
         getParamQuantity(PAR_ALGO)->snapEnabled = true;
+        configParam(PAR_PAR1,0.0f,1.0f,0.5f,"PAR 1");
     }
     void process(const ProcessArgs& args) override
     {
@@ -131,6 +156,8 @@ public:
             m_eng.setDuration(dur);
             int algo = params[PAR_ALGO].getValue();
             m_eng.setAlgo(algo);
+            float p1 = params[PAR_PAR1].getValue();
+            m_eng.setPar1(p1);
             m_eng.generateEvents();
         }
         float out = 0.0f;
@@ -162,6 +189,9 @@ public:
         xc = 2.0f;
         yc += 47;
         addChild(new KnobInAttnWidget(this,"ALGO",TimeSeqModule::PAR_ALGO,
+            -1,-1,xc,yc,false));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"PAR 1",TimeSeqModule::PAR_PAR1,
             -1,-1,xc,yc,false));
     }
     void draw(const DrawArgs &args) override
