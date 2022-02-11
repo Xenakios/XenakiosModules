@@ -26,7 +26,7 @@ public:
             float normtime = 0.0f;
             if (m_algo == 0)
             {
-                normtime = rescale((float)i,0,numevents-1,0.0f,1.0f);
+                normtime = rescale((float)i,0,numevents,0.0f,1.0f);
                 if (m_par1<0.5f)
                 {
                     float d = rescale(m_par1,0.0f,0.5f,4.0f,1.0f);
@@ -40,6 +40,7 @@ public:
                 
             else
                 normtime = rack::random::uniform();
+            normtime = rescale(normtime,0.0f,1.0f,m_start_time,m_end_time);
             float t = m_dur * normtime;
             m_events[i] = {t,0.0};
         }
@@ -50,14 +51,14 @@ public:
             double dur = m_events[i+1].m_time-m_events[i].m_time;
             m_events[i].m_dur = dur;
         }
-        m_events.back().m_dur = 1.0;
+        m_events[numevents-1].m_dur = m_dur - m_events[numevents-1].m_time;
         m_cur_event = 0;
         m_seqphase = 0.0;
-        m_eventphase = 0.0;
+        
     }
     void process(float deltatime,float& out,float& eoc)
     {
-        if (m_cur_event >= m_num_events)
+        if (m_seqphase >= m_dur || m_cur_event >= m_num_events)
         {
             out = 0.0f;
             eoc = 0.0f;
@@ -65,17 +66,21 @@ public:
         }
             
         auto& ev = m_events[m_cur_event];
-        if (m_eventphase<ev.m_dur * m_gatelen)
+        double ph = ev.m_time - m_seqphase;
+        double ev_gate_end = ev.m_time+ev.m_dur*m_gatelen;
+        double ev_end = ev.m_time+ev.m_dur;
+        if (m_seqphase>=ev.m_time && m_seqphase<ev_gate_end)
             out = 1.0f;
         else out = 0.0f;
-        m_eventphase += deltatime;
+        
+        m_seqphase += deltatime;
         eoc = 0.0f;
-        if (m_eventphase>=ev.m_dur)
+        if (m_seqphase>=ev_end)
         {
             ++m_cur_event;
             if (m_cur_event == m_num_events)
                 eoc = 1.0f;
-            m_eventphase = 0.0;
+            
         }
         
     }
@@ -99,18 +104,29 @@ public:
     {
         m_par2 = clamp(p,0.0f,1.0f);
     }
+    void setActiveRange(float t0, float t1)
+    {
+        m_start_time = clamp(t0,0.0f,1.0f);
+        m_end_time = clamp(t1,0.0f,1.0f);
+        if (m_end_time<m_start_time)
+            std::swap(m_start_time,m_end_time);
+        if (m_end_time-m_start_time<0.01)
+            m_end_time += 0.01;
+    }
 //private:
     std::vector<TimeSeqEvent> m_events;
     float m_dur = 5.0f;
     float m_density = 4.0f;
     float m_gatelen = 0.5f;
+    float m_start_time = 0.0f;
+    float m_end_time = 1.0f;
     int m_algo = 0;
     float m_par1 = 0.5f;
     float m_par2 = 0.5f;
     int m_cur_event = 0;
     int m_num_events = 0;
     double m_seqphase = 0.0;
-    double m_eventphase = 0.0;
+    
 };
 
 class TimeSeqModule : public rack::Module
@@ -123,6 +139,8 @@ public:
         PAR_ALGO,
         PAR_PAR1,
         PAR_PAR2,
+        PAR_SEQ_START,
+        PAR_SEQ_END,
         PAR_LAST
     };
     enum INPUTS
@@ -144,6 +162,8 @@ public:
         configParam(PAR_ALGO,0.0f,1.0f,0.0f,"Sequence algorithm");
         getParamQuantity(PAR_ALGO)->snapEnabled = true;
         configParam(PAR_PAR1,0.0f,1.0f,0.5f,"PAR 1");
+        configParam(PAR_SEQ_START,0.0f,1.0f,0.0f,"EVENTS START");
+        configParam(PAR_SEQ_END,0.0f,1.0f,1.0f,"EVENTS END");
     }
     void process(const ProcessArgs& args) override
     {
@@ -158,6 +178,9 @@ public:
             m_eng.setAlgo(algo);
             float p1 = params[PAR_PAR1].getValue();
             m_eng.setPar1(p1);
+            float t0 = params[PAR_SEQ_START].getValue();
+            float t1 = params[PAR_SEQ_END].getValue();
+            m_eng.setActiveRange(t0,t1);
             m_eng.generateEvents();
         }
         float out = 0.0f;
@@ -192,6 +215,13 @@ public:
             -1,-1,xc,yc,false));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"PAR 1",TimeSeqModule::PAR_PAR1,
+            -1,-1,xc,yc,false));
+        xc = 2.0f;
+        yc += 47;
+        addChild(new KnobInAttnWidget(this,"EVENTS START",TimeSeqModule::PAR_SEQ_START,
+            -1,-1,xc,yc,false));
+        xc += 82;
+        addChild(new KnobInAttnWidget(this,"EVENTS END",TimeSeqModule::PAR_SEQ_END,
             -1,-1,xc,yc,false));
     }
     void draw(const DrawArgs &args) override
