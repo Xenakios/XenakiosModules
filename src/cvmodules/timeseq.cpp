@@ -80,6 +80,12 @@ public:
             ++m_cur_event;
             if (m_cur_event == m_num_events)
                 eoc = 1.0f;
+            if (m_doUpdate)
+            {
+                generateEvents();
+                m_doUpdate = false;
+            }
+                
         }
         
     }
@@ -112,6 +118,10 @@ public:
         if (m_end_time-m_start_time<0.01)
             m_end_time += 0.01;
     }
+    void update()
+    {
+        m_doUpdate = true;
+    }
 //private:
     std::vector<TimeSeqEvent> m_events;
     float m_dur = 5.0f;
@@ -125,7 +135,7 @@ public:
     int m_cur_event = 0;
     int m_num_events = 0;
     double m_seqphase = 0.0;
-    
+    bool m_doUpdate = false;
 };
 
 class TimeSeqModule : public rack::Module
