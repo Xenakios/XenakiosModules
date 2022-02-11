@@ -80,7 +80,6 @@ public:
             ++m_cur_event;
             if (m_cur_event == m_num_events)
                 eoc = 1.0f;
-            
         }
         
     }
@@ -146,6 +145,8 @@ public:
     enum INPUTS
     {
         IN_TRIG,
+        IN_DENSITY,
+        IN_DURATION,
         IN_LAST
     };
     enum OUTPUTS
@@ -167,20 +168,22 @@ public:
     }
     void process(const ProcessArgs& args) override
     {
+        float density = params[PAR_SEQDENSITY].getValue();
+        density += inputs[IN_DENSITY].getVoltage()*0.5f;
+        density = std::pow(2.0f,density);
+        m_eng.setDensity(density);
+        float dur = params[PAR_SEQDUR].getValue();
+        dur += inputs[IN_DURATION].getVoltage()*0.5f;
+        m_eng.setDuration(dur);
+        int algo = params[PAR_ALGO].getValue();
+        m_eng.setAlgo(algo);
+        float p1 = params[PAR_PAR1].getValue();
+        m_eng.setPar1(p1);
+        float t0 = params[PAR_SEQ_START].getValue();
+        float t1 = params[PAR_SEQ_END].getValue();
+        m_eng.setActiveRange(t0,t1);
         if (m_trig.process(inputs[IN_TRIG].getVoltage()))
         {
-            float density = params[PAR_SEQDENSITY].getValue();
-            density = std::pow(2.0f,density);
-            m_eng.setDensity(density);
-            float dur = params[PAR_SEQDUR].getValue();
-            m_eng.setDuration(dur);
-            int algo = params[PAR_ALGO].getValue();
-            m_eng.setAlgo(algo);
-            float p1 = params[PAR_PAR1].getValue();
-            m_eng.setPar1(p1);
-            float t0 = params[PAR_SEQ_START].getValue();
-            float t1 = params[PAR_SEQ_END].getValue();
-            m_eng.setActiveRange(t0,t1);
             m_eng.generateEvents();
         }
         float out = 0.0f;
@@ -205,10 +208,10 @@ public:
         float xc = 2.0f;
         float yc = 60.0f;
         addChild(new KnobInAttnWidget(this,"RATE",TimeSeqModule::PAR_SEQDENSITY,
-            -1,-1,xc,yc,false));
+            TimeSeqModule::IN_DENSITY,-1,xc,yc,false));
         xc += 82;
         addChild(new KnobInAttnWidget(this,"DURATION",TimeSeqModule::PAR_SEQDUR,
-            -1,-1,xc,yc,false));
+            TimeSeqModule::IN_DURATION,-1,xc,yc,false));
         xc = 2.0f;
         yc += 47;
         addChild(new KnobInAttnWidget(this,"ALGO",TimeSeqModule::PAR_ALGO,
