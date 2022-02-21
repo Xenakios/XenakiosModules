@@ -628,9 +628,6 @@ public:
         }
         m_all_banks.push_back(bank_d);
         
-        
-        
-        
         m_scale.reserve(2048);
         m_scale = getScaleChecked(0,1).pitches;
         for (int i=0;i<mExpFMPowerTable.size();++i)
@@ -655,8 +652,6 @@ public:
     void refreshChebyCoeffs()
     {
         std::string chebyfn = asset::userDir+"/klang_cheby_table.txt";
-        DEBUG("KLANG user dir %s",chebyfn.c_str());
-        //std::string chebyfn = asset::plugin(pluginInstance, "res/klang_cheby_table.txt");
         loadChebyshevCoefficients(chebyfn);
     }
     inline float getExpFMDepth(float semitones)
@@ -735,7 +730,7 @@ public:
             }
         }
     }
-    int m_pitchQuantizeMode = 1;
+    int m_pitchQuantizeMode = 0;
     void setPitchQuantizeMode(int m)
     {
         m_pitchQuantizeMode = clamp(m,0,1);
@@ -1482,7 +1477,7 @@ public:
         float hphz = params[PAR_HIPASSFREQ].getValue();
         if (m_samplerate!=args.sampleRate || mLastHPCutoff!=hphz)
         {
-            // we don't want to calculate the coeffs for all filter instances
+            // we don't want to calculate the coeffs for all filter instances, because they are the same
             float normfreq = hphz/args.sampleRate;
             float q = sqrt(2.0)/2.0;
             m_hpfilts[0].setParameters(rack::dsp::BiquadFilter::HIGHPASS,normfreq,q,1.0f);
@@ -1584,7 +1579,6 @@ public:
     json_t* dataToJson() override
     {
         json_t* resultJ = json_object();
-        //json_object_set(resultJ,"scalafile0",json_string(m_osc.mCustomScaleFileName.c_str()));
         auto ob = m_osc.dataToJson();
         if (ob)
         {
