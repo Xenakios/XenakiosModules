@@ -1343,8 +1343,6 @@ private:
     std::array<float,4096> mExpFMPowerTable;
 };
 
-
-
 class XScaleOsc : public Module
 {
 public:
@@ -1502,7 +1500,7 @@ public:
         }
         if (m_pardiv.process())
         {
-            float bal = params[PAR_BALANCE].getValue(); // getModParValue(PAR_BALANCE,IN_BALANCE,PAR_BAL_ATTN);
+            float bal = params[PAR_BALANCE].getValue(); 
             bal += inputs[IN_BALANCE].getVoltage()*0.1f*averterMap(params[PAR_BAL_ATTN].getValue(),0.0f);
             m_osc.setBalance(bal);
             float detune = getModParValue(PAR_DETUNE,IN_DETUNE,PAR_DETUNE_ATTN);
@@ -1543,12 +1541,11 @@ public:
             m_osc.setFrequencySmoothing(psmooth);
             int xfmode = params[PAR_XFADEMODE].getValue();
             m_osc.setXFadeMode(xfmode);
+            
             m_osc.setFreezeEnabled((bool)params[PAR_FREEZE_ENABLED].getValue());
-            
-            
             int freezeMode = params[PAR_FREEZE_MODE].getValue();
-            
             m_osc.setFreezeMode(freezeMode);
+            
             m_osc.updateOscFrequencies();
         }
         alignas(16) float outs[16];
@@ -1614,8 +1611,7 @@ struct MyLoadFileItem : MenuItem
     XScaleOsc* m_mod = nullptr;
     void onAction(const event::Action &e) override
     {
-        std::string dir; // = asset::plugin(pluginInstance, "/res");
-        //osdialog_filters* filters = osdialog_filters_parse("SCALA file:wav");
+        std::string dir; 
         osdialog_filters* filters = osdialog_filters_parse("Scala File:scl");
         char* pathC = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
         osdialog_filters_free(filters);
