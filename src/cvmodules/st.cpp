@@ -435,6 +435,7 @@ public:
         configParam(PAR_MASTER_PITCH_CENTER,-48.0,48.0,0.0,"Master pitch center");
         configParam(PAR_MASTER_PITCH_SPREAD,0,48.0,12.0,"Master pitch spread");
         configParam(PAR_NUM_OUTPUTS,1,16.0,8.0,"Number of outputs");
+        getParamQuantity(PAR_NUM_OUTPUTS)->snapEnabled = true;
         configParam(PAR_MASTER_PITCH_ENV_TYPE,0,msnumtables,0.0,"Pitch envelope type");
         configParam(PAR_MASTER_AMP_ENV_TYPE,0,m_numAmpEnvs,0.0,"VCA envelope type");
         configParam(PAR_RATE_CV,-1.0f,1.0f,0.0,"Master density CV ATTN");
