@@ -334,6 +334,8 @@ public:
         ENUMS(PAR_DISPLAY_WEIGHT,16),
         ENUMS(PAR_DISPLAY_WEIGHT2,16),
         PAR_PITCHQUANAMOUNT,
+        ENUMS(PAR_AUXMODE,4),
+        ENUMS(PAR_AUXQUANT,4),
         PAR_LAST
     };
     int m_numAmpEnvs = 11;
@@ -455,6 +457,14 @@ public:
             configParam(PAR_DISPLAY_WEIGHT2+i,0.0f,1.0f,1.0,"Envelope selection weight2 "+std::to_string(i));
         }
         configParam(PAR_PITCHQUANAMOUNT,0.0f,1.0f,1.0f,"Pitch quantization amount");
+        for (int i=0;i<4;++i)
+        {
+            configParam(PAR_AUXMODE+i,0.0f,2.0f,1.0f,"Aux output "+std::to_string(i+1)+" mode");
+            getParamQuantity(PAR_AUXMODE+i)->snapEnabled = true;
+            configParam(PAR_AUXQUANT+i,0.0f,16.0f,0.0f,"Aux output "+std::to_string(i+1)+" quantize steps");
+            getParamQuantity(PAR_AUXQUANT+i)->snapEnabled = true;
+        }
+
         m_rng = std::mt19937(256);
     }
     int m_curRandSeed = 256;
@@ -735,6 +745,7 @@ public:
         xc = port->box.getRight()+2;
         port = new PortWithBackGround(m,this,XStochastic::OUT_VCA,xc,yc,"GAIN",true);
         xc = port->box.getRight()+2;
+        float auxesleft = xc;
         port = new PortWithBackGround(m,this,XStochastic::OUT_AUX1,xc,yc,"AUX 1",true);
         xc = port->box.getRight()+2;
         port = new PortWithBackGround(m,this,XStochastic::OUT_AUX2,xc,yc,"AUX 2",true);
@@ -743,14 +754,17 @@ public:
         xc = port->box.getRight()+2;
         port = new PortWithBackGround(m,this,XStochastic::OUT_AUX4,xc,yc,"AUX 4",true);
         xc = port->box.getRight()+2;
-        //addParam(createParam<Trimpot>(Vec(xc, yc), m, XStochastic::PAR_AUX3_CHAOS));    
-        //addParam(createParam<Trimpot>(Vec(xc, yc+21), m, XStochastic::PAR_AUX3_CHAOS_RATE));    
-        //addParam(createParam<Trimpot>(Vec(xc+21, yc), m, XStochastic::PAR_AUX3_CHAOS_SMOOTH));    
+        for (int i=0;i<4;++i)
+        {
+            addParam(createParam<Trimpot>(Vec(auxesleft+i*(port->box.size.x+2), 60), m, XStochastic::PAR_AUXMODE+i));
+            addParam(createParam<Trimpot>(Vec(auxesleft+i*(port->box.size.x+2), 80), m, XStochastic::PAR_AUXQUANT+i));
+        }
+        
         
         addInput(createInput<PJ301MPort>(Vec(xc+42, yc), module, XStochastic::IN_RESET));
         float lfs = 9.0f;
         xc = 2.0f;
-        yc = 60.0f;
+        yc = 101.0f;
         addChild(new KnobInAttnWidget(this,"RATE",XStochastic::PAR_MASTER_DENSITY,
             XStochastic::IN_RATE,XStochastic::PAR_RATE_CV,xc,yc,false,lfs));
         xc += 82;
