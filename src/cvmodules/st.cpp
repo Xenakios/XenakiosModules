@@ -100,21 +100,19 @@ public:
         m_pitch_env.AddNode({0.0f,0.0f,2});
         m_pitch_env.AddNode({1.0f,0.0f,2});
 
-        m_par1_env.AddNode({0.0f,0.0f,2});
-        m_par1_env.AddNode({1.0f,0.0f,2});
-
-        m_par2_env.AddNode({0.0f,0.0f,2});
-        m_par2_env.AddNode({1.0f,0.0f,2});
-
-        m_par3_env.AddNode({0.0f,0.0f,2});
-        m_par3_env.AddNode({1.0f,0.0f,2});
+        for (int i=0;i<4;++i)
+        {
+            m_aux_envs[i].AddNode({0.0f,0.0f,2});
+            m_aux_envs[i].AddNode({1.0f,0.0f,2});
+        }
+        
 
         for (int i=0;i<m_activeOuts.size();++i)
         {
             m_activeOuts[i] = false;
             m_Outs[i] = 0.0f;
         }
-        
+        std::fill(m_auxes.begin(),m_auxes.end(),0.0f);
         m_quanScale.resize(4096);
     }
     void setScale(std::vector<double> sc)
@@ -166,28 +164,17 @@ public:
                 qpitch = quantize_to_grid(m_pitch,m_quanScale,mPitchQAmount);
             m_Outs[1] = reflect_value<float>(-60.0f,qpitch + penvvalue,60.0f);
         }
-        if (m_activeOuts[3])
+        for (int i=0;i<4;++i)
         {
-            m_Outs[3] = reflect_value<float>(-5.0f,m_par1 + m_par1_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
-        }
-        if (m_activeOuts[4])
-        {
-            m_Outs[4] = reflect_value<float>(-5.0f,m_par2 + m_par2_env.GetInterpolatedEnvelopeValue(normphase),5.0f);
-        }
-        if (m_activeOuts[5])
-        {
-            if (m_chaosphase>=(1.0/m_chaos_rate))
+            if (m_activeOuts[3+i])
             {
-                double chaos_r = 2.9+1.1*m_chaos_amt;
-                double chaos = chaos_r * (1.0-m_chaos) * m_chaos;
-                
-                m_chaos = chaos;
-                m_chaosphase = 0.0;
+                float env_val = m_aux_envs[i].GetInterpolatedEnvelopeValue(normphase);
+                m_Outs[3+i] = reflect_value<float>(-5.0f,m_auxes[i] + env_val ,5.0f); 
             }
-            m_chaosphase += deltatime;
-            m_Outs[5] = rescale(m_chaos_smoother.process(m_chaos),0.0,1.0,-5.0f,5.0f);
         }
         }
+        
+        
         m_phase += deltatime;
         if (m_phase>=m_len)
         {
@@ -244,21 +231,15 @@ public:
             else
                 pt0.Shape = shap;
         }
-        
         pt1.pt_y = glissdest;
-        m_par1 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
-        float pardest = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
-        m_par1_env.GetNodeAtIndex(1).pt_y = pardest;
-        m_par2 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
-        
-        float kuma = Kumaraswamy(dist(*m_rng));
-        pardest = rescale(kuma,0.0f,1.0f,-5.0f,5.0f);
-        m_par2_env.GetNodeAtIndex(1).pt_y = pardest;
-        m_par3 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
-        float trip = dist(*m_rng);
-        trip = quantize(trip,1.0/3,1.0f);
-        pardest = rescale(trip,0.0f,1.0f,-5.0f,5.0f);
-        m_par3_env.GetNodeAtIndex(1).pt_y = pardest;
+
+        for (int i=0;i<4;++i)
+        {
+            m_auxes[i] = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
+            float pardest = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
+            m_aux_envs[i].GetNodeAtIndex(1).pt_y = pardest;    
+        }
+
         m_available = false;
         float spar = std::pow(m_chaos_smooth,0.3);
         m_chaos_smoother.setAmount(rescale(spar,0.0f,1.0f,0.9f,0.9999f));
@@ -277,8 +258,8 @@ public:
     float m_playProb = 1.0f;
     float m_startPos = 0.0f;
     std::mt19937* m_rng = nullptr;
-    std::array<bool,6> m_activeOuts;
-    std::array<float,6> m_Outs;
+    std::array<bool,7> m_activeOuts;
+    std::array<float,7> m_Outs;
     double m_chaos_amt = 0.0;
     double m_chaos_rate = 1.0;
     double m_chaos_smooth = 0.0;
@@ -288,18 +269,16 @@ private:
     bool m_available = true;
     breakpoint_envelope m_pitch_env;
     breakpoint_envelope* m_amp_env = nullptr;
-    breakpoint_envelope m_par1_env;
-    breakpoint_envelope m_par2_env;
-    breakpoint_envelope m_par3_env;
+    
+    std::array<breakpoint_envelope,4> m_aux_envs;
     double m_phase = 0.0;
     double m_len = 0.5;
     float m_min_pitch = -24.0f;
     float m_max_pitch = 24.0f;
     float m_pitch = 0.0f;
     float m_glissrange = 0.0f;
-    float m_par1 = 0.0f;
-    float m_par2 = 0.0f;
-    float m_par3 = 0.0f;
+    std::array<float,4> m_auxes;
+    
     float m_amp_env_warp = 0.0f;
     float m_pitch_env_warp = 0.0f;
     double m_chaosphase = 0;
@@ -326,6 +305,7 @@ public:
         OUT_AUX1, 
         OUT_AUX2,
         OUT_AUX3,
+        OUT_AUX4,
         OUT_LAST
     };
     enum PARAMS
@@ -575,6 +555,7 @@ public:
                 m_voices[i].m_activeOuts[3] = outputs[OUT_AUX1].isConnected();
                 m_voices[i].m_activeOuts[4] = outputs[OUT_AUX2].isConnected();
                 m_voices[i].m_activeOuts[5] = outputs[OUT_AUX3].isConnected();
+                m_voices[i].m_activeOuts[6] = outputs[OUT_AUX4].isConnected();
             }
             //m_nextEventPos += deltatime;
         }
@@ -585,16 +566,17 @@ public:
         outputs[OUT_AUX1].setChannels(numvoices);
         outputs[OUT_AUX2].setChannels(numvoices);
         outputs[OUT_AUX3].setChannels(numvoices);
-        double chaos_amt = params[PAR_AUX3_CHAOS].getValue();
-        double chaos_rate = std::pow(2.0,params[PAR_AUX3_CHAOS_RATE].getValue());
+        outputs[OUT_AUX4].setChannels(numvoices);
+        //double chaos_amt = params[PAR_AUX3_CHAOS].getValue();
+        //double chaos_rate = std::pow(2.0,params[PAR_AUX3_CHAOS_RATE].getValue());
         float pqamt = params[PAR_PITCHQUANAMOUNT].getValue();
         for (int i=0;i<numvoices;++i)
         {
-            std::array<float,6> vouts{0.0f,0.0f,0.0f,0.0f,0.0f,0.0f};
+            std::array<float,7> vouts{0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f};
             if (m_voices[i].isAvailable()==false && m_phase>=m_voices[i].m_startPos)
             {
-                m_voices[i].m_chaos_amt = chaos_amt;
-                m_voices[i].m_chaos_rate = chaos_rate;
+                //m_voices[i].m_chaos_amt = chaos_amt;
+                //m_voices[i].m_chaos_rate = chaos_rate;
                 m_voices[i].setPitchQuantAount(pqamt);
                 m_voices[i].process(args.sampleTime);
                 
@@ -609,6 +591,7 @@ public:
             outputs[OUT_AUX1].setVoltage(vouts[3],i);
             outputs[OUT_AUX2].setVoltage(vouts[4],i);
             outputs[OUT_AUX3].setVoltage(vouts[5],i);
+            outputs[OUT_AUX4].setVoltage(vouts[6],i);
         }
         if (m_resetTrigger.process(rescale(inputs[IN_RESET].getVoltage(),0.0,10.0, 0.f, 1.f)))
         {
@@ -757,9 +740,11 @@ public:
         xc = port->box.getRight()+2;
         port = new PortWithBackGround(m,this,XStochastic::OUT_AUX3,xc,yc,"AUX 3",true);
         xc = port->box.getRight()+2;
-        addParam(createParam<Trimpot>(Vec(xc, yc), m, XStochastic::PAR_AUX3_CHAOS));    
-        addParam(createParam<Trimpot>(Vec(xc, yc+21), m, XStochastic::PAR_AUX3_CHAOS_RATE));    
-        addParam(createParam<Trimpot>(Vec(xc+21, yc), m, XStochastic::PAR_AUX3_CHAOS_SMOOTH));    
+        port = new PortWithBackGround(m,this,XStochastic::OUT_AUX4,xc,yc,"AUX 4",true);
+        xc = port->box.getRight()+2;
+        //addParam(createParam<Trimpot>(Vec(xc, yc), m, XStochastic::PAR_AUX3_CHAOS));    
+        //addParam(createParam<Trimpot>(Vec(xc, yc+21), m, XStochastic::PAR_AUX3_CHAOS_RATE));    
+        //addParam(createParam<Trimpot>(Vec(xc+21, yc), m, XStochastic::PAR_AUX3_CHAOS_SMOOTH));    
         
         addInput(createInput<PJ301MPort>(Vec(xc+42, yc), module, XStochastic::IN_RESET));
         float lfs = 9.0f;
