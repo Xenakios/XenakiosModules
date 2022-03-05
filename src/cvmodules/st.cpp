@@ -235,14 +235,28 @@ public:
 
         for (int i=0;i<4;++i)
         {
-            m_auxes[i] = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
-            float pardest = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
-            m_aux_envs[i].GetNodeAtIndex(1).pt_y = pardest;    
+            float auxy0 = 0.0f;
+            float auxy1 = 0.0f;
+            if (m_aux_modes[i] == 0)
+            {
+                auxy0 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
+                auxy1 = 0.0f;
+            } else if (m_aux_modes[i] == 1)
+            {
+                auxy0 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
+                auxy1 = rescale(dist(*m_rng),0.0f,1.0f,-5.0f,5.0f);
+            } else if (m_aux_modes[i] == 2)
+            {
+                float kuma = Kumaraswamy(dist(*m_rng));
+                auxy0 = rescale(kuma,0.0f,1.0f,-5.0f,5.0f);
+                kuma = Kumaraswamy(dist(*m_rng));
+                auxy1 = rescale(kuma,0.0f,1.0f,-5.0f,5.0f);
+            }
+            m_auxes[i] = auxy0;
+            m_aux_envs[i].GetNodeAtIndex(1).pt_y = auxy1;    
         }
 
         m_available = false;
-        float spar = std::pow(m_chaos_smooth,0.3);
-        m_chaos_smoother.setAmount(rescale(spar,0.0f,1.0f,0.9f,0.9999f));
         
         m_amp_env_warp = normdist(*m_rng) * aenvwspr * 0.5f;
         m_amp_env_warp = clamp(m_amp_env_warp,-1.0f,1.0f);
@@ -255,15 +269,13 @@ public:
         m_available = true;
         m_phase = 0.0;
     }
-    float m_playProb = 1.0f;
+    
     float m_startPos = 0.0f;
     std::mt19937* m_rng = nullptr;
     std::array<bool,7> m_activeOuts;
     std::array<float,7> m_Outs;
-    double m_chaos_amt = 0.0;
-    double m_chaos_rate = 1.0;
-    double m_chaos_smooth = 0.0;
-    double m_chaos = 0.417;
+    int m_aux_modes[4] = {1,1,1,1};
+    int m_aux_quants[4] = {0,0,0,0};
     OnePoleFilter m_amp_resp_smoother;
 private:
     bool m_available = true;
@@ -351,7 +363,7 @@ public:
         for (int i=0;i<16;++i)
         {
             m_voices[i].m_rng = &m_rng;
-            m_voices[i].m_chaos = 0.417+0.2/16*i;
+            //m_voices[i].m_chaos = 0.417+0.2/16*i;
             m_voices[i].setScale(sc);
         }
     }
@@ -535,7 +547,11 @@ public:
                     //if (ampenv < 0)
                     //    ampenv = vcadist(m_rng);
                     int ampenv = manual_amp_env;
-                    m_voices[voiceIndex].m_chaos_smooth = params[PAR_AUX3_CHAOS_SMOOTH].getValue();
+                    for (int j=0;j<4;++j)
+                    {
+                        m_voices[voiceIndex].m_aux_modes[j] = params[PAR_AUXMODE+j].getValue();
+                        m_voices[voiceIndex].m_aux_quants[j] = params[PAR_AUXQUANT+j].getValue();
+                    }
                     m_voices[voiceIndex].start(evdur,centerpitch,spreadpitch,
                         &m_amp_envelopes[ampenv],glissprob,gliss_spread,manual_pitch_env,
                         aenvwarp,pitchenvwarp);
