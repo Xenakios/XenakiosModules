@@ -41,34 +41,6 @@ inline double quantize(double x, double step, double amount)
     return x+diff*amount;
 }
 
-/*
-voice minpitch maxpitch pitch maxdur gate  par1  par2  par3  par4
-1     24.0     48.0     [out] 3.0    [out] [out] [out] [out] [out]
-
-
-ppp pp p mp mf f ff 
-  1  2 3  4  5 6  7
-
-*/
-
-const int EnvelopeTable[6][4] =
-{
-    {1,1,0,0}, // ppp
-    {2,1,2,0}, // ppp < p
-    {3,1,2,1}, // ppp < p > ppp
-    {2,2,1,0}, // p > ppp
-    {2,1,3,0}, // p < f
-    {3,1,3,1}, // ppp < f > ppp
-};
-
-/*
-const float EnvelopeScalers[2][4] =
-{
-    {1.0f/7*1,1.0f/7*3,1.0f/7*6,1.0f},
-    {0.0,1.0f/3*1,1.0f/3*2,1.0f}
-};
-*/
-
 inline float Kumaraswamy(float z)
 {
     float k_a = 0.3f;
@@ -222,7 +194,7 @@ public:
             else
             {
                 float z = dist(*m_rng);
-                float cauchy = std::tan(M_PI*(z-0.5));
+                float cauchy = std::tan(g_pi*(z-0.5));
                 glissdest = clamp(cauchy,-36.0f,36.0f);
             }
             int shap = penv;
@@ -363,7 +335,6 @@ public:
         for (int i=0;i<16;++i)
         {
             m_voices[i].m_rng = &m_rng;
-            //m_voices[i].m_chaos = 0.417+0.2/16*i;
             m_voices[i].setScale(sc);
         }
     }
@@ -594,16 +565,12 @@ public:
         outputs[OUT_AUX2].setChannels(numvoices);
         outputs[OUT_AUX3].setChannels(numvoices);
         outputs[OUT_AUX4].setChannels(numvoices);
-        //double chaos_amt = params[PAR_AUX3_CHAOS].getValue();
-        //double chaos_rate = std::pow(2.0,params[PAR_AUX3_CHAOS_RATE].getValue());
         float pqamt = params[PAR_PITCHQUANAMOUNT].getValue();
         for (int i=0;i<numvoices;++i)
         {
             std::array<float,7> vouts{0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f};
             if (m_voices[i].isAvailable()==false && m_phase>=m_voices[i].m_startPos)
             {
-                //m_voices[i].m_chaos_amt = chaos_amt;
-                //m_voices[i].m_chaos_rate = chaos_rate;
                 m_voices[i].setPitchQuantAount(pqamt);
                 m_voices[i].process(args.sampleTime);
                 
