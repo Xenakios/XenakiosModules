@@ -514,7 +514,6 @@ public:
         m_fold_smoother.setAmount(0.99);
         for (int i=0;i<m_oscils.size();++i)
         {
-            //m_oscils[i].initialise([](float x){ return sin(x); },4096);
             m_oscils[i].prepare(1,44100.0f);
             m_osc_gain_smoothers[i*2+0].setAmount(m_gain_smooth_amt);
             m_osc_gain_smoothers[i*2+1].setAmount(m_gain_smooth_amt);
@@ -1443,12 +1442,7 @@ public:
             {"Odd oscillators","Bottom oscillators","Lowest oscillator"});
         configParam(PAR_FM_MODE,0.0f,2.0f,0.0f,"FM Mode"); 
         getParamQuantity(PAR_FM_MODE)->snapEnabled = true;
-            /*
-            {"Linear around carrier frequency",
-            "Exponential around carrier frequency"
-            "Linear around C4",
-            
-            */
+        
         configParam(PAR_SCALE_BANK,0,m_osc.getNumBanks()-1,0,"Scale bank");
         getParamQuantity(PAR_SCALE_BANK)->snapEnabled = true;
         configParam(PAR_FOLD_MODE,0,2,0,"Fold mode");
@@ -1590,7 +1584,7 @@ public:
         if (auto ij = json_object_get(root,"directscale")) m_osc.m_pitchQuantizeMode = json_integer_value(ij);
     }
     
-    ScaleOscillator m_osc;
+    alignas(16) ScaleOscillator m_osc;
     dsp::ClockDivider m_pardiv;
     dsp::TBiquadFilter<float> m_hpfilts[16];
     dsp::SchmittTrigger m_freezeTrigger;
