@@ -736,7 +736,6 @@ public:
     }
     void updateOscFrequencies()
     {
-        double maxpitch = rescale(m_spread,0.0f,1.0f,m_root_pitch,72.0f);
         auto xfades = makeArray<float,16>();
         int lastoscili = m_active_oscils-1;
         if (lastoscili==0)
@@ -766,7 +765,7 @@ public:
             float diff = 0.5f;
             if (m_pitchQuantizeMode == 0)
             {
-                pitch = 36.0f + rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(72.0f*m_spread));
+                pitch = 36.0f + rescale(normpos,0.0f,1.0f, m_root_pitch,m_root_pitch+(96.0f*m_spread));
                 quantize_to_scale(pitch,m_scale,p0,p1,diff);
             }
             else if (m_pitchQuantizeMode == 1) // get pitch directly from scale
