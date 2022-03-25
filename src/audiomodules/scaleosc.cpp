@@ -789,15 +789,9 @@ public:
                 }
                 
             }
-            //float f = rack::dsp::FREQ_C4*std::pow(1.05946309436,pitch);
             m_unquant_freqs[i] = pitch;
-            
-            
-            //m_lock.lock();
-            
-            float f0 = rootf*std::pow(1.05946309436,p0);
-            float f1 = rootf*std::pow(1.05946309436,p1);
-            //m_lock.unlock();
+            float f0 = rootf*std::pow(dsp::FREQ_SEMITONE,p0);
+            float f1 = rootf*std::pow(dsp::FREQ_SEMITONE,p1);
             if (mXFadeMode == 0)
                 xfades[i] = 0.0f;
             else if (mXFadeMode == 1)
@@ -1206,7 +1200,7 @@ public:
     void setPitchOffset(float p)
     {
         p = clamp(p,-36.0f,36.0f);
-        m_freqratio = std::pow(1.05946309436,p);
+        m_freqratio = std::pow(dsp::FREQ_SEMITONE,p);
     }
     void setBalance(float b)
     {
