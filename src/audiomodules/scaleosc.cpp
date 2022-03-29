@@ -207,10 +207,10 @@ inline void quantize_to_scale(float x, const std::vector<GridT>& g,
 {
     if (g.empty()) // special handling for no scale
     {
-        out1 = x;
-        out2 = x;
-        outdiff = 0.5f;
-        return;
+        //out1 = x;
+        //out2 = x;
+        //outdiff = 0.5f;
+        //return;
         out1 = x;
         float maxd = 10.0f;
         float dtune = rescale(x,rack::dsp::FREQ_C4/16.0f,20000.0f,0.0f,maxd);
