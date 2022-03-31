@@ -1710,11 +1710,8 @@ public:
         addParam(createParam<CKSS>(Vec(35.0, 32.0), module, XScaleOsc::PAR_FREEZE_ENABLED));
         addInput(createInput<PJ301MPort>(Vec(35.0f, 55.0f), module, XScaleOsc::IN_FREEZE));
         addParam(createParam<CKSSThree>(Vec(64.0, 32.0), module, XScaleOsc::PAR_FREEZE_MODE));
-        
-        
-        
-        
     }
+    
     float myoffs = 0.0f;
     void draw(const DrawArgs &args) override
     {
@@ -1729,12 +1726,8 @@ public:
         if (m)
         {
             
-            auto scalename = rack::system::getFilename(m->m_osc.getScaleName());
-            nvgFontSize(args.vg, 18);
-            nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
-            nvgTextLetterSpacing(args.vg, -1);
-            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            nvgText(args.vg,60.0f,30.0f,scalename.c_str(),nullptr);
+            
+            
             nvgBeginPath(args.vg);
             nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
             nvgRect(args.vg,0.0f,myoffs,w,80.0f);
@@ -1761,6 +1754,12 @@ public:
                 }
                 nvgStroke(args.vg);
             }
+            auto scalename = rack::system::getFilename(m->m_osc.getScaleName());
+            nvgFontSize(args.vg, 18);
+            nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
+            nvgTextLetterSpacing(args.vg, -1);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
+            nvgText(args.vg,1.0f,myoffs+14,scalename.c_str(),nullptr);
             /*
             nvgBeginPath(args.vg);
             int numNodes = 60;
