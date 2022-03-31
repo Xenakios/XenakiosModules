@@ -1667,6 +1667,7 @@ public:
         addChild(kwid = new KnobInAttnWidget(this,"FOLD",XScaleOsc::PAR_FOLD,
             XScaleOsc::IN_FOLD,XScaleOsc::PAR_FOLD_ATTN,xc,yc));
         kwid->m_knob->GetRandomizedValue = defrand;
+        addParam(createParam<Trimpot>(Vec(xc+57.f, yc+0.0f), module, XScaleOsc::PAR_FOLD_MODE));
         xc += 82.0f;
         
         addChild(new KnobInAttnWidget(this,"NUM OSCS",XScaleOsc::PAR_NUM_OSCS,
@@ -1683,9 +1684,11 @@ public:
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"FM ALGORITHM",XScaleOsc::PAR_FM_ALGO,
             -1,-1,xc,yc,true));
+        addParam(createParam<Trimpot>(Vec(xc+31.0f, yc+19.0f), module, XScaleOsc::PAR_FM_MODE));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"SCALE",XScaleOsc::PAR_SCALE,
             XScaleOsc::IN_SCALE,XScaleOsc::PAR_SCALE_ATTN,xc,yc));
+        addParam(createParam<Trimpot>(Vec(xc+57.0f, yc+0.0f), module, XScaleOsc::PAR_SCALE_BANK));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"WARP MODE",XScaleOsc::PAR_WARP_MODE,
             -1,-1,xc,yc,true));
@@ -1693,6 +1696,7 @@ public:
         yc += 47.0f;
         addChild(new KnobInAttnWidget(this,"NUM OUTPUTS",XScaleOsc::PAR_NUM_OUTPUTS,
             -1,-1,xc,yc,true));
+        addParam(createParam<Trimpot>(Vec(xc+31.0f, yc+19.0f), module, XScaleOsc::PAR_HIPASSFREQ));
         xc += 82.0f;
         addChild(new KnobInAttnWidget(this,"PITCH SMOOTHING",XScaleOsc::PAR_FREQSMOOTH,
             -1,-1,xc,yc,false));
@@ -1706,10 +1710,10 @@ public:
         addParam(createParam<CKSS>(Vec(35.0, 32.0), module, XScaleOsc::PAR_FREEZE_ENABLED));
         addInput(createInput<PJ301MPort>(Vec(35.0f, 55.0f), module, XScaleOsc::IN_FREEZE));
         addParam(createParam<CKSSThree>(Vec(64.0, 32.0), module, XScaleOsc::PAR_FREEZE_MODE));
-        addParam(createParam<Trimpot>(Vec(93.0, 32.0), module, XScaleOsc::PAR_FM_MODE));
-        addParam(createParam<Trimpot>(Vec(93.0, 52.0), module, XScaleOsc::PAR_FOLD_MODE));
-        addParam(createParam<Trimpot>(Vec(120.0, 32.0), module, XScaleOsc::PAR_SCALE_BANK));
-        addParam(createParam<Trimpot>(Vec(120.0, 52.0), module, XScaleOsc::PAR_HIPASSFREQ));
+        
+        
+        
+        
     }
     float myoffs = 0.0f;
     void draw(const DrawArgs &args) override
