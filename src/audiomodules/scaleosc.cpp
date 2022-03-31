@@ -1725,9 +1725,6 @@ public:
         XScaleOsc* m = dynamic_cast<XScaleOsc*>(module);
         if (m)
         {
-            
-            
-            
             nvgBeginPath(args.vg);
             nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
             nvgRect(args.vg,0.0f,myoffs,w,80.0f);
@@ -1760,24 +1757,6 @@ public:
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             nvgText(args.vg,1.0f,myoffs+14,scalename.c_str(),nullptr);
-            /*
-            nvgBeginPath(args.vg);
-            int numNodes = 60;
-            nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            nvgRect(args.vg,200,15,numNodes,numNodes);
-            for (int i=0;i<numNodes;++i)
-            {
-                float x = rescale((float)i,0,numNodes-1,-1.0f,1.0f);
-                float y = std::sin(3.141592653*x);
-                y = chebyshev(y,m->m_osc.mChebyCoeffs,16);
-                y = rescale(y,-1.0f,1.0f,numNodes,0.0f);
-                if (i == 0)
-                    nvgMoveTo(args.vg,200+i,y+15);
-                else
-                    nvgLineTo(args.vg,200+i,y+15);
-            }
-            nvgStroke(args.vg);
-            */
             nvgBeginPath(args.vg);
             nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             for (int i=0;i<16;++i)
@@ -1788,17 +1767,6 @@ public:
                 nvgLineTo(args.vg,200+i*2,50);
             }
             nvgStroke(args.vg);
-            /*
-            nvgBeginPath(args.vg);
-            for (int i=0;i<2;++i)
-            {
-                nvgStrokeColor(args.vg, nvgRGBA(0x80, 0x80, 0x80, 0xff));
-                float ybase = myoffs + i * 40.0f;
-                nvgMoveTo(args.vg,0,ybase + 40.0f);
-                nvgLineTo(args.vg,box.size.x,ybase + 40.0f);
-            }        
-            nvgStroke(args.vg);
-            */
         }
         nvgRestore(args.vg);
         ModuleWidget::draw(args);
