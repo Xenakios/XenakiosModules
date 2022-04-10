@@ -698,7 +698,7 @@ public:
                     float coeff = std::atof(tokens[i].c_str());
                     if (i<16)
                     {
-                        chebyMorphCoeffs[j][i] = clamp(coeff,0.0f,1.0f);
+                        chebyMorphCoeffs[j][i] = clamp(coeff,-1.0f,1.0f);
                     }
                     if (j == 0)
                     {
@@ -717,7 +717,7 @@ public:
                 float sum = 0.0f;
                 for (int j=0;j<16;++j)
                 {
-                    sum += chebyMorphCoeffs[i][j];
+                    sum += std::abs(chebyMorphCoeffs[i][j]);
                 }
                 if (sum>0.0f)
                     sum = 1.0f / sum;
@@ -1031,6 +1031,7 @@ public:
             {
                 simd::float_4 x = simd::float_4::load(&outbuf[i]);
                 x = chebyshev(x,mChebyCoeffs,16);
+                x = clamp(x,simd::float_4(-1.0f),simd::float_4(1.0f));
                 x.store(&outbuf[i]);
             }
         } else if (m_fold_algo == 2)
