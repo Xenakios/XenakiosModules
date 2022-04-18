@@ -133,7 +133,7 @@ inline float easing_bounce(float x)
 
 inline float easing_out_elastic(float x, float par0)
 {
-    const float c4 = (2.0f * M_PI) / rescale(par0,0.0f,1.0f,1.0f,6.0f);
+    const float c4 = (2.0f * g_pi) / rescale(par0,0.0f,1.0f,1.0f,6.0f);
     if (x==0.0f)
         return 0.0f;
     if (x==1.0f)
@@ -207,6 +207,8 @@ public:
     void setSeed(float s, bool force=false)
     {
         s = clamp(s,0.0f,1.0f);
+        s += 0.1f/16.0f * m_eng_index;
+        s = fmod(s,1.0f);
         bool doit = false;
         if (s != m_seed && force==false)
             doit = true;
@@ -318,7 +320,7 @@ public:
             // the uniform variable can't be one or zero for the Cauchy generation!
             // that might happen quite often with the purposely bad entropy sources used...
             z = clamp(z,0.000001f,0.9999999f);
-            return cmean+csigma*std::tan(M_PI*(z-0.5f));
+            return cmean+csigma*std::tan(g_pi*(z-0.5f));
         }
         else if (m_distType == D_UNIEXP) // Unilateral Exponential with shift
         {
@@ -330,7 +332,7 @@ public:
         {
             float eshift = rack::math::rescale(m_distpar0,-1.0f,1.0f,-5.0,5.0f);
             float espread = rack::math::rescale(m_distpar1,0.0f,1.0f,0.0,5.0f);
-            return rack::math::rescale( ( (1.0f-std::sin(M_PI*(z-0.5f)) ) / 2.0f) , 0.0f, 1.0f, eshift-espread, eshift+espread);
+            return rack::math::rescale( ( (1.0f-std::sin(g_pi*(z-0.5f)) ) / 2.0f) , 0.0f, 1.0f, eshift-espread, eshift+espread);
         }
             
         else if (m_distType == D_BIEXP) // Bilateral exponential
@@ -364,7 +366,7 @@ public:
             float eshift = rack::math::rescale(m_distpar0,-1.0f,1.0f,-5.0,5.0f);
             float espread = rack::math::rescale(m_distpar1,0.0f,1.0f,0.0f,3.0f);
             z = clamp(z,0.000001f,1.0f);
-            return eshift+espread*std::log(std::tan((M_PI*z)/2.0f));
+            return eshift+espread*std::log(std::tan((g_pi*z)/2.0f));
         }
             
         else if (m_distType == D_LOGISTIC)
@@ -490,6 +492,7 @@ public:
     {
         m_smoothingMode = clamp(m,0,E_LAST-1);
     }
+    int m_eng_index = 0;
 private:
     double m_phase = 0.0;
     double m_frequency = 8.0;
@@ -536,6 +539,7 @@ public:
         PAR_PROCMODE,
         PAR_SMOOTHINGMODE,
         PAR_ATTN_RATE,
+        PAR_NUM_OUTS,
         PAR_LAST
     };
     enum INPUTS
@@ -559,7 +563,7 @@ public:
     {
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_RATE,-8.0f,12.0f,1.0f,"Rate", " Hz",2,1);
-        configParam(PAR_ENTROPY_SOURCE,0,m_eng.getNumEntropySources()-1,0.0f,"Entropy source");
+        configParam(PAR_ENTROPY_SOURCE,0,m_eng[0].getNumEntropySources()-1,0.0f,"Entropy source");
         configParam(PAR_ENTROPY_SEED,0.0f,1.0f,0.0f,"Entropy seed");
         configParam(PAR_DIST_TYPE,0.0f,RandomEngine::D_LAST-1,0.0f,"Distribution type");
         configParam(PAR_DIST_PAR0,-1.0f,1.0f,0.0f,"Distribution par 1");
@@ -573,50 +577,65 @@ public:
         configParam(PAR_PROCMODE,0.0f,1.0f,0.0f,"Processing mode");
         configParam(PAR_SMOOTHINGMODE,0.0f,RandomEngine::E_LAST-1,0.0f,"Smoothing mode");
         configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Rate attenuverter");
+        configParam(PAR_NUM_OUTS,1.0f,16.0f,1.0f,"Number of outputs");
         m_updatediv.setDivision(8);
-        
+        for (int i=0;i<16;++i)
+        {
+            m_eng[i].m_eng_index = i;
+        }
     }
     void process(const ProcessArgs& args) override
     {
+        int numouts = params[PAR_NUM_OUTS].getValue();
+        numouts = clamp(numouts,1,16);
         if (m_updatediv.process())
         {
-            float pitch = params[PAR_RATE].getValue();
-            pitch += inputs[IN_RATE_CV].getVoltage()*params[PAR_ATTN_RATE].getValue();
-            pitch = clamp(pitch,-8.0f,12.0f);
-            pitch *= 12.0f;
-            float rate = std::pow(2.0f,1.0f/12*pitch);
-            m_eng.setFrequency(rate);
-            int esource = params[PAR_ENTROPY_SOURCE].getValue();
-            m_eng.setEntropySource(esource);
-            float dpar0 = params[PAR_DIST_PAR0].getValue();
-            dpar0 += inputs[IN_D_PAR0_CV].getVoltage()*0.2f;
-            float dpar1 = params[PAR_DIST_PAR1].getValue();
-            dpar1 += inputs[IN_D_PAR1_CV].getVoltage()*0.1f;
-            m_eng.setDistributionParameters(dpar0,dpar1);
-            int dtype = params[PAR_DIST_TYPE].getValue();
-            m_eng.setDistributionType(dtype);
-            int lmode = params[PAR_LIMIT_TYPE].getValue();
-            m_eng.setOutputLimitMode(lmode);
-            float lim_min = params[PAR_LIMIT_MIN].getValue();
-            lim_min += inputs[IN_LIMMIN_CV].getVoltage();
-            float lim_max = params[PAR_LIMIT_MAX].getValue();
-            lim_max += inputs[IN_LIMMAX_CV].getVoltage();
-            m_eng.setLimits(lim_min,lim_max);
-            float smoothpar0 = params[PAR_SMOOTH_PAR0].getValue();
-            m_eng.setSmoothingParameters(smoothpar0,0.0f);
-            float qsteps = params[PAR_QUANTIZESTEPS].getValue();
-            m_eng.setQuantizeSteps(qsteps);
-            int procmode = params[PAR_PROCMODE].getValue();
-            m_eng.setProcessingMode(procmode);
-            int smoothingmode = params[PAR_SMOOTHINGMODE].getValue();
-            m_eng.setSmoothingMode(smoothingmode);
-            float eseed = params[PAR_ENTROPY_SEED].getValue();
-            if (esource!=0) // Mersenne Twister is very expensive to initialize, might be a good idea to prevent CV control...
-                eseed += inputs[IN_SEED].getVoltage()*0.1f;
-            m_eng.setSeed(eseed);
+            for (int i=0;i<numouts;++i)
+            {
+                float pitch = params[PAR_RATE].getValue();
+                pitch += inputs[IN_RATE_CV].getVoltage()*params[PAR_ATTN_RATE].getValue();
+                pitch = clamp(pitch,-8.0f,12.0f);
+                pitch *= 12.0f;
+                float rate = std::pow(2.0f,1.0f/12*pitch);
+                m_eng[i].setFrequency(rate);
+                int esource = params[PAR_ENTROPY_SOURCE].getValue();
+                m_eng[i].setEntropySource(esource);
+                float dpar0 = params[PAR_DIST_PAR0].getValue();
+                dpar0 += inputs[IN_D_PAR0_CV].getVoltage()*0.2f;
+                float dpar1 = params[PAR_DIST_PAR1].getValue();
+                dpar1 += inputs[IN_D_PAR1_CV].getVoltage()*0.1f;
+                m_eng[i].setDistributionParameters(dpar0,dpar1);
+                int dtype = params[PAR_DIST_TYPE].getValue();
+                m_eng[i].setDistributionType(dtype);
+                int lmode = params[PAR_LIMIT_TYPE].getValue();
+                m_eng[i].setOutputLimitMode(lmode);
+                float lim_min = params[PAR_LIMIT_MIN].getValue();
+                lim_min += inputs[IN_LIMMIN_CV].getVoltage();
+                float lim_max = params[PAR_LIMIT_MAX].getValue();
+                lim_max += inputs[IN_LIMMAX_CV].getVoltage();
+                m_eng[i].setLimits(lim_min,lim_max);
+                float smoothpar0 = params[PAR_SMOOTH_PAR0].getValue();
+                m_eng[i].setSmoothingParameters(smoothpar0,0.0f);
+                float qsteps = params[PAR_QUANTIZESTEPS].getValue();
+                m_eng[i].setQuantizeSteps(qsteps);
+                int procmode = params[PAR_PROCMODE].getValue();
+                m_eng[i].setProcessingMode(procmode);
+                int smoothingmode = params[PAR_SMOOTHINGMODE].getValue();
+                m_eng[i].setSmoothingMode(smoothingmode);
+                float eseed = params[PAR_ENTROPY_SEED].getValue();
+                if (esource!=0) // Mersenne Twister is very expensive to initialize, might be a good idea to prevent CV control...
+                    eseed += inputs[IN_SEED].getVoltage()*0.1f;
+                m_eng[i].setSeed(eseed);
+            }
         }
         if (m_reset_trig.process(inputs[IN_RESET].getVoltage()))
-            m_eng.reset();
+        {
+            for (int i=0;i<numouts;++i)
+            {
+                m_eng[i].reset();
+            }
+            
+        }
         m_tempo_phase+=args.sampleTime;
         if (m_tempo_trig.process(inputs[IN_TRIGGER].getVoltage()))
         {
@@ -634,9 +653,14 @@ public:
                 m_tempo_estimate_accum = m_tempo_estimate;
             }
         }
-        outputs[OUT_MAIN].setVoltage(m_eng.getNext(args.sampleTime),0);
+        outputs[OUT_MAIN].setChannels(numouts);
+        for (int i=0;i<numouts;++i)
+        {
+            outputs[OUT_MAIN].setVoltage(m_eng[i].getNext(args.sampleTime),i);
+        }
+        
     }
-    RandomEngine m_eng;
+    RandomEngine m_eng[16];
     double m_tempo_estimate = 60.0;
 private:
     dsp::SchmittTrigger m_reset_trig;
@@ -684,6 +708,7 @@ public:
             pars.emplace_back(XR::PAR_RATE,"Frequency",0,0,XR::IN_RATE_CV,XR::PAR_ATTN_RATE);
             pars.emplace_back(XR::PAR_ENTROPY_SOURCE,"Entropy source",1,0,-1,-1,true);
             pars.emplace_back(XR::PAR_ENTROPY_SEED,"Entropy seed",2,0,XR::IN_SEED);
+            pars.emplace_back(XR::PAR_NUM_OUTS,"Num outs",3,0,-1);
             pars.emplace_back(XR::PAR_DIST_TYPE,"Distribution",0,1,-1,-1,true);
             pars.emplace_back(XR::PAR_DIST_PAR0,"Dist par 1",1,1,XR::IN_D_PAR0_CV);
             pars.emplace_back(XR::PAR_DIST_PAR1,"Dist par 2",2,1,XR::IN_D_PAR1_CV);
@@ -729,8 +754,8 @@ public:
         XRandomModule* m = dynamic_cast<XRandomModule*>(module);
         if (m)
         {
-            auto entrname = m->m_eng.getEntropySourceName(-1);
-            auto distname = m->m_eng.getDistributionName(-1);
+            auto entrname = m->m_eng[0].getEntropySourceName(-1);
+            auto distname = m->m_eng[0].getDistributionName(-1);
             auto thetext = "["+entrname+"] -> ["+distname+"]";
             if (m->params[XRandomModule::PAR_PROCMODE].getValue()>0.5)
                 thetext+=" (Random walk)";
