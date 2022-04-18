@@ -391,6 +391,7 @@ public:
         m_phase += deltaPhase;
         if (m_phase>=1.0)
         {
+            m_out_trig_pulse.trigger();
             m_start_val = m_end_val;
             if (m_procMode == PM_DIRECT)
             {
@@ -439,7 +440,7 @@ public:
             clipfn();
             smoothf();
         }
-        
+        m_out_trig_state = m_out_trig_pulse.process(deltatime);
         m_rand_walk = out;
         return out;
     }
@@ -493,6 +494,8 @@ public:
         m_smoothingMode = clamp(m,0,E_LAST-1);
     }
     int m_eng_index = 0;
+    float m_out_trig_state = 0.0f;
+    dsp::PulseGenerator m_out_trig_pulse;
 private:
     double m_phase = 0.0;
     double m_frequency = 8.0;
@@ -557,6 +560,7 @@ public:
     enum OUTPUTS
     {
         OUT_MAIN,
+        OUT_TRIG,
         OUT_LAST
     };
     XRandomModule()
@@ -654,9 +658,14 @@ public:
             }
         }
         outputs[OUT_MAIN].setChannels(numouts);
+        if (outputs[OUT_TRIG].isConnected())
+        {
+            outputs[OUT_TRIG].setChannels(numouts);
+        }
         for (int i=0;i<numouts;++i)
         {
             outputs[OUT_MAIN].setVoltage(m_eng[i].getNext(args.sampleTime),i);
+            outputs[OUT_TRIG].setVoltage(m_eng[i].m_out_trig_state*10.0f,i);
         }
         
     }
@@ -701,6 +710,7 @@ public:
         auto port = new PortWithBackGround(m,this, XR::OUT_MAIN ,1,30,"OUT",true);
         new PortWithBackGround(m,this, XR::IN_RESET ,62,30,"RESET",false);
         new PortWithBackGround(m,this, XR::IN_TRIGGER ,31,30,"TRIG",false);
+        new PortWithBackGround(m,this, XR::OUT_TRIG ,93,30,"TRIG",true);
         if (m)
         {
             
