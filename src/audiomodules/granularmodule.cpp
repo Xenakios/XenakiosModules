@@ -230,7 +230,7 @@ public:
         m_srcs.emplace_back(new DrWavSource);
         m_gm.reset(new GrainMixer(m_srcs));
     }
-    void process(float sr,float* buf, float playrate, float pitch, 
+    void process(float deltatime, float sr,float* buf, float playrate, float pitch, 
         float loopstart, float looplen, float posrand, float grate, float lenm, float revprob, int ss)
     {
         buf[0] = 0.0f;
@@ -247,7 +247,7 @@ public:
         m_gm->m_reverseProb = revprob;
         m_gm->setDensity(grate);
         m_gm->setLengthMultiplier(lenm);
-        m_gm->processAudio(buf);
+        m_gm->processAudio(buf,deltatime);
     }
     std::vector<std::unique_ptr<GrainAudioSource>> m_srcs;
     std::unique_ptr<GrainMixer> m_gm;
@@ -280,6 +280,7 @@ public:
     enum OUTPUTS
     {
         OUT_AUDIO,
+        OUT_LOOP_EOC,
         OUT_LAST
     };
     enum INPUTS
@@ -396,7 +397,7 @@ public:
         if (m_recordActive)
             drsrc->pushSamplesToRecordBuffer(recbuf);
         int srcindex = params[PAR_SOURCESELECT].getValue();
-        m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate,glenm,revprob, srcindex);
+        m_eng.process(args.sampleTime, args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate,glenm,revprob, srcindex);
         outputs[OUT_AUDIO].setChannels(2);
         float inmix = params[PAR_INPUT_MIX].getValue();
         float invmix = 1.0f - inmix;
@@ -404,6 +405,7 @@ public:
         float out1 = (invmix * buf[1] * 5.0f) + inmix * recbuf[0];
         outputs[OUT_AUDIO].setVoltage(out0,0);
         outputs[OUT_AUDIO].setVoltage(out1,1);
+        outputs[OUT_LOOP_EOC].setVoltage(m_eng.m_gm->m_loop_eoc_out);
         graindebugcounter = m_eng.m_gm->debugCounter;
     }
     int graindebugcounter = 0;
@@ -455,6 +457,7 @@ public:
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "GRAINS",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         
         auto port = new PortWithBackGround(m,this,XGranularModule::OUT_AUDIO,1,17,"AUDIO OUT 1",true);
+        port = new PortWithBackGround(m,this,XGranularModule::OUT_LOOP_EOC,92,17,"LOOP EOC",true);
         port = new PortWithBackGround(m,this,XGranularModule::IN_AUDIO,34,17,"AUDIO IN",false);
         //addOutput(port = createOutput<PortWithBackGround>(Vec(31, 34), m, XGranularModule::OUT_AUDIO));
         //port->m_text = "AUDIO OUT";

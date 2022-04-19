@@ -302,6 +302,8 @@ public:
     float m_lenMultip = 1.0f;
     int m_grainsUsed = 0;
     float m_reverseProb = 0.0f;
+    float m_loop_eoc_out = 0.0f;
+    dsp::PulseGenerator m_loop_eoc_pulse;
     float getGrainSourcePosition(int index)
     {
         if (index>=0 && index<m_grains.size())
@@ -311,7 +313,7 @@ public:
         }
         return -1.0f;
     }
-    void processAudio(float* buf)
+    void processAudio(float* buf, float deltatime=0.0f)
     {
         if (m_inputdur<0.5f)
             return;
@@ -347,18 +349,26 @@ public:
             float actlooplen = m_looplen;
             float loopend = m_loopstart+actlooplen;
             
-            if (loopend>1.0f)
+            if (loopend > 1.0f)
             {
-                actlooplen-=loopend-1.0f;
+                actlooplen -= loopend - 1.0f;
             }
             if (m_srcpos>=actlooplen*m_inputdur)
+            {
                 m_srcpos = 0.0f;
+                m_loop_eoc_pulse.trigger();
+            }
             else if (m_srcpos<0.0f)
+            {
                 m_srcpos = actlooplen*m_inputdur;
+                m_loop_eoc_pulse.trigger();
+            }
+                
             m_actLoopstart = m_loopstart;
             m_actLoopend = m_loopstart+actlooplen;
 
         }
+        m_loop_eoc_out = 10.0f*(float)m_loop_eoc_pulse.process(deltatime);
         for (int i=0;i<(int)m_grains.size();++i)
         {
             if (m_grains[i].playState==1)
