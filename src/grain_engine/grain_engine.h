@@ -306,9 +306,10 @@ public:
     {
         if (index>=0 && index<m_grains.size())
         {
-            return m_grains[index].m_sourceplaypos;
+            if (m_grains[index].playState!=0)
+                return m_grains[index].m_sourceplaypos;
         }
-        return 0.0f;
+        return -1.0f;
     }
     void processAudio(float* buf)
     {

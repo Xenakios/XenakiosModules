@@ -274,6 +274,7 @@ public:
         PAR_LEN_MULTIP,
         PAR_REVERSE,
         PAR_SOURCESELECT,
+        PAR_INPUT_MIX,
         PAR_LAST
     };
     enum OUTPUTS
@@ -311,6 +312,7 @@ public:
         configParam(PAR_LEN_MULTIP,0.0f,1.0f,0.25f,"Grain length");
         configParam(PAR_REVERSE,0.0f,1.0f,0.0f,"Grain reverse probability");
         configParam(PAR_SOURCESELECT,0.0f,7.0f,0.0f,"Source select");
+        configParam(PAR_INPUT_MIX,0.0f,1.0f,0.0f,"Input mix");
     }
     json_t* dataToJson() override
     {
@@ -389,15 +391,19 @@ public:
                 drsrc->stopRecording();
             }
         }
-        float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/10.0f,0.0f};
+        float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/5.0f,0.0f};
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_recordActive)
             drsrc->pushSamplesToRecordBuffer(recbuf);
         int srcindex = params[PAR_SOURCESELECT].getValue();
         m_eng.process(args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate,glenm,revprob, srcindex);
         outputs[OUT_AUDIO].setChannels(2);
-        outputs[OUT_AUDIO].setVoltage(buf[0]*5.0f,0);
-        outputs[OUT_AUDIO].setVoltage(buf[1]*5.0f,1);
+        float inmix = params[PAR_INPUT_MIX].getValue();
+        float invmix = 1.0f - inmix;
+        float out0 = (invmix * buf[0] * 5.0f) + inmix * recbuf[0];
+        float out1 = (invmix * buf[1] * 5.0f) + inmix * recbuf[0];
+        outputs[OUT_AUDIO].setVoltage(out0,0);
+        outputs[OUT_AUDIO].setVoltage(out1,1);
         graindebugcounter = m_eng.m_gm->debugCounter;
     }
     int graindebugcounter = 0;
@@ -456,7 +462,8 @@ public:
         //port->m_text = "AUDIO IN";
         //port->m_is_out = false;
         
-        addParam(createParam<TL1105>(Vec(61,34),m,XGranularModule::PAR_RECORD_ACTIVE));
+        addParam(createParam<TL1105>(Vec(62,34),m,XGranularModule::PAR_RECORD_ACTIVE));
+        addParam(createParam<Trimpot>(Vec(62,14),m,XGranularModule::PAR_INPUT_MIX));
         addChild(new KnobInAttnWidget(this,
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,
             XGranularModule::IN_CV_PLAYRATE,XGranularModule::PAR_ATTN_PLAYRATE,1.0f,60.0f));
@@ -531,12 +538,16 @@ public:
                 for (int i=0;i<16;++i)
                 {
                     float ppos = m_gm->m_eng.m_gm->getGrainSourcePosition(i);
-                    float srcdur = m_gm->m_eng.m_gm->m_inputdur;
-                    xcor = rescale(ppos,0.0f,1.0f,0.0f,box.size.x-2.0f);
-                    float ycor0 = 250.0f+100.0f/16*i;
-                    float ycor1 = 250.0f+100.0f/16*(i+1);
-                    nvgMoveTo(args.vg,xcor,ycor0);
-                    nvgLineTo(args.vg,xcor,ycor1);
+                    if (ppos>=0.0f)
+                    {
+                        float srcdur = m_gm->m_eng.m_gm->m_inputdur;
+                        xcor = rescale(ppos,0.0f,1.0f,0.0f,box.size.x-2.0f);
+                        float ycor0 = 250.0f+100.0f/16*i;
+                        float ycor1 = 250.0f+100.0f/16*(i+1);
+                        nvgMoveTo(args.vg,xcor,ycor0);
+                        nvgLineTo(args.vg,xcor,ycor1);
+                    }
+                    
                 }
                 
                 nvgStroke(args.vg);
