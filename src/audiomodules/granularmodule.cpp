@@ -290,6 +290,7 @@ public:
         IN_CV_LOOPSTART,
         IN_CV_LOOPLEN,
         IN_AUDIO,
+        IN_CV_GRAINRATE,
         IN_LAST
     };
     dsp::BooleanTrigger m_recordTrigger;
@@ -374,6 +375,8 @@ public:
         looplen = clamp(looplen,0.0f,1.0f);
         float posrnd = params[PAR_SRCPOSRANDOM].getValue();
         float grate = params[PAR_GRAINDENSITY].getValue();
+        grate += inputs[IN_CV_GRAINRATE].getVoltage()*0.2f;
+        grate = clamp(grate,0.0f,1.0f);
         grate = 0.01f+std::pow(1.0f-grate,2.0f)*0.49;
         float glenm = params[PAR_LEN_MULTIP].getValue();
         float revprob = params[PAR_REVERSE].getValue();
@@ -392,7 +395,7 @@ public:
                 drsrc->stopRecording();
             }
         }
-        float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/5.0f,0.0f};
+        float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/10.0f,0.0f};
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_recordActive)
             drsrc->pushSamplesToRecordBuffer(recbuf);
@@ -477,7 +480,7 @@ public:
         addChild(new KnobInAttnWidget(this,"LOOP LENGTH",
             XGranularModule::PAR_LOOPLEN,XGranularModule::IN_CV_LOOPLEN,XGranularModule::PAR_ATTN_LOOPLEN,82.0f,101.0f));
         addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",XGranularModule::PAR_SRCPOSRANDOM,-1,-1,1.0f,142.0f));
-        addChild(new KnobInAttnWidget(this,"GRAIN RATE",XGranularModule::PAR_GRAINDENSITY,-1,-1,82.0f,142.0f));
+        addChild(new KnobInAttnWidget(this,"GRAIN RATE",XGranularModule::PAR_GRAINDENSITY,XGranularModule::IN_CV_GRAINRATE,-1,82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,-1,-1,2*82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN REVERSE",XGranularModule::PAR_REVERSE,-1,-1,2*82.0f,101.0f));
     }
