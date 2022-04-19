@@ -568,20 +568,26 @@ public:
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_RATE,-8.0f,12.0f,1.0f,"Rate", " Hz",2,1);
         configParam(PAR_ENTROPY_SOURCE,0,m_eng[0].getNumEntropySources()-1,0.0f,"Entropy source");
+        getParamQuantity(PAR_ENTROPY_SOURCE)->snapEnabled = true;
         configParam(PAR_ENTROPY_SEED,0.0f,1.0f,0.0f,"Entropy seed");
         configParam(PAR_DIST_TYPE,0.0f,RandomEngine::D_LAST-1,0.0f,"Distribution type");
+        getParamQuantity(PAR_DIST_TYPE)->snapEnabled = true;
         configParam(PAR_DIST_PAR0,-1.0f,1.0f,0.0f,"Distribution par 1");
         configParam(PAR_DIST_PAR1,0.0f,1.0f,0.0f,"Distribution par 2");
         configParam(PAR_LIMIT_TYPE,0.0f,2.0f,0.0f,"Limit type");
+        getParamQuantity(PAR_LIMIT_TYPE)->snapEnabled = true;
         configParam(PAR_LIMIT_MIN,-5.0f,5.0f,-5.0f,"Min Limit");
         configParam(PAR_LIMIT_MAX,-5.0f,5.0f,5.0f,"Max Limit");
         configParam(PAR_SMOOTH_PAR0,0.0f,1.0f,0.5f,"Smoothing par 1");
         configParam(PAR_SMOOTH_PAR1,0.0f,1.0f,0.5f,"Smoothing par 2");
         configParam(PAR_QUANTIZESTEPS,0.0f,1.0f,0.0f,"Quantize steps");
         configParam(PAR_PROCMODE,0.0f,1.0f,0.0f,"Processing mode");
+        getParamQuantity(PAR_PROCMODE)->snapEnabled = true;
         configParam(PAR_SMOOTHINGMODE,0.0f,RandomEngine::E_LAST-1,0.0f,"Smoothing mode");
+        getParamQuantity(PAR_SMOOTHINGMODE)->snapEnabled = true;
         configParam(PAR_ATTN_RATE,-1.0f,1.0f,0.0f,"Rate attenuverter");
         configParam(PAR_NUM_OUTS,1.0f,16.0f,1.0f,"Number of outputs");
+        getParamQuantity(PAR_NUM_OUTS)->snapEnabled = true;
         m_updatediv.setDivision(8);
         for (int i=0;i<16;++i)
         {
