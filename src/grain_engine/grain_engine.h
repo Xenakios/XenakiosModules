@@ -345,8 +345,11 @@ public:
             }
             m_grainsUsed = usedgrains;
             m_nextGrainPos=m_sr*(m_grainDensity);
-            m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed;
-            float actlooplen = m_looplen;
+            float sourceSampleRate = m_sources[0]->getSourceSampleRate();
+            float rateCompens = sourceSampleRate/m_sr;
+            m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed*rateCompens;
+            
+            float actlooplen = std::pow(m_looplen,2.0f);
             float loopend = m_loopstart+actlooplen;
             
             if (loopend > 1.0f)
