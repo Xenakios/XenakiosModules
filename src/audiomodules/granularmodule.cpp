@@ -229,7 +229,10 @@ public:
     {
         m_srcs.emplace_back(new DrWavSource);
         m_gm.reset(new GrainMixer(m_srcs));
+        m_markers.reserve(1000);
+        m_markers = {0.0f,0.25f,0.5f,0.75f};
     }
+    std::vector<float> m_markers;
     void process(float deltatime, float sr,float* buf, float playrate, float pitch, 
         float loopstart, float looplen, float posrand, float grate, float lenm, float revprob, int ss)
     {
@@ -239,7 +242,9 @@ public:
         buf[3] = 0.0f;
         m_gm->m_sr = sr;
         m_gm->m_inputdur = m_srcs[0]->getSourceNumSamples();
-        m_gm->m_loopstart = loopstart;
+        int markerIndex = (m_markers.size()-1)*loopstart;
+        markerIndex = clamp(markerIndex,0,m_markers.size()-1);
+        m_gm->m_loopstart = m_markers[markerIndex];
         m_gm->m_looplen = looplen;
         m_gm->m_sourcePlaySpeed = playrate;
         m_gm->m_pitch = pitch;
@@ -556,6 +561,18 @@ public:
                     
                 }
                 
+                nvgStroke(args.vg);
+
+                nvgBeginPath(args.vg);
+                nvgStrokeColor(args.vg,nvgRGBA(0x00, 0xff, 0xff, 0xff));
+                auto& markers = m_gm->m_eng.m_markers; 
+                for (int i=0;i<markers.size();++i)
+                {
+                    float xcor = rescale(markers[i],0.0f,1.0f,0.0f,box.size.x-2.0f);
+                    nvgMoveTo(args.vg,xcor,340.0f);
+                    nvgLineTo(args.vg,xcor,350.0f);
+                }
+
                 nvgStroke(args.vg);
 
                 float ppos = src.getRecordPosition();
