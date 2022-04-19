@@ -171,6 +171,7 @@ public:
         int srcpossamples = startInSource;
         //srcpossamples+=rack::random::normal()*lensamples;
         srcpossamples = xenakios::clamp((float)srcpossamples,(float)0,inputdur-1.0f);
+        m_sourceplaypos = 1.0f/inputdur*srcpossamples;
         m_syn->putIntoBuffer(rsinbuf,wanted,inchs,srcpossamples);
         m_resampler.ResampleOut(m_srcOutBuffer.data(),wanted,lensamples,inchs);
         float pangains[2] = {pan,1.0f-pan};
@@ -247,6 +248,7 @@ public:
         return 0.0f;
     }
     GrainAudioSource* m_syn = nullptr;
+    float m_sourceplaypos = 0.0f;
 private:
     
     int m_outpos = 0;
@@ -300,6 +302,14 @@ public:
     float m_lenMultip = 1.0f;
     int m_grainsUsed = 0;
     float m_reverseProb = 0.0f;
+    float getGrainSourcePosition(int index)
+    {
+        if (index>=0 && index<m_grains.size())
+        {
+            return m_grains[index].m_sourceplaypos;
+        }
+        return 0.0f;
+    }
     void processAudio(float* buf)
     {
         if (m_inputdur<0.5f)

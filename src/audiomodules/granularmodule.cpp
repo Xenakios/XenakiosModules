@@ -342,7 +342,7 @@ public:
     {
         
         float prate = params[PAR_PLAYRATE].getValue();
-        prate += inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()/10.0f;
+        prate += inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()*0.2f;
         prate = clamp(prate,-1.0f,1.0f);
         if (prate<0.0f)
         {
@@ -528,14 +528,20 @@ public:
                 nvgFill(args.vg);
                 nvgBeginPath(args.vg);
                 nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
-                float ppos = m_gm->m_eng.m_gm->m_actSourcePos;
-                float srcdur = m_gm->m_eng.m_gm->m_inputdur;
-                xcor = rescale(ppos,0.0f,srcdur,0.0f,box.size.x-2.0f);
-                nvgMoveTo(args.vg,xcor,250.0f);
-                nvgLineTo(args.vg,xcor,250.0+100.0f);
+                for (int i=0;i<16;++i)
+                {
+                    float ppos = m_gm->m_eng.m_gm->getGrainSourcePosition(i);
+                    float srcdur = m_gm->m_eng.m_gm->m_inputdur;
+                    xcor = rescale(ppos,0.0f,1.0f,0.0f,box.size.x-2.0f);
+                    float ycor0 = 250.0f+100.0f/16*i;
+                    float ycor1 = 250.0f+100.0f/16*(i+1);
+                    nvgMoveTo(args.vg,xcor,ycor0);
+                    nvgLineTo(args.vg,xcor,ycor1);
+                }
+                
                 nvgStroke(args.vg);
 
-                ppos = src.getRecordPosition();
+                float ppos = src.getRecordPosition();
                 if (ppos>=0.0)
                 {
 
