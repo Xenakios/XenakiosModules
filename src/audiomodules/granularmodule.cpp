@@ -230,7 +230,9 @@ public:
         m_srcs.emplace_back(new DrWavSource);
         m_gm.reset(new GrainMixer(m_srcs));
         m_markers.reserve(1000);
-        m_markers = {0.0f,0.25f,0.5f,0.75f};
+        for (int i=0;i<17;++i)
+            m_markers.push_back(1.0f/16*i);
+        m_markers.erase(m_markers.begin()+5);
     }
     std::vector<float> m_markers;
     void process(float deltatime, float sr,float* buf, float playrate, float pitch, 
@@ -243,9 +245,14 @@ public:
         m_gm->m_sr = sr;
         m_gm->m_inputdur = m_srcs[0]->getSourceNumSamples();
         int markerIndex = (m_markers.size()-1)*loopstart;
-        markerIndex = clamp(markerIndex,0,m_markers.size()-1);
-        m_gm->m_loopstart = m_markers[markerIndex];
-        m_gm->m_looplen = looplen;
+        markerIndex = clamp(markerIndex,0,m_markers.size()-2);
+        float regionStart = m_markers[markerIndex];
+        m_gm->m_loopstart = regionStart;
+        ++markerIndex;
+        float regionEnd = m_markers[markerIndex];
+        float regionLen = regionEnd - regionStart; 
+        regionLen = clamp(regionLen,0.0f,1.0f);
+        m_gm->m_looplen = looplen * regionLen;
         m_gm->m_sourcePlaySpeed = playrate;
         m_gm->m_pitch = pitch;
         m_gm->m_posrandamt = posrand;
