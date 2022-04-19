@@ -579,6 +579,7 @@ public:
         scalafiles.push_back(dir+"/xenakis_mists.scl");
         scalafiles.push_back(dir+"/19tet_sieve01.scl");
         scalafiles.push_back(dir+"/19tet_sieve02.scl");
+        scalafiles.push_back(dir+"/weird01.scl");
         for(auto& fn : scalafiles)
         {
             bank_b.scales.emplace_back(fn);
@@ -1502,7 +1503,15 @@ public:
             pitch = clamp(pitch,-48.0f,48.0);
             m_osc.setPitchOffset(pitch);
             float root = params[PAR_ROOT].getValue();
-            root += inputs[IN_ROOT].getVoltage()*12.0f*params[PAR_ROOT_ATTN].getValue();
+            float tempa = params[PAR_ROOT_ATTN].getValue();
+            if (tempa>=0.0f)
+            {
+                tempa = std::pow(tempa,2.0f);
+            } else
+            {
+                tempa = -std::pow(tempa,2.0f);
+            }
+            root += inputs[IN_ROOT].getVoltage()*12.0f*tempa;
             m_osc.setRootPitch(root);
             float osccount = params[PAR_NUM_OSCS].getValue();
             osccount += inputs[IN_NUM_OSCS].getVoltage() * (16.0f/10.0f);
