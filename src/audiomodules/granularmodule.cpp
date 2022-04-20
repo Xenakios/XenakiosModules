@@ -128,7 +128,7 @@ public:
     std::vector<std::vector<SamplePeaks>> peaksData;
     DrWavSource()
     {
-        m_recordBuffer.resize(44100*10);
+        m_recordBuffer.resize(44100*60);
 #ifdef __APPLE__
         std::string filename("/Users/teemu/AudioProjects/sourcesamples/db_guit01.wav");
 #else
