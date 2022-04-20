@@ -326,6 +326,7 @@ public:
         PAR_INPUT_MIX,
         PAR_INSERT_MARKER,
         PAR_LOOP_SLIDE,
+        PAR_RESET,
         PAR_LAST
     };
     enum OUTPUTS
@@ -347,6 +348,7 @@ public:
     dsp::BooleanTrigger m_recordTrigger;
     bool m_recordActive = false;
     dsp::BooleanTrigger m_insertMarkerTrigger;
+    dsp::BooleanTrigger m_resetTrigger;
     XGranularModule()
     {
         std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
@@ -369,6 +371,7 @@ public:
         configParam(PAR_INPUT_MIX,0.0f,1.0f,0.0f,"Input mix");
         configParam(PAR_INSERT_MARKER,0.0f,1.0f,0.0f,"Insert marker");
         configParam(PAR_LOOP_SLIDE,0.0f,1.0f,0.0f,"Loop slide");
+        configParam(PAR_RESET,0.0f,1.0f,0.0f,"Reset");
     }
     json_t* dataToJson() override
     {
@@ -450,7 +453,10 @@ public:
                 drsrc->stopRecording();
             }
         }
-        
+        if (m_resetTrigger.process(params[PAR_RESET].getValue()>0.5f))
+        {
+            m_eng.m_gm->seekPercentage(0.0f);
+        }
         
         float recbuf[2] = {0.0f,0.0f};
         int inchans = inputs[IN_AUDIO].getChannels();
@@ -555,6 +561,7 @@ public:
         
         addParam(createParam<TL1105>(Vec(62,34),m,XGranularModule::PAR_RECORD_ACTIVE));
         addParam(createParam<TL1105>(Vec(150,34),m,XGranularModule::PAR_INSERT_MARKER));
+        addParam(createParam<TL1105>(Vec(180,34),m,XGranularModule::PAR_RESET));
         addParam(createParam<Trimpot>(Vec(62,14),m,XGranularModule::PAR_INPUT_MIX));
         addChild(new KnobInAttnWidget(this,
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,

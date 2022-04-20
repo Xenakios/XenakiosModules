@@ -391,6 +391,11 @@ public:
     {
         return m_srcpos+m_inputdur*m_loopstart;
     }
+    void seekPercentage(float pos)
+    {
+        pos = clamp(pos,0.0f,1.0f);
+        m_srcpos = m_inputdur * m_loopstart + m_inputdur * pos;
+    }
     double m_srcpos = 0.0;
     float m_sr = 44100.0;
     
