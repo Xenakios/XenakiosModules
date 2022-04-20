@@ -26,16 +26,26 @@ public:
         if (!m_pSampleData)
             return;
         float peak = 0.0f;
-        for (int i=0;i<m_totalPCMFrameCount*m_channels;++i)
+        auto framesToUse = m_totalPCMFrameCount;
+        int chanstouse = m_channels;
+        float* dataToUse = m_pSampleData;
+        if (m_recordState>0)
         {
-            float s = std::fabs(m_pSampleData[i]);
+            framesToUse = m_recordBuffer.size();
+            chanstouse = 1;
+            dataToUse = m_recordBuffer.data();
+        }
+            
+        for (int i=0;i<framesToUse*chanstouse;++i)
+        {
+            float s = std::fabs(dataToUse[i]);
             peak = std::max(s,peak);
         }
         float normfactor = 1.0f;
         if (peak>0.0f)
             normfactor = level/peak;
-        for (int i=0;i<m_totalPCMFrameCount*m_channels;++i)
-            m_pSampleData[i]*=normfactor;
+        for (int i=0;i<framesToUse*chanstouse;++i)
+            dataToUse[i]*=normfactor;
         updatePeaks();
     }
     void reverse()
@@ -248,6 +258,14 @@ public:
         std::sort(m_markers.begin(),m_markers.end());
         m_gm->m_srcpos = 0.0f;
     }
+    void addMarkerAtPosition(float pos)
+    {
+        pos = clamp(pos,0.0f,1.0f);
+        m_markers.push_back(pos);
+        std::sort(m_markers.begin(),m_markers.end());
+        auto last = std::unique(m_markers.begin(), m_markers.end());
+        m_markers.erase(last, m_markers.end());
+    }
     void clearMarkers()
     {
         m_markers = {0.0f,1.0f};
@@ -420,6 +438,7 @@ public:
             {
                 m_recordActive = true;
                 drsrc->startRecording(1,args.sampleRate);
+                m_eng.addMarkerAtPosition(drsrc->getRecordPosition());
             }
             else
             {
