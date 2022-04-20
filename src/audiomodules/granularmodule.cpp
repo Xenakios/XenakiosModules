@@ -383,14 +383,9 @@ public:
     inline float getNotchedPlayRate(float x)
     {
         const std::array<float,3> notchpoints{-0.5f,0.0f,0.5f};
-        const float notchrange = 0.05f;
-        for (size_t i=0;i<notchpoints.size();++i)
-        {
-            float a0 = notchpoints[i] - notchrange / 2;
-            float a1 = notchpoints[i] + notchrange / 2;
-            if (x >= a0 && x < a1)
-                return notchpoints[i];
-        }
+        const float notchrange = 0.025f;
+        for (auto& p : notchpoints )
+            if(std::abs(x-p) < notchrange) return p;
         return x;
     }
     float m_notched_rate = 0.0f;
