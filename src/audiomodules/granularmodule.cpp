@@ -426,15 +426,8 @@ public:
                 drsrc->stopRecording();
             }
         }
-        if (m_insertMarkerTrigger.process(params[PAR_INSERT_MARKER].getValue()>0.5f))
-        {
-            m_eng.addMarker();
-        }
-        if (m_next_marker_action == 1)
-        {
-            m_next_marker_action = 0;
-            m_eng.clearMarkers();
-        }
+        
+        
         float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/10.0f,0.0f};
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_recordActive)
@@ -449,6 +442,15 @@ public:
         outputs[OUT_AUDIO].setVoltage(out0,0);
         outputs[OUT_AUDIO].setVoltage(out1,1);
         outputs[OUT_LOOP_EOC].setVoltage(m_eng.m_gm->m_loop_eoc_out);
+        if (m_insertMarkerTrigger.process(params[PAR_INSERT_MARKER].getValue()>0.5f))
+        {
+            m_eng.addMarker();
+        }
+        if (m_next_marker_action == 1)
+        {
+            m_next_marker_action = 0;
+            m_eng.clearMarkers();
+        }
         graindebugcounter = m_eng.m_gm->debugCounter;
     }
     int graindebugcounter = 0;
