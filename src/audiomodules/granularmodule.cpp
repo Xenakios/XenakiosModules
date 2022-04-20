@@ -473,8 +473,11 @@ public:
         outputs[OUT_AUDIO].setChannels(2);
         float inmix = params[PAR_INPUT_MIX].getValue();
         float invmix = 1.0f - inmix;
-        float out0 = (invmix * buf[0] * 5.0f) + inmix * recbuf[0];
-        float out1 = (invmix * buf[1] * 5.0f) + inmix * recbuf[0];
+        float procout0 = std::tanh(buf[0]);
+        float procout1 = std::tanh(buf[1]);
+        
+        float out0 = (invmix * procout0 * 5.0f) + inmix * recbuf[0];
+        float out1 = (invmix * procout1 * 5.0f) + inmix * recbuf[0];
         if (inchans == 2)
             out1 = (invmix * buf[1] * 5.0f) + inmix * recbuf[1];
         outputs[OUT_AUDIO].setVoltage(out0,0);
