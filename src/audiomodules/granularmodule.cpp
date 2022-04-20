@@ -102,7 +102,7 @@ public:
         drwav wav;
         if (!drwav_init_file(&wav, filename.c_str(), NULL))
             return false;
-        int framestoread = std::min(m_audioBuffer.size(),wav.totalPCMFrameCount);
+        int framestoread = std::min(m_audioBuffer.size(),(size_t)wav.totalPCMFrameCount);
         drwav_read_pcm_frames_f32(&wav, framestoread, m_audioBuffer.data());
 		drwav_uninit(&wav);
         
