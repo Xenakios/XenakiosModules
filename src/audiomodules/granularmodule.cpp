@@ -10,11 +10,10 @@
 class DrWavSource : public GrainAudioSource
 {
 public:
-    float* m_pSampleData = nullptr;
     unsigned int m_channels = 0;
-    unsigned int m_sampleRate = 0;
+    unsigned int m_sampleRate = 44100;
     drwav_uint64 m_totalPCMFrameCount = 0;
-    std::vector<float> m_recordBuffer;
+    std::vector<float> m_audioBuffer;
     int m_recordChannels = 0;
     float m_recordSampleRate = 0.0f;
     int m_recordState = 0;
@@ -23,17 +22,16 @@ public:
     std::string m_filename;
     void normalize(float level)
     {
-        if (!m_pSampleData)
-            return;
+        /*
         float peak = 0.0f;
         auto framesToUse = m_totalPCMFrameCount;
         int chanstouse = m_channels;
-        float* dataToUse = m_pSampleData;
+        float* dataToUse = m_audioBuffer.data();
         if (m_recordState>0)
         {
-            framesToUse = m_recordBuffer.size();
+            framesToUse = m_audioBuffer.size();
             chanstouse = 1;
-            dataToUse = m_recordBuffer.data();
+            dataToUse = m_audioBuffer.data();
         }
             
         for (int i=0;i<framesToUse*chanstouse;++i)
@@ -47,11 +45,11 @@ public:
         for (int i=0;i<framesToUse*chanstouse;++i)
             dataToUse[i]*=normfactor;
         updatePeaks();
+        */
     }
     void reverse()
     {
-        if (!m_pSampleData)
-            return;
+        /*
         for (int i=0;i<m_totalPCMFrameCount/2;i++)
         {
             int index=(m_totalPCMFrameCount-i-1);
@@ -62,14 +60,13 @@ public:
             }
         }
         updatePeaks();
+        */
     }
     std::mutex m_peaks_mut;
     void updatePeaks()
     {
         std::lock_guard<std::mutex> locker(m_peaks_mut);
-        float* dataPtr = m_pSampleData;
-        if (m_recordState > 0)
-            dataPtr = m_recordBuffer.data();
+        float* dataPtr = m_audioBuffer.data();
         peaksData.resize(m_channels);
         int samplesPerPeak = 128;
         int numPeaks = m_totalPCMFrameCount/samplesPerPeak;
@@ -101,31 +98,21 @@ public:
     }
     bool importFile(std::string filename)
     {
-        float* pSampleData = nullptr;
-        unsigned int channels = 0;
-        unsigned int sampleRate = 0;
         drwav_uint64 totalPCMFrameCount = 0;
-        pSampleData = drwav_open_file_and_read_pcm_frames_f32(
-            filename.c_str(), 
-            &channels, 
-            &sampleRate, 
-            &totalPCMFrameCount, 
-            NULL);
-
-        if (pSampleData == NULL) {
-            std::cout << "could not open wav with dr wav\n";
+        drwav wav;
+        if (!drwav_init_file(&wav, filename.c_str(), NULL))
             return false;
-        }
-        float* oldData = m_pSampleData;
-        m_mut.lock();
+        int framestoread = std::min(m_audioBuffer.size(),wav.totalPCMFrameCount);
+        drwav_read_pcm_frames_f32(&wav, framestoread, m_audioBuffer.data());
+		drwav_uninit(&wav);
         
-            m_channels = channels;
-            m_sampleRate = sampleRate;
-            m_totalPCMFrameCount = totalPCMFrameCount;
-            m_pSampleData = pSampleData;
+        m_mut.lock();
+            m_channels = wav.channels;
+            m_sampleRate = wav.sampleRate;
+            m_totalPCMFrameCount = framestoread;
             m_recordState = 0;
         m_mut.unlock();
-        drwav_free(oldData,nullptr);
+        
         updatePeaks();  
         m_filename = filename;
         return true;
@@ -138,13 +125,7 @@ public:
     std::vector<std::vector<SamplePeaks>> peaksData;
     DrWavSource()
     {
-        m_recordBuffer.resize(44100*60*2);
-#ifdef __APPLE__
-        std::string filename("/Users/teemu/AudioProjects/sourcesamples/db_guit01.wav");
-#else
-        std::string filename("C:\\MusicAudio\\sourcesamples\\windchimes_c1.wav");
-#endif
-        //importFile(filename);
+        m_audioBuffer.resize(44100*60*2);
     }
     void startRecording(int numchans, float sr)
     {
@@ -157,9 +138,9 @@ public:
     {
         for (int i=0;i<m_recordChannels;++i)
         {
-            m_recordBuffer[m_recordBufPos] = samples[i];
+            m_audioBuffer[m_recordBufPos] = samples[i];
             ++m_recordBufPos;
-            if (m_recordBufPos>=m_recordBuffer.size())
+            if (m_recordBufPos>=m_audioBuffer.size())
                 m_recordBufPos = 0;
         }
     }
@@ -167,22 +148,21 @@ public:
     {
         if (m_recordState == 0)
             return -1.0f;
-        return 1.0/m_recordBuffer.size()*m_recordBufPos;
+        return 1.0/m_audioBuffer.size()*m_recordBufPos;
     }
     void stopRecording()
     {
         m_recordState = 2;
         m_channels = m_recordChannels;
         m_sampleRate = m_recordSampleRate;
-        m_totalPCMFrameCount = m_recordBuffer.size()/m_recordChannels;
+        m_totalPCMFrameCount = m_audioBuffer.size()/m_recordChannels;
         updatePeaks();
     }
     void putIntoBuffer(float* dest, int frames, int channels, int startInSource) override
     {
         std::lock_guard<std::mutex> locker(m_mut);
-        float* srcDataPtr = m_pSampleData;
-        if (m_recordState > 0)
-            srcDataPtr = m_recordBuffer.data();
+        float* srcDataPtr = m_audioBuffer.data();
+        
         if (m_channels==0)
         {
             for (int i=0;i<frames*channels;++i)
@@ -217,7 +197,7 @@ public:
     }
     ~DrWavSource()
     {
-        drwav_free(m_pSampleData,nullptr);
+        
     }
     int getSourceNumChannels() override
     {
@@ -225,8 +205,6 @@ public:
     }
     float getSourceSampleRate() override 
     { 
-        if (!m_pSampleData)
-            return 44100.0f;
         return m_sampleRate;
     }
     int getSourceNumSamples() override { return m_totalPCMFrameCount; };
