@@ -230,11 +230,27 @@ public:
         m_srcs.emplace_back(new DrWavSource);
         m_gm.reset(new GrainMixer(m_srcs));
         m_markers.reserve(1000);
-        for (int i=0;i<17;++i)
-            m_markers.push_back(1.0f/16*i);
-        m_markers.erase(m_markers.begin()+5);
+        //for (int i=0;i<17;++i)
+        //    m_markers.push_back(1.0f/16*i);
+        //m_markers.erase(m_markers.begin()+5);
+        m_markers = {0.0f,1.0f};
     }
     std::vector<float> m_markers;
+    void addMarker()
+    {
+        float insr = m_gm->m_sources[0]->getSourceSampleRate();
+        float inlensamps = m_gm->m_sources[0]->getSourceNumSamples();
+        float inlensecs = insr * inlensamps;
+        float tpos = 1.0f/inlensamps*m_gm->m_srcpos;
+        tpos += m_gm->m_loopstart;
+        tpos = clamp(tpos,0.0f,1.0f);
+        m_markers.push_back(tpos);
+        std::sort(m_markers.begin(),m_markers.end());
+    }
+    void clearMarkers()
+    {
+        m_markers = {0.0f,1.0f};
+    }
     void process(float deltatime, float sr,float* buf, float playrate, float pitch, 
         float loopstart, float looplen, float posrand, float grate, float lenm, float revprob, int ss)
     {
@@ -287,6 +303,7 @@ public:
         PAR_REVERSE,
         PAR_SOURCESELECT,
         PAR_INPUT_MIX,
+        PAR_INSERT_MARKER,
         PAR_LAST
     };
     enum OUTPUTS
@@ -307,6 +324,7 @@ public:
     };
     dsp::BooleanTrigger m_recordTrigger;
     bool m_recordActive = false;
+    dsp::BooleanTrigger m_insertMarkerTrigger;
     XGranularModule()
     {
         std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
@@ -327,6 +345,7 @@ public:
         configParam(PAR_REVERSE,0.0f,1.0f,0.0f,"Grain reverse probability");
         configParam(PAR_SOURCESELECT,0.0f,7.0f,0.0f,"Source select");
         configParam(PAR_INPUT_MIX,0.0f,1.0f,0.0f,"Input mix");
+        configParam(PAR_INSERT_MARKER,0.0f,1.0f,0.0f,"Insert marker");
     }
     json_t* dataToJson() override
     {
@@ -407,6 +426,15 @@ public:
                 drsrc->stopRecording();
             }
         }
+        if (m_insertMarkerTrigger.process(params[PAR_INSERT_MARKER].getValue()>0.5f))
+        {
+            m_eng.addMarker();
+        }
+        if (m_next_marker_action == 1)
+        {
+            m_next_marker_action = 0;
+            m_eng.clearMarkers();
+        }
         float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/10.0f,0.0f};
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_recordActive)
@@ -424,7 +452,7 @@ public:
         graindebugcounter = m_eng.m_gm->debugCounter;
     }
     int graindebugcounter = 0;
-    
+    std::atomic<int> m_next_marker_action{0};
     GrainEngine m_eng;
 private:
     
@@ -463,6 +491,8 @@ public:
         menu->addChild(normItem);
         auto revItem = createMenuItem([this,drsrc](){ drsrc->reverse(); },"Reverse buffer");
         menu->addChild(revItem);
+        auto clearmarksItem = createMenuItem([this](){ m_gm->m_next_marker_action = 1; },"Clear all markers");
+        menu->addChild(clearmarksItem);
     }
     XGranularWidget(XGranularModule* m)
     {
@@ -481,6 +511,7 @@ public:
         //port->m_is_out = false;
         
         addParam(createParam<TL1105>(Vec(62,34),m,XGranularModule::PAR_RECORD_ACTIVE));
+        addParam(createParam<TL1105>(Vec(150,34),m,XGranularModule::PAR_INSERT_MARKER));
         addParam(createParam<Trimpot>(Vec(62,14),m,XGranularModule::PAR_INPUT_MIX));
         addChild(new KnobInAttnWidget(this,
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,
