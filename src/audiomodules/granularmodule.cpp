@@ -280,7 +280,7 @@ public:
         buf[3] = 0.0f;
         m_gm->m_sr = sr;
         m_gm->m_inputdur = m_srcs[0]->getSourceNumSamples();
-        int markerIndex = std::round((m_markers.size()-1)*loopstart);
+        int markerIndex = (m_markers.size()-1)*loopstart;
         markerIndex = clamp(markerIndex,0,m_markers.size()-2);
         float regionStart = m_markers[markerIndex];
         m_gm->m_loopstart = regionStart;
@@ -343,12 +343,14 @@ public:
         IN_CV_LOOPLEN,
         IN_AUDIO,
         IN_CV_GRAINRATE,
+        IN_RESET,
         IN_LAST
     };
     dsp::BooleanTrigger m_recordTrigger;
     bool m_recordActive = false;
     dsp::BooleanTrigger m_insertMarkerTrigger;
     dsp::BooleanTrigger m_resetTrigger;
+    dsp::SchmittTrigger m_resetInTrigger;
     XGranularModule()
     {
         std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
@@ -457,7 +459,10 @@ public:
         {
             m_eng.m_gm->seekPercentage(0.0f);
         }
-        
+        if (m_resetInTrigger.process(inputs[IN_RESET].getVoltage()))
+        {
+            m_eng.m_gm->seekPercentage(0.0f);
+        }
         float recbuf[2] = {0.0f,0.0f};
         int inchans = inputs[IN_AUDIO].getChannels();
         if (inchans==1)
@@ -553,15 +558,11 @@ public:
         auto port = new PortWithBackGround(m,this,XGranularModule::OUT_AUDIO,1,17,"AUDIO OUT 1",true);
         port = new PortWithBackGround(m,this,XGranularModule::OUT_LOOP_EOC,92,17,"LOOP EOC",true);
         port = new PortWithBackGround(m,this,XGranularModule::IN_AUDIO,34,17,"AUDIO IN",false);
-        //addOutput(port = createOutput<PortWithBackGround>(Vec(31, 34), m, XGranularModule::OUT_AUDIO));
-        //port->m_text = "AUDIO OUT";
-        //addInput(port = createInput<PortWithBackGround<PJ301MPort>>(Vec(1, 34), m, XGranularModule::IN_AUDIO));
-        //port->m_text = "AUDIO IN";
-        //port->m_is_out = false;
         
         addParam(createParam<TL1105>(Vec(62,34),m,XGranularModule::PAR_RECORD_ACTIVE));
         addParam(createParam<TL1105>(Vec(150,34),m,XGranularModule::PAR_INSERT_MARKER));
         addParam(createParam<TL1105>(Vec(180,34),m,XGranularModule::PAR_RESET));
+        port = new PortWithBackGround(m,this,XGranularModule::IN_RESET,180,17,"RST",false);
         addParam(createParam<Trimpot>(Vec(62,14),m,XGranularModule::PAR_INPUT_MIX));
         addChild(new KnobInAttnWidget(this,
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,
