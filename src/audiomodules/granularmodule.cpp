@@ -96,11 +96,27 @@ public:
             }
         } 
     }
+    bool saveFile(std::string filename)
+    {
+        drwav wav;
+        drwav_data_format format;
+		format.container = drwav_container_riff;
+		format.format = DR_WAVE_FORMAT_IEEE_FLOAT;
+		format.channels = 2;
+		format.sampleRate = m_sampleRate;
+		format.bitsPerSample = 32;
+        if (drwav_init_file_write(&wav,filename.c_str(),&format,nullptr))
+        {
+            drwav_write_pcm_frames(&wav,m_audioBuffer.size()/2,(void*)m_audioBuffer.data());
+            drwav_uninit(&wav);
+        }
+
+    }
     bool importFile(std::string filename)
     {
         drwav_uint64 totalPCMFrameCount = 0;
         drwav wav;
-        if (!drwav_init_file(&wav, filename.c_str(), NULL))
+        if (!drwav_init_file(&wav, filename.c_str(), nullptr))
             return false;
         int framestoread = std::min(m_audioBuffer.size(),(size_t)wav.totalPCMFrameCount);
         drwav_read_pcm_frames_f32(&wav, framestoread, m_audioBuffer.data());
@@ -129,6 +145,8 @@ public:
     }
     void startRecording(int numchans, float sr)
     {
+        if (m_recordState!=0)
+            return;
         m_recordChannels = numchans;
         m_recordSampleRate = sr;
         m_recordState = 1;
@@ -136,12 +154,24 @@ public:
     }
     void pushSamplesToRecordBuffer(float* samples)
     {
+        if (m_recordState == 0)
+            return;
         for (int i=0;i<m_recordChannels;++i)
         {
-            m_audioBuffer[m_recordBufPos] = samples[i];
+            if (m_recordBufPos<m_audioBuffer.size())
+            {
+                m_audioBuffer[m_recordBufPos] = samples[i];
+                if (m_recordBufPos % 65536 == 0)
+                {
+                    updatePeaks();
+                }
+            }
             ++m_recordBufPos;
-            if (m_recordBufPos>=m_audioBuffer.size())
-                m_recordBufPos = 0;
+            if (m_recordBufPos==m_audioBuffer.size())
+            {
+                stopRecording();
+                break;
+            }
         }
     }
     float getRecordPosition()
@@ -152,7 +182,7 @@ public:
     }
     void stopRecording()
     {
-        m_recordState = 2;
+        m_recordState = 0;
         m_channels = m_recordChannels;
         m_sampleRate = m_recordSampleRate;
         m_totalPCMFrameCount = m_audioBuffer.size()/m_recordChannels;
@@ -197,7 +227,10 @@ public:
     }
     ~DrWavSource()
     {
-        
+        std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
+        uint64_t t = system::getUnixTime();
+        std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
+        saveFile(audioFile);
     }
     int getSourceNumChannels() override
     {
@@ -222,6 +255,11 @@ public:
         //    m_markers.push_back(1.0f/16*i);
         //m_markers.erase(m_markers.begin()+5);
         m_markers = {0.0f,1.0f};
+    }
+    bool isRecording()
+    {
+        auto src = dynamic_cast<DrWavSource*>(m_srcs[0].get());
+        return src->m_recordState>0;
     }
     std::vector<float> m_markers;
     void addMarker()
@@ -325,7 +363,7 @@ public:
         IN_LAST
     };
     dsp::BooleanTrigger m_recordTrigger;
-    bool m_recordActive = false;
+    //bool m_recordActive = false;
     dsp::BooleanTrigger m_insertMarkerTrigger;
     dsp::BooleanTrigger m_resetTrigger;
     dsp::SchmittTrigger m_resetInTrigger;
@@ -383,7 +421,7 @@ public:
     inline float getNotchedPlayRate(float x)
     {
         const std::array<float,3> notchpoints{-0.5f,0.0f,0.5f};
-        const float notchrange = 0.025f;
+        const float notchrange = 0.05f;
         for (auto& p : notchpoints )
             if(std::abs(x-p) < notchrange) return p;
         return x;
@@ -432,15 +470,15 @@ public:
         if (m_recordTrigger.process(params[PAR_RECORD_ACTIVE].getValue()>0.5f))
         {
             
-            if (m_recordActive==false)
+            if (m_eng.isRecording() == false)
             {
-                m_recordActive = true;
+                //m_recordActive = true;
                 drsrc->startRecording(2,args.sampleRate);
                 m_eng.addMarkerAtPosition(drsrc->getRecordPosition());
             }
             else
             {
-                m_recordActive = false;
+                //m_recordActive = false;
                 drsrc->stopRecording();
             }
         }
@@ -456,15 +494,15 @@ public:
         int inchans = inputs[IN_AUDIO].getChannels();
         if (inchans==1)
         {
-            recbuf[0] = inputs[IN_AUDIO].getVoltage()/10.0f;
+            recbuf[0] = inputs[IN_AUDIO].getVoltage()/6.0f;
             recbuf[1] = recbuf[0];
         } else
         {
-            recbuf[0] = inputs[IN_AUDIO].getVoltage(0)/10.0f;
-            recbuf[1] = inputs[IN_AUDIO].getVoltage(1)/10.0f;
+            recbuf[0] = inputs[IN_AUDIO].getVoltage(0)/6.0f;
+            recbuf[1] = inputs[IN_AUDIO].getVoltage(1)/6.0f;
         }
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
-        if (m_recordActive)
+        if (m_eng.isRecording())
             drsrc->pushSamplesToRecordBuffer(recbuf);
         int srcindex = params[PAR_SOURCESELECT].getValue();
         float loopslide = params[PAR_LOOP_SLIDE].getValue();
@@ -579,7 +617,12 @@ public:
         if (m_gm)
         {
             char buf[100];
-            sprintf(buf,"%d %d %f",m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed,m_gm->m_notched_rate);
+            std::string rectext;
+            if (m_gm->m_eng.isRecording())
+                rectext = "REC";
+            sprintf(buf,"%d %d %f %s",
+                m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed,m_gm->m_notched_rate,
+                rectext.c_str());
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
@@ -658,14 +701,15 @@ public:
                 float ppos = src.getRecordPosition();
                 if (ppos>=0.0)
                 {
-
-                
                     nvgBeginPath(args.vg);
                     nvgStrokeColor(args.vg,nvgRGBA(0xff, 0x00, 0x00, 0xff));
-                    
                     xcor = rescale(ppos,0.0f,1.0f,0.0f,box.size.x-2.0f);
-                    nvgMoveTo(args.vg,xcor,250.0f);
-                    nvgLineTo(args.vg,xcor,250.0+10.0f);
+                    if (xcor<box.size.x)
+                    {
+                        nvgMoveTo(args.vg,xcor,250.0f);
+                        nvgLineTo(args.vg,xcor,250.0+100.0f);
+                        
+                    }
                     nvgStroke(args.vg);
                 }
             }
