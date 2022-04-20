@@ -379,35 +379,17 @@ public:
         }
     }
     std::string m_currentFile;
+    
     inline float getNotchedPlayRate(float x)
     {
-        if (x>=-1.0f && x<-0.525f)
+        const std::array<float,3> notchpoints{-0.5f,0.0f,0.5f};
+        const float notchrange = 0.05f;
+        for (size_t i=0;i<notchpoints.size();++i)
         {
-            return x;
-        }
-        if (x>=-0.525f && x<-0.475f)
-        {
-            return 0.5f;
-        }
-        if (x>=-0.475 && x<-0.025f)
-        {
-            return x;
-        }
-        if (x>=-0.025f && x<0.025f)
-        {
-            return 0.0f;
-        }
-        if (x>=0.025f && x<0.475f)
-        {
-            return x;
-        }
-        if (x>=0.475f && x<0.525f)
-        {
-            return 0.5f;
-        }
-        if (x>=0.525f && x<1.0f)
-        {
-            return x;
+            float a0 = notchpoints[i] - notchrange / 2;
+            float a1 = notchpoints[i] + notchrange / 2;
+            if (x >= a0 && x < a1)
+                return notchpoints[i];
         }
         return x;
     }
