@@ -271,7 +271,8 @@ public:
         m_markers = {0.0f,1.0f};
     }
     void process(float deltatime, float sr,float* buf, float playrate, float pitch, 
-        float loopstart, float looplen, float posrand, float grate, float lenm, float revprob, int ss)
+        float loopstart, float looplen, float loopslide,
+        float posrand, float grate, float lenm, float revprob, int ss)
     {
         buf[0] = 0.0f;
         buf[1] = 0.0f;
@@ -288,6 +289,7 @@ public:
         float regionLen = regionEnd - regionStart; 
         regionLen = clamp(regionLen,0.0f,1.0f);
         m_gm->m_looplen = looplen * regionLen;
+        m_gm->m_loopslide = loopslide;
         m_gm->m_sourcePlaySpeed = playrate;
         m_gm->m_pitch = pitch;
         m_gm->m_posrandamt = posrand;
@@ -309,7 +311,7 @@ public:
     {
         PAR_PLAYRATE,
         PAR_PITCH,
-        PAR_LOOPSTART,
+        PAR_LOOPSELECT,
         PAR_LOOPLEN,
         PAR_ATTN_PLAYRATE,
         PAR_ATTN_PITCH,
@@ -323,6 +325,7 @@ public:
         PAR_SOURCESELECT,
         PAR_INPUT_MIX,
         PAR_INSERT_MARKER,
+        PAR_LOOP_SLIDE,
         PAR_LAST
     };
     enum OUTPUTS
@@ -351,7 +354,7 @@ public:
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_PLAYRATE,-1.0f,1.0f,0.5f,"Playrate");
         configParam(PAR_PITCH,-24.0f,24.0f,0.0f,"Pitch");
-        configParam(PAR_LOOPSTART,0.0f,1.0f,0.0f,"Loop start");
+        configParam(PAR_LOOPSELECT,0.0f,1.0f,0.0f,"Region select");
         configParam(PAR_LOOPLEN,0.0f,1.0f,1.0f,"Loop length");
         configParam(PAR_ATTN_PLAYRATE,-1.0f,1.0f,0.0f,"Playrate CV ATTN");
         configParam(PAR_ATTN_PITCH,-1.0f,1.0f,0.0f,"Pitch CV ATTN");
@@ -365,6 +368,7 @@ public:
         configParam(PAR_SOURCESELECT,0.0f,7.0f,0.0f,"Source select");
         configParam(PAR_INPUT_MIX,0.0f,1.0f,0.0f,"Input mix");
         configParam(PAR_INSERT_MARKER,0.0f,1.0f,0.0f,"Insert marker");
+        configParam(PAR_LOOP_SLIDE,0.0f,1.0f,0.0f,"Loop slide");
     }
     json_t* dataToJson() override
     {
@@ -417,7 +421,7 @@ public:
         float pitch = params[PAR_PITCH].getValue();
         pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f;
         pitch = clamp(pitch,-24.0f,24.0f);
-        float loopstart = params[PAR_LOOPSTART].getValue();
+        float loopstart = params[PAR_LOOPSELECT].getValue();
         loopstart += inputs[IN_CV_LOOPSTART].getVoltage()*params[PAR_ATTN_LOOPSTART].getValue()/10.0f;
         loopstart = clamp(loopstart,0.0f,1.0f);
         float looplen = params[PAR_LOOPLEN].getValue();
@@ -453,7 +457,9 @@ public:
         if (m_recordActive)
             drsrc->pushSamplesToRecordBuffer(recbuf);
         int srcindex = params[PAR_SOURCESELECT].getValue();
-        m_eng.process(args.sampleTime, args.sampleRate, buf,prate,pitch,loopstart,looplen,posrnd,grate,glenm,revprob, srcindex);
+        float loopslide = params[PAR_LOOP_SLIDE].getValue();
+        m_eng.process(args.sampleTime, args.sampleRate, buf,prate,pitch,loopstart,looplen,loopslide,
+            posrnd,grate,glenm,revprob, srcindex);
         outputs[OUT_AUDIO].setChannels(2);
         float inmix = params[PAR_INPUT_MIX].getValue();
         float invmix = 1.0f - inmix;
@@ -540,8 +546,10 @@ public:
             XGranularModule::IN_CV_PLAYRATE,XGranularModule::PAR_ATTN_PLAYRATE,1.0f,60.0f));
         addChild(new KnobInAttnWidget(this,
             "PITCH",XGranularModule::PAR_PITCH,XGranularModule::IN_CV_PITCH,-1,82.0f,60.0f));
+        addChild(new KnobInAttnWidget(this,
+            "LOOP SLIDE",XGranularModule::PAR_LOOP_SLIDE,-1,-1,2*82.0f,60.0f));
         addChild(new KnobInAttnWidget(this,"LOOP START",
-            XGranularModule::PAR_LOOPSTART,XGranularModule::IN_CV_LOOPSTART,XGranularModule::PAR_ATTN_LOOPSTART,1.0f,101.0f));
+            XGranularModule::PAR_LOOPSELECT,XGranularModule::IN_CV_LOOPSTART,XGranularModule::PAR_ATTN_LOOPSTART,1.0f,101.0f));
         addChild(new KnobInAttnWidget(this,"LOOP LENGTH",
             XGranularModule::PAR_LOOPLEN,XGranularModule::IN_CV_LOOPLEN,XGranularModule::PAR_ATTN_LOOPLEN,82.0f,101.0f));
         addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",XGranularModule::PAR_SRCPOSRANDOM,-1,-1,1.0f,142.0f));

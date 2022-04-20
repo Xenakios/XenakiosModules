@@ -326,12 +326,17 @@ public:
             float glensamples = m_sr*glen;
             float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
             float srcpostouse = m_srcpos+posrand;
+            if (srcpostouse<0.0f)
+                srcpostouse = 0.0f;
+            srcpostouse = std::fmod(srcpostouse+m_loopslide*m_looplen*m_inputdur,m_inputdur);
+            
             m_actSourcePos = srcpostouse+m_loopstart*m_inputdur;
             float pan = 0.0f;
             if (debugCounter % 2 == 1)
                 pan = 1.0f;
             bool revgrain = m_unidist(m_randgen)<m_reverseProb;
             int availgrain = findFreeGain();
+            //float slidedpos = std::fmod(m_srcpos+m_loopslide,1.0f);
             if (availgrain>=0)
             {
                 m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,
@@ -356,6 +361,7 @@ public:
             {
                 actlooplen -= loopend - 1.0f;
             }
+            
             if (m_srcpos>=actlooplen*m_inputdur)
             {
                 m_srcpos = 0.0f;
@@ -394,6 +400,7 @@ public:
     float m_inputdur = 0.0f; // samples!
     float m_loopstart = 0.0f;
     float m_looplen = 1.0f;
+    float m_loopslide = 0.0f;
     int m_outcounter = 0;
     int m_nextGrainPos = 0;
     
