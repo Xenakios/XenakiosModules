@@ -246,6 +246,7 @@ public:
         tpos = clamp(tpos,0.0f,1.0f);
         m_markers.push_back(tpos);
         std::sort(m_markers.begin(),m_markers.end());
+        m_gm->m_srcpos = 0.0f;
     }
     void clearMarkers()
     {
@@ -260,7 +261,7 @@ public:
         buf[3] = 0.0f;
         m_gm->m_sr = sr;
         m_gm->m_inputdur = m_srcs[0]->getSourceNumSamples();
-        int markerIndex = (m_markers.size()-1)*loopstart;
+        int markerIndex = std::round((m_markers.size()-1)*loopstart);
         markerIndex = clamp(markerIndex,0,m_markers.size()-2);
         float regionStart = m_markers[markerIndex];
         m_gm->m_loopstart = regionStart;
