@@ -138,7 +138,7 @@ public:
     std::vector<std::vector<SamplePeaks>> peaksData;
     DrWavSource()
     {
-        m_recordBuffer.resize(44100*60);
+        m_recordBuffer.resize(44100*60*2);
 #ifdef __APPLE__
         std::string filename("/Users/teemu/AudioProjects/sourcesamples/db_guit01.wav");
 #else
@@ -441,7 +441,7 @@ public:
             if (m_recordActive==false)
             {
                 m_recordActive = true;
-                drsrc->startRecording(1,args.sampleRate);
+                drsrc->startRecording(2,args.sampleRate);
                 m_eng.addMarkerAtPosition(drsrc->getRecordPosition());
             }
             else
@@ -452,7 +452,17 @@ public:
         }
         
         
-        float recbuf[2] = {inputs[IN_AUDIO].getVoltage()/10.0f,0.0f};
+        float recbuf[2] = {0.0f,0.0f};
+        int inchans = inputs[IN_AUDIO].getChannels();
+        if (inchans==1)
+        {
+            recbuf[0] = inputs[IN_AUDIO].getVoltage()/10.0f;
+            recbuf[1] = recbuf[0];
+        } else
+        {
+            recbuf[0] = inputs[IN_AUDIO].getVoltage(0)/10.0f;
+            recbuf[1] = inputs[IN_AUDIO].getVoltage(1)/10.0f;
+        }
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_recordActive)
             drsrc->pushSamplesToRecordBuffer(recbuf);
@@ -465,6 +475,8 @@ public:
         float invmix = 1.0f - inmix;
         float out0 = (invmix * buf[0] * 5.0f) + inmix * recbuf[0];
         float out1 = (invmix * buf[1] * 5.0f) + inmix * recbuf[0];
+        if (inchans == 2)
+            out1 = (invmix * buf[1] * 5.0f) + inmix * recbuf[1];
         outputs[OUT_AUDIO].setVoltage(out0,0);
         outputs[OUT_AUDIO].setVoltage(out1,1);
         outputs[OUT_LOOP_EOC].setVoltage(m_eng.m_gm->m_loop_eoc_out);
