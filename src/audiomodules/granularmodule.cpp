@@ -379,10 +379,44 @@ public:
         }
     }
     std::string m_currentFile;
+    inline float getNotchedPlayRate(float x)
+    {
+        if (x>=-1.0f && x<-0.525f)
+        {
+            return x;
+        }
+        if (x>=-0.525f && x<-0.475f)
+        {
+            return 0.5f;
+        }
+        if (x>=-0.475 && x<-0.025f)
+        {
+            return x;
+        }
+        if (x>=-0.025f && x<0.025f)
+        {
+            return 0.0f;
+        }
+        if (x>=0.025f && x<0.475f)
+        {
+            return x;
+        }
+        if (x>=0.475f && x<0.525f)
+        {
+            return 0.5f;
+        }
+        if (x>=0.525f && x<1.0f)
+        {
+            return x;
+        }
+        return x;
+    }
+    float m_notched_rate = 0.0f;
     void process(const ProcessArgs& args) override
     {
-        
         float prate = params[PAR_PLAYRATE].getValue();
+        prate = getNotchedPlayRate(prate);
+        m_notched_rate = prate;
         prate += inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()*0.2f;
         prate = clamp(prate,-1.0f,1.0f);
         if (prate<0.0f)
@@ -568,7 +602,7 @@ public:
         if (m_gm)
         {
             char buf[100];
-            sprintf(buf,"%d %d",m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed);
+            sprintf(buf,"%d %d %f",m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed,m_gm->m_notched_rate);
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
