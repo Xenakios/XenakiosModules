@@ -1,9 +1,9 @@
-#include "../plugin.hpp"
-#include "../helperwidgets.h"
-#include "../wtosc.h"
+#include "plugin.hpp"
+#include "helperwidgets.h"
+#include "wtosc.h"
 #include <array>
-#include "../jcdp_envelope.h"
-#include "../Tunings.h"
+#include "jcdp_envelope.h"
+#include "Tunings.h"
 #include <osdialog.h>
 #include <thread>
 

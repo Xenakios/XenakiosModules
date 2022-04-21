@@ -1,8 +1,8 @@
-#include "../plugin.hpp"
+#include "plugin.hpp"
 #include <random>
 #include <array>
-#include "../jcdp_envelope.h"
-#include "../helperwidgets.h"
+#include "jcdp_envelope.h"
+#include "helperwidgets.h"
 #include <osdialog.h>
 
 inline int randomDiscrete(std::mt19937& rng,std::vector<float>& whs)

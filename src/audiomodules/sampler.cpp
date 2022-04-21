@@ -1,6 +1,6 @@
-#include "../plugin.hpp"
+#include "plugin.hpp"
 #include "../wdl/resample.h"
-#include "../helperwidgets.h"
+#include "helperwidgets.h"
 #include <osdialog.h>
 
 class SampleData

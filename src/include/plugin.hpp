@@ -5,7 +5,7 @@ using namespace rack;
 #include <iostream>
 #include <fstream>
 #include <functional>
-#include "grain_engine/dr_wav.h"
+#include "dr_wav.h"
 #include "Tunings.h"
 // Declare the Plugin, defined in plugin.cpp
 extern Plugin *pluginInstance;

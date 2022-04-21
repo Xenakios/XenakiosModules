@@ -6,6 +6,7 @@ RACK_DIR ?= ../../Rack-SDK
 
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS += -Idep
+FLAGS += -Isrc/include
 # FLAGS += -Idep/rubberband
 # FLAGS += -Idep/rubberband/src
 CFLAGS +=

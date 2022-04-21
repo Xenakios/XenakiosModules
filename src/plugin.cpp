@@ -1,6 +1,6 @@
 #include "plugin.hpp"
 #include "old/weightedrandom.h"
-#include "old/xenutils.h"
+// #include "old/xenutils.h"
 #include "old/audiostretcher.h"
 #include <array>
 
@@ -30,6 +30,7 @@ void init(Plugin *p) {
 #ifdef RBMODULE
 	p->addModel(createModel<AudioStretchModule,AudioStretchWidget>("XAudioStretch"));
 #endif
+
 	p->addModel(modelXQuantizer);
 	p->addModel(modelXPSynth);
 	p->addModel(modelInharmonics);
@@ -44,4 +45,5 @@ void init(Plugin *p) {
 	p->addModel(modelXScaleOscillator);
 	p->addModel(modelCubeSymSeq);
 	p->addModel(modelTimeSeq);
+	
 }

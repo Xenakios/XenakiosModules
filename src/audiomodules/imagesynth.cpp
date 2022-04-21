@@ -6,11 +6,11 @@
 #include <functional>
 #include <thread> 
 #include <mutex>
-#include "../wtosc.h"
+#include "wtosc.h"
 #include "../wdl/resample.h"
 #include <chrono>
 
-#include "../grain_engine/grain_engine.h"
+#include "grain_engine.h"
 
 struct PanMode
 {

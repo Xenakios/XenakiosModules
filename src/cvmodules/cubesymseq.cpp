@@ -1,5 +1,5 @@
-#include "../plugin.hpp"
-#include "../helperwidgets.h"
+#include "plugin.hpp"
+#include "helperwidgets.h"
 
 // taken from Xenakis Formalized music, so should hopefully be right...?
 

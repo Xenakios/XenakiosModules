@@ -1,4 +1,4 @@
-#include "../plugin.hpp"
+#include "plugin.hpp"
 #include <array>
 
 float table_sqrt[1024];

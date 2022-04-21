@@ -1,4 +1,4 @@
-#include "../plugin.hpp"
+#include "plugin.hpp"
 
 inline bool fuzzyFind(std::vector<double>& v, double x)
 {

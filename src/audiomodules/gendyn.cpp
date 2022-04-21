@@ -1,9 +1,9 @@
 #include <rack.hpp>
-#include "../plugin.hpp"
+#include "plugin.hpp"
 #include <functional>
 #include <atomic>
 #include <random>
-#include "../helperwidgets.h"
+#include "helperwidgets.h"
 
 inline double custom_log(double value, double base)
 {

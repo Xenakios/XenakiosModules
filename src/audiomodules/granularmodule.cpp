@@ -1,8 +1,8 @@
-#include "../plugin.hpp"
-#include "../grain_engine/grain_engine.h"
+#include "plugin.hpp"
+#include "grain_engine.h"
 #define DR_WAV_IMPLEMENTATION
-#include "../grain_engine/dr_wav.h"
-#include "../helperwidgets.h"
+#include "dr_wav.h"
+#include "helperwidgets.h"
 #include <osdialog.h>
 #include <thread>
 #include <mutex>
