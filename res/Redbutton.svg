@@ -1,0 +1,11 @@
+<!doctype html>
+<svg width="25.0" height="25.0">
+  <defs>
+    <radialGradient gradientUnits="userSpaceOnUse" cx="12.5" cy="12.5" r="10.453" id="gradient-0" gradientTransform="matrix(0.944076, 0.000139, -0.000148, 1, 10.623461, -0.026395)">
+      <stop offset="0" style="stop-color: rgba(216, 216, 216, 0.5)"></stop>
+      <stop offset="1" style="stop-color: rgba(221, 13, 13,1.5);"></stop>
+    </radialGradient>
+  </defs>
+  
+  <ellipse style="stroke: rgb(0, 0, 0); fill: url(#gradient-0);" cx="12.5" cy="12.5" rx="12.5" ry="12.5"></ellipse>
+</svg>

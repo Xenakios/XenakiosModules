@@ -596,6 +596,20 @@ struct LoadFileItem : MenuItem
     }
 };
 
+class RecButton : public app::SvgSwitch
+{
+public:
+    RecButton()
+    {
+        //this->latch = true;
+        this->momentary = true;
+        //box.size = {50,50};
+        addFrame(Svg::load(asset::plugin(pluginInstance, "res/RedButton.svg")));
+        //addFrame(Svg::load(asset::plugin(pluginInstance, "res/RedButton.svg")));
+        
+    }
+};
+
 class XGranularWidget : public rack::ModuleWidget
 {
 public:
@@ -632,7 +646,7 @@ public:
         port = new PortWithBackGround(m,this,XGranularModule::OUT_LOOP_EOC,92,17,"LOOP EOC",true);
         port = new PortWithBackGround(m,this,XGranularModule::IN_AUDIO,34,17,"AUDIO IN",false);
         
-        addParam(createParam<TL1105>(Vec(62,34),m,XGranularModule::PAR_RECORD_ACTIVE));
+        addParam(createParam<RecButton>(Vec(62,34),m,XGranularModule::PAR_RECORD_ACTIVE));
         addParam(createParam<TL1105>(Vec(150,34),m,XGranularModule::PAR_INSERT_MARKER));
         addParam(createParam<TL1105>(Vec(180,34),m,XGranularModule::PAR_RESET));
         port = new PortWithBackGround(m,this,XGranularModule::IN_RESET,180,17,"RST",false);
