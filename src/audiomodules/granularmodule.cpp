@@ -143,6 +143,24 @@ public:
     {
         m_audioBuffer.resize(44100*60*2);
     }
+    void clearAudio(int startSample, int endSample)
+    {
+        if (startSample == -1 && endSample == -1)
+        {
+            startSample = 0;
+            endSample = (m_audioBuffer.size() / m_channels)-1;
+        }
+        startSample = startSample*m_channels;
+        endSample = endSample*m_channels;
+        if (startSample>=0 && endSample<m_audioBuffer.size())
+        {
+            for (int i=startSample;i<endSample;++i)
+            {
+                m_audioBuffer[i] = 0.0f;
+            }
+            updatePeaks();
+        }
+    }
     void resetRecording()
     {
         if (m_recordBufPos>=m_audioBuffer.size())
@@ -538,6 +556,11 @@ public:
             drsrc->resetRecording();
             m_next_marker_action = ACT_NONE;
         }
+        if (m_next_marker_action == ACT_CLEAR_ALL_AUDIO)
+        {
+            drsrc->clearAudio(-1,-1);
+            m_next_marker_action = ACT_NONE;
+        }
         graindebugcounter = m_eng.m_gm->debugCounter;
     }
     int graindebugcounter = 0;
@@ -546,6 +569,7 @@ public:
         ACT_NONE,
         ACT_CLEAR_ALL_MARKERS,
         ACT_RESET_RECORD_HEAD,
+        ACT_CLEAR_ALL_AUDIO,
         ACT_LAST
     };
     std::atomic<int> m_next_marker_action{ACT_NONE};
@@ -593,6 +617,9 @@ public:
         auto resetrec = createMenuItem([this]()
         { m_gm->m_next_marker_action = XGranularModule::ACT_RESET_RECORD_HEAD; },"Reset record state");
         menu->addChild(resetrec);
+        auto clearall = createMenuItem([this]()
+        { m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_ALL_AUDIO; },"Clear all audio");
+        menu->addChild(clearall);
     }
     XGranularWidget(XGranularModule* m)
     {
@@ -617,7 +644,7 @@ public:
             "PITCH",XGranularModule::PAR_PITCH,XGranularModule::IN_CV_PITCH,-1,82.0f,60.0f));
         addChild(new KnobInAttnWidget(this,
             "LOOP SLIDE",XGranularModule::PAR_LOOP_SLIDE,-1,-1,2*82.0f,60.0f));
-        addChild(new KnobInAttnWidget(this,"LOOP START",
+        addChild(new KnobInAttnWidget(this,"REGION SELECT",
             XGranularModule::PAR_LOOPSELECT,XGranularModule::IN_CV_LOOPSTART,XGranularModule::PAR_ATTN_LOOPSTART,1.0f,101.0f));
         addChild(new KnobInAttnWidget(this,"LOOP LENGTH",
             XGranularModule::PAR_LOOPLEN,XGranularModule::IN_CV_LOOPLEN,XGranularModule::PAR_ATTN_LOOPLEN,82.0f,101.0f));
