@@ -165,6 +165,7 @@ public:
     }
     void clearAudio(int startSample, int endSample)
     {
+        
         if (startSample == -1 && endSample == -1)
         {
             startSample = 0;
@@ -659,12 +660,8 @@ class RecButton : public app::SvgSwitch
 public:
     RecButton()
     {
-        //this->latch = true;
         this->momentary = true;
-        //box.size = {50,50};
         addFrame(Svg::load(asset::plugin(pluginInstance, "res/RedButton.svg")));
-        //addFrame(Svg::load(asset::plugin(pluginInstance, "res/RedButton.svg")));
-        
     }
 };
 
