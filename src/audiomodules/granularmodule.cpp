@@ -361,6 +361,37 @@ public:
     }
     std::vector<std::unique_ptr<GrainAudioSource>> m_srcs;
     std::unique_ptr<GrainMixer> m_gm;
+     json_t* dataToJson() 
+    {
+        json_t* resultJ = json_object();
+        auto src = dynamic_cast<DrWavSource*>(m_srcs[0].get());
+        json_t* markerarr = json_array();
+        for (int i=0;i<m_markers.size();++i)
+        {
+            float pos = m_markers[i];
+            json_array_append(markerarr,json_real(pos));
+        }
+        json_object_set(resultJ,"markers",markerarr);
+        return resultJ;
+    }
+    void dataFromJson(json_t* root) 
+    {
+        if (!root)
+            return;
+        json_t* markers = json_object_get(root, "markers");
+        int nummarkers = json_array_size(markers);
+        if (nummarkers==0)
+        {
+            return;
+        }
+        m_markers.clear();
+        for (int i=0;i<nummarkers;++i)
+        {
+            auto elem = json_array_get(markers,i);
+            float pos = json_number_value(elem);
+            m_markers.push_back(pos);
+        }
+    }
 private:
     
 };
@@ -440,6 +471,8 @@ public:
     {
         json_t* resultJ = json_object();
         json_object_set(resultJ,"importedfile",json_string(m_currentFile.c_str()));
+        auto markersJ = m_eng.dataToJson();
+        json_object_set(resultJ,"markers",markersJ);
         return resultJ;
     }
     void dataFromJson(json_t* root) override
@@ -450,6 +483,8 @@ public:
             std::string filename(json_string_value(filenameJ));
             importFile(filename);
         }
+        json_t* markersJ = json_object_get(root,"markers");
+        m_eng.dataFromJson(markersJ);
     }
     void importFile(std::string filename)
     {
