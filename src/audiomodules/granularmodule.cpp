@@ -1,7 +1,7 @@
 #include "plugin.hpp"
 #include "grain_engine.h"
-#define DR_WAV_IMPLEMENTATION
-#include "dr_wav.h"
+// #define DR_WAV_IMPLEMENTATION
+//#include "dr_wav.h"
 #include "helperwidgets.h"
 #include <osdialog.h>
 #include <thread>
@@ -20,6 +20,7 @@ public:
     int m_recordBufPos = 0;
     std::mutex m_mut;
     std::string m_filename;
+    
     void normalize(float level)
     {
         /*
@@ -124,6 +125,7 @@ public:
         std::vector<float> temp(inchs*framestoread);
         drwav_read_pcm_frames_f32(&wav, framestoread, temp.data());
 		drwav_uninit(&wav);
+        
         for (int i=0;i<framestoread;++i)
         {
             if (inchs == 1)

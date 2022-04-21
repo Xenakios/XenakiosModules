@@ -26,7 +26,7 @@ void init(Plugin *p) {
 	
 	p->addModel(modelGendynOSC);
 	p->addModel(modelXRandom);
-	p->addModel(modelXDerivator);
+	//p->addModel(modelXDerivator);
 #ifdef RBMODULE
 	p->addModel(createModel<AudioStretchModule,AudioStretchWidget>("XAudioStretch"));
 #endif

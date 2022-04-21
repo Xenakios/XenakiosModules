@@ -471,7 +471,7 @@ extern Model* modelXCVShaper;
 extern Model* modelXSampler;
 extern Model* modelXScaleOscillator;
 extern Model* modelXRandom;
-extern Model* modelXDerivator;
+//extern Model* modelXDerivator;
 extern Model* modelWeightGate;
 extern Model* modelHistogram;
 extern Model* modelReducer;

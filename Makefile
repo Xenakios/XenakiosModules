@@ -34,6 +34,7 @@ SOURCES += $(wildcard src/old/*.cpp)
 SOURCES += $(wildcard src/audiomodules/*.cpp)
 SOURCES += $(wildcard src/cvmodules/*.cpp)
 SOURCES += $(wildcard src/wdl/*.cpp)
+SOURCES += src/dr_wav.c
 
 TMPVAR := $(SOURCES)
 SOURCES = $(filter-out src/old/polyrandom.cpp, $(TMPVAR))
