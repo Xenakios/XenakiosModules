@@ -20,7 +20,6 @@ public:
     int m_recordBufPos = 0;
     std::mutex m_mut;
     std::string m_filename;
-    
     void normalize(float level)
     {
         /*
@@ -554,13 +553,11 @@ public:
             
             if (m_eng.isRecording() == false)
             {
-                //m_recordActive = true;
                 drsrc->startRecording(2,args.sampleRate);
                 m_eng.addMarkerAtPosition(drsrc->getRecordPosition());
             }
             else
             {
-                //m_recordActive = false;
                 drsrc->stopRecording();
             }
         }
