@@ -109,8 +109,9 @@ public:
         {
             drwav_write_pcm_frames(&wav,m_audioBuffer.size()/2,(void*)m_audioBuffer.data());
             drwav_uninit(&wav);
+            return true;
         }
-
+        return false;
     }
     bool importFile(std::string filename)
     {
@@ -118,12 +119,30 @@ public:
         drwav wav;
         if (!drwav_init_file(&wav, filename.c_str(), nullptr))
             return false;
-        int framestoread = std::min(m_audioBuffer.size(),(size_t)wav.totalPCMFrameCount);
-        drwav_read_pcm_frames_f32(&wav, framestoread, m_audioBuffer.data());
+        int framestoread = std::min(m_audioBuffer.size()/2,(size_t)wav.totalPCMFrameCount);
+        int inchs = wav.channels;
+        std::vector<float> temp(inchs*framestoread);
+        drwav_read_pcm_frames_f32(&wav, framestoread, temp.data());
 		drwav_uninit(&wav);
-        
+        for (int i=0;i<framestoread;++i)
+        {
+            if (inchs == 1)
+            {
+                for (int j=0;j<2;++j)
+                {
+                    m_audioBuffer[i*2+j] = temp[i];
+                }
+            } else if (inchs == 2)
+            {
+                for (int j=0;j<2;++j)
+                {
+                    m_audioBuffer[i*2+j] = temp[i*2+j];
+                }
+            }
+            
+        }
         m_mut.lock();
-            m_channels = wav.channels;
+            m_channels = 2;
             m_sampleRate = wav.sampleRate;
             m_totalPCMFrameCount = framestoread;
             m_recordState = 0;
@@ -141,7 +160,7 @@ public:
     std::vector<std::vector<SamplePeaks>> peaksData;
     DrWavSource()
     {
-        m_audioBuffer.resize(44100*60*2);
+        m_audioBuffer.resize(44100*300*2);
     }
     void clearAudio(int startSample, int endSample)
     {
@@ -168,10 +187,12 @@ public:
             m_recordBufPos = 0;
         }
     }
+    bool m_has_recorded = false;
     void startRecording(int numchans, float sr)
     {
         if (m_recordState!=0)
             return;
+        m_has_recorded = true;
         m_recordChannels = numchans;
         m_recordSampleRate = sr;
         m_recordState = 1;
@@ -248,10 +269,13 @@ public:
     }
     ~DrWavSource()
     {
-        std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
-        uint64_t t = system::getUnixTime();
-        std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
-        saveFile(audioFile);
+        if (m_has_recorded)
+        {
+            std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
+            uint64_t t = system::getUnixTime();
+            std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
+            saveFile(audioFile);
+        }
     }
     int getSourceNumChannels() override
     {
