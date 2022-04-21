@@ -597,8 +597,8 @@ public:
         float out1 = (invmix * procout1 * 5.0f) + inmix * recbuf[0];
         if (inchans == 2)
             out1 = (invmix * buf[1] * 5.0f) + inmix * recbuf[1];
-        outputs[OUT_AUDIO].setVoltage(out0,0);
-        outputs[OUT_AUDIO].setVoltage(out1,1);
+        outputs[OUT_AUDIO].setVoltage(out0 , 0);
+        outputs[OUT_AUDIO].setVoltage(out1 , 1);
         outputs[OUT_LOOP_EOC].setVoltage(m_eng.m_gm->m_loop_eoc_out);
         if (m_insertMarkerTrigger.process(params[PAR_INSERT_MARKER].getValue()>0.5f))
         {
