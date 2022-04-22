@@ -1,6 +1,6 @@
 #pragma once
 
-#include "plugin.hpp"
+#include "mischelpers.h"
 
 class ImgWaveOscillator
 {

@@ -2,25 +2,9 @@
 #include <rack.hpp>
 
 using namespace rack;
-//#include <iostream>
-//#include <fstream>
-#include <functional>
-//#include "dr_wav.h"
-//#include "Tunings.h"
+
 // Declare the Plugin, defined in plugin.cpp
 extern Plugin *pluginInstance;
-
-const double g_pi = 3.14159265358979;
-
-template<typename T, size_t Sz>
-inline std::array<T, Sz> makeArray()
-{
-	std::array<T,Sz> result;
-	std::fill(result.begin(),result.end(),T{});
-	return result;
-}
-
-
 
 // Declare each Model, defined in each module source file
 
