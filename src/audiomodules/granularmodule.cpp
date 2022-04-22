@@ -200,7 +200,7 @@ public:
         m_recordState = 1;
         
     }
-    void pushSamplesToRecordBuffer(float* samples)
+    void pushSamplesToRecordBuffer(float* samples, float gain)
     {
         if (m_recordState == 0)
             return;
@@ -208,7 +208,7 @@ public:
         {
             if (m_recordBufPos<m_audioBuffer.size())
             {
-                m_audioBuffer[m_recordBufPos] = samples[i];
+                m_audioBuffer[m_recordBufPos] = samples[i]*gain;
             }
             ++m_recordBufPos;
             if (m_recordBufPos==m_audioBuffer.size())
@@ -574,17 +574,17 @@ public:
         int inchans = inputs[IN_AUDIO].getChannels();
         if (inchans==1)
         {
-            recbuf[0] = inputs[IN_AUDIO].getVoltage()/6.0f;
+            recbuf[0] = inputs[IN_AUDIO].getVoltage();
             recbuf[1] = recbuf[0];
         } else
         {
-            recbuf[0] = inputs[IN_AUDIO].getVoltage(0)/6.0f;
-            recbuf[1] = inputs[IN_AUDIO].getVoltage(1)/6.0f;
+            recbuf[0] = inputs[IN_AUDIO].getVoltage(0);
+            recbuf[1] = inputs[IN_AUDIO].getVoltage(1);
         }
         
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_eng.isRecording())
-            drsrc->pushSamplesToRecordBuffer(recbuf);
+            drsrc->pushSamplesToRecordBuffer(recbuf,0.199f);
         int srcindex = params[PAR_SOURCESELECT].getValue();
         float loopslide = params[PAR_LOOP_SLIDE].getValue();
         m_eng.process(args.sampleTime, args.sampleRate, buf,prate,pitch,loopstart,looplen,loopslide,
@@ -598,7 +598,7 @@ public:
         float out0 = (invmix * procout0 * 5.0f) + inmix * recbuf[0];
         float out1 = (invmix * procout1 * 5.0f) + inmix * recbuf[0];
         if (inchans == 2)
-            out1 = (invmix * buf[1] * 5.0f) + inmix * recbuf[1];
+            out1 = (invmix * procout1 * 5.0f) + inmix * recbuf[1];
         outputs[OUT_AUDIO].setVoltage(out0 , 0);
         outputs[OUT_AUDIO].setVoltage(out1 , 1);
         outputs[OUT_LOOP_EOC].setVoltage(m_eng.m_gm->m_loop_eoc_out);
@@ -707,7 +707,7 @@ public:
     {
         setModule(m);
         m_gm = m;
-        box.size.x = 300;
+        box.size.x = RACK_GRID_WIDTH*21;
         addChild(new LabelWidget({{1,6},{box.size.x,1}}, "GRAINS",15,nvgRGB(255,255,255),LabelWidget::J_CENTER));
         
         auto port = new PortWithBackGround(m,this,XGranularModule::OUT_AUDIO,1,17,"AUDIO OUT 1",true);
