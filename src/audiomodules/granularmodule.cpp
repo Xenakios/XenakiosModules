@@ -18,7 +18,7 @@ public:
     int m_recordState = 0;
     int m_recordBufPos = 0;
     std::mutex m_mut;
-
+    std::atomic<int> m_do_update_peaks{0};
     std::string m_filename;
     void normalize(float level)
     {
@@ -63,8 +63,12 @@ public:
         */
     }
     std::mutex m_peaks_mut;
+    int m_peak_updates_counter = 0;
     void updatePeaks()
     {
+        if (m_do_update_peaks == 0)
+            return;
+        m_peak_updates_counter++;
         std::lock_guard<std::mutex> locker(m_peaks_mut);
         float* dataPtr = m_audioBuffer.data();
         peaksData.resize(m_channels);
@@ -95,6 +99,7 @@ public:
                 peaksData[i][j].maxpeak = maxsample;
             }
         } 
+        m_do_update_peaks = 0;
     }
     bool saveFile(std::string filename)
     {
@@ -149,7 +154,7 @@ public:
             m_recordState = 0;
         m_mut.unlock();
         
-        updatePeaks();  
+        m_do_update_peaks = 1;
         m_filename = filename;
         return true;
     }
@@ -162,6 +167,10 @@ public:
     DrWavSource()
     {
         m_audioBuffer.resize(44100*300*2);
+        peaksData.resize(2);
+        for (auto& e : peaksData)
+            e.resize(1024*1024);
+
     }
     void clearAudio(int startSample, int endSample)
     {
@@ -179,7 +188,7 @@ public:
             {
                 m_audioBuffer[i] = 0.0f;
             }
-            updatePeaks();
+            m_do_update_peaks = 1;
         }
     }
     void resetRecording()
@@ -230,7 +239,7 @@ public:
         m_channels = m_recordChannels;
         m_sampleRate = m_recordSampleRate;
         m_totalPCMFrameCount = m_audioBuffer.size()/m_recordChannels;
-        updatePeaks();
+        m_do_update_peaks = 1;
     }
     void putIntoBuffer(float* dest, int frames, int channels, int startInSource) override
     {
@@ -735,6 +744,16 @@ public:
         addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,-1,-1,2*82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN REVERSE",XGranularModule::PAR_REVERSE,-1,-1,2*82.0f,101.0f));
     }
+    void step() override
+    {
+        if (m_gm)
+        {
+            auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
+            src.updatePeaks();
+        }
+        
+        ModuleWidget::step();
+    }
     void draw(const DrawArgs &args) override
     {
         nvgSave(args.vg);
@@ -745,12 +764,13 @@ public:
         if (m_gm)
         {
             char buf[100];
+            auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
             std::string rectext;
             if (m_gm->m_eng.isRecording())
                 rectext = "REC";
-            sprintf(buf,"%d %d %f %s",
+            sprintf(buf,"%d %d %f %s %d",
                 m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed,m_gm->m_notched_rate,
-                rectext.c_str());
+                rectext.c_str(),src.m_peak_updates_counter);
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
@@ -759,7 +779,7 @@ public:
             nvgText(args.vg, 1 , 230, buf, NULL);
 
             nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
+            
             if (src.m_channels>0)
             {
                 std::lock_guard<std::mutex> locker(src.m_peaks_mut);
