@@ -622,6 +622,13 @@ public:
             drsrc->clearAudio(-1,-1);
             m_next_marker_action = ACT_NONE;
         }
+        if (m_next_marker_action == ACT_CLEAR_REGION)
+        {
+            int startSample = m_eng.m_gm->m_loopstart * m_eng.m_gm->m_inputdur;
+            int endSample = startSample + (m_eng.m_gm->m_looplen * m_eng.m_gm->m_inputdur);
+            drsrc->clearAudio(startSample,endSample);
+            m_next_marker_action = ACT_NONE;
+        }
         graindebugcounter = m_eng.m_gm->debugCounter;
     }
     int graindebugcounter = 0;
@@ -631,6 +638,7 @@ public:
         ACT_CLEAR_ALL_MARKERS,
         ACT_RESET_RECORD_HEAD,
         ACT_CLEAR_ALL_AUDIO,
+        ACT_CLEAR_REGION,
         ACT_LAST
     };
     std::atomic<int> m_next_marker_action{ACT_NONE};
@@ -691,6 +699,9 @@ public:
         auto clearall = createMenuItem([this]()
         { m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_ALL_AUDIO; },"Clear all audio");
         menu->addChild(clearall);
+        auto clearregion = createMenuItem([this]()
+        { m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_REGION; },"Clear region audio");
+        menu->addChild(clearregion);
     }
     XGranularWidget(XGranularModule* m)
     {
