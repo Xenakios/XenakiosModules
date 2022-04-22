@@ -4,8 +4,11 @@
 #include <vector>
 #include <cmath>
 #include <random>
+#include <rack.hpp>
 // #include "../plugin.hpp"
 #include "../wdl/resample.h"
+
+using namespace rack;
 
 namespace xenakios
 {

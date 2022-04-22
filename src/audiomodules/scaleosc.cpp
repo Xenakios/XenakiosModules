@@ -6,7 +6,7 @@
 #include "Tunings.h"
 #include <osdialog.h>
 #include <thread>
-
+#include "scalehelpers.h"
 // Taken from Surge synth src/common/dsp/QuadFilterWaveshapers.cpp
 
 template <int pts> struct FolderADAA

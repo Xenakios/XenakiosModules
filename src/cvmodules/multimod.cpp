@@ -1,4 +1,4 @@
-#include "plugin.hpp"
+#include "mischelpers.h"
 #include "helperwidgets.h"
 #include "modulationshaper.h"
 

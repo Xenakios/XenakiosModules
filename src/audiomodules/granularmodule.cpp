@@ -1,11 +1,10 @@
-#include "plugin.hpp"
+//#include "plugin.hpp"
 #include "grain_engine.h"
-// #define DR_WAV_IMPLEMENTATION
-//#include "dr_wav.h"
 #include "helperwidgets.h"
 #include <osdialog.h>
 #include <thread>
 #include <mutex>
+#include "dr_wav.h"
 
 class DrWavSource : public GrainAudioSource
 {
@@ -19,6 +18,7 @@ public:
     int m_recordState = 0;
     int m_recordBufPos = 0;
     std::mutex m_mut;
+
     std::string m_filename;
     void normalize(float level)
     {
@@ -581,6 +581,7 @@ public:
             recbuf[0] = inputs[IN_AUDIO].getVoltage(0)/6.0f;
             recbuf[1] = inputs[IN_AUDIO].getVoltage(1)/6.0f;
         }
+        
         float buf[4] ={0.0f,0.0f,0.0f,0.0f};
         if (m_eng.isRecording())
             drsrc->pushSamplesToRecordBuffer(recbuf);
@@ -605,6 +606,7 @@ public:
         {
             m_eng.addMarker();
         }
+
         if (m_next_marker_action == ACT_CLEAR_ALL_MARKERS)
         {
             m_next_marker_action = ACT_NONE;
@@ -701,7 +703,7 @@ public:
         port = new PortWithBackGround(m,this,XGranularModule::OUT_LOOP_EOC,92,17,"LOOP EOC",true);
         port = new PortWithBackGround(m,this,XGranularModule::IN_AUDIO,34,17,"AUDIO IN",false);
         
-        addParam(createParam<RecButton>(Vec(62,34),m,XGranularModule::PAR_RECORD_ACTIVE));
+        addParam(createParam<TL1105>(Vec(62,34),m,XGranularModule::PAR_RECORD_ACTIVE));
         addParam(createParam<TL1105>(Vec(150,34),m,XGranularModule::PAR_INSERT_MARKER));
         addParam(createParam<TL1105>(Vec(180,34),m,XGranularModule::PAR_RESET));
         port = new PortWithBackGround(m,this,XGranularModule::IN_RESET,180,17,"RST",false);

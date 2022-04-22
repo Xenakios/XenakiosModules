@@ -1,7 +1,7 @@
 #include "plugin.hpp"
-#include "old/weightedrandom.h"
+//#include "old/weightedrandom.h"
 // #include "old/xenutils.h"
-#include "old/audiostretcher.h"
+//#include "old/audiostretcher.h"
 #include <array>
 
 Plugin *pluginInstance;

@@ -1,4 +1,7 @@
-#include "plugin.hpp"
+// #include "plugin.hpp"
+#include <rack.hpp>
+#include "mischelpers.h"
+using namespace rack;
 
 inline bool fuzzyFind(std::vector<double>& v, double x)
 {

@@ -2,6 +2,7 @@
 #include "../wdl/resample.h"
 #include "helperwidgets.h"
 #include <osdialog.h>
+#include "dr_wav.h"
 
 class SampleData
 {

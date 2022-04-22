@@ -1,4 +1,4 @@
-#include "plugin.hpp"
+#include "mischelpers.h"
 #include "helperwidgets.h"
 
 // taken from Xenakis Formalized music, so should hopefully be right...?

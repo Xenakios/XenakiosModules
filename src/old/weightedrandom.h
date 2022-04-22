@@ -1,7 +1,7 @@
 #pragma once
 
 #include <rack.hpp>
-#include "plugin.hpp"
+#include "mischelpers.h"
 #include <functional>
 #include <atomic>
 

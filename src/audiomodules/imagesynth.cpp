@@ -9,8 +9,9 @@
 #include "wtosc.h"
 #include "../wdl/resample.h"
 #include <chrono>
-
+#include "scalehelpers.h"
 #include "grain_engine.h"
+#include "mischelpers.h"
 
 struct PanMode
 {

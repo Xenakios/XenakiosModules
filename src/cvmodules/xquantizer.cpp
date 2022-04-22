@@ -3,6 +3,7 @@
 #include <atomic>
 #include <osdialog.h>
 #include <fstream>
+#include "scalehelpers.h"
 
 const int NUM_QUANTIZERS = 8;
 

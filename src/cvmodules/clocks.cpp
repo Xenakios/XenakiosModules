@@ -1,4 +1,5 @@
 #include "clocks.h"
+#include "mischelpers.h"
 
 class RandomClockModule : public rack::Module
 {

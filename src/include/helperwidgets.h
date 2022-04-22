@@ -1,7 +1,9 @@
 #pragma once
 
 #include <rack.hpp>
-#include "plugin.hpp"
+#include "mischelpers.h"
+
+using namespace rack;
 
 class MyRoundBlackKnob : public RoundBlackKnob
 {

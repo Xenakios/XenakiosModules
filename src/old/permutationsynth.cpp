@@ -1,4 +1,5 @@
-#include "plugin.hpp"
+//#include "plugin.hpp"
+#include "mischelpers.h"
 #include <random>
 #include "../wdl/resample.h"
 
