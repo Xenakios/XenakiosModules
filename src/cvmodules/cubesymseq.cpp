@@ -1,6 +1,8 @@
 #include "mischelpers.h"
 #include "helperwidgets.h"
 
+#include <array>
+
 // taken from Xenakis Formalized music, so should hopefully be right...?
 
 const int g_permuts[24][8] =
