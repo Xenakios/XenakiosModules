@@ -324,8 +324,9 @@ public:
         {
             ++debugCounter;
             m_outcounter = 0;
-            float glen = std::pow(m_lenMultip,3.0f);
-            glen = rescale(glen,0.0f,1.0f,0.02f,0.5f);
+            float glen = m_grainDensity * m_lenMultip;
+            glen = clamp(glen,0.02f,0.5f);
+            //glen = rescale(glen,0.0f,1.0f,0.02f,0.5f);
             float glensamples = m_sr*glen;
             float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
             float srcpostouse = m_srcpos+posrand;
@@ -423,7 +424,8 @@ public:
     }
     void setLengthMultiplier(float m)
     {
-        m_lenMultip = clamp(m,0.0,1.0f);
+        m = rescale(m,0.0f,1.0f,0.5f,8.0f);
+        m_lenMultip = clamp(m,0.5f,8.0f);
     }
 private:
     float m_grainDensity = 0.1;
