@@ -72,7 +72,7 @@ public:
         std::lock_guard<std::mutex> locker(m_peaks_mut);
         float* dataPtr = m_audioBuffer.data();
         peaksData.resize(m_channels);
-        int samplesPerPeak = 128;
+        int samplesPerPeak = 32;
         int numPeaks = m_totalPCMFrameCount/samplesPerPeak;
         for (int i=0;i<m_channels;++i)
         {
@@ -724,6 +724,7 @@ public:
             }
             float chanh = box.size.y/numchans;
             nvgBeginPath(args.vg);
+            nvgStrokeWidth(args.vg,1.5f);
             for (int i=0;i<numchans;++i)
             {
                 for (int j=0;j<numpeaks;++j)
