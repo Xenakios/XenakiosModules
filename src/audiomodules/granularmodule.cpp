@@ -684,6 +684,54 @@ public:
     }
 };
 
+class WaveFormWidget : public TransparentWidget
+{
+public:
+    XGranularModule* m_gm = nullptr;
+    int m_opts = 0;
+    WaveFormWidget(XGranularModule* m, int opts) : m_gm(m), m_opts(opts)
+    {
+
+    }
+    void draw(const DrawArgs &args) override
+    {
+        if (!m_gm)
+            return;
+        nvgSave(args.vg);
+        nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+        auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
+        if (src.m_channels>0)
+        {
+            std::lock_guard<std::mutex> locker(src.m_peaks_mut);
+            int numpeaks = box.size.x - 2;
+            int numchans = src.m_channels;
+            float numsrcpeaks = src.peaksData[0].size();
+            float chanh = box.size.y/numchans;
+            nvgBeginPath(args.vg);
+            for (int i=0;i<numchans;++i)
+            {
+                for (int j=0;j<numpeaks;++j)
+                {
+                    float index = rescale(j,0,numpeaks,0.0f,numsrcpeaks-1.0f);
+                    if (index<numsrcpeaks)
+                    {
+                        int index_i = index;
+                        float minp = src.peaksData[i][index_i].minpeak;
+                        float maxp = src.peaksData[i][index_i].maxpeak;
+                        float ycor0 = rescale(minp,-1.0f,1.0,0.0f,chanh);
+                        float ycor1 = rescale(maxp,-1.0f,1.0,0.0f,chanh);
+                        nvgMoveTo(args.vg,j,chanh*i+ycor0);
+                        nvgLineTo(args.vg,j,chanh*i+ycor1);
+                    }
+                    
+                }
+            }
+            nvgStroke(args.vg);
+        }
+        nvgRestore(args.vg);
+    }
+};
+
 class XGranularWidget : public rack::ModuleWidget
 {
 public:
@@ -743,6 +791,14 @@ public:
         addChild(new KnobInAttnWidget(this,"GRAIN RATE",XGranularModule::PAR_GRAINDENSITY,XGranularModule::IN_CV_GRAINRATE,-1,82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,-1,-1,2*82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN REVERSE",XGranularModule::PAR_REVERSE,-1,-1,2*82.0f,101.0f));
+        WaveFormWidget* wavew = new WaveFormWidget(m,0);
+        wavew->box.pos = {1.0f,215.0f};
+        wavew->box.size = {box.size.x-2.0f,80.0f};
+        addChild(wavew); 
+        wavew = new WaveFormWidget(m,1);
+        wavew->box.pos = {1.0f,295.0f};
+        wavew->box.size = {box.size.x-2.0f,80.0f};
+        addChild(wavew);
     }
     void step() override
     {
@@ -776,37 +832,13 @@ public:
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             
-            nvgText(args.vg, 1 , 230, buf, NULL);
+            nvgText(args.vg, 1 , 215, buf, NULL);
 
             nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
             
             if (src.m_channels>0)
             {
-                std::lock_guard<std::mutex> locker(src.m_peaks_mut);
-                int numpeaks = box.size.x - 2;
-                int numchans = src.m_channels;
-                float numsrcpeaks = src.peaksData[0].size();
-                float chanh = 100.0/numchans;
-                nvgBeginPath(args.vg);
-                for (int i=0;i<numchans;++i)
-                {
-                    for (int j=0;j<numpeaks;++j)
-                    {
-                        float index = rescale(j,0,numpeaks,0.0f,numsrcpeaks-1.0f);
-                        if (index<numsrcpeaks)
-                        {
-                            int index_i = index;
-                            float minp = src.peaksData[i][index_i].minpeak;
-                            float maxp = src.peaksData[i][index_i].maxpeak;
-                            float ycor0 = rescale(minp,-1.0f,1.0,0.0f,chanh);
-                            float ycor1 = rescale(maxp,-1.0f,1.0,0.0f,chanh);
-                            nvgMoveTo(args.vg,j,250.0+chanh*i+ycor0);
-                            nvgLineTo(args.vg,j,250.0+chanh*i+ycor1);
-                        }
-                        
-                    }
-                }
-                nvgStroke(args.vg);
+                
                 nvgBeginPath(args.vg);
                 nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0x80));
                 float loopstart = m_gm->m_eng.m_gm->m_actLoopstart;
