@@ -199,6 +199,13 @@ public:
         }
     }
     bool m_has_recorded = false;
+    int m_recordStartPos = 0;
+    std::pair<float,float> getLastRecordedRange()
+    {
+        float s0 = rescale((float)m_recordStartPos,0.0f,(float)m_audioBuffer.size()-1,0.0f,1.0f);
+        float s1 = rescale((float)m_recordBufPos,0.0f,(float)m_audioBuffer.size()-1,0.0f,1.0f);
+        return {s0,s1};
+    }
     void startRecording(int numchans, float sr)
     {
         if (m_recordState!=0)
@@ -207,7 +214,7 @@ public:
         m_recordChannels = numchans;
         m_recordSampleRate = sr;
         m_recordState = 1;
-        
+        m_recordStartPos = m_recordBufPos;
     }
     void pushSamplesToRecordBuffer(float* samples, float gain)
     {
@@ -778,6 +785,21 @@ public:
                 float xcor = rescale(loopstart,0.0f,1.0f,0.0f,box.size.x);
                 nvgRect(args.vg,xcor,0.0f,loopw,box.size.y);
                 nvgFill(args.vg);
+
+                auto recrange = src.getLastRecordedRange();
+                if (src.m_recordState !=0 && recrange.second>0.0f)
+                {
+                    nvgBeginPath(args.vg);
+                    nvgFillColor(args.vg,nvgRGBA(0xff, 0x00, 0x00, 127));
+                    float xcor0 = rescale(recrange.first,0.0f,1.0f,0.0f,box.size.x);
+                    float xcor1 = rescale(recrange.second,0.0f,1.0f,0.0f,box.size.x);
+                    if (xcor0>=0.0f && xcor1<box.size.x)
+                    {
+                        nvgRect(args.vg,xcor0,0.0f,xcor1-xcor0,box.size.y);
+                        nvgFill(args.vg);
+                    }
+                    
+                }
             }
         }
         nvgRestore(args.vg);
@@ -886,27 +908,6 @@ public:
             
             nvgText(args.vg, 1 , 215, buf, NULL);
 
-            nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
-            
-            if (src.m_channels>0)
-            {
-                
-
-                float ppos = src.getRecordPosition();
-                if (ppos>=0.0)
-                {
-                    nvgBeginPath(args.vg);
-                    nvgStrokeColor(args.vg,nvgRGBA(0xff, 0x00, 0x00, 0xff));
-                    float xcor = rescale(ppos,0.0f,1.0f,0.0f,box.size.x-2.0f);
-                    if (xcor<box.size.x)
-                    {
-                        nvgMoveTo(args.vg,xcor,250.0f);
-                        nvgLineTo(args.vg,xcor,250.0+100.0f);
-                        
-                    }
-                    nvgStroke(args.vg);
-                }
-            }
         }
         
 
