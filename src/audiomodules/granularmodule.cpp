@@ -72,7 +72,7 @@ public:
         std::lock_guard<std::mutex> locker(m_peaks_mut);
         float* dataPtr = m_audioBuffer.data();
         peaksData.resize(m_channels);
-        int samplesPerPeak = 32;
+        int samplesPerPeak = 256;
         int numPeaks = m_totalPCMFrameCount/(float)samplesPerPeak;
         for (int i=0;i<m_channels;++i)
         {
@@ -723,28 +723,41 @@ public:
                 endpeaks = loopendnorm * numsrcpeaks ;
             }
             float chanh = box.size.y/numchans;
-            nvgBeginPath(args.vg);
+            
             //nvgStrokeWidth(args.vg,0.5f);
             for (int i=0;i<numchans;++i)
             {
-                for (double j=0;j<numpeaks;j+=0.5)
+                
+                auto drawf = [&,this](int which)
                 {
-                    float index = rescale(j,0,numpeaks,startpeaks,endpeaks-1.0f);
-                    if (index>=0.0f && index<numsrcpeaks)
+                    nvgBeginPath(args.vg);
+                    for (int j=0;j<numpeaks;++j)
                     {
-                        int index_i = index;
-                        float minp = src.peaksData[i][index_i].minpeak;
-                        float maxp = src.peaksData[i][index_i].maxpeak;
-                        
-                        float ycor0 = rescale(minp,-1.0f,1.0,chanh,0.0f);
-                        float ycor1 = rescale(maxp,-1.0f,1.0,chanh,0.0f);
-                        nvgMoveTo(args.vg,j,chanh*i+ycor0);
-                        nvgLineTo(args.vg,j,chanh*i+ycor1);
+                        float index = rescale(j,0,numpeaks,startpeaks,endpeaks-1.0f);
+                        if (index>=0.0f && index<numsrcpeaks)
+                        {
+                            int index_i = std::round(index);
+                            float minp = src.peaksData[i][index_i].minpeak;
+                            float maxp = src.peaksData[i][index_i].maxpeak;
+                            
+                            float ycor0 = 0.0f;
+                            if (which == 0)
+                                ycor0 = rescale(minp,-1.0f,1.0,chanh,0.0f);
+                            else
+                                ycor0 = rescale(maxp,-1.0f,1.0,chanh,0.0f);
+                            if (j==0)
+                                nvgMoveTo(args.vg,j,chanh*i+ycor0);
+                            nvgLineTo(args.vg,j+1,chanh*i+ycor0);
+                        }
                     }
-                    
-                }
+                    nvgStroke(args.vg);
+                };
+                nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+                drawf(0);
+                nvgStrokeColor(args.vg,nvgRGBA(0x00, 0xff, 0xff, 0xff));
+                drawf(1);
             }
-            nvgStroke(args.vg);
+            
             nvgStrokeWidth(args.vg,1.0f);
             if (m_opts == 1)
             {
