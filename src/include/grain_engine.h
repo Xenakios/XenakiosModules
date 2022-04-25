@@ -332,8 +332,7 @@ public:
             float srcpostouse = m_srcpos+posrand;
             if (srcpostouse<0.0f)
                 srcpostouse = 0.0f;
-            srcpostouse = std::fmod(srcpostouse+m_loopslide*m_looplen*m_inputdur,m_inputdur);
-            
+            //srcpostouse = std::fmod((srcpostouse+m_loopslide*m_looplen)*m_inputdur,m_inputdur);
             m_actSourcePos = srcpostouse+m_loopstart*m_inputdur;
             float pan = 0.0f;
             if (debugCounter % 2 == 1)

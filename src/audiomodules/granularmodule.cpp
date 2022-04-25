@@ -735,6 +735,7 @@ public:
                         int index_i = index;
                         float minp = src.peaksData[i][index_i].minpeak;
                         float maxp = src.peaksData[i][index_i].maxpeak;
+                        
                         float ycor0 = rescale(minp,-1.0f,1.0,chanh,0.0f);
                         float ycor1 = rescale(maxp,-1.0f,1.0,chanh,0.0f);
                         nvgMoveTo(args.vg,j,chanh*i+ycor0);
