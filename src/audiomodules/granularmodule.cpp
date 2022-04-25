@@ -73,7 +73,7 @@ public:
         float* dataPtr = m_audioBuffer.data();
         peaksData.resize(m_channels);
         int samplesPerPeak = 32;
-        int numPeaks = m_totalPCMFrameCount/samplesPerPeak;
+        int numPeaks = m_totalPCMFrameCount/(float)samplesPerPeak;
         for (int i=0;i<m_channels;++i)
         {
             peaksData[i].resize(numPeaks);
@@ -710,7 +710,7 @@ public:
         if (src.m_channels>0)
         {
             std::lock_guard<std::mutex> locker(src.m_peaks_mut);
-            int numpeaks = box.size.x - 2;
+            int numpeaks = box.size.x;
             int numchans = src.m_channels;
             float numsrcpeaks = src.peaksData[0].size();
             float loopstartnorm = m_gm->m_eng.m_gm->m_loopstart;
@@ -724,10 +724,10 @@ public:
             }
             float chanh = box.size.y/numchans;
             nvgBeginPath(args.vg);
-            nvgStrokeWidth(args.vg,1.5f);
+            //nvgStrokeWidth(args.vg,0.5f);
             for (int i=0;i<numchans;++i)
             {
-                for (int j=0;j<numpeaks;++j)
+                for (double j=0;j<numpeaks;j+=0.5)
                 {
                     float index = rescale(j,0,numpeaks,startpeaks,endpeaks-1.0f);
                     if (index>=0.0f && index<numsrcpeaks)
@@ -735,8 +735,8 @@ public:
                         int index_i = index;
                         float minp = src.peaksData[i][index_i].minpeak;
                         float maxp = src.peaksData[i][index_i].maxpeak;
-                        float ycor0 = rescale(minp,-1.0f,1.0,0.0f,chanh);
-                        float ycor1 = rescale(maxp,-1.0f,1.0,0.0f,chanh);
+                        float ycor0 = rescale(minp,-1.0f,1.0,chanh,0.0f);
+                        float ycor1 = rescale(maxp,-1.0f,1.0,chanh,0.0f);
                         nvgMoveTo(args.vg,j,chanh*i+ycor0);
                         nvgLineTo(args.vg,j,chanh*i+ycor1);
                     }
@@ -744,6 +744,7 @@ public:
                 }
             }
             nvgStroke(args.vg);
+            nvgStrokeWidth(args.vg,1.0f);
             if (m_opts == 1)
             {
                 nvgBeginPath(args.vg);
