@@ -549,8 +549,16 @@ public:
         }
         prate = clamp(prate,-2.0f,2.0f);
         float pitch = params[PAR_PITCH].getValue();
-        pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f;
-        pitch = clamp(pitch,-24.0f,24.0f);
+        float tempa = params[PAR_ATTN_PITCH].getValue();
+        if (tempa>=0.0f)
+        {
+            tempa = std::pow(tempa,2.0f);
+        } else
+        {
+            tempa = -std::pow(tempa,2.0f);
+        }
+        pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f*tempa;
+        pitch = clamp(pitch,-36.0f,36.0f);
         float loopstart = params[PAR_LOOPSELECT].getValue();
         loopstart += inputs[IN_CV_LOOPSTART].getVoltage()*params[PAR_ATTN_LOOPSTART].getValue()/10.0f;
         loopstart = clamp(loopstart,0.0f,1.0f);
@@ -870,7 +878,7 @@ public:
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,
             XGranularModule::IN_CV_PLAYRATE,XGranularModule::PAR_ATTN_PLAYRATE,1.0f,60.0f));
         addChild(new KnobInAttnWidget(this,
-            "PITCH",XGranularModule::PAR_PITCH,XGranularModule::IN_CV_PITCH,-1,82.0f,60.0f));
+            "PITCH",XGranularModule::PAR_PITCH,XGranularModule::IN_CV_PITCH,XGranularModule::PAR_ATTN_PITCH,82.0f,60.0f));
         addChild(new KnobInAttnWidget(this,
             "LOOP SLIDE",XGranularModule::PAR_LOOP_SLIDE,-1,-1,2*82.0f,60.0f));
         addChild(new KnobInAttnWidget(this,"REGION SELECT",
