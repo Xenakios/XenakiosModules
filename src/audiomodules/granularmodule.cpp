@@ -325,6 +325,8 @@ public:
         return src->m_recordState>0;
     }
     std::vector<float> m_markers;
+    bool m_marker_added = false;
+    float m_marker_add_pos = 0.0f;
     void addMarker()
     {
         float insr = m_gm->m_sources[0]->getSourceSampleRate();
@@ -334,8 +336,10 @@ public:
         tpos += m_gm->m_loopstart;
         tpos = clamp(tpos,0.0f,1.0f);
         m_markers.push_back(tpos);
+        m_marker_added = true;
+        m_marker_add_pos = tpos;
         std::sort(m_markers.begin(),m_markers.end());
-        m_gm->m_srcpos = 0.0f;
+        //m_gm->m_srcpos = 0.0f;
     }
     void addMarkerAtPosition(float pos)
     {
@@ -359,23 +363,27 @@ public:
         buf[3] = 0.0f;
         m_gm->m_sr = sr;
         m_gm->m_inputdur = m_srcs[0]->getSourceNumSamples();
-        int markerIndex = (m_markers.size()-1)*loopstart;
+        int markerIndex = ((m_markers.size()-1)*loopstart);
         markerIndex = clamp(markerIndex,0,m_markers.size()-2);
         float regionStart = m_markers[markerIndex];
-        m_gm->m_loopstart = regionStart;
         ++markerIndex;
+        if (markerIndex >= m_markers.size())
+            markerIndex = m_markers.size() - 1;
         float regionEnd = m_markers[markerIndex];
         float regionLen = regionEnd - regionStart; 
         regionLen = clamp(regionLen,0.0f,1.0f);
-        m_gm->m_looplen = looplen * regionLen;
-        m_gm->m_loopslide = loopslide;
+        
         m_gm->m_sourcePlaySpeed = playrate;
         m_gm->m_pitch = pitch;
         m_gm->m_posrandamt = posrand;
         m_gm->m_reverseProb = revprob;
         m_gm->setDensity(grate);
         m_gm->setLengthMultiplier(lenm);
+        m_gm->m_nextLoopStart = regionStart;
+        m_gm->m_nextLoopLen = looplen * regionLen;
+        m_gm->m_loopslide = loopslide;
         m_gm->processAudio(buf,deltatime);
+        
     }
     std::vector<std::unique_ptr<GrainAudioSource>> m_srcs;
     std::unique_ptr<GrainMixer> m_gm;
@@ -611,6 +619,9 @@ public:
             drsrc->pushSamplesToRecordBuffer(recbuf,0.199f);
         int srcindex = params[PAR_SOURCESELECT].getValue();
         float loopslide = params[PAR_LOOP_SLIDE].getValue();
+        
+        
+        
         m_eng.process(args.sampleTime, args.sampleRate, buf,prate,pitch,loopstart,looplen,loopslide,
             posrnd,grate,glenm,revprob, srcindex);
         outputs[OUT_AUDIO].setChannels(2);
@@ -626,6 +637,7 @@ public:
         outputs[OUT_AUDIO].setVoltage(out0 , 0);
         outputs[OUT_AUDIO].setVoltage(out1 , 1);
         outputs[OUT_LOOP_EOC].setVoltage(m_eng.m_gm->m_loop_eoc_out);
+        
         if (m_insertMarkerTrigger.process(params[PAR_INSERT_MARKER].getValue()>0.5f))
         {
             m_eng.addMarker();
@@ -760,9 +772,9 @@ public:
                     }
                     nvgStroke(args.vg);
                 };
-                nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+                nvgStrokeColor(args.vg,nvgRGBA(0xee, 0xee, 0xee, 0xff));
                 drawf(0);
-                nvgStrokeColor(args.vg,nvgRGBA(0x00, 0xff, 0xff, 0xff));
+                nvgStrokeColor(args.vg,nvgRGBA(0xee, 0xee, 0x00, 0xff));
                 drawf(1);
             }
             
@@ -790,13 +802,13 @@ public:
             }
             if (m_opts == 0)
             {
-                nvgBeginPath(args.vg);
+                nvgBeginPath(args.vg); 
                 nvgStrokeColor(args.vg,nvgRGBA(0x00, 0xff, 0xff, 0xff));
                 auto& markers = m_gm->m_eng.m_markers; 
                 for (int i=0;i<markers.size();++i)
                 {
                     float xcor = rescale(markers[i],0.0f,1.0f,0.0f,box.size.x);
-                    nvgMoveTo(args.vg,xcor,box.size.y-5.0f);
+                    nvgMoveTo(args.vg,xcor,0.0f);
                     nvgLineTo(args.vg,xcor,box.size.y);
                 }
                 nvgStroke(args.vg);

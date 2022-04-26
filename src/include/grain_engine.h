@@ -322,6 +322,11 @@ public:
             return;
         if (m_outcounter == m_nextGrainPos)
         {
+            if (m_nextLoopStart != m_loopstart || m_nextLoopLen != m_looplen)
+            {
+                m_loopstart = m_nextLoopStart;
+                m_looplen = m_nextLoopLen;
+            }
             ++debugCounter;
             m_outcounter = 0;
             float glen = m_grainDensity * m_lenMultip;
@@ -408,6 +413,8 @@ public:
     float m_inputdur = 0.0f; // samples!
     float m_loopstart = 0.0f;
     float m_looplen = 1.0f;
+    float m_nextLoopStart = 0.0f;
+    float m_nextLoopLen = 1.0f;
     float m_loopslide = 0.0f;
     int m_outcounter = 0;
     int m_nextGrainPos = 0;
