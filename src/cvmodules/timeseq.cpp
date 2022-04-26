@@ -1,5 +1,8 @@
 #include "plugin.hpp"
 #include "helperwidgets.h"
+// #include "lua.h"
+// #include "lualib.h"
+// #include "lauxlib.h"
 
 class TimeSeqEvent
 {
@@ -16,6 +19,12 @@ public:
     TimeSeqEngine()
     {
         m_events.resize(65536);
+    }
+    void genrateLuaEvents()
+    {
+        //auto lua = luaL_newstate();
+        //luaL_openlibs (lua);
+        //lua_close(lua);
     }
     void generateEvents()
     {

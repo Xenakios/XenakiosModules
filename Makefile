@@ -9,6 +9,7 @@ FLAGS += -Idep
 FLAGS += -Isrc/include
 # FLAGS += -Idep/rubberband
 # FLAGS += -Idep/rubberband/src
+# FLAGS += -Idep/lua/src
 CFLAGS +=
 
 # CFLAGS += -g
@@ -35,7 +36,7 @@ SOURCES += $(wildcard src/audiomodules/*.cpp)
 SOURCES += $(wildcard src/cvmodules/*.cpp)
 SOURCES += $(wildcard src/wdl/*.cpp)
 SOURCES += src/dr_wav.c
-
+# SOURCES += $(wildcard dep/lua/src/*.c)
 TMPVAR := $(SOURCES)
 SOURCES = $(filter-out src/old/polyrandom.cpp, $(TMPVAR))
 # SOURCES += $(wildcard dep/rubberband/src/*.cpp)
