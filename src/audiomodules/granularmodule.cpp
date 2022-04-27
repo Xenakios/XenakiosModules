@@ -18,7 +18,8 @@ public:
     float m_recordSampleRate = 0.0f;
     int m_recordState = 0;
     int m_recordBufPos = 0;
-    std::mutex m_mut;
+    spinlock m_mut;
+    //std::mutex m_mut;
     std::atomic<int> m_do_update_peaks{0};
     std::string m_filename;
     void normalize(float level, int startframe, int endframe)
@@ -156,17 +157,20 @@ public:
             }
             
         }
+        
         m_mut.lock();
             m_channels = 2;
             m_sampleRate = wav.sampleRate;
             m_totalPCMFrameCount = framestoread;
             m_recordState = 0;
+        
         m_mut.unlock();
         
         m_do_update_peaks = 1;
         m_filename = filename;
         return true;
     }
+    std::atomic<int> busy_state{0};
     struct SamplePeaks
     {
         float minpeak = 0.0f;
@@ -259,15 +263,14 @@ public:
     }
     void putIntoBuffer(float* dest, int frames, int channels, int startInSource) override
     {
-        std::lock_guard<std::mutex> locker(m_mut);
-        float* srcDataPtr = m_audioBuffer.data();
-        
+        std::lock_guard<spinlock> locker(m_mut);
         if (m_channels==0)
         {
             for (int i=0;i<frames*channels;++i)
                 dest[i]=0.0f;
             return;
         }
+        float* srcDataPtr = m_audioBuffer.data();
         const int srcchanmap[4][4]=
         {
             {0,0,0,0},
