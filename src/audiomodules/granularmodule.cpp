@@ -517,7 +517,7 @@ public:
         configParam(PAR_LOOP_SLIDE,0.0f,1.0f,0.0f,"Loop slide");
         configParam(PAR_RESET,0.0f,1.0f,0.0f,"Reset");
         exFIFO.reset(64);
-        exFIFODiv.setDivision(44100);
+        exFIFODiv.setDivision(44100*2);
     }
     json_t* dataToJson() override
     {
@@ -570,6 +570,7 @@ public:
             {
                 func();
             }
+            exFIFODiv.reset();
         }
         float prate = params[PAR_PLAYRATE].getValue();
         prate = getNotchedPlayRate(prate);
@@ -976,8 +977,14 @@ public:
         auto resetrec = createMenuItem([this]()
         { m_gm->m_next_marker_action = XGranularModule::ACT_RESET_RECORD_HEAD; },"Reset record state");
         menu->addChild(resetrec);
-        auto clearall = createMenuItem([this]()
-        { m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_ALL_AUDIO; },"Clear all audio");
+        auto clearall = createMenuItem([this,drsrc]()
+        { 
+            m_gm->exFIFO.push([this,drsrc]()
+            {
+                drsrc->clearAudio(-1,-1);
+            });
+            //m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_ALL_AUDIO; 
+        },"Clear all audio");
         menu->addChild(clearall);
         auto clearregion = createMenuItem([this]()
         { m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_REGION; },"Clear region audio");
