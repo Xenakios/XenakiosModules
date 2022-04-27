@@ -570,6 +570,7 @@ public:
         pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f*tempa;
         pitch = clamp(pitch,-36.0f,36.0f);
         
+        // more complicated than usual because of the infinitely turning knob
         float loopstartDelta = 2.0f*(params[PAR_LOOPSELECT].getValue() - m_loopSelectRefState);
         float loopstart = m_curLoopSelect;
         if (loopstartDelta!=0.0f)
@@ -578,10 +579,11 @@ public:
             loopstart = wrap_value_safe(0.0f,loopstart,1.0f);
             m_loopSelectRefState = params[PAR_LOOPSELECT].getValue();
         }
-         
-        //loopstart += inputs[IN_CV_LOOPSTART].getVoltage()*params[PAR_ATTN_LOOPSTART].getValue()/10.0f;
-        loopstart = clamp(loopstart,0.0f,1.0f);
-        m_curLoopSelect = loopstart;
+        float cachedloopstart = loopstart;
+        loopstart += inputs[IN_CV_LOOPSTART].getVoltage()*params[PAR_ATTN_LOOPSTART].getValue()*0.1f;
+        loopstart = wrap_value_safe(0.0f,loopstart,1.0f);
+        m_curLoopSelect = cachedloopstart;
+        
         float looplen = params[PAR_LOOPLEN].getValue();
         looplen += inputs[IN_CV_LOOPLEN].getVoltage()*params[PAR_ATTN_LOOPLEN].getValue()/10.0f;
         looplen = clamp(looplen,0.0f,1.0f);
