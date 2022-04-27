@@ -539,6 +539,7 @@ public:
     }
     float m_notched_rate = 0.0f;
     float m_cur_srcposrnd = 0.0f;
+    float m_cur_playspeed = 0.0f;
     void process(const ProcessArgs& args) override
     {
         float prate = params[PAR_PLAYRATE].getValue();
@@ -562,6 +563,7 @@ public:
                 prate = 1.0f+std::pow((prate-0.5f)*2.0f,2.0f);
         }
         prate = clamp(prate,-2.0f,2.0f);
+        m_cur_playspeed = prate;
         float pitch = params[PAR_PITCH].getValue();
         float tempa = params[PAR_ATTN_PITCH].getValue();
         if (tempa>=0.0f)
@@ -746,7 +748,12 @@ public:
         if (!m_gm)
             return;
         nvgSave(args.vg);
-        nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+
+        nvgBeginPath(args.vg);
+        nvgFillColor(args.vg, nvgRGBA(0x00, 0x00, 0x00, 0xff));
+        nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
+        nvgFill(args.vg);
+
         auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
         if (src.m_channels>0)
         {
@@ -925,11 +932,11 @@ public:
         addChild(new KnobInAttnWidget(this,"GRAIN REVERSE",XGranularModule::PAR_REVERSE,-1,-1,2*82.0f,101.0f));
         WaveFormWidget* wavew = new WaveFormWidget(m,0);
         wavew->box.pos = {1.0f,215.0f};
-        wavew->box.size = {box.size.x-2.0f,50.0f};
+        wavew->box.size = {box.size.x-2.0f,48.0f};
         addChild(wavew); 
         wavew = new WaveFormWidget(m,1);
         wavew->box.pos = {1.0f,265.0f};
-        wavew->box.size = {box.size.x-2.0f,110.0f};
+        wavew->box.size = {box.size.x-2.0f,108.0f};
         addChild(wavew);
     }
     void step() override
@@ -958,7 +965,7 @@ public:
                 rectext = "REC";
             sprintf(buf,"%d %d %f %s %d %f %f",
                 m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed,m_gm->m_notched_rate,
-                rectext.c_str(),src.m_peak_updates_counter,m_gm->m_curLoopSelect,m_gm->m_cur_srcposrnd);
+                rectext.c_str(),src.m_peak_updates_counter,m_gm->m_curLoopSelect,m_gm->m_cur_playspeed);
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
