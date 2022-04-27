@@ -517,7 +517,7 @@ public:
         configParam(PAR_LOOP_SLIDE,0.0f,1.0f,0.0f,"Loop slide");
         configParam(PAR_RESET,0.0f,1.0f,0.0f,"Reset");
         exFIFO.reset(64);
-        exFIFODiv.setDivision(44100*2);
+        exFIFODiv.setDivision(32768);
     }
     json_t* dataToJson() override
     {
@@ -696,34 +696,20 @@ public:
             m_eng.addMarker();
         }
 
-        if (m_next_marker_action == ACT_CLEAR_ALL_MARKERS)
-        {
-            m_next_marker_action = ACT_NONE;
-            m_eng.clearMarkers();
-        }
-        if (m_next_marker_action == ACT_ADD_EQ_MARKERS)
-        {
-            m_next_marker_action = ACT_NONE;
-            m_eng.addEquidistantMarkers(16);
-        }
         if (m_next_marker_action == ACT_RESET_RECORD_HEAD)
         {
             drsrc->resetRecording();
             m_next_marker_action = ACT_NONE;
         }
-        if (m_next_marker_action == ACT_CLEAR_ALL_AUDIO)
-        {
-            drsrc->clearAudio(-1,-1);
-            m_next_marker_action = ACT_NONE;
-        }
-        if (m_next_marker_action == ACT_CLEAR_REGION)
-        {
-            int startSample = m_eng.m_gm->m_loopstart * m_eng.m_gm->m_inputdur;
-            int endSample = startSample + (m_eng.m_gm->m_looplen * m_eng.m_gm->m_inputdur);
-            drsrc->clearAudio(startSample,endSample);
-            m_next_marker_action = ACT_NONE;
-        }
+        
         graindebugcounter = m_eng.m_gm->debugCounter;
+    }
+    void clearRegionAudio()
+    {
+        auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
+        int startSample = m_eng.m_gm->m_loopstart * m_eng.m_gm->m_inputdur;
+        int endSample = startSample + (m_eng.m_gm->m_looplen * m_eng.m_gm->m_inputdur);
+        drsrc->clearAudio(startSample,endSample);
     }
     int graindebugcounter = 0;
     void normalizeAudio(int opts, float peakgain)
@@ -987,7 +973,13 @@ public:
         },"Clear all audio");
         menu->addChild(clearall);
         auto clearregion = createMenuItem([this]()
-        { m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_REGION; },"Clear region audio");
+        { 
+            m_gm->exFIFO.push([this]()
+            {
+                m_gm->clearRegionAudio();
+            });
+        }
+        ,"Clear region audio");
         menu->addChild(clearregion);
     }
     XGranularWidget(XGranularModule* m)
