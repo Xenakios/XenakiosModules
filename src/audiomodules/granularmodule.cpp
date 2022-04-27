@@ -5,6 +5,7 @@
 #include <thread>
 #include <mutex>
 #include "dr_wav.h"
+#include "choc_SingleReaderSingleWriterFIFO.h"
 
 class DrWavSource : public GrainAudioSource
 {
@@ -490,6 +491,7 @@ public:
     dsp::SchmittTrigger m_resetInTrigger;
     float m_loopSelectRefState = 0.0f;
     float m_curLoopSelect = 0.0f;
+    dsp::ClockDivider exFIFODiv;
     XGranularModule()
     {
         std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
@@ -514,6 +516,8 @@ public:
         configParam(PAR_INSERT_MARKER,0.0f,1.0f,0.0f,"Insert marker");
         configParam(PAR_LOOP_SLIDE,0.0f,1.0f,0.0f,"Loop slide");
         configParam(PAR_RESET,0.0f,1.0f,0.0f,"Reset");
+        exFIFO.reset(64);
+        exFIFODiv.setDivision(44100);
     }
     json_t* dataToJson() override
     {
@@ -559,6 +563,14 @@ public:
     float m_cur_playspeed = 0.0f;
     void process(const ProcessArgs& args) override
     {
+        if (exFIFODiv.process())
+        {
+            std::function<void(void)> func;
+            while (exFIFO.pop(func))
+            {
+                func();
+            }
+        }
         float prate = params[PAR_PLAYRATE].getValue();
         prate = getNotchedPlayRate(prate);
         m_notched_rate = prate;
@@ -749,6 +761,7 @@ public:
         ACT_LAST
     };
     std::atomic<int> m_next_marker_action{ACT_NONE};
+    choc::fifo::SingleReaderSingleWriterFIFO<std::function<void(void)>> exFIFO;
     GrainEngine m_eng;
 private:
     
@@ -939,11 +952,27 @@ public:
         auto revItem = createMenuItem([this,drsrc](){ drsrc->reverse(); },"Reverse audio");
         menu->addChild(revItem);
         auto clearmarksItem = createMenuItem([this]()
-        { m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_ALL_MARKERS; },"Clear all markers");
+        { 
+            m_gm->exFIFO.push([this]()
+            {
+                m_gm->m_eng.clearMarkers();
+            });
+        },"Clear all markers");
         menu->addChild(clearmarksItem);
-        clearmarksItem = createMenuItem([this]()
-        { m_gm->m_next_marker_action = XGranularModule::ACT_ADD_EQ_MARKERS; },"Add 16 markers");
-        menu->addChild(clearmarksItem);
+        std::array<int,4> temp{4,5,8,16};
+        for (size_t i=0;i<temp.size();++i)
+        {
+            clearmarksItem = createMenuItem([this,i,temp]()
+            {    
+                m_gm->exFIFO.push([this,i,temp]()
+                {
+                    m_gm->m_eng.addEquidistantMarkers(temp[i]);
+                });
+            },"Add "+std::to_string(temp[i])+" markers");
+            menu->addChild(clearmarksItem);
+        }
+        
+        
         auto resetrec = createMenuItem([this]()
         { m_gm->m_next_marker_action = XGranularModule::ACT_RESET_RECORD_HEAD; },"Reset record state");
         menu->addChild(resetrec);
