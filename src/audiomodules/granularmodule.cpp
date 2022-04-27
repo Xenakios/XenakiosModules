@@ -445,6 +445,7 @@ public:
         PAR_INSERT_MARKER,
         PAR_LOOP_SLIDE,
         PAR_RESET,
+        PAR_ATTN_SRCRND,
         PAR_LAST
     };
     enum OUTPUTS
@@ -462,6 +463,7 @@ public:
         IN_AUDIO,
         IN_CV_GRAINRATE,
         IN_RESET,
+        IN_CV_SRCRND,
         IN_LAST
     };
     dsp::BooleanTrigger m_recordTrigger;
@@ -485,6 +487,7 @@ public:
         configParam(PAR_SRCPOSRANDOM,0.0f,1.0f,0.0f,"Source position randomization");
         configParam(PAR_ATTN_LOOPSTART,-1.0f,1.0f,0.0f,"Loop start CV ATTN");
         configParam(PAR_ATTN_LOOPLEN,-1.0f,1.0f,0.0f,"Loop len CV ATTN");
+        configParam(PAR_ATTN_SRCRND,-1.0f,1.0f,0.0f,"Position randomization CV ATTN");
         configParam(PAR_GRAINDENSITY,0.0f,1.0f,0.25f,"Grain rate");
         configParam(PAR_RECORD_ACTIVE,0.0f,1.0f,0.0f,"Record active");
         configParam(PAR_LEN_MULTIP,0.0f,1.0f,0.25f,"Grain length");
@@ -535,6 +538,7 @@ public:
         return x;
     }
     float m_notched_rate = 0.0f;
+    float m_cur_srcposrnd = 0.0f;
     void process(const ProcessArgs& args) override
     {
         float prate = params[PAR_PLAYRATE].getValue();
@@ -579,15 +583,20 @@ public:
             loopstart = wrap_value_safe(0.0f,loopstart,1.0f);
             m_loopSelectRefState = params[PAR_LOOPSELECT].getValue();
         }
-        float cachedloopstart = loopstart;
+        m_curLoopSelect = loopstart;
         loopstart += inputs[IN_CV_LOOPSTART].getVoltage()*params[PAR_ATTN_LOOPSTART].getValue()*0.1f;
         loopstart = wrap_value_safe(0.0f,loopstart,1.0f);
-        m_curLoopSelect = cachedloopstart;
         
         float looplen = params[PAR_LOOPLEN].getValue();
-        looplen += inputs[IN_CV_LOOPLEN].getVoltage()*params[PAR_ATTN_LOOPLEN].getValue()/10.0f;
+        looplen += inputs[IN_CV_LOOPLEN].getVoltage()*params[PAR_ATTN_LOOPLEN].getValue()*0.1f;
         looplen = clamp(looplen,0.0f,1.0f);
+        
         float posrnd = params[PAR_SRCPOSRANDOM].getValue();
+        posrnd += inputs[IN_CV_SRCRND].getVoltage()*params[PAR_ATTN_SRCRND].getValue()*0.1f;
+        posrnd = clamp(posrnd,0.0f,1.0f);
+        posrnd = std::pow(posrnd,2.0f);
+        m_cur_srcposrnd = posrnd;
+
         float grate = params[PAR_GRAINDENSITY].getValue();
         grate += inputs[IN_CV_GRAINRATE].getVoltage()*0.2f;
         grate = clamp(grate,0.0f,1.0f);
@@ -633,8 +642,6 @@ public:
             drsrc->pushSamplesToRecordBuffer(recbuf,0.199f);
         int srcindex = params[PAR_SOURCESELECT].getValue();
         float loopslide = params[PAR_LOOP_SLIDE].getValue();
-        
-        
         
         m_eng.process(args.sampleTime, args.sampleRate, buf,prate,pitch,loopstart,looplen,loopslide,
             posrnd,grate,glenm,revprob, srcindex);
@@ -911,7 +918,8 @@ public:
             XGranularModule::PAR_LOOPSELECT,XGranularModule::IN_CV_LOOPSTART,XGranularModule::PAR_ATTN_LOOPSTART,1.0f,101.0f));
         addChild(new KnobInAttnWidget(this,"LOOP LENGTH",
             XGranularModule::PAR_LOOPLEN,XGranularModule::IN_CV_LOOPLEN,XGranularModule::PAR_ATTN_LOOPLEN,82.0f,101.0f));
-        addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",XGranularModule::PAR_SRCPOSRANDOM,-1,-1,1.0f,142.0f));
+        addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",
+            XGranularModule::PAR_SRCPOSRANDOM,XGranularModule::IN_CV_SRCRND,XGranularModule::PAR_ATTN_SRCRND,1.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN RATE",XGranularModule::PAR_GRAINDENSITY,XGranularModule::IN_CV_GRAINRATE,-1,82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,-1,-1,2*82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN REVERSE",XGranularModule::PAR_REVERSE,-1,-1,2*82.0f,101.0f));
@@ -948,9 +956,9 @@ public:
             std::string rectext;
             if (m_gm->m_eng.isRecording())
                 rectext = "REC";
-            sprintf(buf,"%d %d %f %s %d %f",
+            sprintf(buf,"%d %d %f %s %d %f %f",
                 m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed,m_gm->m_notched_rate,
-                rectext.c_str(),src.m_peak_updates_counter,m_gm->m_curLoopSelect);
+                rectext.c_str(),src.m_peak_updates_counter,m_gm->m_curLoopSelect,m_gm->m_cur_srcposrnd);
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
