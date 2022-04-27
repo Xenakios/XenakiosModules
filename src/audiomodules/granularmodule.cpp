@@ -349,6 +349,15 @@ public:
         std::sort(m_markers.begin(),m_markers.end());
         //m_gm->m_srcpos = 0.0f;
     }
+    void addEquidistantMarkers(int nummarkers)
+    {
+        m_markers.clear();
+        for (int i=0;i<nummarkers+1;++i)
+        {
+            float tpos = 1.0f/nummarkers*i;
+            m_markers.push_back(tpos);
+        }
+    }
     void addMarkerAtPosition(float pos)
     {
         pos = clamp(pos,0.0f,1.0f);
@@ -679,6 +688,11 @@ public:
             m_next_marker_action = ACT_NONE;
             m_eng.clearMarkers();
         }
+        if (m_next_marker_action == ACT_ADD_EQ_MARKERS)
+        {
+            m_next_marker_action = ACT_NONE;
+            m_eng.addEquidistantMarkers(16);
+        }
         if (m_next_marker_action == ACT_RESET_RECORD_HEAD)
         {
             drsrc->resetRecording();
@@ -731,6 +745,7 @@ public:
         ACT_RESET_RECORD_HEAD,
         ACT_CLEAR_ALL_AUDIO,
         ACT_CLEAR_REGION,
+        ACT_ADD_EQ_MARKERS,
         ACT_LAST
     };
     std::atomic<int> m_next_marker_action{ACT_NONE};
@@ -925,6 +940,9 @@ public:
         menu->addChild(revItem);
         auto clearmarksItem = createMenuItem([this]()
         { m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_ALL_MARKERS; },"Clear all markers");
+        menu->addChild(clearmarksItem);
+        clearmarksItem = createMenuItem([this]()
+        { m_gm->m_next_marker_action = XGranularModule::ACT_ADD_EQ_MARKERS; },"Add 16 markers");
         menu->addChild(clearmarksItem);
         auto resetrec = createMenuItem([this]()
         { m_gm->m_next_marker_action = XGranularModule::ACT_RESET_RECORD_HEAD; },"Reset record state");
