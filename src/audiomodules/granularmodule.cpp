@@ -372,7 +372,7 @@ public:
         float regionEnd = m_markers[markerIndex];
         float regionLen = regionEnd - regionStart; 
         regionLen = clamp(regionLen,0.0f,1.0f);
-        
+    
         m_gm->m_sourcePlaySpeed = playrate;
         m_gm->m_pitch = pitch;
         m_gm->m_posrandamt = posrand;
@@ -469,6 +469,8 @@ public:
     dsp::BooleanTrigger m_insertMarkerTrigger;
     dsp::BooleanTrigger m_resetTrigger;
     dsp::SchmittTrigger m_resetInTrigger;
+    float m_loopSelectRefState = 0.0f;
+    float m_curLoopSelect = 0.0f;
     XGranularModule()
     {
         std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
@@ -476,7 +478,7 @@ public:
         config(PAR_LAST,IN_LAST,OUT_LAST);
         configParam(PAR_PLAYRATE,-1.0f,1.0f,0.5f,"Playrate");
         configParam(PAR_PITCH,-24.0f,24.0f,0.0f,"Pitch");
-        configParam(PAR_LOOPSELECT,0.0f,1.0f,0.0f,"Region select");
+        configParam(PAR_LOOPSELECT,-INFINITY,+INFINITY,0.0f,"Region select");
         configParam(PAR_LOOPLEN,0.0f,1.0f,1.0f,"Loop length");
         configParam(PAR_ATTN_PLAYRATE,-1.0f,1.0f,0.0f,"Playrate CV ATTN");
         configParam(PAR_ATTN_PITCH,-1.0f,1.0f,0.0f,"Pitch CV ATTN");
@@ -567,9 +569,19 @@ public:
         }
         pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f*tempa;
         pitch = clamp(pitch,-36.0f,36.0f);
-        float loopstart = params[PAR_LOOPSELECT].getValue();
-        loopstart += inputs[IN_CV_LOOPSTART].getVoltage()*params[PAR_ATTN_LOOPSTART].getValue()/10.0f;
+        
+        float loopstartDelta = 2.0f*(params[PAR_LOOPSELECT].getValue() - m_loopSelectRefState);
+        float loopstart = m_curLoopSelect;
+        if (loopstartDelta!=0.0f)
+        {
+            loopstart = m_curLoopSelect + loopstartDelta;
+            loopstart = wrap_value_safe(0.0f,loopstart,1.0f);
+            m_loopSelectRefState = params[PAR_LOOPSELECT].getValue();
+        }
+         
+        //loopstart += inputs[IN_CV_LOOPSTART].getVoltage()*params[PAR_ATTN_LOOPSTART].getValue()/10.0f;
         loopstart = clamp(loopstart,0.0f,1.0f);
+        m_curLoopSelect = loopstart;
         float looplen = params[PAR_LOOPLEN].getValue();
         looplen += inputs[IN_CV_LOOPLEN].getVoltage()*params[PAR_ATTN_LOOPLEN].getValue()/10.0f;
         looplen = clamp(looplen,0.0f,1.0f);
@@ -929,20 +941,20 @@ public:
         nvgFill(args.vg);
         if (m_gm)
         {
-            char buf[100];
+            char buf[200];
             auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
             std::string rectext;
             if (m_gm->m_eng.isRecording())
                 rectext = "REC";
-            sprintf(buf,"%d %d %f %s %d",
+            sprintf(buf,"%d %d %f %s %d %f",
                 m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed,m_gm->m_notched_rate,
-                rectext.c_str(),src.m_peak_updates_counter);
+                rectext.c_str(),src.m_peak_updates_counter,m_gm->m_curLoopSelect);
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
             nvgTextLetterSpacing(args.vg, -1);
             nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 0xff));
             
-            nvgText(args.vg, 1 , 215, buf, NULL);
+            nvgText(args.vg, 1 , 210, buf, NULL);
 
         }
         
