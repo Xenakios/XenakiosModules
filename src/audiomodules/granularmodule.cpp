@@ -20,32 +20,40 @@ public:
     std::mutex m_mut;
     std::atomic<int> m_do_update_peaks{0};
     std::string m_filename;
-    void normalize(float level)
+    void normalize(float level, int startframe, int endframe)
     {
-        /*
-        float peak = 0.0f;
-        auto framesToUse = m_totalPCMFrameCount;
+        if (startframe == -1 && endframe == -1)
+        {
+            startframe = 0;
+            endframe = m_audioBuffer.size() / m_channels;
+        }
+        auto framesToUse = endframe-startframe;
         int chanstouse = m_channels;
         float* dataToUse = m_audioBuffer.data();
-        if (m_recordState>0)
+        float peak = 0.0f;
+        for (int i=0;i<framesToUse;++i)
         {
-            framesToUse = m_audioBuffer.size();
-            chanstouse = 1;
-            dataToUse = m_audioBuffer.data();
-        }
+            int index = startframe+i;
+            for (int j=0;j<chanstouse;++j)
+            {
+                float s = std::fabs(dataToUse[index*chanstouse+j]);
+                peak = std::max(s,peak);
+            }
             
-        for (int i=0;i<framesToUse*chanstouse;++i)
-        {
-            float s = std::fabs(dataToUse[i]);
-            peak = std::max(s,peak);
         }
         float normfactor = 1.0f;
         if (peak>0.0f)
             normfactor = level/peak;
-        for (int i=0;i<framesToUse*chanstouse;++i)
-            dataToUse[i]*=normfactor;
-        updatePeaks();
-        */
+        for (int i=0;i<framesToUse;++i)
+        {
+            int index = startframe+i;
+            for (int j=0;j<chanstouse;++j)
+            {
+                dataToUse[index*chanstouse+j] *= normfactor;
+            }
+        }
+        m_do_update_peaks = true;
+        
     }
     void reverse()
     {
@@ -691,6 +699,31 @@ public:
         graindebugcounter = m_eng.m_gm->debugCounter;
     }
     int graindebugcounter = 0;
+    void normalizeAudio(int opts, float peakgain)
+    {
+        auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
+        if (opts == 0)
+            drsrc->normalize(peakgain,-1,-1);
+        if (opts == 1)
+        {
+            float loopstart = m_eng.m_gm->m_actLoopstart; 
+            int startframe = loopstart * drsrc->getSourceNumSamples();
+            int endframe = m_eng.m_gm->m_actLoopend * drsrc->getSourceNumSamples();
+            drsrc->normalize(peakgain, startframe,endframe);
+        }
+        if (opts == 2)
+        {
+            auto& ms = m_eng.m_markers;
+            for (int i=0;i<ms.size()-1;++i)
+            {
+                float loopstart = ms[i];
+                float loopend = ms[i+1];
+                int startframe = loopstart * drsrc->getSourceNumSamples();
+                int endframe = loopend * drsrc->getSourceNumSamples();
+                drsrc->normalize(peakgain, startframe,endframe);
+            }
+        }
+    }
     enum ACTIONS
     {
         ACT_NONE,
@@ -881,9 +914,14 @@ public:
 		loadItem->m_mod = m_gm;
 		menu->addChild(loadItem);
         auto drsrc = dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
-        auto normItem = createMenuItem([this,drsrc](){ drsrc->normalize(1.0f); },"Normalize buffer");
+        auto normItem = createMenuItem([this](){ m_gm->normalizeAudio(0,1.0f); },"Normalize all audio");
         menu->addChild(normItem);
-        auto revItem = createMenuItem([this,drsrc](){ drsrc->reverse(); },"Reverse buffer");
+        normItem = createMenuItem([this](){ m_gm->normalizeAudio(1,1.0f); },"Normalize active region audio");
+        menu->addChild(normItem);
+        normItem = createMenuItem([this](){ m_gm->normalizeAudio(2,1.0f); },"Normalize all regions audio");
+        menu->addChild(normItem);
+
+        auto revItem = createMenuItem([this,drsrc](){ drsrc->reverse(); },"Reverse audio");
         menu->addChild(revItem);
         auto clearmarksItem = createMenuItem([this]()
         { m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_ALL_MARKERS; },"Clear all markers");
