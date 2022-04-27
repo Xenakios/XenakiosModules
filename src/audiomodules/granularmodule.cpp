@@ -408,7 +408,7 @@ public:
     }
     std::vector<std::unique_ptr<GrainAudioSource>> m_srcs;
     std::unique_ptr<GrainMixer> m_gm;
-     json_t* dataToJson() 
+    json_t* dataToJson() 
     {
         json_t* resultJ = json_object();
         auto src = dynamic_cast<DrWavSource*>(m_srcs[0].get());
@@ -915,6 +915,17 @@ public:
                     }
                     
                 }
+                float tpos = m_gm->m_eng.m_gm->getSourcePlayPosition();
+                float srclen = m_gm->m_eng.m_gm->m_inputdur;
+                
+                tpos = rescale(tpos,0.0f,srclen,0.0f,box.size.x);
+                tpos = clamp(tpos,0.0f,box.size.x);
+                nvgBeginPath(args.vg);
+                nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 255));
+                nvgMoveTo(args.vg,tpos,0.0f);
+                nvgLineTo(args.vg,tpos,box.size.y);
+                nvgStroke(args.vg);
+
             }
         }
         nvgRestore(args.vg);
@@ -949,7 +960,7 @@ public:
             });
         },"Clear all markers");
         menu->addChild(clearmarksItem);
-        std::array<int,4> temp{4,5,8,16};
+        std::array<int,6> temp{4,5,8,16,32,100};
         for (size_t i=0;i<temp.size();++i)
         {
             clearmarksItem = createMenuItem([this,i,temp]()

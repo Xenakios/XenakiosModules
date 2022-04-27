@@ -430,8 +430,13 @@ public:
     }
     void setLengthMultiplier(float m)
     {
-        m = rescale(m,0.0f,1.0f,0.5f,8.0f);
-        m_lenMultip = clamp(m,0.5f,8.0f);
+        m = clamp(m,0.0,1.0f);
+        if (m<0.5f)
+            m = rescale(m,0.0f,0.5f,0.5f,2.0f);
+        else 
+            m = rescale(m,0.5f,1.0f,2.0f,8.0f);
+        
+        m_lenMultip = m;
     }
 private:
     float m_grainDensity = 0.1;
