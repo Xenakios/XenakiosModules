@@ -953,64 +953,67 @@ public:
 		loadItem->m_mod = m_gm;
 		menu->addChild(loadItem);
         auto drsrc = dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
-        auto normItem = createMenuItem([this](){ m_gm->normalizeAudio(0,1.0f); },"Normalize all audio");
-        menu->addChild(normItem);
-        normItem = createMenuItem([this](){ m_gm->normalizeAudio(1,1.0f); },"Normalize active region audio");
-        menu->addChild(normItem);
-        normItem = createMenuItem([this](){ m_gm->normalizeAudio(2,1.0f); },"Normalize all regions audio");
-        menu->addChild(normItem);
-
-        auto revItem = createMenuItem([this,drsrc](){ drsrc->reverse(); },"Reverse audio");
-        menu->addChild(revItem);
-        /*
-        auto clearmarksItem = createMenuItem([this]()
-        { 
-            m_gm->exFIFO.push([this]()
-            {
-                m_gm->m_eng.clearMarkers();
-            });
-        },"Clear all markers");
-        */
+        auto procaudiomenufunc = [this,drsrc](Menu* targmenu)
+        {
+            auto normItem = createMenuItem([this](){ m_gm->normalizeAudio(0,1.0f); },"Normalize all audio");
+            targmenu->addChild(normItem);
+            normItem = createMenuItem([this](){ m_gm->normalizeAudio(1,1.0f); },"Normalize active region audio");
+            targmenu->addChild(normItem);
+            normItem = createMenuItem([this](){ m_gm->normalizeAudio(2,1.0f); },"Normalize all regions audio separately");
+            targmenu->addChild(normItem);
+            auto revItem = createMenuItem([this,drsrc](){ drsrc->reverse(); },"Reverse audio");
+            targmenu->addChild(revItem);
+            auto clearall = createMenuItem([this,drsrc]()
+            { 
+                m_gm->exFIFO.push([this,drsrc]()
+                {
+                    drsrc->clearAudio(-1,-1);
+                });
+                 
+            },"Clear all audio");
+            targmenu->addChild(clearall);
+            auto clearregion = createMenuItem([this]()
+            { 
+                m_gm->exFIFO.push([this]()
+                {
+                    m_gm->clearRegionAudio();
+                });
+            }
+            ,"Clear active region audio");
+            targmenu->addChild(clearregion);
+        };
+        auto procaudiomenu = createSubmenuItem("Process audio","",procaudiomenufunc);
+        menu->addChild(procaudiomenu);
+        
         auto clearmarksItem = createSafeMenuItem([this]()
         {
             m_gm->m_eng.clearMarkers();
         },"Clear all markers",m_gm->exFIFO);
         menu->addChild(clearmarksItem);
-        std::array<int,6> temp{4,5,8,16,32,100};
-        for (size_t i=0;i<temp.size();++i)
-        {
-            clearmarksItem = createMenuItem([this,i,temp]()
-            {    
-                m_gm->exFIFO.push([this,i,temp]()
-                {
-                    m_gm->m_eng.addEquidistantMarkers(temp[i]);
-                });
-            },"Add "+std::to_string(temp[i])+" markers");
-            menu->addChild(clearmarksItem);
-        }
         
+        
+        auto submenufunc = [this](Menu* targmenu)
+        {
+            std::array<int,6> temp{4,5,8,16,32,100};
+            for (size_t i=0;i<temp.size();++i)
+            {
+                auto it = createMenuItem([this,i,temp]()
+                {    
+                    m_gm->exFIFO.push([this,i,temp]()
+                    {
+                        m_gm->m_eng.addEquidistantMarkers(temp[i]);
+                    });
+                },std::to_string(temp[i])+" markers");
+                targmenu->addChild(it);
+            }
+        };
+        auto markermenu = createSubmenuItem("Create markers automatically","",submenufunc);
+        menu->addChild(markermenu);
         
         auto resetrec = createMenuItem([this]()
         { m_gm->m_next_marker_action = XGranularModule::ACT_RESET_RECORD_HEAD; },"Reset record state");
         menu->addChild(resetrec);
-        auto clearall = createMenuItem([this,drsrc]()
-        { 
-            m_gm->exFIFO.push([this,drsrc]()
-            {
-                drsrc->clearAudio(-1,-1);
-            });
-            //m_gm->m_next_marker_action = XGranularModule::ACT_CLEAR_ALL_AUDIO; 
-        },"Clear all audio");
-        menu->addChild(clearall);
-        auto clearregion = createMenuItem([this]()
-        { 
-            m_gm->exFIFO.push([this]()
-            {
-                m_gm->clearRegionAudio();
-            });
-        }
-        ,"Clear region audio");
-        menu->addChild(clearregion);
+        
     }
     XGranularWidget(XGranularModule* m)
     {
