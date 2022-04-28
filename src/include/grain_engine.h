@@ -285,6 +285,7 @@ public:
             m_grains[i].m_syn = s;
             m_grains[i].setNumOutChans(2);
         }
+        debugDivider.setDivision(32768);
     }
     std::mt19937 m_randgen;
     std::normal_distribution<float> m_gaussdist{0.0f,1.0f};
@@ -316,6 +317,7 @@ public:
         }
         return -1.0f;
     }
+    dsp::ClockDivider debugDivider;
     void processAudio(float* buf, float deltatime=0.0f)
     {
         if (m_inputdur<0.5f)
@@ -330,7 +332,7 @@ public:
             ++debugCounter;
             m_outcounter = 0;
             float glen = m_grainDensity * m_lenMultip;
-            glen = clamp(glen,0.02f,0.5f);
+            glen = clamp(glen,0.01f,1.0f);
             //glen = rescale(glen,0.0f,1.0f,0.02f,0.5f);
             float glensamples = m_sr*glen;
             float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
@@ -350,13 +352,7 @@ public:
                 m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,
                     glen,m_pitch,m_sr, pan, revgrain);
             }
-            int usedgrains = 0;
-            for (int i=0;i<m_grains.size();++i)
-            {
-                if (m_grains[i].playState == 1)
-                    ++usedgrains;
-            }
-            m_grainsUsed = usedgrains;
+            
             m_nextGrainPos=m_sr*(m_grainDensity);
             float sourceSampleRate = m_sources[0]->getSourceSampleRate();
             float rateCompens = sourceSampleRate/m_sr;
@@ -392,6 +388,16 @@ public:
             {
                 m_grains[i].process(buf);
             }
+        }
+        if (debugDivider.process())
+        {
+            int usedgrains = 0;
+            for (int i=0;i<m_grains.size();++i)
+            {
+                if (m_grains[i].playState == 1)
+                    ++usedgrains;
+            }
+            m_grainsUsed = usedgrains;
         }
         ++m_outcounter;
     }
