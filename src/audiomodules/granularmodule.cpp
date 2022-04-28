@@ -393,7 +393,7 @@ public:
     }
     void process(float deltatime, float sr,float* buf, float playrate, float pitch, 
         float loopstart, float looplen, float loopslide,
-        float posrand, float grate, float lenm, float revprob, int ss)
+        float posrand, float grate, float lenm, float revprob, int ss, float pitchspread)
     {
         buf[0] = 0.0f;
         buf[1] = 0.0f;
@@ -401,6 +401,7 @@ public:
         buf[3] = 0.0f;
         m_gm->m_sr = sr;
         m_gm->m_inputdur = m_srcs[0]->getSourceNumSamples();
+        m_gm->m_pitch_spread = pitchspread;
         int markerIndex = ((m_markers.size()-1)*loopstart);
         markerIndex = clamp(markerIndex,0,m_markers.size()-2);
         float regionStart = m_markers[markerIndex];
@@ -484,6 +485,7 @@ public:
         PAR_LOOP_SLIDE,
         PAR_RESET,
         PAR_ATTN_SRCRND,
+        PAR_ATTN_GRAINLEN,
         PAR_LAST
     };
     enum OUTPUTS
@@ -502,6 +504,7 @@ public:
         IN_CV_GRAINRATE,
         IN_RESET,
         IN_CV_SRCRND,
+        IN_CV_GRAINLEN,
         IN_LAST
     };
     dsp::BooleanTrigger m_recordTrigger;
@@ -527,9 +530,10 @@ public:
         configParam(PAR_ATTN_LOOPSTART,-1.0f,1.0f,0.0f,"Loop start CV ATTN");
         configParam(PAR_ATTN_LOOPLEN,-1.0f,1.0f,0.0f,"Loop len CV ATTN");
         configParam(PAR_ATTN_SRCRND,-1.0f,1.0f,0.0f,"Position randomization CV ATTN");
+        configParam(PAR_ATTN_GRAINLEN,-1.0f,1.0f,0.0f,"Grain length CV ATTN");
         configParam(PAR_GRAINDENSITY,0.0f,1.0f,0.25f,"Grain rate");
         configParam(PAR_RECORD_ACTIVE,0.0f,1.0f,0.0f,"Record active");
-        configParam(PAR_LEN_MULTIP,0.0f,1.0f,0.25f,"Grain length");
+        configParam(PAR_LEN_MULTIP,0.0f,1.0f,0.5f,"Grain length");
         configParam(PAR_REVERSE,0.0f,1.0f,0.0f,"Grain reverse probability");
         configParam(PAR_SOURCESELECT,0.0f,7.0f,0.0f,"Source select");
         configParam(PAR_INPUT_MIX,0.0f,1.0f,0.0f,"Input mix");
@@ -653,7 +657,11 @@ public:
         grate += inputs[IN_CV_GRAINRATE].getVoltage()*0.2f;
         grate = clamp(grate,0.0f,1.0f);
         grate = 0.01f+std::pow(1.0f-grate,2.0f)*0.49;
+        
         float glenm = params[PAR_LEN_MULTIP].getValue();
+        glenm += inputs[IN_CV_GRAINLEN].getVoltage() * params[PAR_ATTN_GRAINLEN].getValue()*0.1f;
+        glenm = clamp(glenm,0.0f,1.0f);
+
         float revprob = params[PAR_REVERSE].getValue();
         auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
         if (m_recordTrigger.process(params[PAR_RECORD_ACTIVE].getValue()>0.5f))
@@ -694,9 +702,11 @@ public:
             drsrc->pushSamplesToRecordBuffer(recbuf,0.199f);
         int srcindex = params[PAR_SOURCESELECT].getValue();
         float loopslide = params[PAR_LOOP_SLIDE].getValue();
-        
+        float pitchspread = 0.0f;
+        if (!inputs[IN_CV_PITCH].isConnected())
+            pitchspread = params[PAR_ATTN_PITCH].getValue();
         m_eng.process(args.sampleTime, args.sampleRate, buf,prate,pitch,loopstart,looplen,loopslide,
-            posrnd,grate,glenm,revprob, srcindex);
+            posrnd,grate,glenm,revprob, srcindex, pitchspread);
         outputs[OUT_AUDIO].setChannels(2);
         float inmix = params[PAR_INPUT_MIX].getValue();
         float invmix = 1.0f - inmix;
@@ -1064,7 +1074,8 @@ public:
         addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",
             XGranularModule::PAR_SRCPOSRANDOM,XGranularModule::IN_CV_SRCRND,XGranularModule::PAR_ATTN_SRCRND,1.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN RATE",XGranularModule::PAR_GRAINDENSITY,XGranularModule::IN_CV_GRAINRATE,-1,82.0f,142.0f));
-        addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,-1,-1,2*82.0f,142.0f));
+        addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,
+            XGranularModule::IN_CV_GRAINLEN,XGranularModule::PAR_ATTN_GRAINLEN,2*82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN REVERSE",XGranularModule::PAR_REVERSE,-1,-1,2*82.0f,101.0f));
         WaveFormWidget* wavew = new WaveFormWidget(m,0);
         wavew->box.pos = {1.0f,215.0f};

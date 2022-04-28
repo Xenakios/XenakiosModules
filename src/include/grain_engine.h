@@ -320,6 +320,7 @@ public:
         return -1.0f;
     }
     dsp::ClockDivider debugDivider;
+    float m_pitch_spread = 0.0f; 
     void processAudio(float* buf, float deltatime=0.0f)
     {
         if (m_inputdur<0.5f)
@@ -337,7 +338,7 @@ public:
             glen = clamp(glen,0.01f,1.0f);
             //glen = rescale(glen,0.0f,1.0f,0.02f,0.5f);
             float glensamples = m_sr*glen;
-            float posrand = m_gaussdist(m_randgen)*m_posrandamt*glensamples;
+            float posrand = m_gaussdist(m_randgen)*m_posrandamt*m_looplen*m_inputdur;
             float srcpostouse = m_srcpos+posrand;
             if (srcpostouse<0.0f)
                 srcpostouse = 0.0f;
@@ -349,12 +350,22 @@ public:
             bool revgrain = m_unidist(m_randgen)<m_reverseProb;
             int availgrain = findFreeGain();
             //float slidedpos = std::fmod(m_srcpos+m_loopslide,1.0f);
+            float pitchtouse = m_pitch;
+            if (m_pitch_spread>0.0f)
+            {
+                pitchtouse += m_gaussdist(m_randgen) * std::pow(m_pitch_spread,2.0f) * 12.0f;
+                pitchtouse = clamp(pitchtouse,-36.0f,36.0f);
+            } else if (m_pitch_spread<0.0f)
+            {
+                const std::array<float,3> pitchset = {-1.0f,0.0f,1.0f};
+                pitchtouse += pitchset[debugCounter % 3] * m_pitch_spread * 12.0f;
+            }
             if (availgrain>=0)
             {
                 int sourceFrameMin = m_loopstart * m_inputdur;
                 int sourceFrameMax = sourceFrameMin + (m_looplen * m_inputdur);
                 m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,
-                    glen,m_pitch,m_sr, pan, revgrain, sourceFrameMin, sourceFrameMax);
+                    glen,pitchtouse,m_sr, pan, revgrain, sourceFrameMin, sourceFrameMax);
             }
             
             m_nextGrainPos=m_sr*(m_grainDensity);
