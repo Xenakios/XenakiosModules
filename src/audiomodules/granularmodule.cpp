@@ -631,7 +631,7 @@ public:
         pitch = clamp(pitch,-36.0f,36.0f);
         
         // more complicated than usual because of the infinitely turning knob
-        float loopstartDelta = 2.0f*(params[PAR_LOOPSELECT].getValue() - m_loopSelectRefState);
+        float loopstartDelta = 0.25f*(params[PAR_LOOPSELECT].getValue() - m_loopSelectRefState);
         float loopstart = m_curLoopSelect;
         if (loopstartDelta!=0.0f)
         {
