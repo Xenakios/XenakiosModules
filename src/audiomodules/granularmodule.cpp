@@ -362,7 +362,7 @@ public:
         float inlensamps = m_gm->m_sources[0]->getSourceNumSamples();
         float inlensecs = insr * inlensamps;
         float tpos = 1.0f/inlensamps*m_gm->m_srcpos;
-        tpos += m_gm->m_loopstart;
+        tpos += m_gm->m_region_start;
         tpos = clamp(tpos,0.0f,1.0f);
         m_markers.push_back(tpos);
         m_marker_added = true;
@@ -737,8 +737,8 @@ public:
     void clearRegionAudio()
     {
         auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
-        int startSample = m_eng.m_gm->m_loopstart * m_eng.m_gm->m_inputdur;
-        int endSample = startSample + (m_eng.m_gm->m_looplen * m_eng.m_gm->m_inputdur);
+        int startSample = m_eng.m_gm->m_region_start * m_eng.m_gm->m_inputdur;
+        int endSample = startSample + (m_eng.m_gm->m_region_len * m_eng.m_gm->m_inputdur);
         drsrc->clearAudio(startSample,endSample);
     }
     int graindebugcounter = 0;
@@ -839,8 +839,8 @@ public:
             int numpeaks = box.size.x;
             int numchans = src.m_channels;
             float numsrcpeaks = src.peaksData[0].size();
-            float loopstartnorm = m_gm->m_eng.m_gm->m_loopstart;
-            float loopendnorm = loopstartnorm + m_gm->m_eng.m_gm->m_looplen;
+            float loopstartnorm = m_gm->m_eng.m_gm->m_region_start;
+            float loopendnorm = loopstartnorm + m_gm->m_eng.m_gm->m_region_len;
             float startpeaks = 0.0f ;
             float endpeaks = numsrcpeaks ;
             if (m_opts == 1)

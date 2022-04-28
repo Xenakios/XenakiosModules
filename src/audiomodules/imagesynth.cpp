@@ -1081,8 +1081,8 @@ public:
             looplen = clamp(looplen,0.0f,1.0f);
             looplen = std::pow(looplen,2.0f);
             m_grainsmixer.m_inputdur = m_out_dur*args.sampleRate;
-            m_grainsmixer.m_loopstart = loopstart;
-            m_grainsmixer.m_looplen = looplen;
+            m_grainsmixer.m_region_start = loopstart;
+            m_grainsmixer.m_region_len = looplen;
             m_grainsmixer.m_pitch = pitch;
             m_grainsmixer.m_sourcePlaySpeed = pspeed;
             m_grainsmixer.m_posrandamt = grnd;

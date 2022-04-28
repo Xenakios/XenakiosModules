@@ -327,10 +327,10 @@ public:
             return;
         if (m_outcounter == m_nextGrainPos)
         {
-            if (m_nextLoopStart != m_loopstart || m_nextLoopLen != m_looplen)
+            if (m_nextLoopStart != m_region_start || m_nextLoopLen != m_region_len)
             {
-                m_loopstart = m_nextLoopStart;
-                m_looplen = m_nextLoopLen;
+                m_region_start = m_nextLoopStart;
+                m_region_len = m_nextLoopLen;
             }
             ++debugCounter;
             m_outcounter = 0;
@@ -338,12 +338,12 @@ public:
             glen = clamp(glen,0.01f,1.0f);
             //glen = rescale(glen,0.0f,1.0f,0.02f,0.5f);
             float glensamples = m_sr*glen;
-            float posrand = m_gaussdist(m_randgen)*m_posrandamt*m_looplen*m_inputdur;
+            float posrand = m_gaussdist(m_randgen)*m_posrandamt*m_region_len*m_inputdur;
             float srcpostouse = m_srcpos+posrand;
             if (srcpostouse<0.0f)
                 srcpostouse = 0.0f;
             //srcpostouse = std::fmod((srcpostouse+m_loopslide*m_looplen)*m_inputdur,m_inputdur);
-            m_actSourcePos = srcpostouse+m_loopstart*m_inputdur;
+            m_actSourcePos = srcpostouse+m_region_start*m_inputdur;
             float pan = 0.0f;
             if (debugCounter % 2 == 1)
                 pan = 1.0f;
@@ -362,9 +362,9 @@ public:
             }
             if (availgrain>=0)
             {
-                int sourceFrameMin = m_loopstart * m_inputdur;
-                int sourceFrameMax = sourceFrameMin + (m_looplen * m_inputdur);
-                m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,
+                int sourceFrameMin = m_region_start * m_inputdur;
+                int sourceFrameMax = sourceFrameMin + (m_region_len * m_inputdur);
+                m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_region_start*m_inputdur,
                     glen,pitchtouse,m_sr, pan, revgrain, sourceFrameMin, sourceFrameMax);
             }
             
@@ -373,8 +373,8 @@ public:
             float rateCompens = sourceSampleRate/m_sr;
             m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed*rateCompens;
             
-            float actlooplen = m_looplen; // std::pow(m_looplen,2.0f);
-            float loopend = m_loopstart+actlooplen;
+            float actlooplen = m_region_len; // std::pow(m_looplen,2.0f);
+            float loopend = m_region_start+actlooplen;
             
             if (loopend > 1.0f)
             {
@@ -392,8 +392,8 @@ public:
                 m_loop_eoc_pulse.trigger();
             }
                 
-            m_actLoopstart = m_loopstart;
-            m_actLoopend = m_loopstart+actlooplen;
+            m_actLoopstart = m_region_start;
+            m_actLoopend = m_region_start+actlooplen;
 
         }
         m_loop_eoc_out = 10.0f*(float)m_loop_eoc_pulse.process(deltatime);
@@ -418,12 +418,12 @@ public:
     }
     float getSourcePlayPosition()
     {
-        return m_srcpos+m_inputdur*m_loopstart;
+        return m_srcpos+m_inputdur*m_region_start;
     }
     void seekPercentage(float pos)
     {
         pos = clamp(pos,0.0f,1.0f);
-        m_srcpos = m_inputdur * m_loopstart + m_inputdur * pos;
+        m_srcpos = m_inputdur * m_region_start + m_inputdur * pos;
     }
     double m_srcpos = 0.0;
     float m_sr = 44100.0;
@@ -432,8 +432,8 @@ public:
     float m_pitch = 0.0f; // semitones
     float m_posrandamt = 0.0f;
     float m_inputdur = 0.0f; // samples!
-    float m_loopstart = 0.0f;
-    float m_looplen = 1.0f;
+    float m_region_start = 0.0f;
+    float m_region_len = 1.0f;
     float m_nextLoopStart = 0.0f;
     float m_nextLoopLen = 1.0f;
     float m_loopslide = 0.0f;
