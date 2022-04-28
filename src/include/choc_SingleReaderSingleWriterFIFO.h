@@ -63,10 +63,10 @@ struct SingleReaderSingleWriterFIFO
 
     /** If any items are available, this copies the first into the given target, and returns true. */
     bool pop (Item& result);
-    std::vector<Item> items;
+    
 private:
     FIFOReadWritePosition<uint32_t, std::atomic<uint32_t>> position;
-    
+    std::vector<Item> items;
 
     SingleReaderSingleWriterFIFO (const SingleReaderSingleWriterFIFO&) = delete;
 };
