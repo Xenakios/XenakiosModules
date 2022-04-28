@@ -74,6 +74,13 @@ public:
     }
     std::mutex m_peaks_mut;
     int m_peak_updates_counter = 0;
+    int m_minFramePos = 0;
+    int m_maxFramePos = 0;
+    void setSubSection(int startFrame, int endFrame) override
+    {
+        m_minFramePos = clamp(startFrame,0,m_totalPCMFrameCount);
+        m_maxFramePos = clamp(endFrame,1,m_totalPCMFrameCount);
+    }
     void updatePeaks()
     {
         if (m_do_update_peaks == 0)
@@ -261,6 +268,21 @@ public:
         m_totalPCMFrameCount = m_audioBuffer.size()/m_recordChannels;
         m_do_update_peaks = 1;
     }
+    float getBufferSampleSafeAndFade(int frame, int channel, int fadelen)
+    {
+        if (frame>=0 && frame < m_totalPCMFrameCount)
+        {
+            float gain = 1.0f;
+            if (frame>=m_minFramePos && frame<m_minFramePos+fadelen)
+                gain = rescale((float)frame,m_minFramePos,m_minFramePos+fadelen,0.0f,1.0f);
+            if (frame>=m_maxFramePos-fadelen && frame<m_maxFramePos)
+                gain = rescale((float)frame,m_maxFramePos-fadelen,m_maxFramePos,1.0f,0.0f);
+            if (frame<m_minFramePos || frame>m_maxFramePos)
+                gain = 0.0f;
+            return m_audioBuffer[frame*m_channels+channel] * gain;
+        }
+        return 0.0;
+    }
     void putIntoBuffer(float* dest, int frames, int channels, int startInSource) override
     {
         std::lock_guard<spinlock> locker(m_mut);
@@ -278,22 +300,14 @@ public:
             {0,1,2,0},
             {0,1,2,3}
         };
+        int fadelen = m_sampleRate * 0.01f;
         for (int i=0;i<frames;++i)
         {
             int index = i+startInSource;
-            if (index>=0 && index<m_totalPCMFrameCount)
+            for (int j=0;j<channels;++j)
             {
-                for (int j=0;j<channels;++j)
-                {
-                    int actsrcchan = srcchanmap[m_channels-1][j];
-                    dest[i*channels+j] = srcDataPtr[index*m_channels+actsrcchan];
-                }
-            } else
-            {
-                for (int j=0;j<channels;++j)
-                {
-                    dest[i*channels+j] = 0.0f;
-                }
+                int actsrcchan = srcchanmap[m_channels-1][j];
+                dest[i*channels+j] = getBufferSampleSafeAndFade(index,actsrcchan,fadelen);
             }
         }
     }

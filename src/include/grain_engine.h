@@ -119,6 +119,7 @@ public:
     virtual int getSourceNumSamples() = 0;
     virtual int getSourceNumChannels() = 0;
     virtual void putIntoBuffer(float* dest, int frames, int channels, int startInSource) = 0;
+    virtual void setSubSection(int startFrame, int endFrame) {}
 };
 
 class WindowLookup
@@ -154,7 +155,7 @@ public:
         m_srcOutBuffer.resize(65536*m_chans*2);
     }
     bool initGrain(float inputdur, float startInSource,float len, float pitch, 
-        float outsr, float pan, bool reverseGrain)
+        float outsr, float pan, bool reverseGrain, int sourceFrameMin, int sourceFrameMax)
     {
         if (playState == 1)
             return false;
@@ -175,6 +176,7 @@ public:
         //srcpossamples+=rack::random::normal()*lensamples;
         srcpossamples = xenakios::clamp((float)srcpossamples,(float)0,inputdur-1.0f);
         m_sourceplaypos = 1.0f/inputdur*srcpossamples;
+        m_syn->setSubSection(sourceFrameMin, sourceFrameMax);
         m_syn->putIntoBuffer(rsinbuf,wanted,inchs,srcpossamples);
         m_resampler.ResampleOut(m_srcOutBuffer.data(),wanted,lensamples,inchs);
         float pangains[2] = {pan,1.0f-pan};
@@ -349,8 +351,10 @@ public:
             //float slidedpos = std::fmod(m_srcpos+m_loopslide,1.0f);
             if (availgrain>=0)
             {
+                int sourceFrameMin = m_loopstart * m_inputdur;
+                int sourceFrameMax = sourceFrameMin + (m_looplen * m_inputdur);
                 m_grains[availgrain].initGrain(m_inputdur,srcpostouse+m_loopstart*m_inputdur,
-                    glen,m_pitch,m_sr, pan, revgrain);
+                    glen,m_pitch,m_sr, pan, revgrain, sourceFrameMin, sourceFrameMax);
             }
             
             m_nextGrainPos=m_sr*(m_grainDensity);
