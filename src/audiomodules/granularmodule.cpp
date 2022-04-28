@@ -268,6 +268,7 @@ public:
         m_totalPCMFrameCount = m_audioBuffer.size()/m_recordChannels;
         m_do_update_peaks = 1;
     }
+    // OK, probably not the most efficient implementation, but will have to see later if can be optimized
     float getBufferSampleSafeAndFade(int frame, int channel, int fadelen)
     {
         if (frame>=0 && frame < m_totalPCMFrameCount)
@@ -277,7 +278,7 @@ public:
                 gain = rescale((float)frame,m_minFramePos,m_minFramePos+fadelen,0.0f,1.0f);
             if (frame>=m_maxFramePos-fadelen && frame<m_maxFramePos)
                 gain = rescale((float)frame,m_maxFramePos-fadelen,m_maxFramePos,1.0f,0.0f);
-            if (frame<m_minFramePos || frame>m_maxFramePos)
+            if (frame<m_minFramePos || frame>=m_maxFramePos)
                 gain = 0.0f;
             return m_audioBuffer[frame*m_channels+channel] * gain;
         }
@@ -300,10 +301,12 @@ public:
             {0,1,2,0},
             {0,1,2,3}
         };
-        int fadelen = m_sampleRate * 0.01f;
+        int fadelen = m_sampleRate * 0.005f;
+        int subsectlen = m_maxFramePos-m_minFramePos;
         for (int i=0;i<frames;++i)
         {
-            int index = i+startInSource;
+            int index = (i+startInSource) ;
+            index = wrap_value_safe(m_minFramePos,index,m_maxFramePos);
             for (int j=0;j<channels;++j)
             {
                 int actsrcchan = srcchanmap[m_channels-1][j];
@@ -875,7 +878,8 @@ public:
             if (m_opts == 1)
             {
                 nvgBeginPath(args.vg);
-                nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xff));
+                nvgFillColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xbb));
+                int numActiveGrains = m_gm->m_eng.m_gm->m_grainsUsed;
                 for (int i=0;i<16;++i)
                 {
                     float ppos = m_gm->m_eng.m_gm->getGrainSourcePosition(i);
@@ -883,15 +887,16 @@ public:
                     {
                         float srcdur = m_gm->m_eng.m_gm->m_inputdur;
                         float xcor = rescale(ppos,loopstartnorm,loopendnorm,0.0f,box.size.x);
-                        float ycor0 = box.size.y / 16 * i;
-                        float ycor1 = box.size.y / 16*(i+1);
-                        nvgMoveTo(args.vg,xcor,ycor0);
-                        nvgLineTo(args.vg,xcor,ycor1);
+                        float ycor0 = rescale(i,0,10,2.0f,box.size.y-2);
+                        //float ycor1 = box.size.y / 16*(i+1);
+                        nvgCircle(args.vg,xcor,ycor0,5.0f);
+                        //nvgMoveTo(args.vg,xcor,ycor0);
+                        //nvgLineTo(args.vg,xcor,ycor1);
                     }
                     
                 }
                 
-                nvgStroke(args.vg);
+                nvgFill(args.vg);
             }
             if (m_opts == 0)
             {
