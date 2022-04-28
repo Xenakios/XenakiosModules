@@ -932,6 +932,16 @@ public:
     }
 };
 
+template<typename F,typename FIFO>
+inline rack::MenuItem* createSafeMenuItem(F func,std::string text,FIFO& fifo)
+{
+    auto item = createMenuItem([func,&fifo]() 
+    { 
+        fifo.push(func);
+    },text);
+    return item;
+}
+
 class XGranularWidget : public rack::ModuleWidget
 {
 public:
@@ -952,6 +962,7 @@ public:
 
         auto revItem = createMenuItem([this,drsrc](){ drsrc->reverse(); },"Reverse audio");
         menu->addChild(revItem);
+        /*
         auto clearmarksItem = createMenuItem([this]()
         { 
             m_gm->exFIFO.push([this]()
@@ -959,6 +970,11 @@ public:
                 m_gm->m_eng.clearMarkers();
             });
         },"Clear all markers");
+        */
+        auto clearmarksItem = createSafeMenuItem([this]()
+        {
+            m_gm->m_eng.clearMarkers();
+        },"Clear all markers",m_gm->exFIFO);
         menu->addChild(clearmarksItem);
         std::array<int,6> temp{4,5,8,16,32,100};
         for (size_t i=0;i<temp.size();++i)
