@@ -413,7 +413,7 @@ struct Sinc
 class BufferScrubber
 {
 public:
-    Sinc<float,32,65536> m_sinc_interpolator;
+    Sinc<float,16,65536> m_sinc_interpolator;
     BufferScrubber(DrWavSource* src) : m_src{src}
     {
         m_gain_smoother.setAmount(0.999);
