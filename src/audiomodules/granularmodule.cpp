@@ -344,13 +344,41 @@ public:
         m_gain_smoother.setAmount(0.999);
         m_position_smoother.setAmount(0.9995);
     }
+    double m_last_pos = 0.0f;
     void processFrame(float* outbuf, int nchs)
     {
         float target_pos = m_position_smoother.process(m_next_pos);
-        //m_smoothed_pos = target_pos;
+        m_smoothed_pos = m_reg_start + target_pos * (m_reg_end-m_reg_start);
         int srcstartsamples = m_src->getSourceNumSamples() * m_reg_start;
         int srcendsamples = m_src->getSourceNumSamples() * m_reg_end;
-        int srclensamps = srcendsamples-srcstartsamples;
+        int srclensamps = srcendsamples - srcstartsamples;
+        m_src->setSubSection(srcstartsamples,srcendsamples);
+        double temp = (double)srcstartsamples + target_pos * srclensamps;
+        double posdiff = m_last_pos - temp;
+        if (std::abs(posdiff)<0.001)
+        {
+            m_out_gain = 0.0;
+            m_stopped = true;
+        } else
+        {
+            m_out_gain = 1.0f;
+            m_stopped = false;
+        }
+        m_last_pos = temp;
+        int index0 = temp;
+        int index1 = index0+1;
+        double frac = temp - (double)index0; 
+        float gain = m_gain_smoother.process(m_out_gain);
+        for (int i=0;i<2;++i)
+        {
+            float y0 = m_src->getBufferSampleSafeAndFade(index0,i,256);
+            float y1 = m_src->getBufferSampleSafeAndFade(index1,i,256);
+            float y2 = y0+(y1-y0)*frac;
+            outbuf[i] = y2 * gain;
+        }
+        
+#ifdef USE_WDL_RS
+        
         if (m_src_out_counter == 0)
         {
             
@@ -409,6 +437,7 @@ public:
         ++m_src_out_counter;
         if (m_src_out_counter == m_granularity)
             m_src_out_counter = 0;
+#endif
     }
     void setNextPosition(double npos)
     {
