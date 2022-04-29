@@ -348,13 +348,16 @@ public:
     {
         float target_pos = m_position_smoother.process(m_next_pos);
         //m_smoothed_pos = target_pos;
+        int srcstartsamples = m_src->getSourceNumSamples() * m_reg_start;
+        int srcendsamples = m_src->getSourceNumSamples() * m_reg_end;
+        int srclensamps = srcendsamples-srcstartsamples;
         if (m_src_out_counter == 0)
         {
-            int srclensamps = m_src->getSourceNumSamples();
-            m_src->setSubSection(0,srclensamps);
+            
+            m_src->setSubSection(srcstartsamples,srcendsamples);
             double posdiff = target_pos - m_cur_pos;
             m_cur_pos = target_pos;
-            m_smoothed_pos = 1.0/srclensamps * m_src_pos;
+            m_smoothed_pos = 1.0/m_src->getSourceNumSamples() * m_src_pos;
             double posdiffsamples = srclensamps * posdiff;
             double scrubrate = posdiffsamples / m_granularity;
             double scrubratea = std::abs(scrubrate);
@@ -389,7 +392,7 @@ public:
                 {
                     --m_src_pos;
                 }
-                m_src_pos = wrap_value_safe(0,m_src_pos,srclensamps);
+                m_src_pos = wrap_value_safe( srcstartsamples,m_src_pos,srcendsamples);
             }
             m_resampler.ResampleOut(m_src_out_buf.data(),wanted,m_granularity,2);
         }
@@ -398,7 +401,7 @@ public:
         // sync the integer sample position when "silent"
         if (outgain<0.001)
         {
-            m_src_pos = m_cur_pos * m_src->getSourceNumSamples();
+            m_src_pos = srcstartsamples + m_cur_pos * srclensamps;
             m_stopped = true;
         }
         outbuf[0] = m_src_out_buf[m_src_out_counter*2+0] * outgain;
@@ -411,6 +414,13 @@ public:
     {
         m_next_pos = npos;
     }
+    void setRegion(float startpos, float endpos)
+    {
+        m_reg_start = startpos;
+        m_reg_end = endpos;
+    }
+    float m_reg_start = 0.0f;
+    float m_reg_end = 1.0f;
     bool m_stopped = false;
     double m_cur_pos = 0.0;
     double m_smoothed_pos = 0.0f;
@@ -449,6 +459,12 @@ public:
         auto src = dynamic_cast<DrWavSource*>(m_srcs[0].get());
         return src->m_recordState>0;
     }
+    std::pair<float,float> getActiveRegionRange()
+    {
+        return {m_reg_start,m_reg_end};
+    }
+    float m_reg_start = 0.0f;
+    float m_reg_end = 1.0f;
     std::vector<float> m_markers;
     bool m_marker_added = false;
     float m_marker_add_pos = 0.0f;
@@ -495,12 +511,7 @@ public:
         buf[1] = 0.0f;
         buf[2] = 0.0f;
         buf[3] = 0.0f;
-        if (m_playmode == 2)
-        {
-            m_scrubber->setNextPosition(m_scanpos);
-            m_scrubber->processFrame(buf,2);
-            return;
-        }
+        
         m_gm->m_sr = sr;
         m_gm->m_inputdur = m_srcs[0]->getSourceNumSamples();
         m_gm->m_pitch_spread = pitchspread;
@@ -512,6 +523,8 @@ public:
             markerIndex = m_markers.size() - 1;
         float regionEnd = m_markers[markerIndex];
         float regionLen = regionEnd - regionStart; 
+        m_reg_start = regionStart;
+        m_reg_end = regionEnd;
         regionLen = clamp(regionLen,0.0f,1.0f);
     
         m_gm->m_sourcePlaySpeed = playrate;
@@ -525,6 +538,13 @@ public:
         m_gm->m_loopslide = loopslide;
         m_gm->m_playmode = m_playmode;
         m_gm->m_scanpos = m_scanpos;
+        if (m_playmode == 2)
+        {
+            m_scrubber->setRegion(regionStart,regionEnd);
+            m_scrubber->setNextPosition(m_scanpos);
+            m_scrubber->processFrame(buf,2);
+            return;
+        }
         m_gm->processAudio(buf,deltatime);
         
     }
@@ -963,8 +983,9 @@ public:
             int numpeaks = box.size.x;
             int numchans = src.m_channels;
             float numsrcpeaks = src.peaksData[0].size();
-            float loopstartnorm = m_gm->m_eng.m_gm->m_region_start;
-            float loopendnorm = loopstartnorm + m_gm->m_eng.m_gm->m_region_len;
+            auto regionrange = m_gm->m_eng.getActiveRegionRange();
+            float loopstartnorm = regionrange.first;
+            float loopendnorm = regionrange.second;
             float startpeaks = 0.0f ;
             float endpeaks = numsrcpeaks ;
             if (m_opts == 1)
@@ -1031,6 +1052,21 @@ public:
                 }
                 
                 nvgFill(args.vg);
+
+                
+                if (m_gm->m_eng.m_playmode == 2)
+                {
+                    float regionlen = regionrange.second-regionrange.first;
+                    float tpos = rescale(m_gm->m_eng.m_scrubber->m_smoothed_pos,regionrange.first,regionrange.second, 0.0f,1.0f);
+                    tpos = rescale(tpos,0.0f,1.0f,0.0f,box.size.x);
+                    tpos = clamp(tpos,0.0f,box.size.x);
+                    nvgBeginPath(args.vg);
+                    nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 255));
+                    nvgStrokeWidth(args.vg,3.0f);
+                    nvgMoveTo(args.vg,tpos,0.0f);
+                    nvgLineTo(args.vg,tpos,box.size.y);
+                    nvgStroke(args.vg);
+                }
             }
             if (m_opts == 0)
             {
@@ -1047,8 +1083,9 @@ public:
                 
                 nvgBeginPath(args.vg);
                 nvgFillColor(args.vg, nvgRGBA(0x00, 0xff, 0x00, 0x80));
-                float loopstart = m_gm->m_eng.m_gm->m_actLoopstart;
-                float loopend = m_gm->m_eng.m_gm->m_actLoopend;
+                auto regionrange = m_gm->m_eng.getActiveRegionRange();
+                float loopstart = regionrange.first;
+                float loopend = regionrange.second;
                 float loopw = rescale(loopend-loopstart,0.0f,1.0f,0.0f,box.size.x);
                 float xcor = rescale(loopstart,0.0f,1.0f,0.0f,box.size.x);
                 nvgRect(args.vg,xcor,0.0f,loopw,box.size.y);
