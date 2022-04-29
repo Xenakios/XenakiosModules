@@ -611,7 +611,7 @@ public:
         if (playmode == 1)
         {
             scanpos += cvpratescan*0.5f;
-            scanpos = clamp(scanpos,0.0f,1.0f);
+            scanpos = wrap_value_safe(0.0f,scanpos,1.0f);
             m_eng.m_scanpos = scanpos;
             
         }
