@@ -342,15 +342,20 @@ public:
     {
         m_src_out_buf.resize(m_granularity * 4);
         m_gain_smoother.setAmount(0.999);
+        m_position_smoother.setAmount(0.9995);
     }
     void processFrame(float* outbuf, int nchs)
     {
+        float target_pos = m_position_smoother.process(m_next_pos);
+        //m_smoothed_pos = target_pos;
         if (m_src_out_counter == 0)
         {
-            m_src->setSubSection(0,44100); //m_src->getSourceNumSamples());
-            double posdiff = m_next_pos - m_cur_pos;
-            m_cur_pos = m_next_pos;
-            double posdiffsamples = 44100 * posdiff;
+            int srclensamps = m_src->getSourceNumSamples();
+            m_src->setSubSection(0,srclensamps);
+            double posdiff = target_pos - m_cur_pos;
+            m_cur_pos = target_pos;
+            m_smoothed_pos = 1.0/srclensamps * m_src_pos;
+            double posdiffsamples = srclensamps * posdiff;
             double scrubrate = posdiffsamples / m_granularity;
             double scrubratea = std::abs(scrubrate);
             double rate_to_use = scrubratea;
@@ -363,10 +368,12 @@ public:
             {
                 rate_to_use = 64.0;
             }
-            if (rate_to_use >= 1.0/64)
+            if (rate_to_use > 1.0/64)
             {
                 m_out_gain = 1.0;
+                m_stopped = false;
             }
+            m_rate_used = rate_to_use;
             m_resampler.SetRates(m_src->getSourceSampleRate(),m_src->getSourceSampleRate()/rate_to_use);
             float* resampinbuf = nullptr;
             int wanted = m_resampler.ResamplePrepare(m_granularity,2,&resampinbuf);
@@ -382,11 +389,18 @@ public:
                 {
                     --m_src_pos;
                 }
-                m_src_pos = wrap_value_safe(0,m_src_pos,44100);
+                m_src_pos = wrap_value_safe(0,m_src_pos,srclensamps);
             }
             m_resampler.ResampleOut(m_src_out_buf.data(),wanted,m_granularity,2);
         }
         float outgain = m_gain_smoother.process(m_out_gain);
+        m_smoothed_out_gain = outgain;
+        // sync the integer sample position when "silent"
+        if (outgain<0.001)
+        {
+            m_src_pos = m_cur_pos * m_src->getSourceNumSamples();
+            m_stopped = true;
+        }
         outbuf[0] = m_src_out_buf[m_src_out_counter*2+0] * outgain;
         outbuf[1] = m_src_out_buf[m_src_out_counter*2+1] * outgain;
         ++m_src_out_counter;
@@ -397,18 +411,25 @@ public:
     {
         m_next_pos = npos;
     }
+    bool m_stopped = false;
+    double m_cur_pos = 0.0;
+    double m_smoothed_pos = 0.0f;
+    double m_rate_used = 0.0;
+    double m_out_gain = 0.0;
+    double m_smoothed_out_gain = 0.0f;
 private:
     DrWavSource* m_src = nullptr;
     double m_last_rate = 1.0;
-    double m_cur_pos = 0.0;
+    
     double m_next_pos = 0.0f;
     int m_src_out_counter = 0;
-    int m_granularity = 512;
+    int m_granularity = 128;
     WDL_Resampler m_resampler;
     std::vector<float> m_src_out_buf;
     int m_src_pos = 0;
     OnePoleFilter m_gain_smoother;
-    double m_out_gain = 0.0;
+    OnePoleFilter m_position_smoother;
+    
 };
 
 class GrainEngine
@@ -1047,16 +1068,31 @@ public:
                     }
                     
                 }
-                float tpos = m_gm->m_eng.m_gm->getSourcePlayPosition();
-                float srclen = m_gm->m_eng.m_gm->m_inputdur;
-                
-                tpos = rescale(tpos,0.0f,srclen,0.0f,box.size.x);
-                tpos = clamp(tpos,0.0f,box.size.x);
-                nvgBeginPath(args.vg);
-                nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 255));
-                nvgMoveTo(args.vg,tpos,0.0f);
-                nvgLineTo(args.vg,tpos,box.size.y);
-                nvgStroke(args.vg);
+                if (m_gm->m_eng.m_playmode < 2)
+                {
+                    float tpos = m_gm->m_eng.m_gm->getSourcePlayPosition();
+                    float srclen = m_gm->m_eng.m_gm->m_inputdur;
+                    
+                    tpos = rescale(tpos,0.0f,srclen,0.0f,box.size.x);
+                    tpos = clamp(tpos,0.0f,box.size.x);
+                    nvgBeginPath(args.vg);
+                    nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 255));
+                    nvgMoveTo(args.vg,tpos,0.0f);
+                    nvgLineTo(args.vg,tpos,box.size.y);
+                    nvgStroke(args.vg);
+                }
+                if (m_gm->m_eng.m_playmode == 2)
+                {
+                    float tpos = m_gm->m_eng.m_scrubber->m_smoothed_pos;
+                    tpos = rescale(tpos,0.0f,1.0f,0.0f,box.size.x);
+                    tpos = clamp(tpos,0.0f,box.size.x);
+                    nvgBeginPath(args.vg);
+                    nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 255));
+                    nvgStrokeWidth(args.vg,3.0f);
+                    nvgMoveTo(args.vg,tpos,0.0f);
+                    nvgLineTo(args.vg,tpos,box.size.y);
+                    nvgStroke(args.vg);
+                }
 
             }
         }
@@ -1217,8 +1253,12 @@ public:
             std::string rectext;
             if (m_gm->m_eng.isRecording())
                 rectext = "REC";
+            if (m_gm->m_eng.m_scrubber->m_stopped)
+                rectext =  "STOPPED  ";
+            else rectext = "SCRUBBING";
+            double scrubrate = m_gm->m_eng.m_scrubber->m_smoothed_out_gain;
             sprintf(buf,"%d %d %f %s %d %f %f",
-                m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed,m_gm->m_notched_rate,
+                m_gm->graindebugcounter,m_gm->m_eng.m_gm->m_grainsUsed,scrubrate,
                 rectext.c_str(),src.m_peak_updates_counter,m_gm->m_curLoopSelect,m_gm->m_cur_playspeed);
             nvgFontSize(args.vg, 15);
             nvgFontFaceId(args.vg, getDefaultFont(0)->handle);
