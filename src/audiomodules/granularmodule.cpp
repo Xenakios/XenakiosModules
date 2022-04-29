@@ -335,16 +335,94 @@ public:
     int getSourceNumSamples() override { return m_totalPCMFrameCount; };
 };
 
+// adapted from https://github.com/Chowdhury-DSP/chowdsp_utils
+// begin Chowdhury code
+/**
+    Successive samples in the delay line will be interpolated using Sinc
+    interpolation. This method is somewhat less efficient than the others,
+    but gives a very smooth and flat frequency response.
+
+    Note that Sinc interpolation cannot currently be used with SIMD data types!
+*/
+template <typename T, size_t N, size_t M = 256>
+struct Sinc
+{
+    Sinc()
+    {
+        T cutoff = 0.455f;
+        size_t j;
+        for (j = 0; j < M + 1; j++)
+        {
+            for (size_t i = 0; i < N; i++)
+            {
+                T t = -T (i) + T (N / (T) 2.0) + T (j) / T (M) - (T) 1.0;
+                sinctable[j * N * 2 + i] = symmetric_blackman (t, (int) N) * cutoff * sincf (cutoff * t);
+            }
+        }
+        for (j = 0; j < M; j++)
+        {
+            for (size_t i = 0; i < N; i++)
+                sinctable[j * N * 2 + N + i] = (sinctable[(j + 1) * N * 2 + i] - sinctable[j * N * 2 + i]) / (T) 65536.0;
+        }
+    }
+
+    inline T sincf (T x) const noexcept
+    {
+        if (x == (T) 0)
+            return (T) 1;
+        const double twoPi = g_pi * 2;
+        return (std::sin (g_pi * x)) / (g_pi * x);
+    }
+
+    inline T symmetric_blackman (T i, int n) const noexcept
+    {
+        i -= (n / 2);
+        const double twoPi = g_pi * 2;
+        return ((T) 0.42 - (T) 0.5 * std::cos (twoPi * i / (n))
+                + (T) 0.08 * std::cos (4 * g_pi * i / (n)));
+    }
+
+    void reset (int newTotalSize) { totalSize = newTotalSize; }
+
+    void updateInternalVariables (int& /*delayIntOffset*/, T& /*delayFrac*/) {}
+    template<typename Source>
+    inline T call (Source& buffer, int delayInt, double delayFrac, const T& /*state*/, int channel)
+    {
+        auto sincTableOffset = (size_t) (( 1.0 - delayFrac) * (T) M) * N * 2;
+
+        auto out = ((T) 0);
+        //for (size_t i = 0; i < N; i += juce::dsp::SIMDRegister<T>::size())
+        for (size_t i = 0; i < N; i += 1)
+        {
+            //auto buff_reg = SIMDUtils::loadUnaligned (&buffer[(size_t) delayInt + i]);
+            auto buff_reg = buffer.getBufferSampleSafeAndFade(delayInt + i,channel,512);
+            //auto sinc_reg = juce::dsp::SIMDRegister<T>::fromRawArray (&sinctable[sincTableOffset + i]);
+            auto sinc_reg = sinctable[sincTableOffset + i];
+            out += buff_reg * sinc_reg;
+        }
+
+        return out;
+    }
+
+    int totalSize = 0;
+    //T sinctable alignas (SIMDUtils::CHOWDSP_DEFAULT_SIMD_ALIGNMENT)[(M + 1) * N * 2];
+    T sinctable alignas (16) [(M + 1) * N * 2];
+};
+
+// end Chowdhury code
+
 class BufferScrubber
 {
 public:
+    Sinc<float,32,65536> m_sinc_interpolator;
     BufferScrubber(DrWavSource* src) : m_src{src}
     {
         m_src_out_buf.resize(m_granularity * 4);
         m_gain_smoother.setAmount(0.999);
-        m_position_smoother.setAmount(0.9995);
+        m_position_smoother.setAmount(0.999);
     }
     double m_last_pos = 0.0f;
+    int m_resampler_type = 1;
     void processFrame(float* outbuf, int nchs)
     {
         float target_pos = m_position_smoother.process(m_next_pos);
@@ -358,24 +436,48 @@ public:
         if (std::abs(posdiff)<0.001)
         {
             m_out_gain = 0.0;
-            m_stopped = true;
+            
         } else
         {
             m_out_gain = 1.0f;
-            m_stopped = false;
+            
         }
         m_last_pos = temp;
         int index0 = temp;
         int index1 = index0+1;
-        double frac = temp - (double)index0; 
+        double frac = (temp - (double)index0); 
+        if (m_resampler_type == 1)
+            frac = 1.0-frac;
         float gain = m_gain_smoother.process(m_out_gain);
-        for (int i=0;i<2;++i)
+        if (gain>=0.00001)
         {
-            float y0 = m_src->getBufferSampleSafeAndFade(index0,i,256);
-            float y1 = m_src->getBufferSampleSafeAndFade(index1,i,256);
-            float y2 = y0+(y1-y0)*frac;
-            outbuf[i] = y2 * gain;
+            m_stopped = false;
+            float bogus = 0.0f;
+            if (m_resampler_type == 0)
+            {
+                for (int i=0;i<2;++i)
+                {
+                    float y0 = m_src->getBufferSampleSafeAndFade(index0,i,256);
+                    float y1 = m_src->getBufferSampleSafeAndFade(index1,i,256);
+                    float y2 = y0+(y1-y0)*frac;
+                    outbuf[i] = y2 * gain;
+                }    
+            } else
+            {
+                for (int i=0;i<2;++i)
+                {
+                    float y2 = m_sinc_interpolator.call(*m_src,index0,frac,bogus,i);
+                    outbuf[i] = y2 * gain;
+                }
+            }
+        } else
+        {
+            m_stopped = true;
+            outbuf[0] = 0.0f;
+            outbuf[1] = 0.0f;
         }
+        
+        
         
 #ifdef USE_WDL_RS
         
@@ -1248,6 +1350,14 @@ public:
         { m_gm->m_next_marker_action = XGranularModule::ACT_RESET_RECORD_HEAD; },"Reset record state");
         menu->addChild(resetrec);
         
+        auto scrubopt = createMenuItem([this]()
+        { 
+            if (m_gm->m_eng.m_scrubber->m_resampler_type == 0)
+                m_gm->m_eng.m_scrubber->m_resampler_type = 1;
+            else m_gm->m_eng.m_scrubber->m_resampler_type = 0;
+        }
+        ,"Sinc interpolation for scrub mode",CHECKMARK(m_gm->m_eng.m_scrubber->m_resampler_type == 1));
+        menu->addChild(scrubopt);
     }
     XGranularWidget(XGranularModule* m)
     {
