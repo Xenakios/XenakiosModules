@@ -421,6 +421,8 @@ public:
         m_gm->m_nextLoopStart = regionStart;
         m_gm->m_nextLoopLen = looplen * regionLen;
         m_gm->m_loopslide = loopslide;
+        m_gm->m_playmode = m_playmode;
+        m_gm->m_scanpos = m_scanpos;
         m_gm->processAudio(buf,deltatime);
         
     }
@@ -457,6 +459,8 @@ public:
             m_markers.push_back(pos);
         }
     }
+    int m_playmode = 0; // 0 normal, 1 scan mode, 2 granulation disabled
+    float m_scanpos = 0.0f;
 private:
     
 };
@@ -486,6 +490,7 @@ public:
         PAR_RESET,
         PAR_ATTN_SRCRND,
         PAR_ATTN_GRAINLEN,
+        PAR_PLAYBACKMODE,
         PAR_LAST
     };
     enum OUTPUTS
@@ -540,6 +545,8 @@ public:
         configParam(PAR_INSERT_MARKER,0.0f,1.0f,0.0f,"Insert marker");
         configParam(PAR_LOOP_SLIDE,0.0f,1.0f,0.0f,"Loop slide");
         configParam(PAR_RESET,0.0f,1.0f,0.0f,"Reset");
+        configSwitch(PAR_PLAYBACKMODE,0,1,0,"Playback mode",
+            {"Playrate controls rate","Playrate controls region scan position"});
         exFIFO.reset(64);
         exFIFODiv.setDivision(32768);
     }
@@ -597,9 +604,20 @@ public:
             exFIFODiv.reset();
         }
         float prate = params[PAR_PLAYRATE].getValue();
+        float scanpos = rescale(prate,-1.0f,1.0f,0.0f,1.0f);
+        float cvpratescan = inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()*0.2f;
+        int playmode = params[PAR_PLAYBACKMODE].getValue();
+        m_eng.m_playmode = playmode;
+        if (playmode == 1)
+        {
+            scanpos += cvpratescan*0.5f;
+            scanpos = clamp(scanpos,0.0f,1.0f);
+            m_eng.m_scanpos = scanpos;
+            
+        }
         prate = getNotchedPlayRate(prate);
         m_notched_rate = prate;
-        prate += inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()*0.2f;
+        prate += cvpratescan;
         prate = clamp(prate,-1.0f,1.0f);
         if (prate<0.0f)
         {
@@ -1060,9 +1078,12 @@ public:
         addParam(createParam<TL1105>(Vec(180,34),m,XGranularModule::PAR_RESET));
         port = new PortWithBackGround(m,this,XGranularModule::IN_RESET,180,17,"RST",false);
         addParam(createParam<Trimpot>(Vec(62,14),m,XGranularModule::PAR_INPUT_MIX));
+        
         addChild(new KnobInAttnWidget(this,
             "PLAYRATE",XGranularModule::PAR_PLAYRATE,
             XGranularModule::IN_CV_PLAYRATE,XGranularModule::PAR_ATTN_PLAYRATE,1.0f,60.0f));
+        addParam(createParam<CKSSThreeHorizontal>(Vec(55.0, 60.0), module, XGranularModule::PAR_PLAYBACKMODE));
+        
         addChild(new KnobInAttnWidget(this,
             "PITCH",XGranularModule::PAR_PITCH,XGranularModule::IN_CV_PITCH,XGranularModule::PAR_ATTN_PITCH,82.0f,60.0f));
         addChild(new KnobInAttnWidget(this,
@@ -1077,6 +1098,7 @@ public:
         addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,
             XGranularModule::IN_CV_GRAINLEN,XGranularModule::PAR_ATTN_GRAINLEN,2*82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN REVERSE",XGranularModule::PAR_REVERSE,-1,-1,2*82.0f,101.0f));
+        
         WaveFormWidget* wavew = new WaveFormWidget(m,0);
         wavew->box.pos = {1.0f,215.0f};
         wavew->box.size = {box.size.x-2.0f,48.0f};

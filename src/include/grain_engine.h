@@ -340,8 +340,12 @@ public:
             float glensamples = m_sr*glen;
             float posrand = m_gaussdist(m_randgen)*m_posrandamt*m_region_len*m_inputdur;
             float srcpostouse = m_srcpos+posrand;
-            if (srcpostouse<0.0f)
-                srcpostouse = 0.0f;
+            if (m_playmode == 1)
+            {
+                srcpostouse = m_region_len*m_scanpos*m_inputdur;
+            }
+            //if (srcpostouse<0.0f)
+            //    srcpostouse = 0.0f;
             //srcpostouse = std::fmod((srcpostouse+m_loopslide*m_looplen)*m_inputdur,m_inputdur);
             m_actSourcePos = srcpostouse+m_region_start*m_inputdur;
             float pan = 0.0f;
@@ -371,8 +375,10 @@ public:
             m_nextGrainPos=m_sr*(m_grainDensity);
             float sourceSampleRate = m_sources[0]->getSourceSampleRate();
             float rateCompens = sourceSampleRate/m_sr;
-            m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed*rateCompens;
-            
+            if (m_playmode == 0)
+                m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed*rateCompens;
+            else    
+                m_srcpos = srcpostouse;
             float actlooplen = m_region_len; // std::pow(m_looplen,2.0f);
             float loopend = m_region_start+actlooplen;
             
@@ -439,7 +445,8 @@ public:
     float m_loopslide = 0.0f;
     int m_outcounter = 0;
     int m_nextGrainPos = 0;
-    
+    int m_playmode = 0;
+    float m_scanpos = 0.0f;
     std::array<ISGrain,64> m_grains;
     void setDensity(float d)
     {
