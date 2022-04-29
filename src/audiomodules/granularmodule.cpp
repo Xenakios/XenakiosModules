@@ -370,7 +370,6 @@ struct Sinc
     {
         if (x == (T) 0)
             return (T) 1;
-        const double twoPi = g_pi * 2;
         return (std::sin (g_pi * x)) / (g_pi * x);
     }
 
@@ -417,7 +416,6 @@ public:
     Sinc<float,32,65536> m_sinc_interpolator;
     BufferScrubber(DrWavSource* src) : m_src{src}
     {
-        m_src_out_buf.resize(m_granularity * 4);
         m_gain_smoother.setAmount(0.999);
         m_position_smoother.setAmount(0.999);
     }
@@ -433,23 +431,21 @@ public:
         m_src->setSubSection(srcstartsamples,srcendsamples);
         double temp = (double)srcstartsamples + target_pos * srclensamps;
         double posdiff = m_last_pos - temp;
-        if (std::abs(posdiff)<0.001)
+        if (std::abs(posdiff)<1.0f/128) // so slow already that can just as well cut output
         {
             m_out_gain = 0.0;
-            
         } else
         {
             m_out_gain = 1.0f;
-            
         }
         m_last_pos = temp;
         int index0 = temp;
         int index1 = index0+1;
         double frac = (temp - (double)index0); 
-        if (m_resampler_type == 1)
+        if (m_resampler_type == 1) // for sinc...
             frac = 1.0-frac;
         float gain = m_gain_smoother.process(m_out_gain);
-        if (gain>=0.00001)
+        if (gain>=0.00001) // over -100db, process
         {
             m_stopped = false;
             float bogus = 0.0f;
@@ -476,70 +472,6 @@ public:
             outbuf[0] = 0.0f;
             outbuf[1] = 0.0f;
         }
-        
-        
-        
-#ifdef USE_WDL_RS
-        
-        if (m_src_out_counter == 0)
-        {
-            
-            m_src->setSubSection(srcstartsamples,srcendsamples);
-            double posdiff = target_pos - m_cur_pos;
-            m_cur_pos = target_pos;
-            m_smoothed_pos = 1.0/m_src->getSourceNumSamples() * m_src_pos;
-            double posdiffsamples = srclensamps * posdiff;
-            double scrubrate = posdiffsamples / m_granularity;
-            double scrubratea = std::abs(scrubrate);
-            double rate_to_use = scrubratea;
-            if (rate_to_use<1.0/64)
-            {
-                rate_to_use = 1.0/64;
-                m_out_gain = 0.0f;
-            }
-            if (rate_to_use>64.0)
-            {
-                rate_to_use = 64.0;
-            }
-            if (rate_to_use > 1.0/64)
-            {
-                m_out_gain = 1.0;
-                m_stopped = false;
-            }
-            m_rate_used = rate_to_use;
-            m_resampler.SetRates(m_src->getSourceSampleRate(),m_src->getSourceSampleRate()/rate_to_use);
-            float* resampinbuf = nullptr;
-            int wanted = m_resampler.ResamplePrepare(m_granularity,2,&resampinbuf);
-            for (int i=0;i<wanted;++i)
-            {
-                resampinbuf[i*2+0] = m_src->getBufferSampleSafeAndFade(m_src_pos,0,1024);
-                resampinbuf[i*2+1] = m_src->getBufferSampleSafeAndFade(m_src_pos,1,1024);
-                if (scrubrate>0.0)
-                {
-                    ++m_src_pos;
-                }
-                if (scrubrate<0.0)
-                {
-                    --m_src_pos;
-                }
-                m_src_pos = wrap_value_safe( srcstartsamples,m_src_pos,srcendsamples);
-            }
-            m_resampler.ResampleOut(m_src_out_buf.data(),wanted,m_granularity,2);
-        }
-        float outgain = m_gain_smoother.process(m_out_gain);
-        m_smoothed_out_gain = outgain;
-        // sync the integer sample position when "silent"
-        if (outgain<0.001)
-        {
-            m_src_pos = srcstartsamples + m_cur_pos * srclensamps;
-            m_stopped = true;
-        }
-        outbuf[0] = m_src_out_buf[m_src_out_counter*2+0] * outgain;
-        outbuf[1] = m_src_out_buf[m_src_out_counter*2+1] * outgain;
-        ++m_src_out_counter;
-        if (m_src_out_counter == m_granularity)
-            m_src_out_counter = 0;
-#endif
     }
     void setNextPosition(double npos)
     {
@@ -561,16 +493,11 @@ public:
 private:
     DrWavSource* m_src = nullptr;
     double m_last_rate = 1.0;
-    
     double m_next_pos = 0.0f;
     int m_src_out_counter = 0;
-    int m_granularity = 128;
-    WDL_Resampler m_resampler;
-    std::vector<float> m_src_out_buf;
     int m_src_pos = 0;
     OnePoleFilter m_gain_smoother;
     OnePoleFilter m_position_smoother;
-    
 };
 
 class GrainEngine
