@@ -335,18 +335,93 @@ public:
     int getSourceNumSamples() override { return m_totalPCMFrameCount; };
 };
 
+class BufferScrubber
+{
+public:
+    BufferScrubber(DrWavSource* src) : m_src{src}
+    {
+        m_src_out_buf.resize(m_granularity * 4);
+        m_gain_smoother.setAmount(0.999);
+    }
+    void processFrame(float* outbuf, int nchs)
+    {
+        if (m_src_out_counter == 0)
+        {
+            m_src->setSubSection(0,44100); //m_src->getSourceNumSamples());
+            double posdiff = m_next_pos - m_cur_pos;
+            m_cur_pos = m_next_pos;
+            double posdiffsamples = 44100 * posdiff;
+            double scrubrate = posdiffsamples / m_granularity;
+            double scrubratea = std::abs(scrubrate);
+            double rate_to_use = scrubratea;
+            if (rate_to_use<1.0/64)
+            {
+                rate_to_use = 1.0/64;
+                m_out_gain = 0.0f;
+            }
+            if (rate_to_use>64.0)
+            {
+                rate_to_use = 64.0;
+            }
+            if (rate_to_use >= 1.0/64)
+            {
+                m_out_gain = 1.0;
+            }
+            m_resampler.SetRates(m_src->getSourceSampleRate(),m_src->getSourceSampleRate()/rate_to_use);
+            float* resampinbuf = nullptr;
+            int wanted = m_resampler.ResamplePrepare(m_granularity,2,&resampinbuf);
+            for (int i=0;i<wanted;++i)
+            {
+                resampinbuf[i*2+0] = m_src->getBufferSampleSafeAndFade(m_src_pos,0,1024);
+                resampinbuf[i*2+1] = m_src->getBufferSampleSafeAndFade(m_src_pos,1,1024);
+                if (scrubrate>0.0)
+                {
+                    ++m_src_pos;
+                }
+                if (scrubrate<0.0)
+                {
+                    --m_src_pos;
+                }
+                m_src_pos = wrap_value_safe(0,m_src_pos,44100);
+            }
+            m_resampler.ResampleOut(m_src_out_buf.data(),wanted,m_granularity,2);
+        }
+        float outgain = m_gain_smoother.process(m_out_gain);
+        outbuf[0] = m_src_out_buf[m_src_out_counter*2+0] * outgain;
+        outbuf[1] = m_src_out_buf[m_src_out_counter*2+1] * outgain;
+        ++m_src_out_counter;
+        if (m_src_out_counter == m_granularity)
+            m_src_out_counter = 0;
+    }
+    void setNextPosition(double npos)
+    {
+        m_next_pos = npos;
+    }
+private:
+    DrWavSource* m_src = nullptr;
+    double m_last_rate = 1.0;
+    double m_cur_pos = 0.0;
+    double m_next_pos = 0.0f;
+    int m_src_out_counter = 0;
+    int m_granularity = 512;
+    WDL_Resampler m_resampler;
+    std::vector<float> m_src_out_buf;
+    int m_src_pos = 0;
+    OnePoleFilter m_gain_smoother;
+    double m_out_gain = 0.0;
+};
+
 class GrainEngine
 {
 public:
+    std::unique_ptr<BufferScrubber> m_scrubber;
     GrainEngine()
     {
-        m_srcs.emplace_back(new DrWavSource);
+        DrWavSource* wavsrc = new DrWavSource;
+        m_srcs.emplace_back(wavsrc);
         m_gm.reset(new GrainMixer(m_srcs));
-        m_markers.reserve(1000);
-        //for (int i=0;i<17;++i)
-        //    m_markers.push_back(1.0f/16*i);
-        //m_markers.erase(m_markers.begin()+5);
         m_markers = {0.0f,1.0f};
+        m_scrubber.reset(new BufferScrubber(wavsrc));
     }
     bool isRecording()
     {
@@ -399,6 +474,12 @@ public:
         buf[1] = 0.0f;
         buf[2] = 0.0f;
         buf[3] = 0.0f;
+        if (m_playmode == 2)
+        {
+            m_scrubber->setNextPosition(m_scanpos);
+            m_scrubber->processFrame(buf,2);
+            return;
+        }
         m_gm->m_sr = sr;
         m_gm->m_inputdur = m_srcs[0]->getSourceNumSamples();
         m_gm->m_pitch_spread = pitchspread;
@@ -464,6 +545,8 @@ public:
 private:
     
 };
+
+
 
 class XGranularModule : public rack::Module
 {
@@ -545,8 +628,10 @@ public:
         configParam(PAR_INSERT_MARKER,0.0f,1.0f,0.0f,"Insert marker");
         configParam(PAR_LOOP_SLIDE,0.0f,1.0f,0.0f,"Loop slide");
         configParam(PAR_RESET,0.0f,1.0f,0.0f,"Reset");
-        configSwitch(PAR_PLAYBACKMODE,0,1,0,"Playback mode",
-            {"Playrate controls rate","Playrate controls region scan position"});
+        configSwitch(PAR_PLAYBACKMODE,0,2,0,"Playback mode",
+            {"Playrate controls rate",
+            "Playrate controls region scan position",
+            "Scrub"});
         exFIFO.reset(64);
         exFIFODiv.setDivision(32768);
     }
@@ -608,7 +693,7 @@ public:
         float cvpratescan = inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()*0.2f;
         int playmode = params[PAR_PLAYBACKMODE].getValue();
         m_eng.m_playmode = playmode;
-        if (playmode == 1)
+        if (playmode > 0)
         {
             scanpos += cvpratescan*0.5f;
             scanpos = wrap_value_safe(0.0f,scanpos,1.0f);
