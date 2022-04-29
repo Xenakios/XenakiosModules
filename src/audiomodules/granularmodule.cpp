@@ -414,10 +414,12 @@ class BufferScrubber
 {
 public:
     Sinc<float,16,65536> m_sinc_interpolator;
-    BufferScrubber(DrWavSource* src) : m_src{src}
+    int m_instanceId = 0; // use for making some "errors" in the processing
+    BufferScrubber(DrWavSource* src, int instanceId=0) : m_instanceId{instanceId}, m_src{src}
     {
-        m_gain_smoother.setAmount(0.999);
-        m_position_smoother.setAmount(0.999);
+        float smoothing_amount = rescale(float(m_instanceId),0,16,0.999f,0.9995f);
+        m_gain_smoother.setAmount(smoothing_amount);
+        m_position_smoother.setAmount(smoothing_amount);
     }
     double m_last_pos = 0.0f;
     int m_resampler_type = 1;
