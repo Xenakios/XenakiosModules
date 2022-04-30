@@ -414,19 +414,23 @@ class BufferScrubber
 {
 public:
     Sinc<float,16,65536> m_sinc_interpolator;
-    int m_instanceId = 0; // use for making some "errors" in the processing
-    BufferScrubber(DrWavSource* src, int instanceId=0) : m_instanceId{instanceId}, m_src{src}
+    
+    BufferScrubber(DrWavSource* src) : m_src{src}
     {
-        float smoothing_amount = rescale(float(m_instanceId),0,16,0.999f,0.9995f);
-        m_gain_smoothers[0].setAmount(0.999);
-        m_gain_smoothers[1].setAmount(0.999);
-        m_position_smoothers[0].setAmount(0.998);
-        m_position_smoothers[1].setAmount(0.998);
     }
     std::array<double,2> m_last_pos = {0.0f,0.0f};
     int m_resampler_type = 1;
-    void processFrame(float* outbuf, int nchs)
+    float m_last_sr = 0.0f;
+    void processFrame(float* outbuf, int nchs, float sr)
     {
+        if (sr!=m_last_sr)
+        {
+            for(auto& f : m_position_smoothers) 
+                f.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,20.0/sr,1.0,1.0f);
+            for(auto& f : m_gain_smoothers) 
+                f.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,8.0/sr,1.0,1.0f);
+            m_last_sr = sr;
+        }
         double positions[2] = {m_next_pos-m_separation,m_next_pos+m_separation};
         int srcstartsamples = m_src->getSourceNumSamples() * m_reg_start;
         int srcendsamples = m_src->getSourceNumSamples() * m_reg_end;
@@ -503,8 +507,9 @@ private:
     DrWavSource* m_src = nullptr;
     
     double m_next_pos = 0.0f;
-    std::array<OnePoleFilter,2> m_gain_smoothers;
-    std::array<OnePoleFilter,2> m_position_smoothers;
+    std::array<dsp::BiquadFilter,2> m_gain_smoothers;
+    std::array<dsp::BiquadFilter,2> m_position_smoothers;
+     
 };
 
 class GrainEngine
@@ -607,7 +612,7 @@ public:
         {
             m_scrubber->setRegion(regionStart,regionEnd);
             m_scrubber->setNextPosition(m_scanpos);
-            m_scrubber->processFrame(buf,2);
+            m_scrubber->processFrame(buf,2,sr);
             return;
         }
         m_gm->processAudio(buf,deltatime);
