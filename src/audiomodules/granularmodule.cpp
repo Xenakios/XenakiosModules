@@ -421,15 +421,17 @@ public:
     std::array<double,2> m_last_pos = {0.0f,0.0f};
     int m_resampler_type = 1;
     float m_last_sr = 0.0f;
-    void processFrame(float* outbuf, int nchs, float sr)
+    float m_last_pos_smoother_cutoff = 0.0f;
+    void processFrame(float* outbuf, int nchs, float sr, float scansmoothingCutoff)
     {
-        if (sr!=m_last_sr)
+        if (sr!=m_last_sr || m_last_pos_smoother_cutoff!=scansmoothingCutoff)
         {
             for(auto& f : m_position_smoothers) 
-                f.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,20.0/sr,1.0,1.0f);
+                f.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,scansmoothingCutoff/sr,1.0,1.0f);
             for(auto& f : m_gain_smoothers) 
                 f.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,8.0/sr,1.0,1.0f);
             m_last_sr = sr;
+            m_last_pos_smoother_cutoff = scansmoothingCutoff;
         }
         double positions[2] = {m_next_pos-m_separation,m_next_pos+m_separation};
         int srcstartsamples = m_src->getSourceNumSamples() * m_reg_start;
@@ -612,7 +614,8 @@ public:
         {
             m_scrubber->setRegion(regionStart,regionEnd);
             m_scrubber->setNextPosition(m_scanpos);
-            m_scrubber->processFrame(buf,2,sr);
+            float scrubsmoothcutoff = rescale(std::pow(lenm,2.5f),0.0f,1.0f,0.1f,64.0f);
+            m_scrubber->processFrame(buf,2,sr,scrubsmoothcutoff);
             return;
         }
         m_gm->processAudio(buf,deltatime);

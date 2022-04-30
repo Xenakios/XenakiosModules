@@ -458,7 +458,7 @@ public:
     }
     void setLengthMultiplier(float m)
     {
-        m = clamp(m,0.0,1.0f);
+        m = clamp(m,0.0f,1.0f);
         if (m<0.5f)
             m = rescale(m,0.0f,0.5f,0.5f,2.0f);
         else 
