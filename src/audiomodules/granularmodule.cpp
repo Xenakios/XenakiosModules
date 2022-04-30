@@ -418,62 +418,65 @@ public:
     BufferScrubber(DrWavSource* src, int instanceId=0) : m_instanceId{instanceId}, m_src{src}
     {
         float smoothing_amount = rescale(float(m_instanceId),0,16,0.999f,0.9995f);
-        m_gain_smoother.setAmount(smoothing_amount);
-        m_position_smoother.setAmount(smoothing_amount);
+        m_gain_smoothers[0].setAmount(smoothing_amount);
+        m_gain_smoothers[1].setAmount(smoothing_amount);
+        m_position_smoothers[0].setAmount(smoothing_amount);
+        m_position_smoothers[1].setAmount(smoothing_amount);
     }
-    double m_last_pos = 0.0f;
+    std::array<double,2> m_last_pos = {0.0f,0.0f};
     int m_resampler_type = 1;
     void processFrame(float* outbuf, int nchs)
     {
-        float target_pos = m_position_smoother.process(m_next_pos);
-        m_smoothed_pos = m_reg_start + target_pos * (m_reg_end-m_reg_start);
+        double positions[2] = {m_next_pos-m_separation,m_next_pos+m_separation};
         int srcstartsamples = m_src->getSourceNumSamples() * m_reg_start;
         int srcendsamples = m_src->getSourceNumSamples() * m_reg_end;
         int srclensamps = srcendsamples - srcstartsamples;
         m_src->setSubSection(srcstartsamples,srcendsamples);
-        double temp = (double)srcstartsamples + target_pos * srclensamps;
-        double posdiff = m_last_pos - temp;
-        if (std::abs(posdiff)<1.0f/128) // so slow already that can just as well cut output
+        for (int i=0;i<2;++i)
         {
-            m_out_gain = 0.0;
-        } else
-        {
-            m_out_gain = 1.0f;
-        }
-        m_last_pos = temp;
-        int index0 = temp;
-        int index1 = index0+1;
-        double frac = (temp - (double)index0); 
-        if (m_resampler_type == 1) // for sinc...
-            frac = 1.0-frac;
-        float gain = m_gain_smoother.process(m_out_gain);
-        if (gain>=0.00001) // over -100db, process
-        {
-            m_stopped = false;
-            float bogus = 0.0f;
-            if (m_resampler_type == 0)
+            float target_pos = m_position_smoothers[i].process(positions[i]);
+            m_smoothed_positions[i] = m_reg_start + target_pos * (m_reg_end-m_reg_start);
+            
+            double temp = (double)srcstartsamples + target_pos * srclensamps;
+            double posdiff = m_last_pos[i] - temp;
+            if (std::abs(posdiff)<1.0f/128) // so slow already that can just as well cut output
             {
-                for (int i=0;i<2;++i)
+                m_out_gains[i] = 0.0;
+            } else
+            {
+                m_out_gains[i] = 1.0f;
+            }
+            m_last_pos[i] = temp;
+            int index0 = temp;
+            int index1 = index0+1;
+            double frac = (temp - (double)index0); 
+            if (m_resampler_type == 1) // for sinc...
+                frac = 1.0-frac;
+            float gain = m_gain_smoothers[i].process(m_out_gains[i]);
+            if (gain>=0.00001) // over -100db, process
+            {
+                m_stopped = false;
+                float bogus = 0.0f;
+                if (m_resampler_type == 0)
                 {
                     float y0 = m_src->getBufferSampleSafeAndFade(index0,i,256);
                     float y1 = m_src->getBufferSampleSafeAndFade(index1,i,256);
                     float y2 = y0+(y1-y0)*frac;
                     outbuf[i] = y2 * gain;
                 }    
-            } else
-            {
-                for (int i=0;i<2;++i)
+                else
                 {
                     float y2 = m_sinc_interpolator.call(*m_src,index0,frac,bogus,i);
                     outbuf[i] = y2 * gain;
+                    
                 }
+            } else
+            {
+                m_stopped = true;
+                outbuf[i] = 0.0f;
             }
-        } else
-        {
-            m_stopped = true;
-            outbuf[0] = 0.0f;
-            outbuf[1] = 0.0f;
         }
+        
     }
     void setNextPosition(double npos)
     {
@@ -484,22 +487,24 @@ public:
         m_reg_start = startpos;
         m_reg_end = endpos;
     }
+    void setSeparation(float s)
+    {
+        m_separation = rescale(s,0.0f,1.0f,-0.1f,0.1f);
+    }
+    float m_separation = 0.0f;
     float m_reg_start = 0.0f;
     float m_reg_end = 1.0f;
     bool m_stopped = false;
     double m_cur_pos = 0.0;
-    double m_smoothed_pos = 0.0f;
-    double m_rate_used = 0.0;
-    double m_out_gain = 0.0;
+    std::array<float,2> m_smoothed_positions = {0.0f,0.0f};
+    std::array<float,2> m_out_gains = {0.0f,0.0f};
     double m_smoothed_out_gain = 0.0f;
 private:
     DrWavSource* m_src = nullptr;
-    double m_last_rate = 1.0;
+    
     double m_next_pos = 0.0f;
-    int m_src_out_counter = 0;
-    int m_src_pos = 0;
-    OnePoleFilter m_gain_smoother;
-    OnePoleFilter m_position_smoother;
+    std::array<OnePoleFilter,2> m_gain_smoothers;
+    std::array<OnePoleFilter,2> m_position_smoothers;
 };
 
 class GrainEngine
@@ -833,7 +838,14 @@ public:
         }
         pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f*tempa;
         pitch = clamp(pitch,-36.0f,36.0f);
-        
+        if (playmode == 2)
+        {
+            float sep = params[PAR_PITCH].getValue();
+            sep = rescale(sep,-24.0f,24.0f,0.0f,1.0f);
+            sep += inputs[IN_CV_PITCH].getVoltage()*params[PAR_ATTN_PITCH].getValue()*0.1;
+            sep = clamp(sep,0.0f,1.0f);
+            m_eng.m_scrubber->setSeparation(sep);
+        }
         // more complicated than usual because of the infinitely turning knob
         float loopstartDelta = 0.25f*(params[PAR_LOOPSELECT].getValue() - m_loopSelectRefState);
         float loopstart = m_curLoopSelect;
@@ -1117,14 +1129,20 @@ public:
                 if (m_gm->m_eng.m_playmode == 2)
                 {
                     float regionlen = regionrange.second-regionrange.first;
-                    float tpos = rescale(m_gm->m_eng.m_scrubber->m_smoothed_pos,regionrange.first,regionrange.second, 0.0f,1.0f);
-                    tpos = rescale(tpos,0.0f,1.0f,0.0f,box.size.x);
-                    tpos = clamp(tpos,0.0f,box.size.x);
                     nvgBeginPath(args.vg);
                     nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 255));
                     nvgStrokeWidth(args.vg,3.0f);
-                    nvgMoveTo(args.vg,tpos,0.0f);
-                    nvgLineTo(args.vg,tpos,box.size.y);
+                    float pheadhei = box.size.y / 2;
+                    for (int i=0;i<2;++i)
+                    {
+                        float tpos = rescale(m_gm->m_eng.m_scrubber->m_smoothed_positions[i],regionrange.first,regionrange.second, 0.0f,1.0f);
+                        tpos = rescale(tpos,0.0f,1.0f,0.0f,box.size.x);
+                        tpos = clamp(tpos,0.0f,box.size.x);
+                    
+                        nvgMoveTo(args.vg,tpos,i*pheadhei);
+                        nvgLineTo(args.vg,tpos,i*pheadhei+pheadhei);
+                    
+                    }
                     nvgStroke(args.vg);
                 }
             }
@@ -1180,14 +1198,19 @@ public:
                 }
                 if (m_gm->m_eng.m_playmode == 2)
                 {
-                    float tpos = m_gm->m_eng.m_scrubber->m_smoothed_pos;
-                    tpos = rescale(tpos,0.0f,1.0f,0.0f,box.size.x);
-                    tpos = clamp(tpos,0.0f,box.size.x);
                     nvgBeginPath(args.vg);
                     nvgStrokeColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 255));
                     nvgStrokeWidth(args.vg,3.0f);
-                    nvgMoveTo(args.vg,tpos,0.0f);
-                    nvgLineTo(args.vg,tpos,box.size.y);
+                    float phedhei = box.size.y/2;
+                    for (int i=0;i<2;++i)
+                    {
+                        float tpos = m_gm->m_eng.m_scrubber->m_smoothed_positions[i];
+                        tpos = rescale(tpos,0.0f,1.0f,0.0f,box.size.x);
+                        tpos = clamp(tpos,0.0f,box.size.x);
+                        nvgMoveTo(args.vg,tpos,i*phedhei);
+                        nvgLineTo(args.vg,tpos,i*phedhei+phedhei);
+                    }
+                    
                     nvgStroke(args.vg);
                 }
 
