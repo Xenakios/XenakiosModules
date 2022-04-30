@@ -434,7 +434,7 @@ public:
         m_src->setSubSection(srcstartsamples,srcendsamples);
         for (int i=0;i<2;++i)
         {
-            float target_pos = m_position_smoothers[i].process(positions[i]);
+            double target_pos = m_position_smoothers[i].process(positions[i]);
             m_smoothed_positions[i] = m_reg_start + target_pos * (m_reg_end-m_reg_start);
             
             double temp = (double)srcstartsamples + target_pos * srclensamps;
@@ -802,7 +802,10 @@ public:
         if (playmode > 0)
         {
             scanpos += cvpratescan*0.5f;
-            scanpos = wrap_value_safe(0.0f,scanpos,1.0f);
+            if (playmode == 1)
+                scanpos = wrap_value_safe(0.0f,scanpos,1.0f);
+            else if (playmode == 2)
+                scanpos = reflect_value_safe(0.0f,scanpos,1.0f);
             m_eng.m_scanpos = scanpos;
             
         }

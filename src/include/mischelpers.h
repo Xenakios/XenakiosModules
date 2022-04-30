@@ -56,26 +56,25 @@ struct spinlock {
   }
 };
 
-
 class OnePoleFilter
 {
 public:
     OnePoleFilter() {}
-    void setAmount(float x)
+    void setAmount(double x)
     {
         a = x;
         b = 1.0f-a;
     }
-    inline __attribute__((always_inline)) float process(float x)
+    inline __attribute__((always_inline)) double process(double x)
     {
-        float temp = (x * b) + (z * a);
+        double temp = (x * b) + (z * a);
         z = temp;
         return temp;
     }
 private:
-    float z = 0.0f;
-    float a = 0.99f;
-    float b = 1.0f-a;
+    double z = 0.0f;
+    double a = 0.99f;
+    double b = 1.0f-a;
 
 };
 
