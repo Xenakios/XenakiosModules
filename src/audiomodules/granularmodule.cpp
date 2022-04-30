@@ -418,10 +418,10 @@ public:
     BufferScrubber(DrWavSource* src, int instanceId=0) : m_instanceId{instanceId}, m_src{src}
     {
         float smoothing_amount = rescale(float(m_instanceId),0,16,0.999f,0.9995f);
-        m_gain_smoothers[0].setAmount(smoothing_amount);
-        m_gain_smoothers[1].setAmount(smoothing_amount);
-        m_position_smoothers[0].setAmount(smoothing_amount);
-        m_position_smoothers[1].setAmount(smoothing_amount);
+        m_gain_smoothers[0].setAmount(0.999);
+        m_gain_smoothers[1].setAmount(0.999);
+        m_position_smoothers[0].setAmount(0.995);
+        m_position_smoothers[1].setAmount(0.995);
     }
     std::array<double,2> m_last_pos = {0.0f,0.0f};
     int m_resampler_type = 1;
