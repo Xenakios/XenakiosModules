@@ -417,22 +417,32 @@ public:
     
     BufferScrubber(DrWavSource* src) : m_src{src}
     {
+        m_filter_divider.setDivision(128);
+        updateFiltersIfNeeded(44100.0f,20.0f, true);
     }
     std::array<double,2> m_last_pos = {0.0f,0.0f};
     int m_resampler_type = 1;
     float m_last_sr = 0.0f;
     float m_last_pos_smoother_cutoff = 0.0f;
+    dsp::ClockDivider m_filter_divider;
+    void updateFiltersIfNeeded(float sr, float scrubSmoothingCutoff, bool force = false)
+    {
+        if (force || m_filter_divider.process())
+        {
+            if (sr!=m_last_sr || m_last_pos_smoother_cutoff!=scrubSmoothingCutoff)
+            {
+                for(auto& f : m_position_smoothers) 
+                    f.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,scrubSmoothingCutoff/sr,1.0,1.0f);
+                for(auto& f : m_gain_smoothers) 
+                    f.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,8.0/sr,1.0,1.0f);
+                m_last_sr = sr;
+                m_last_pos_smoother_cutoff = scrubSmoothingCutoff;
+            }
+        }
+    }
     void processFrame(float* outbuf, int nchs, float sr, float scansmoothingCutoff)
     {
-        if (sr!=m_last_sr || m_last_pos_smoother_cutoff!=scansmoothingCutoff)
-        {
-            for(auto& f : m_position_smoothers) 
-                f.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,scansmoothingCutoff/sr,1.0,1.0f);
-            for(auto& f : m_gain_smoothers) 
-                f.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,8.0/sr,1.0,1.0f);
-            m_last_sr = sr;
-            m_last_pos_smoother_cutoff = scansmoothingCutoff;
-        }
+        updateFiltersIfNeeded(sr, scansmoothingCutoff);
         double positions[2] = {m_next_pos-m_separation,m_next_pos+m_separation};
         int srcstartsamples = m_src->getSourceNumSamples() * m_reg_start;
         int srcendsamples = m_src->getSourceNumSamples() * m_reg_end;
@@ -445,12 +455,15 @@ public:
             
             double temp = (double)srcstartsamples + target_pos * srclensamps;
             double posdiff = m_last_pos[i] - temp;
-            if (std::abs(posdiff)<1.0f/128) // so slow already that can just as well cut output
+            double posdiffa = std::abs(posdiff);
+            if (posdiffa<1.0f/128) // so slow already that can just as well cut output
             {
                 m_out_gains[i] = 0.0;
             } else
             {
-                m_out_gains[i] = 1.0f;
+                if (posdiffa<8.0)
+                    m_out_gains[i] = 1.0f;
+                else m_out_gains[i] = 0.01f; // the super fast rates usually sound annoying, so reduce volume
             }
             m_last_pos[i] = temp;
             int index0 = temp;
@@ -726,26 +739,34 @@ public:
         configParam(PAR_PITCH,-24.0f,24.0f,0.0f,"Pitch");
         configParam(PAR_LOOPSELECT,-INFINITY,+INFINITY,0.0f,"Region select");
         configParam(PAR_LOOPLEN,0.0f,1.0f,1.0f,"Loop length");
+        getParamQuantity(PAR_LOOPLEN)->randomizeEnabled = false;
         configParam(PAR_ATTN_PLAYRATE,-1.0f,1.0f,0.0f,"Playrate CV ATTN");
         configParam(PAR_ATTN_PITCH,-1.0f,1.0f,0.0f,"Pitch CV ATTN");
+        getParamQuantity(PAR_ATTN_PITCH)->randomizeEnabled = false;
         configParam(PAR_SRCPOSRANDOM,0.0f,1.0f,0.0f,"Source position randomization");
         configParam(PAR_ATTN_LOOPSTART,-1.0f,1.0f,0.0f,"Loop start CV ATTN");
+        getParamQuantity(PAR_ATTN_LOOPSTART)->randomizeEnabled = false;
         configParam(PAR_ATTN_LOOPLEN,-1.0f,1.0f,0.0f,"Loop len CV ATTN");
         configParam(PAR_ATTN_SRCRND,-1.0f,1.0f,0.0f,"Position randomization CV ATTN");
         configParam(PAR_ATTN_GRAINLEN,-1.0f,1.0f,0.0f,"Grain length CV ATTN");
         configParam(PAR_GRAINDENSITY,0.0f,1.0f,0.25f,"Grain rate");
         configParam(PAR_RECORD_ACTIVE,0.0f,1.0f,0.0f,"Record active");
+        getParamQuantity(PAR_RECORD_ACTIVE)->randomizeEnabled = false;
         configParam(PAR_LEN_MULTIP,0.0f,1.0f,0.5f,"Grain length");
         configParam(PAR_REVERSE,0.0f,1.0f,0.0f,"Grain reverse probability");
         configParam(PAR_SOURCESELECT,0.0f,7.0f,0.0f,"Source select");
         configParam(PAR_INPUT_MIX,0.0f,1.0f,0.0f,"Input mix");
+        getParamQuantity(PAR_INPUT_MIX)->randomizeEnabled = false;
         configParam(PAR_INSERT_MARKER,0.0f,1.0f,0.0f,"Insert marker");
+        getParamQuantity(PAR_INSERT_MARKER)->randomizeEnabled = false;
         configParam(PAR_LOOP_SLIDE,0.0f,1.0f,0.0f,"Loop slide");
         configParam(PAR_RESET,0.0f,1.0f,0.0f,"Reset");
+        getParamQuantity(PAR_RESET)->randomizeEnabled = false;
         configSwitch(PAR_PLAYBACKMODE,0,2,0,"Playback mode",
             {"Playrate controls rate",
             "Playrate controls region scan position",
             "Scrub"});
+        getParamQuantity(PAR_PLAYBACKMODE)->randomizeEnabled = false;
         exFIFO.reset(64);
         exFIFODiv.setDivision(32768);
     }
