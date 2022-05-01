@@ -1013,7 +1013,7 @@ public:
             m_next_marker_action = ACT_NONE;
         }
         
-        graindebugcounter = m_eng.m_gm->debugCounter;
+        graindebugcounter = m_eng.m_gm->grainCounter;
     }
     void clearRegionAudio()
     {

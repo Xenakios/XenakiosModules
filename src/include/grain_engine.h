@@ -293,7 +293,7 @@ public:
     std::mt19937 m_randgen;
     std::normal_distribution<float> m_gaussdist{0.0f,1.0f};
     std::uniform_real_distribution<float> m_unidist{0.0f,1.0f};
-    int debugCounter = 0;
+    int grainCounter = 0;
     int findFreeGain()
     {
         for (int i=0;i<m_grains.size();++i)
@@ -335,7 +335,7 @@ public:
                 m_region_start = m_nextLoopStart;
                 m_region_len = m_nextLoopLen;
             }
-            ++debugCounter;
+            ++grainCounter;
             m_outcounter = 0;
             float glen = m_grainDensity * m_lenMultip;
             glen = clamp(glen,0.01f,1.0f);
@@ -352,7 +352,7 @@ public:
             //srcpostouse = std::fmod((srcpostouse+m_loopslide*m_looplen)*m_inputdur,m_inputdur);
             m_actSourcePos = srcpostouse+m_region_start*m_inputdur;
             float pan = 0.0f;
-            if (debugCounter % 2 == 1)
+            if (grainCounter % 2 == 1)
                 pan = 1.0f;
             bool revgrain = m_unidist(m_randgen)<m_reverseProb;
             int availgrain = findFreeGain();
@@ -360,7 +360,7 @@ public:
             float pitchtouse = m_pitch;
             if (m_polypitches_to_use > 0)
             {
-                pitchtouse += m_polypitches[debugCounter % m_polypitches_to_use];
+                pitchtouse += m_polypitches[grainCounter % m_polypitches_to_use];
             }
             if (m_pitch_spread>0.0f)
             {
@@ -369,7 +369,7 @@ public:
             } else if (m_pitch_spread<0.0f)
             {
                 const std::array<float,3> pitchset = {-1.0f,0.0f,1.0f};
-                pitchtouse += pitchset[debugCounter % 3] * m_pitch_spread * 12.0f;
+                pitchtouse += pitchset[grainCounter % 3] * m_pitch_spread * 12.0f;
             }
             if (availgrain>=0)
             {
