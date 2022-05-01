@@ -422,6 +422,7 @@ public:
     }
     std::array<double,2> m_last_pos = {0.0f,0.0f};
     int m_resampler_type = 1;
+    int m_compensate_volume = 0;
     float m_last_sr = 0.0f;
     float m_last_pos_smoother_cutoff = 0.0f;
     dsp::ClockDivider m_filter_divider;
@@ -461,9 +462,9 @@ public:
                 m_out_gains[i] = 0.0;
             } else
             {
-                if (posdiffa<8.0)
-                    m_out_gains[i] = 1.0f;
-                else m_out_gains[i] = 0.01f; // the super fast rates usually sound annoying, so reduce volume
+                m_out_gains[i] = 1.0f;
+                if (m_compensate_volume == 1 && posdiffa>8.0)
+                    m_out_gains[i] = 0.01f;
             }
             m_last_pos[i] = temp;
             int index0 = temp;
@@ -1341,6 +1342,14 @@ public:
             else m_gm->m_eng.m_scrubber->m_resampler_type = 0;
         }
         ,"Sinc interpolation for scrub mode",CHECKMARK(m_gm->m_eng.m_scrubber->m_resampler_type == 1));
+        menu->addChild(scrubopt);
+        scrubopt = createMenuItem([this]()
+        { 
+            if (m_gm->m_eng.m_scrubber->m_compensate_volume == 0)
+                m_gm->m_eng.m_scrubber->m_compensate_volume = 1;
+            else m_gm->m_eng.m_scrubber->m_compensate_volume = 0;
+        }
+        ,"Compensate volume for scrub mode",CHECKMARK(m_gm->m_eng.m_scrubber->m_compensate_volume == 1));
         menu->addChild(scrubopt);
     }
     XGranularWidget(XGranularModule* m)
