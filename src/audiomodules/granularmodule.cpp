@@ -463,8 +463,13 @@ public:
             } else
             {
                 m_out_gains[i] = 1.0f;
-                if (m_compensate_volume == 1 && posdiffa>8.0)
-                    m_out_gains[i] = 0.01f;
+                if (m_compensate_volume == 1 && posdiffa>=4.0)
+                {
+                    m_out_gains[i] = rescale(posdiffa,4.0f,32.0f,1.0f,0.0f);
+                    if (m_out_gains[i]<0.0f)
+                        m_out_gains[i] = 0.0f;
+                }
+                    
             }
             m_last_pos[i] = temp;
             int index0 = temp;
@@ -648,13 +653,21 @@ public:
             json_array_append(markerarr,json_real(pos));
         }
         json_object_set(resultJ,"markers",markerarr);
+        json_object_set(resultJ,"scrub_resamplermode",json_integer(m_scrubber->m_resampler_type));
+        json_object_set(resultJ,"scrub_volumecompensation",json_integer(m_scrubber->m_compensate_volume));
         return resultJ;
     }
     void dataFromJson(json_t* root) 
     {
         if (!root)
             return;
+        json_t* scrubmodeJ = json_object_get(root,"scrub_resamplermode");
+        if (scrubmodeJ) m_scrubber->m_resampler_type = json_integer_value(scrubmodeJ);
+        scrubmodeJ = json_object_get(root,"scrub_volumecompensation");
+        if (scrubmodeJ) m_scrubber->m_compensate_volume = json_integer_value(scrubmodeJ);
+        
         json_t* markers = json_object_get(root, "markers");
+        
         int nummarkers = json_array_size(markers);
         if (nummarkers==0)
         {
@@ -731,6 +744,7 @@ public:
     float m_loopSelectRefState = 0.0f;
     float m_curLoopSelect = 0.0f;
     dsp::ClockDivider exFIFODiv;
+    
     XGranularModule()
     {
         std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
@@ -777,6 +791,7 @@ public:
         json_object_set(resultJ,"importedfile",json_string(m_currentFile.c_str()));
         auto markersJ = m_eng.dataToJson();
         json_object_set(resultJ,"markers",markersJ);
+        json_object_set(resultJ,"curregionstart",json_real(m_curLoopSelect));
         return resultJ;
     }
     void dataFromJson(json_t* root) override
@@ -789,6 +804,8 @@ public:
         }
         json_t* markersJ = json_object_get(root,"markers");
         m_eng.dataFromJson(markersJ);
+        json_t* regionPosJ = json_object_get(root,"curregionstart");
+        if (regionPosJ) m_curLoopSelect = json_real_value(regionPosJ);
     }
     void importFile(std::string filename)
     {
