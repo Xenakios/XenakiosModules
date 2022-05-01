@@ -288,6 +288,7 @@ public:
             m_grains[i].setNumOutChans(2);
         }
         debugDivider.setDivision(32768);
+        for (int i=0;i<16;++i) m_polypitches[i] = 0.0f;
     }
     std::mt19937 m_randgen;
     std::normal_distribution<float> m_gaussdist{0.0f,1.0f};
@@ -321,6 +322,8 @@ public:
     }
     dsp::ClockDivider debugDivider;
     float m_pitch_spread = 0.0f; 
+    std::array<float,16> m_polypitches;
+    int m_polypitches_to_use = 0;
     void processAudio(float* buf, float deltatime=0.0f)
     {
         if (m_inputdur<0.5f)
@@ -355,6 +358,10 @@ public:
             int availgrain = findFreeGain();
             //float slidedpos = std::fmod(m_srcpos+m_loopslide,1.0f);
             float pitchtouse = m_pitch;
+            if (m_polypitches_to_use > 0)
+            {
+                pitchtouse += m_polypitches[debugCounter % m_polypitches_to_use];
+            }
             if (m_pitch_spread>0.0f)
             {
                 pitchtouse += m_gaussdist(m_randgen) * std::pow(m_pitch_spread,2.0f) * 12.0f;

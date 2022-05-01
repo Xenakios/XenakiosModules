@@ -886,8 +886,23 @@ public:
         {
             tempa = -std::pow(tempa,2.0f);
         }
-        pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f*tempa;
-        pitch = clamp(pitch,-36.0f,36.0f);
+        int pitch_channels = inputs[IN_CV_PITCH].getChannels();
+        if (pitch_channels == 1)
+        {
+            pitch += inputs[IN_CV_PITCH].getVoltage()*12.0f*tempa;
+            pitch = clamp(pitch,-36.0f,36.0f);
+            m_eng.m_gm->m_polypitches_to_use = 0;
+        } else if (pitch_channels>1)
+        {
+            // activate "arpeggiator" mode for grain pitches
+            m_eng.m_gm->m_polypitches_to_use = pitch_channels;
+            for (int i=0;i<pitch_channels;++i)
+            {
+                m_eng.m_gm->m_polypitches[i] = inputs[IN_CV_PITCH].getVoltage(i)*12.0f*tempa;
+            } 
+        }
+        if (pitch_channels == 0)
+            m_eng.m_gm->m_polypitches_to_use = 0;
         if (playmode == 2)
         {
             float sep = params[PAR_PITCH].getValue();
