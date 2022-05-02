@@ -269,7 +269,7 @@ public:
         m_do_update_peaks = 1;
     }
     // OK, probably not the most efficient implementation, but will have to see later if can be optimized
-    float getBufferSampleSafeAndFade(int frame, int channel, int fadelen)
+    float getBufferSampleSafeAndFade(int frame, int channel, int fadelen) override
     {
         if (frame>=0 && frame < m_totalPCMFrameCount)
         {

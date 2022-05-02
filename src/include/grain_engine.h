@@ -196,6 +196,7 @@ public:
     virtual int getSourceNumChannels() = 0;
     virtual void putIntoBuffer(float* dest, int frames, int channels, int startInSource) = 0;
     virtual void setSubSection(int startFrame, int endFrame) {}
+    virtual float getBufferSampleSafeAndFade(int frame, int channel, int fadelen) { return 0.0f; }
 };
 
 class WindowLookup
@@ -224,12 +225,16 @@ private:
 class ISGrain
 {
 public:
+    Sinc<float,8,512> m_sinc; // could share this between grain instances, but not yet...
     WindowLookup m_hannwind;
     ISGrain() 
     {
-        m_grainOutBuffer.resize(65536*m_chans*2);
-        m_srcOutBuffer.resize(65536*m_chans*2);
+        
     }
+    double m_source_phase = 0.0;
+    double m_source_phase_inc = 0.0;
+    int m_cur_grain_len_samples = 0;
+    float m_pan = 0.0f;
     bool initGrain(float inputdur, float startInSource,float len, float pitch, 
         float outsr, float pan, bool reverseGrain, int sourceFrameMin, int sourceFrameMax)
     {
@@ -239,79 +244,65 @@ public:
         m_outpos = 0;
         int inchs = m_syn->getSourceNumChannels();
         float insr = m_syn->getSourceSampleRate();
-        float outratio = outsr/insr;
-        
-        m_resampler.SetRates(insr, insr * outratio / std::pow(2.0,1.0/12*pitch));
+        float outratio = insr/outsr;
+        m_source_phase_inc = outratio * std::pow(2.0,1.0/12*pitch);
+        if (reverseGrain)
+            m_source_phase_inc = -m_source_phase_inc;
         float* rsinbuf = nullptr;
         int lensamples = outsr*len;
+        m_cur_grain_len_samples = lensamples;
         m_grainSize = lensamples;
-        m_resampler.Reset();
-        int wanted = m_resampler.ResamplePrepare(lensamples,inchs,&rsinbuf);
-        
+        m_source_phase = startInSource;
         int srcpossamples = startInSource;
         //srcpossamples+=rack::random::normal()*lensamples;
         srcpossamples = xenakios::clamp((float)srcpossamples,(float)0,inputdur-1.0f);
         m_sourceplaypos = 1.0f/inputdur*srcpossamples;
         m_syn->setSubSection(sourceFrameMin, sourceFrameMax);
-        m_syn->putIntoBuffer(rsinbuf,wanted,inchs,srcpossamples);
-        m_resampler.ResampleOut(m_srcOutBuffer.data(),wanted,lensamples,inchs);
-        float pangains[2] = {pan,1.0f-pan};
-        
-        if (inchs == 1 && m_chans == 2)
-        {
-            for (int i=0;i<lensamples;++i)
-            {
-                m_grainOutBuffer[i*2] = m_srcOutBuffer[i];
-                m_grainOutBuffer[i*2+1] = m_srcOutBuffer[i];
-            }
-        } else if (inchs == 2 && m_chans == 2)
-        {
-            for (int i=0;i<lensamples*m_chans;++i)
-            {
-                m_grainOutBuffer[i] = m_srcOutBuffer[i];
-            }
-        }
-        if (reverseGrain)
-        {
-            std::reverse(m_grainOutBuffer.begin(),m_grainOutBuffer.begin()+(lensamples*m_chans));
-
-        }
-        for (int i=0;i<lensamples;++i)
-        {
-            float hannpos = 1.0/(m_grainSize-1)*i;
-            //hannpos = fmod(hannpos+m_storedOffset,1.0f);
-            //float win = getWindow(hannpos,1); 
-            //float win = 0.5f * (1.0f - std::cos(2.0f * 3.141592653 * hannpos));
-            float win = m_hannwind.getValue(hannpos);
-            for (int j=0;j<m_chans;++j)
-            {
-                m_grainOutBuffer[i*m_chans+j]*=win*pangains[j];
-            }
-            
-        }
+        m_pan = pan;
         return true;
+        
     }
     void setNumOutChans(int chans)
     {
         m_chans = chans;
     }
+    int m_interpmode = 0;
     void process(float* buf)
     {
-        
-        for (int i=0;i<m_chans;++i)
+        float pangains[2] = {m_pan,1.0f-m_pan};
+        int sourceposint = m_source_phase;
+        double frac = m_source_phase - sourceposint;
+        float dummy = 0.0f;
+        float hannpos = 1.0/(m_grainSize-1)*m_outpos;
+        hannpos = clamp(hannpos,0.0,1.0f);
+        float win = m_hannwind.getValue(hannpos);
+        if (m_interpmode == 1)
         {
-            buf[i] += m_grainOutBuffer[m_outpos*m_chans+i];
+            for (int i=0;i<m_chans;++i)
+            {
+                float y0 = m_sinc.call(*m_syn,sourceposint,(1.0-frac),dummy,i);
+                y0 *= win * pangains[i];
+                buf[i] += y0;
+            }
+        } else
+        {
+            for (int i=0;i<m_chans;++i)
+            {
+                float y0 = m_syn->getBufferSampleSafeAndFade(sourceposint,i,1024);
+                float y1 = m_syn->getBufferSampleSafeAndFade(sourceposint+1,i,1024);
+                float y2 = y0+(y1-y0) * frac;
+                y2 *= win * pangains[i];
+                buf[i] += y2;
+            }
         }
-        ++m_outpos;
         
+        ++m_outpos;
+        m_source_phase += m_source_phase_inc;
         if (m_outpos>=m_grainSize)
         {
             m_outpos = 0;
             playState = 0;
-        }
-        
-        
-        
+        } 
     }
     int playState = 0;
     inline float getWindow(float pos, int wtype)
@@ -336,9 +327,8 @@ private:
     int m_grainSize = 2048;
     
     int m_chans = 2;
-    WDL_Resampler m_resampler;
-    std::vector<float> m_grainOutBuffer;
-    std::vector<float> m_srcOutBuffer;  
+    
+    
 };
 
 
