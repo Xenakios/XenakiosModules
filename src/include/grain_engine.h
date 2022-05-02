@@ -7,8 +7,84 @@
 #include <rack.hpp>
 // #include "../plugin.hpp"
 #include "../wdl/resample.h"
+#include "mischelpers.h"
 
 using namespace rack;
+
+// adapted from https://github.com/Chowdhury-DSP/chowdsp_utils
+// begin Chowdhury code
+/**
+    Successive samples in the delay line will be interpolated using Sinc
+    interpolation. This method is somewhat less efficient than the others,
+    but gives a very smooth and flat frequency response.
+
+    Note that Sinc interpolation cannot currently be used with SIMD data types!
+*/
+template <typename T, size_t N, size_t M = 256>
+struct Sinc
+{
+    Sinc()
+    {
+        T cutoff = 0.455f;
+        size_t j;
+        for (j = 0; j < M + 1; j++)
+        {
+            for (size_t i = 0; i < N; i++)
+            {
+                T t = -T (i) + T (N / (T) 2.0) + T (j) / T (M) - (T) 1.0;
+                sinctable[j * N * 2 + i] = symmetric_blackman (t, (int) N) * cutoff * sincf (cutoff * t);
+            }
+        }
+        for (j = 0; j < M; j++)
+        {
+            for (size_t i = 0; i < N; i++)
+                sinctable[j * N * 2 + N + i] = (sinctable[(j + 1) * N * 2 + i] - sinctable[j * N * 2 + i]) / (T) 65536.0;
+        }
+    }
+
+    inline T sincf (T x) const noexcept
+    {
+        if (x == (T) 0)
+            return (T) 1;
+        return (std::sin (g_pi * x)) / (g_pi * x);
+    }
+
+    inline T symmetric_blackman (T i, int n) const noexcept
+    {
+        i -= (n / 2);
+        const double twoPi = g_pi * 2;
+        return ((T) 0.42 - (T) 0.5 * std::cos (twoPi * i / (n))
+                + (T) 0.08 * std::cos (4 * g_pi * i / (n)));
+    }
+
+    void reset (int newTotalSize) { totalSize = newTotalSize; }
+
+    void updateInternalVariables (int& /*delayIntOffset*/, T& /*delayFrac*/) {}
+    template<typename Source>
+    inline T call (Source& buffer, int delayInt, double delayFrac, const T& /*state*/, int channel)
+    {
+        auto sincTableOffset = (size_t) (( 1.0 - delayFrac) * (T) M) * N * 2;
+
+        auto out = ((T) 0);
+        //for (size_t i = 0; i < N; i += juce::dsp::SIMDRegister<T>::size())
+        for (size_t i = 0; i < N; i += 1)
+        {
+            //auto buff_reg = SIMDUtils::loadUnaligned (&buffer[(size_t) delayInt + i]);
+            auto buff_reg = buffer.getBufferSampleSafeAndFade(delayInt + i,channel,512);
+            //auto sinc_reg = juce::dsp::SIMDRegister<T>::fromRawArray (&sinctable[sincTableOffset + i]);
+            auto sinc_reg = sinctable[sincTableOffset + i];
+            out += buff_reg * sinc_reg;
+        }
+
+        return out;
+    }
+
+    int totalSize = 0;
+    //T sinctable alignas (SIMDUtils::CHOWDSP_DEFAULT_SIMD_ALIGNMENT)[(M + 1) * N * 2];
+    T sinctable alignas (16) [(M + 1) * N * 2];
+};
+
+// end Chowdhury code
 
 namespace xenakios
 {
