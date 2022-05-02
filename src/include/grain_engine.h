@@ -256,12 +256,14 @@ public:
         int srcpossamples = startInSource;
         //srcpossamples+=rack::random::normal()*lensamples;
         srcpossamples = xenakios::clamp((float)srcpossamples,(float)0,inputdur-1.0f);
-        m_sourceplaypos = 1.0f/inputdur*srcpossamples;
+        
         m_syn->setSubSection(sourceFrameMin, sourceFrameMax);
         m_pan = pan;
+        m_inputdur = inputdur;
         return true;
         
     }
+    float m_inputdur = 1.0f;
     void setNumOutChans(int chans)
     {
         m_chans = chans;
@@ -269,6 +271,7 @@ public:
     int m_interpmode = 0;
     void process(float* buf)
     {
+        m_sourceplaypos = 1.0f/m_inputdur*m_source_phase;
         float pangains[2] = {m_pan,1.0f-m_pan};
         int sourceposint = m_source_phase;
         double frac = m_source_phase - sourceposint;
