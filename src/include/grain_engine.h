@@ -60,11 +60,14 @@ struct Sinc
     void reset (int newTotalSize) { totalSize = newTotalSize; }
 
     void updateInternalVariables (int& /*delayIntOffset*/, T& /*delayFrac*/) {}
+    float alignas(16) srcbuf[N];
+//#define SIMDSINC
+    
     template<typename Source>
     inline T call (Source& buffer, int delayInt, double delayFrac, const T& /*state*/, int channel)
     {
         auto sincTableOffset = (size_t) (( 1.0 - delayFrac) * (T) M) * N * 2;
-        float alignas(16) srcbuf[N];
+        
         buffer.getSamplesSafeAndFade(srcbuf,delayInt, N, channel, 512);
     #ifndef SIMDSINC
         auto out = ((T) 0);
@@ -89,7 +92,10 @@ struct Sinc
             sinc_reg.load(&sinctable[sincTableOffset+i]);
             out = out + (buff_reg * sinc_reg);
         }
-        return out[0]+out[1]+out[2]+out[3];
+        float sum = 0.0f;
+        for (int i=0;i<4;++i)
+            sum += out[i];
+        return sum;
     #endif
     }
 
