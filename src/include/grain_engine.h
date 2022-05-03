@@ -60,7 +60,7 @@ struct Sinc
     void reset (int newTotalSize) { totalSize = newTotalSize; }
 
     void updateInternalVariables (int& /*delayIntOffset*/, T& /*delayFrac*/) {}
-    float alignas(16) srcbuf[N];
+    alignas(16) float srcbuf[N];
 //#define SIMDSINC
     
     template<typename Source>
