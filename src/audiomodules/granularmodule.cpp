@@ -640,6 +640,7 @@ public:
         PAR_ATTN_SRCRND,
         PAR_ATTN_GRAINLEN,
         PAR_PLAYBACKMODE,
+        PAR_ATTN_GRAINRATE,
         PAR_LAST
     };
     enum OUTPUTS
@@ -690,8 +691,8 @@ public:
         configParam(PAR_ATTN_SRCRND,-1.0f,1.0f,0.0f,"Position randomization CV ATTN");
         configParam(PAR_ATTN_GRAINLEN,-1.0f,1.0f,0.0f,"Grain length CV ATTN");
         
-        configParam(PAR_GRAINDENSITY,-2.0f,8.0f,1.0f,"Grain rate"," Hz",2,1);
-        //configParam(PAR_RATE,-8.0f,12.0f,1.0f,"Rate", " Hz",2,1);
+        configParam(PAR_GRAINDENSITY,-1.0f,8.0f,3.0f,"Grain rate"," Hz",2,1);
+        configParam(PAR_ATTN_GRAINRATE,-1.0f,1.0f,0.0f,"Grain rate CV ATTN");
 
         configParam(PAR_RECORD_ACTIVE,0.0f,1.0f,0.0f,"Record active");
         getParamQuantity(PAR_RECORD_ACTIVE)->randomizeEnabled = false;
@@ -863,7 +864,7 @@ public:
         m_cur_srcposrnd = posrnd;
 
         float grate = params[PAR_GRAINDENSITY].getValue();
-        grate += inputs[IN_CV_GRAINRATE].getVoltage();
+        grate += inputs[IN_CV_GRAINRATE].getVoltage()*params[PAR_ATTN_GRAINRATE].getValue();
         grate = clamp(grate,-2.0f,9.0f);
         grate *= 12.0f;
         grate = std::pow(2.0f,1.0f/12*grate);
@@ -1345,7 +1346,9 @@ public:
             XGranularModule::PAR_LOOPLEN,XGranularModule::IN_CV_LOOPLEN,XGranularModule::PAR_ATTN_LOOPLEN,82.0f,101.0f));
         addChild(new KnobInAttnWidget(this,"SOURCE POS RAND",
             XGranularModule::PAR_SRCPOSRANDOM,XGranularModule::IN_CV_SRCRND,XGranularModule::PAR_ATTN_SRCRND,1.0f,142.0f));
-        addChild(new KnobInAttnWidget(this,"GRAIN RATE",XGranularModule::PAR_GRAINDENSITY,XGranularModule::IN_CV_GRAINRATE,-1,82.0f,142.0f));
+        addChild(new KnobInAttnWidget(this,"GRAIN RATE",
+            XGranularModule::PAR_GRAINDENSITY,XGranularModule::IN_CV_GRAINRATE,XGranularModule::PAR_ATTN_GRAINRATE,
+            82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN LEN",XGranularModule::PAR_LEN_MULTIP,
             XGranularModule::IN_CV_GRAINLEN,XGranularModule::PAR_ATTN_GRAINLEN,2*82.0f,142.0f));
         addChild(new KnobInAttnWidget(this,"GRAIN REVERSE",XGranularModule::PAR_REVERSE,-1,-1,2*82.0f,101.0f));
