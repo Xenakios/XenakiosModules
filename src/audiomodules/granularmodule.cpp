@@ -268,8 +268,19 @@ public:
         m_totalPCMFrameCount = m_audioBuffer.size()/m_recordChannels;
         m_do_update_peaks = 1;
     }
+    void getSamplesSafeAndFade(float* destbuf,int startframe,int nsamples, int channel, int fadelen) override
+    {
+        for (int i=0;i<nsamples;++i)
+        {
+            destbuf[i] = getBufferSampleSafeAndFadeImpl(startframe+i,channel,fadelen);
+        }
+    }
+    float getBufferSampleSafeAndFade(int frame, int channel, int fadelen) override final
+    {
+        return getBufferSampleSafeAndFadeImpl(frame,channel,fadelen);
+    }
     // OK, probably not the most efficient implementation, but will have to see later if can be optimized
-    float getBufferSampleSafeAndFade(int frame, int channel, int fadelen) override
+    float getBufferSampleSafeAndFadeImpl(int frame, int channel, int fadelen) 
     {
         if (frame>=0 && frame < m_totalPCMFrameCount)
         {

@@ -64,19 +64,33 @@ struct Sinc
     inline T call (Source& buffer, int delayInt, double delayFrac, const T& /*state*/, int channel)
     {
         auto sincTableOffset = (size_t) (( 1.0 - delayFrac) * (T) M) * N * 2;
-
+        float alignas(16) srcbuf[N];
+        buffer.getSamplesSafeAndFade(srcbuf,delayInt, N, channel, 512);
+    #ifndef SIMDSINC
         auto out = ((T) 0);
-        //for (size_t i = 0; i < N; i += juce::dsp::SIMDRegister<T>::size())
         for (size_t i = 0; i < N; i += 1)
         {
-            //auto buff_reg = SIMDUtils::loadUnaligned (&buffer[(size_t) delayInt + i]);
-            auto buff_reg = buffer.getBufferSampleSafeAndFade(delayInt + i,channel,512);
-            //auto sinc_reg = juce::dsp::SIMDRegister<T>::fromRawArray (&sinctable[sincTableOffset + i]);
+            auto buff_reg = srcbuf[i];
             auto sinc_reg = sinctable[sincTableOffset + i];
             out += buff_reg * sinc_reg;
         }
-
         return out;
+    #else
+        alignas(16) simd::float_4 out{0.0f,0.0f,0.0f,0.0f};
+        for (size_t i = 0; i < N; i += 4)
+        {
+            //auto buff_reg = SIMDUtils::loadUnaligned (&buffer[(size_t) delayInt + i]);
+            //auto buff_reg = buffer.getBufferSampleSafeAndFade(delayInt + i,channel,512);
+            alignas(16) simd::float_4 buff_reg;
+            buff_reg.load(&srcbuf[i]);
+            //auto sinc_reg = juce::dsp::SIMDRegister<T>::fromRawArray (&sinctable[sincTableOffset + i]);
+            //auto sinc_reg = sinctable[sincTableOffset + i];
+            alignas(16) simd::float_4 sinc_reg;
+            sinc_reg.load(&sinctable[sincTableOffset+i]);
+            out = out + (buff_reg * sinc_reg);
+        }
+        return out[0]+out[1]+out[2]+out[3];
+    #endif
     }
 
     int totalSize = 0;
@@ -197,6 +211,7 @@ public:
     virtual void putIntoBuffer(float* dest, int frames, int channels, int startInSource) = 0;
     virtual void setSubSection(int startFrame, int endFrame) {}
     virtual float getBufferSampleSafeAndFade(int frame, int channel, int fadelen) { return 0.0f; }
+    virtual void getSamplesSafeAndFade(float* destbuf,int startframe, int nsamples, int channel, int fadelen) {}
 };
 
 class WindowLookup
