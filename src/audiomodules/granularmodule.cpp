@@ -897,10 +897,11 @@ public:
             if (m_eng.isRecording() == false)
             {
                 drsrc->startRecording(2,args.sampleRate);
-                m_eng.addMarkerAtPosition(drsrc->getRecordPosition());
+                
             }
             else
             {
+                m_eng.addMarkerAtPosition(drsrc->getRecordPosition());
                 drsrc->stopRecording();
             }
         }
