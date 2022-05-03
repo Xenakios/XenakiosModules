@@ -578,7 +578,7 @@ public:
             json_array_append(markerarr,json_real(pos));
         }
         json_object_set(resultJ,"markers",markerarr);
-        json_object_set(resultJ,"scrub_resamplermode",json_integer(m_scrubber->m_resampler_type));
+        //json_object_set(resultJ,"scrub_resamplermode",json_integer(m_scrubber->m_resampler_type));
         json_object_set(resultJ,"scrub_volumecompensation",json_integer(m_scrubber->m_compensate_volume));
         return resultJ;
     }
@@ -586,9 +586,9 @@ public:
     {
         if (!root)
             return;
-        json_t* scrubmodeJ = json_object_get(root,"scrub_resamplermode");
-        if (scrubmodeJ) m_scrubber->m_resampler_type = json_integer_value(scrubmodeJ);
-        scrubmodeJ = json_object_get(root,"scrub_volumecompensation");
+        //json_t* scrubmodeJ = json_object_get(root,"scrub_resamplermode");
+        //if (scrubmodeJ) m_scrubber->m_resampler_type = json_integer_value(scrubmodeJ);
+        json_t* scrubmodeJ = json_object_get(root,"scrub_volumecompensation");
         if (scrubmodeJ) m_scrubber->m_compensate_volume = json_integer_value(scrubmodeJ);
         
         json_t* markers = json_object_get(root, "markers");
@@ -721,6 +721,7 @@ public:
         auto markersJ = m_eng.dataToJson();
         json_object_set(resultJ,"markers",markersJ);
         json_object_set(resultJ,"curregionstart",json_real(m_curLoopSelect));
+        json_object_set(resultJ,"interpolation_mode",json_integer(m_interpolation_mode));
         return resultJ;
     }
     void dataFromJson(json_t* root) override
@@ -735,6 +736,8 @@ public:
         m_eng.dataFromJson(markersJ);
         json_t* regionPosJ = json_object_get(root,"curregionstart");
         if (regionPosJ) m_curLoopSelect = json_real_value(regionPosJ);
+        json_t* iModeJ = json_object_get(root,"interpolation_mode");
+        if (iModeJ) m_interpolation_mode = json_integer_value(iModeJ);
     }
     void importFile(std::string filename)
     {
@@ -775,6 +778,7 @@ public:
         float cvpratescan = inputs[IN_CV_PLAYRATE].getVoltage()*params[PAR_ATTN_PLAYRATE].getValue()*0.2f;
         int playmode = params[PAR_PLAYBACKMODE].getValue();
         m_eng.m_playmode = playmode;
+        m_eng.m_gm->m_interpmode = m_interpolation_mode;
         if (playmode > 0)
         {
             scanpos += cvpratescan*0.5f;
@@ -834,6 +838,7 @@ public:
             m_eng.m_gm->m_polypitches_to_use = 0;
         if (playmode == 2)
         {
+            m_eng.m_scrubber->m_resampler_type = m_interpolation_mode;
             float sep = params[PAR_PITCH].getValue();
             sep = rescale(sep,-24.0f,24.0f,0.0f,1.0f);
             sep += inputs[IN_CV_PITCH].getVoltage()*params[PAR_ATTN_PITCH].getValue()*0.1;
@@ -991,6 +996,7 @@ public:
     std::atomic<int> m_next_marker_action{ACT_NONE};
     choc::fifo::SingleReaderSingleWriterFIFO<std::function<void(void)>> exFIFO;
     GrainEngine m_eng;
+    int m_interpolation_mode = 0;
 private:
     
 };
@@ -1299,11 +1305,11 @@ public:
         
         auto scrubopt = createMenuItem([this]()
         { 
-            if (m_gm->m_eng.m_scrubber->m_resampler_type == 0)
-                m_gm->m_eng.m_scrubber->m_resampler_type = 1;
-            else m_gm->m_eng.m_scrubber->m_resampler_type = 0;
+            if (m_gm->m_interpolation_mode == 0)
+                m_gm->m_interpolation_mode = 1;
+            else m_gm->m_interpolation_mode = 0;
         }
-        ,"Sinc interpolation for scrub mode",CHECKMARK(m_gm->m_eng.m_scrubber->m_resampler_type == 1));
+        ,"Sinc interpolation (CPU intensive)",CHECKMARK(m_gm->m_interpolation_mode == 1));
         menu->addChild(scrubopt);
         scrubopt = createMenuItem([this]()
         { 

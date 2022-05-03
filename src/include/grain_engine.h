@@ -290,6 +290,7 @@ public:
         for (int i=0;i<(int)m_grains.size();++i)
         {
             m_grains[i].m_syn = s;
+            m_grains[i].m_interpmode = &m_interpmode;
             m_grains[i].setNumOutChans(2);
         }
         debugDivider.setDivision(32768);
