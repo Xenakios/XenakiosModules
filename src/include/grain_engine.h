@@ -316,6 +316,7 @@ public:
     float m_reverseProb = 0.0f;
     float m_loop_eoc_out = 0.0f;
     dsp::PulseGenerator m_loop_eoc_pulse;
+    double m_grain_phasor = 1.0; // so that grain triggers immediately at start
     std::pair<float,float> getGrainSourcePositionAndGain(int index)
     {
         if (index>=0 && index<m_grains.size())
@@ -360,9 +361,10 @@ public:
     std::array<ISGrain,10> m_grains;
     void setDensity(float d)
     {
+        m_grainDensity = d;
         if (d!=m_grainDensity)
         {
-            m_grainDensity = d;
+            
             //m_nextGrainPos = m_outcounter;
         }
     }

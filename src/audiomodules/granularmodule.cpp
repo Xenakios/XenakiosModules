@@ -689,7 +689,10 @@ public:
         configParam(PAR_ATTN_LOOPLEN,-1.0f,1.0f,0.0f,"Loop len CV ATTN");
         configParam(PAR_ATTN_SRCRND,-1.0f,1.0f,0.0f,"Position randomization CV ATTN");
         configParam(PAR_ATTN_GRAINLEN,-1.0f,1.0f,0.0f,"Grain length CV ATTN");
-        configParam(PAR_GRAINDENSITY,0.0f,1.0f,0.25f,"Grain rate");
+        
+        configParam(PAR_GRAINDENSITY,-2.0f,8.0f,1.0f,"Grain rate"," Hz",2,1);
+        //configParam(PAR_RATE,-8.0f,12.0f,1.0f,"Rate", " Hz",2,1);
+
         configParam(PAR_RECORD_ACTIVE,0.0f,1.0f,0.0f,"Record active");
         getParamQuantity(PAR_RECORD_ACTIVE)->randomizeEnabled = false;
         configParam(PAR_LEN_MULTIP,0.0f,1.0f,0.5f,"Grain length");
@@ -860,9 +863,10 @@ public:
         m_cur_srcposrnd = posrnd;
 
         float grate = params[PAR_GRAINDENSITY].getValue();
-        grate += inputs[IN_CV_GRAINRATE].getVoltage()*0.2f;
-        grate = clamp(grate,0.0f,1.0f);
-        grate = 0.01f+std::pow(1.0f-grate,2.0f)*0.49;
+        grate += inputs[IN_CV_GRAINRATE].getVoltage();
+        grate = clamp(grate,-2.0f,9.0f);
+        grate *= 12.0f;
+        grate = std::pow(2.0f,1.0f/12*grate);
         
         float glenm = params[PAR_LEN_MULTIP].getValue();
         glenm += inputs[IN_CV_GRAINLEN].getVoltage() * params[PAR_ATTN_GRAINLEN].getValue()*0.1f;

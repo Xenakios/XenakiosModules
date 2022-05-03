@@ -79,8 +79,10 @@ void GrainMixer::processAudio(float* buf, float deltatime)
         srcpostouse = m_region_len*m_scanpos*m_inputdur;
         srcpostouse = m_src_pos_smoother.process(srcpostouse);
     }
-    if (m_outcounter == m_nextGrainPos)
+    if (m_grain_phasor>=1.0)
+    //if (m_outcounter == m_nextGrainPos)
     {
+        m_grain_phasor -= 1.0;
         if (m_nextLoopStart != m_region_start || m_nextLoopLen != m_region_len)
         {
             m_region_start = m_nextLoopStart;
@@ -88,8 +90,8 @@ void GrainMixer::processAudio(float* buf, float deltatime)
         }
         ++grainCounter;
         m_outcounter = 0;
-        float glen = m_grainDensity * m_lenMultip;
-        glen = clamp(glen,0.01f,2.0f);
+        float glen = (1.0f/m_grainDensity) * m_lenMultip;
+        glen = clamp(glen,0.01f,4.0f);
         //glen = rescale(glen,0.0f,1.0f,0.02f,0.5f);
         float glensamples = m_sr*glen;
         float posrand = m_gaussdist(m_randgen)*m_posrandamt*m_region_len*m_inputdur;
@@ -132,7 +134,7 @@ void GrainMixer::processAudio(float* buf, float deltatime)
         float sourceSampleRate = m_sources[0]->getSourceSampleRate();
         float rateCompens = sourceSampleRate/m_sr;
         if (m_playmode == 0)
-            m_srcpos+=m_sr*(m_grainDensity)*m_sourcePlaySpeed*rateCompens;
+            m_srcpos+=m_sr*((1.0/m_grainDensity))*m_sourcePlaySpeed*rateCompens;
         else    
             m_srcpos = srcpostouse;
         float actlooplen = m_region_len; // std::pow(m_looplen,2.0f);
@@ -177,6 +179,7 @@ void GrainMixer::processAudio(float* buf, float deltatime)
         m_grainsUsed = usedgrains;
     }
     ++m_outcounter;
+    m_grain_phasor += deltatime * m_grainDensity;
 }
 
 
