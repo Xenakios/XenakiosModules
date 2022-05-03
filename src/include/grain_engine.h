@@ -317,6 +317,8 @@ public:
     float m_loop_eoc_out = 0.0f;
     dsp::PulseGenerator m_loop_eoc_pulse;
     double m_grain_phasor = 1.0; // so that grain triggers immediately at start
+    double m_next_randgrain = 1.0f;
+    bool m_random_timing = false;
     std::pair<float,float> getGrainSourcePositionAndGain(int index)
     {
         if (index>=0 && index<m_grains.size())
@@ -362,11 +364,6 @@ public:
     void setDensity(float d)
     {
         m_grainDensity = d;
-        if (d!=m_grainDensity)
-        {
-            
-            //m_nextGrainPos = m_outcounter;
-        }
     }
     void setLengthMultiplier(float m)
     {

@@ -79,10 +79,20 @@ void GrainMixer::processAudio(float* buf, float deltatime)
         srcpostouse = m_region_len*m_scanpos*m_inputdur;
         srcpostouse = m_src_pos_smoother.process(srcpostouse);
     }
-    if (m_grain_phasor>=1.0)
-    //if (m_outcounter == m_nextGrainPos)
+    if ((m_random_timing && m_grain_phasor>=m_next_randgrain) ||
+        (!m_random_timing && m_grain_phasor>=1.0))
     {
-        m_grain_phasor -= 1.0;
+        if (!m_random_timing)
+            m_grain_phasor -= 1.0;
+        else
+            m_grain_phasor = 0.0;
+        if (m_random_timing)
+        {
+            double nextrandpos = -log(m_unidist(m_randgen))/m_grainDensity;
+            nextrandpos = clamp(nextrandpos,deltatime*2.0f,1.0f);
+            m_next_randgrain = nextrandpos;
+        }
+        
         if (m_nextLoopStart != m_region_start || m_nextLoopLen != m_region_len)
         {
             m_region_start = m_nextLoopStart;
@@ -179,7 +189,10 @@ void GrainMixer::processAudio(float* buf, float deltatime)
         m_grainsUsed = usedgrains;
     }
     ++m_outcounter;
-    m_grain_phasor += deltatime * m_grainDensity;
+    if (!m_random_timing)
+        m_grain_phasor += deltatime * m_grainDensity;
+    else
+        m_grain_phasor += deltatime;
 }
 
 
