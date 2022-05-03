@@ -1094,26 +1094,26 @@ public:
             nvgStrokeWidth(args.vg,1.0f);
             if (m_opts == 1)
             {
-                nvgBeginPath(args.vg);
-                nvgFillColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, 0xbb));
+                
                 int numActiveGrains = m_gm->m_eng.m_gm->m_grainsUsed;
                 for (int i=0;i<16;++i)
                 {
-                    float ppos = m_gm->m_eng.m_gm->getGrainSourcePosition(i);
-                    if (ppos>=0.0f)
+                    auto info = m_gm->m_eng.m_gm->getGrainSourcePositionAndGain(i);
+                    if (info.first>=0.0f)
                     {
                         float srcdur = m_gm->m_eng.m_gm->m_inputdur;
-                        float xcor = rescale(ppos,loopstartnorm,loopendnorm,0.0f,box.size.x);
+                        float xcor = rescale(info.first,loopstartnorm,loopendnorm,0.0f,box.size.x);
                         float ycor0 = rescale(i,0,10,2.0f,box.size.y-2);
-                        //float ycor1 = box.size.y / 16*(i+1);
+                        nvgBeginPath(args.vg);
+                        int alpha = rescale(info.second,0.0f,1.0f,0,255);
+                        nvgFillColor(args.vg,nvgRGBA(0xff, 0xff, 0xff, alpha));        
                         nvgCircle(args.vg,xcor,ycor0,5.0f);
-                        //nvgMoveTo(args.vg,xcor,ycor0);
-                        //nvgLineTo(args.vg,xcor,ycor1);
+                        nvgFill(args.vg);
                     }
                     
                 }
                 
-                nvgFill(args.vg);
+                
 
                 
                 if (m_gm->m_eng.m_playmode == 2)

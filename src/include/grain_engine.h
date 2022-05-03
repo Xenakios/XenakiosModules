@@ -240,7 +240,7 @@ public:
     {
         m_chans = chans;
     }
-    int m_interpmode = 0;
+    int* m_interpmode = nullptr;
     void process(float* buf);
     
     int playState = 0;
@@ -260,6 +260,7 @@ public:
     }
     GrainAudioSource* m_syn = nullptr;
     float m_sourceplaypos = 0.0f;
+    float m_cur_gain = 0.0f;
 private:
     int m_outpos = 0;
     int m_grainSize = 2048;
@@ -273,11 +274,13 @@ class GrainMixer
 public:
     std::vector<std::unique_ptr<GrainAudioSource>>& m_sources;
     std::vector<std::unique_ptr<GrainAudioSource>> m_dummysources;
+    int m_interpmode = 0;
     GrainMixer(std::vector<std::unique_ptr<GrainAudioSource>>& sources) : m_sources(sources)
     {
         for (int i=0;i<(int)m_grains.size();++i)
         {
             m_grains[i].m_syn = m_sources[0].get();
+            m_grains[i].m_interpmode = &m_interpmode;
             m_grains[i].setNumOutChans(2);
         }
         m_src_pos_smoother.setParameters(dsp::BiquadFilter::LOWPASS_1POLE,1.0f/44100.0f,1.0f,1.0f);
@@ -313,14 +316,14 @@ public:
     float m_reverseProb = 0.0f;
     float m_loop_eoc_out = 0.0f;
     dsp::PulseGenerator m_loop_eoc_pulse;
-    float getGrainSourcePosition(int index)
+    std::pair<float,float> getGrainSourcePositionAndGain(int index)
     {
         if (index>=0 && index<m_grains.size())
         {
             if (m_grains[index].playState!=0)
-                return m_grains[index].m_sourceplaypos;
+                return {m_grains[index].m_sourceplaypos,m_grains[index].m_cur_gain};
         }
-        return -1.0f;
+        return {-1.0f,0.0f};
     }
     dsp::ClockDivider debugDivider;
     dsp::BiquadFilter m_src_pos_smoother;
@@ -354,7 +357,7 @@ public:
     int m_nextGrainPos = 0;
     int m_playmode = 0;
     float m_scanpos = 0.0f;
-    std::array<ISGrain,64> m_grains;
+    std::array<ISGrain,10> m_grains;
     void setDensity(float d)
     {
         if (d!=m_grainDensity)
