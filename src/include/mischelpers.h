@@ -1,11 +1,13 @@
 #pragma once
 
-#include <rack.hpp>
+// #include <rack.hpp>
+#include <atomic>
+#include <algorithm>
 
 using namespace rack;
-
+#ifndef RAPIHEADLESS
 extern Plugin *pluginInstance;
-
+#endif
 const double g_pi = 3.14159265358979;
 
 template<typename T, size_t Sz>
@@ -16,8 +18,9 @@ inline std::array<T, Sz> makeArray()
 	return result;
 }
 
-
+#ifndef RAPIHEADLESS
 std::shared_ptr<rack::Font> getDefaultFont(int which);
+#endif
 
 inline float customlog(float base, float x)
 {
@@ -131,13 +134,15 @@ inline double quantize_to_grid(T x, const Grid& g, double amount=1.0)
     return x+diff*amount;
 }
 
+#ifndef RAPIHEADLESS
+
 template <typename TLightBase = RedLight>
 struct LEDLightSliderFixed : LEDLightSlider<TLightBase> {
 	LEDLightSliderFixed() {
 		this->setHandleSvg(APP->window->loadSvg(asset::plugin(pluginInstance, "res/LEDSliderHandle.svg")));
 	}
 };
-
+#endif
 
 
 inline float soft_clip(float x)
@@ -226,7 +231,7 @@ inline T reflect_value_safe(const T& minval, const T& val, const T& maxval, int 
 	}
 	return temp;
 }
-
+#ifndef RAPIHEADLESS
 struct LambdaItem : rack::MenuItem
 {
 	std::function<void(void)> ActionFunc;
@@ -245,3 +250,4 @@ inline rack::MenuItem * createMenuItem(Func f, std::string text, std::string rig
 	o->ActionFunc = f;
 	return o;
 }
+#endif

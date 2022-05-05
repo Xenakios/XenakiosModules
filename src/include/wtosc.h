@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mischelpers.h"
+#include <vector>
 
 class ImgWaveOscillator
 {
@@ -11,7 +12,7 @@ public:
         m_tablesize = tablesize;
         m_table.resize(tablesize);
         for (int i=0;i<tablesize;++i)
-            m_table[i] = f(rescale(i,0,tablesize-1,-g_pi,g_pi));
+            m_table[i] = f(rack::math::rescale(i,0,tablesize-1,-g_pi,g_pi));
     }
     void setFrequency(float hz)
     {

@@ -1,10 +1,15 @@
-#include "plugin.hpp"
-#include "helperwidgets.h"
+// #include "plugin.hpp"
+// #include "helperwidgets.h"
+#include <Vector.hpp>
+#include <functions.hpp>
+#include <dsp/common.hpp>
 #include "wtosc.h"
+#include <jansson.h>
 #include <array>
 #include "jcdp_envelope.h"
 #include "Tunings.h"
-#include <osdialog.h>
+#include <string.hpp>
+// #include <osdialog.h>
 #include <thread>
 #include "scalehelpers.h"
 // Taken from Surge synth src/common/dsp/QuadFilterWaveshapers.cpp
@@ -535,7 +540,11 @@ public:
         bank_a.scales.push_back(continuumScale);
         
         std::vector<std::string> scalafiles;
+        #ifndef RAPIHEADLESS
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
+        #else
+        std::string dir;
+        #endif
         scalafiles.push_back(dir+"/syntonic_comma.scl");
         scalafiles.push_back(dir+"/major_tone_ji.scl");
         scalafiles.push_back(dir+"/minor_third_ji.scl");
@@ -651,8 +660,10 @@ public:
     }
     void refreshChebyCoeffs()
     {
+        #ifndef RAPIHEADLESS
         std::string chebyfn = asset::userDir+"/klang_cheby_table.txt";
         loadChebyshevCoefficients(chebyfn);
+        #endif
     }
     inline float getExpFMDepth(float semitones)
     {
@@ -1337,6 +1348,8 @@ private:
     std::array<float,4096> mExpFMPowerTable;
 };
 
+#ifndef RAPIHEADLESS
+
 class XScaleOsc : public Module
 {
 public:
@@ -1784,3 +1797,12 @@ public:
 };
 
 Model* modelXScaleOscillator = createModel<XScaleOsc, XScaleOscWidget>("XScaleOscillator");
+
+#else
+
+int main(int argc, char** argv)
+{
+    std::cout << "Starting headless KLANG\n";
+    return 0;
+}
+#endif

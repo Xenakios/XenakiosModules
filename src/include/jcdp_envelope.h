@@ -20,8 +20,9 @@ www.gnu.org/licenses
 #include <vector>
 #include <algorithm>
 #include <random>
-#include <rack.hpp>
-#include "plugin.hpp"
+#include <vector>
+//#include <rack.hpp>
+//#include "plugin.hpp"
 #include "modulationshaper.h"
 
 struct envelope_point

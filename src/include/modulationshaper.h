@@ -1,8 +1,12 @@
 #pragma once
 
-#include <rack.hpp>
+//#include <rack.hpp>
+
+#include <random.hpp>
+#include <math.hpp>
 
 using namespace rack;
+using namespace rack::math;
 
 inline float adjustable_triangle(float in, float peakpos)
 {
