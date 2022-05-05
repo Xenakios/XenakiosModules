@@ -2,6 +2,7 @@
 
 #include "mischelpers.h"
 #include <vector>
+#include <functional>
 
 class ImgWaveOscillator
 {

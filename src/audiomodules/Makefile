@@ -2,9 +2,9 @@ CC:= clang
 CXX:= clang++
 CXXFLAGS += -std=c++11
 CXXFLAGS += -I../../src/include
-CXXFLAGS += -I../../../Rack-SDK2/include
-CXXFLAGS += -I../../../Rack-SDK2/include/simd
-CXXFLAGS += -I../../../Rack-SDK2/dep/include
+CXXFLAGS += -I../../../Rack-SDK/include
+CXXFLAGS += -I../../../Rack-SDK/include/simd
+CXXFLAGS += -I../../../Rack-SDK/dep/include
 CXXFLAGS += -O2
 
 CXXFLAGS += -DRAPIHEADLESS
@@ -15,7 +15,7 @@ LDFLAGS += portaudio
 LDFLAGS += curses
 
 klang: 
-	clang++ $(CXXFLAGS) $(SOURCES) -oklangcli -lportaudio -lcurses
+	g++ $(CXXFLAGS) $(SOURCES) -oklangcli -lportaudio -lcurses
 
 
 

@@ -3,7 +3,7 @@
 // #include <rack.hpp>
 #include <atomic>
 #include <algorithm>
-
+#include <array>
 using namespace rack;
 #ifndef RAPIHEADLESS
 extern Plugin *pluginInstance;

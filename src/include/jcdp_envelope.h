@@ -21,6 +21,8 @@ www.gnu.org/licenses
 #include <algorithm>
 #include <random>
 #include <vector>
+#include <memory>
+#include <functional>
 //#include <rack.hpp>
 //#include "plugin.hpp"
 #include "modulationshaper.h"
