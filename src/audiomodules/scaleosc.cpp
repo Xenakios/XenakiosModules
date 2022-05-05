@@ -12,6 +12,36 @@
 // #include <osdialog.h>
 #include <thread>
 #include "scalehelpers.h"
+
+#ifdef RAPIHEADLESS
+std::vector<std::string> split(const std::string& s, const std::string& separator, size_t maxTokens) {
+	if (separator.empty())
+		throw std::runtime_error("split(): separator cannot be empty string");
+	// Special case of empty string
+	if (s == "")
+		return {};
+	if (maxTokens == 1)
+		return {s};
+
+	std::vector<std::string> v;
+	size_t sepLen = separator.size();
+	size_t start = 0;
+	size_t end;
+	while ((end = s.find(separator, start)) != std::string::npos) {
+		// Add token to vector
+		std::string token = s.substr(start, end - start);
+		v.push_back(token);
+		// Don't include delimiter
+		start = end + sepLen;
+		// Stop searching for tokens if we're at the token limit
+		if (maxTokens == v.size() + 1)
+			break;
+	}
+
+	v.push_back(s.substr(start));
+	return v;
+}
+#endif
 // Taken from Surge synth src/common/dsp/QuadFilterWaveshapers.cpp
 
 template <int pts> struct FolderADAA
@@ -543,7 +573,7 @@ public:
         #ifndef RAPIHEADLESS
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
         #else
-        std::string dir;
+        std::string dir = "/Users/teemu/codeprojects/vcv/XenakiosModules/res/scala_scales";
         #endif
         scalafiles.push_back(dir+"/syntonic_comma.scl");
         scalafiles.push_back(dir+"/major_tone_ji.scl");
@@ -662,8 +692,11 @@ public:
     {
         #ifndef RAPIHEADLESS
         std::string chebyfn = asset::userDir+"/klang_cheby_table.txt";
-        loadChebyshevCoefficients(chebyfn);
+        #else
+        std::string chebyfn = "/Users/teemu/Documents/Rack2/klang_cheby_table.txt";
         #endif
+        loadChebyshevCoefficients(chebyfn);
+        
     }
     inline float getExpFMDepth(float semitones)
     {
@@ -703,7 +736,7 @@ public:
             {
                 if (j==chebyMorphCount)
                     break;
-                auto tokens = string::split(lines[j],",");
+                auto tokens = split(lines[j],",",1024);
                 //DEBUG("KLANG num tokens %d %d",j,tokens.size());
                 for(int i=0;i<tokens.size();++i)
                 {
@@ -1800,9 +1833,125 @@ Model* modelXScaleOscillator = createModel<XScaleOsc, XScaleOscWidget>("XScaleOs
 
 #else
 
+#include "portaudio.h"
+#include "ncurses.h"
+
+static int patestCallback( const void *inputBuffer, void *outputBuffer,
+                           unsigned long framesPerBuffer,
+                           const PaStreamCallbackTimeInfo* timeInfo,
+                           PaStreamCallbackFlags statusFlags,
+                           void *userData )
+{
+    ScaleOscillator* osc = (ScaleOscillator*)userData;
+    float* obuf = (float*)outputBuffer;
+    alignas(16) float oscbuf[16];
+    memset(oscbuf,0,16*4);
+    int oscCount = 5;
+    osc->setOscCount(oscCount);
+    osc->setRootPitch(-24);
+    osc->setSpread(0.5);
+    osc->setFold(0.1f);
+    osc->setPitchOffset(12.0f);
+    osc->setScale(0.5);
+    osc->setScaleBank(0);
+    osc->setBalance(0.75);
+    osc->setFreezeEnabled(false);
+    osc->setPitchQuantizeMode(0);
+    osc->updateOscFrequencies();
+    for (int i=0;i<framesPerBuffer;++i)
+    {
+        osc->processNextFrame(oscbuf,44100);
+        float outs[2] = {0.0f,0.0f};
+        for (int j=0;j<oscCount;++j)
+        {
+            outs[j % 2] += oscbuf[j] * 0.2f;
+        }
+        obuf[i*2+0] = outs[0];
+        obuf[i*2+1] = outs[1];
+    }
+    return paContinue;
+}
+
+static void StreamFinished( void* userData )
+{
+   //paTestData *data = (paTestData *) userData;
+   //printf( "Stream Completed: %s\n", data->message );
+}
+
 int main(int argc, char** argv)
 {
+    double NUM_SECONDS = 2;
+    int FRAMES_PER_BUFFER = 512;
+    double SAMPLE_RATE = 44100;
     std::cout << "Starting headless KLANG\n";
+    ScaleOscillator osc;
+    osc.setScale(0.5);
+    osc.setFrequencySmoothing(0.2);
+    std::cout << osc.getScaleName() << "\n";
+    PaStreamParameters outputParameters;
+    PaStream *stream;
+    PaError err;
+    //paTestData data;
+    err = Pa_Initialize();
+    if( err != paNoError ) goto error;
+
+    outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
+    if (outputParameters.device == paNoDevice) {
+      fprintf(stderr,"Error: No default output device.\n");
+      goto error;
+    }
+    outputParameters.channelCount = 2;       /* stereo output */
+    outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
+    outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
+    outputParameters.hostApiSpecificStreamInfo = NULL;
+
+    err = Pa_OpenStream(
+              &stream,
+              NULL, /* no input */
+              &outputParameters,
+              SAMPLE_RATE,
+              FRAMES_PER_BUFFER,
+              paClipOff,      /* we won't output out of range samples so don't bother clipping them */
+              patestCallback,
+              &osc );
+    if( err != paNoError ) goto error;
+
+    //sprintf( data.message, "No Message" );
+    err = Pa_SetStreamFinishedCallback( stream, &StreamFinished );
+    if( err != paNoError ) goto error;
+
+    err = Pa_StartStream( stream );
+    if( err != paNoError ) goto error;
+
+    //printf("Play for %f seconds.\n", NUM_SECONDS );
+    //Pa_Sleep( NUM_SECONDS * 1000 );
+
+    initscr();
+    cbreak();
+    noecho();
+    char c;
+    while((c = getch()) != 'q')
+    {
+
+    }
+    endwin();
+    err = Pa_StopStream( stream );
+    if( err != paNoError ) goto error;
+
+    err = Pa_CloseStream( stream );
+    if( err != paNoError ) goto error;
+
+    Pa_Terminate();
+    printf("Test finished.\n");
+    
+    return err;
+error:
+    Pa_Terminate();
+    fprintf( stderr, "An error occured while using the portaudio stream\n" );
+    fprintf( stderr, "Error number: %d\n", err );
+    fprintf( stderr, "Error message: %s\n", Pa_GetErrorText( err ) );
+    return err;
+    //osc.processNextFrame()
     return 0;
 }
 #endif
