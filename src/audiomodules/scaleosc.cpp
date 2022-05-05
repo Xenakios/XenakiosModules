@@ -1846,15 +1846,15 @@ static int patestCallback( const void *inputBuffer, void *outputBuffer,
     float* obuf = (float*)outputBuffer;
     alignas(16) float oscbuf[16];
     memset(oscbuf,0,16*4);
-    int oscCount = 5;
+    int oscCount = 6;
     osc->setOscCount(oscCount);
-    osc->setRootPitch(-24);
+    //osc->setRootPitch(-24);
     osc->setSpread(0.5);
     osc->setFold(0.1f);
-    osc->setPitchOffset(12.0f);
+    //osc->setPitchOffset(12.0f);
     osc->setScale(0.5);
     osc->setScaleBank(0);
-    osc->setBalance(0.75);
+    //osc->setBalance(0.75);
     osc->setFreezeEnabled(false);
     osc->setPitchQuantizeMode(0);
     osc->updateOscFrequencies();
@@ -1880,6 +1880,9 @@ static void StreamFinished( void* userData )
 
 int main(int argc, char** argv)
 {
+    char c;
+    float rootpitch = 0.0f;
+    float bal = 0.25f;
     double NUM_SECONDS = 2;
     int FRAMES_PER_BUFFER = 512;
     double SAMPLE_RATE = 44100;
@@ -1929,10 +1932,19 @@ int main(int argc, char** argv)
     initscr();
     cbreak();
     noecho();
-    char c;
+    
     while((c = getch()) != 'q')
     {
-
+        if (c=='a')
+            rootpitch -= 0.5f;
+        if (c=='A')
+            rootpitch += 0.5f;
+        if (c=='s')
+            bal -= 0.05;
+        if (c=='S')
+            bal += 0.05;
+        osc.setBalance(bal);
+        osc.setRootPitch(rootpitch);
     }
     endwin();
     err = Pa_StopStream( stream );
