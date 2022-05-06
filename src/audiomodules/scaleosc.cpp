@@ -1,9 +1,13 @@
 // #include "plugin.hpp"
 // #include "helperwidgets.h"
 
+#ifdef RAPIHEADLESS
 #include <simd/Vector.hpp>
 #include <simd/functions.hpp>
 #include <dsp/common.hpp>
+#else
+#include <rack.hpp>
+#endif
 #include "wtosc.h"
 #include <jansson.h>
 #include <array>
