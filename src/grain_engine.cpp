@@ -193,6 +193,12 @@ void GrainMixer::processAudio(float* buf, float deltatime)
         m_grain_phasor += deltatime * m_grainDensity;
     else
         m_grain_phasor += deltatime;
+    if ((m_random_timing && m_grain_phasor>=m_next_randgrain) ||
+        (!m_random_timing && m_grain_phasor>=1.0))
+    {
+        m_grain_pulse.trigger();
+    }
+    m_grain_trig_out = (float)m_grain_pulse.process(deltatime)*10.0f;
 }
 
 

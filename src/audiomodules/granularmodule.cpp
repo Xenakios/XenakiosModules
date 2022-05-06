@@ -658,6 +658,7 @@ public:
     {
         OUT_AUDIO,
         OUT_LOOP_EOC,
+        OUT_GRAIN_TRIGGER,
         OUT_LAST
     };
     enum INPUTS
@@ -948,7 +949,7 @@ public:
         outputs[OUT_AUDIO].setVoltage(out0 , 0);
         outputs[OUT_AUDIO].setVoltage(out1 , 1);
         outputs[OUT_LOOP_EOC].setVoltage(m_eng.m_gm->m_loop_eoc_out);
-        
+        outputs[OUT_GRAIN_TRIGGER].setVoltage(m_eng.m_gm->m_grain_trig_out);
         if (m_insertMarkerTrigger.process(params[PAR_INSERT_MARKER].getValue()>0.5f))
         {
             m_eng.addMarker();
@@ -1341,6 +1342,7 @@ public:
         
         auto port = new PortWithBackGround(m,this,XGranularModule::OUT_AUDIO,1,17,"AUDIO OUT 1",true);
         port = new PortWithBackGround(m,this,XGranularModule::OUT_LOOP_EOC,92,17,"LOOP EOC",true);
+        port = new PortWithBackGround(m,this,XGranularModule::OUT_GRAIN_TRIGGER,92+28.5,17,"GRAIN TRIG",true);
         port = new PortWithBackGround(m,this,XGranularModule::IN_AUDIO,34,17,"AUDIO IN",false);
         
         addParam(createParam<TL1105>(Vec(62,34),m,XGranularModule::PAR_RECORD_ACTIVE));

@@ -337,7 +337,9 @@ public:
     int m_grainsUsed = 0;
     float m_reverseProb = 0.0f;
     float m_loop_eoc_out = 0.0f;
+    float m_grain_trig_out = 0.0f;
     dsp::PulseGenerator m_loop_eoc_pulse;
+    dsp::PulseGenerator m_grain_pulse;
     double m_grain_phasor = 1.0; // so that grain triggers immediately at start
     double m_next_randgrain = 1.0f;
     bool m_random_timing = false;
