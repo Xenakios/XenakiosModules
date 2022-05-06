@@ -1,7 +1,8 @@
 // #include "plugin.hpp"
 // #include "helperwidgets.h"
-#include <Vector.hpp>
-#include <functions.hpp>
+
+#include <simd/Vector.hpp>
+#include <simd/functions.hpp>
 #include <dsp/common.hpp>
 #include "wtosc.h"
 #include <jansson.h>
@@ -9,11 +10,13 @@
 #include "jcdp_envelope.h"
 #include "Tunings.h"
 #include <string.hpp>
-// #include <osdialog.h>
+#ifndef RAPIHEADLESS
+#include "helperwidgets.h"
+#include <osdialog.h>
+#endif
 #include <thread>
 #include "scalehelpers.h"
 
-#ifdef RAPIHEADLESS
 std::vector<std::string> split(const std::string& s, const std::string& separator, size_t maxTokens) {
 	if (separator.empty())
 		throw std::runtime_error("split(): separator cannot be empty string");
@@ -41,7 +44,7 @@ std::vector<std::string> split(const std::string& s, const std::string& separato
 	v.push_back(s.substr(start));
 	return v;
 }
-#endif
+
 // Taken from Surge synth src/common/dsp/QuadFilterWaveshapers.cpp
 
 template <int pts> struct FolderADAA
@@ -1849,7 +1852,7 @@ static int patestCallback( const void *inputBuffer, void *outputBuffer,
     int oscCount = 6;
     osc->setOscCount(oscCount);
     //osc->setRootPitch(-24);
-    osc->setSpread(0.5);
+    
     osc->setFold(0.1f);
     //osc->setPitchOffset(12.0f);
     osc->setScale(0.5);
@@ -1883,6 +1886,7 @@ int main(int argc, char** argv)
     char c;
     float rootpitch = 0.0f;
     float bal = 0.25f;
+    float spread = 0.5f;
     double NUM_SECONDS = 2;
     int FRAMES_PER_BUFFER = 512;
     double SAMPLE_RATE = 44100;
@@ -1943,8 +1947,13 @@ int main(int argc, char** argv)
             bal -= 0.05;
         if (c=='S')
             bal += 0.05;
+        if (c=='d')
+            spread += 0.05f;
+        if (c=='D')
+            spread -= 0.05f;
         osc.setBalance(bal);
         osc.setRootPitch(rootpitch);
+        osc.setSpread(spread);
     }
     endwin();
     err = Pa_StopStream( stream );

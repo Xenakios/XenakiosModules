@@ -1,9 +1,13 @@
 #pragma once
 
-// #include <rack.hpp>
+#ifndef RAPIHEADLESS
+#include <rack.hpp>
+#endif
 #include <atomic>
 #include <algorithm>
 #include <array>
+#include <functional>
+
 using namespace rack;
 #ifndef RAPIHEADLESS
 extern Plugin *pluginInstance;
