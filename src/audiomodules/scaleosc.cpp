@@ -2,8 +2,8 @@
 // #include "helperwidgets.h"
 
 #ifdef RAPIHEADLESS
-#include <simd/Vector.hpp>
-#include <simd/functions.hpp>
+//#include <simd/Vector.hpp>
+//#include <simd/functions.hpp>
 #include <dsp/common.hpp>
 #else
 #include <rack.hpp>
@@ -1841,7 +1841,7 @@ Model* modelXScaleOscillator = createModel<XScaleOsc, XScaleOscWidget>("XScaleOs
 #else
 
 #include "portaudio.h"
-#include "ncurses.h"
+#include "ncurses/curses.h"
 
 static int patestCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,

@@ -4,18 +4,20 @@ CXXFLAGS += -std=c++11
 CXXFLAGS += -I../../src/include
 CXXFLAGS += -I../../../Rack-SDK/include
 CXXFLAGS += -I../../../Rack-SDK/include/simd
+CXXFLAGS += -I../../../Rack-SDK/include/dsp
 CXXFLAGS += -I../../../Rack-SDK/dep/include
 CXXFLAGS += -O2
 
 CXXFLAGS += -DRAPIHEADLESS
-
+CXXFLAGS += -DM_PI=3.141592653
+CXXFLAGS += -DNCURSES_STATIC
 SOURCES += scaleosc.cpp
 
-LDFLAGS += portaudio
-LDFLAGS += curses
+# LDFLAGS += portaudio
+# LDFLAGS += curses
 
 klang: 
-	g++ $(CXXFLAGS) $(SOURCES) -oklangcli -lportaudio -lcurses
+	g++ $(CXXFLAGS) $(SOURCES) -oklangcli -lportaudio -lncurses
 
 
 
