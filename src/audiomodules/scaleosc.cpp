@@ -1841,8 +1841,11 @@ Model* modelXScaleOscillator = createModel<XScaleOsc, XScaleOscWidget>("XScaleOs
 #else
 
 #include "portaudio.h"
+#ifdef _WIN32
+#include "ncurses/curses.h"
+#else
 #include "curses.h"
-
+#endif
 static int patestCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
                            const PaStreamCallbackTimeInfo* timeInfo,
