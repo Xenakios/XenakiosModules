@@ -1245,20 +1245,26 @@ public:
     {
         m_spread = clamp(s,0.0f,1.0f);
     }
+    float getSpread() const { return m_spread; }
     void setRootPitch(float p)
     {
         p = clamp(p,-36.0f,36.0f);
         m_root_pitch = p; 
     }
+    float getRootPitch() const { return m_root_pitch;  }
+    float m_stored_pitch_offs = 0.0f;
     void setPitchOffset(float p)
     {
         p = clamp(p,-36.0f,36.0f);
+        m_stored_pitch_offs = p;
         m_freqratio = std::pow(dsp::FREQ_SEMITONE,p);
     }
+    float getPitchOffset() const { return m_stored_pitch_offs; }
     void setBalance(float b)
     {
         m_balance = clamp(b,0.0f,1.0f);
     }
+    float getBalance() const { return m_balance; }
     void setDetune(float d)
     {
         m_detune = clamp(d,0.0f,1.0f);
@@ -1284,6 +1290,7 @@ public:
         
         m_fold = std::pow(f,3.0f);
     }
+    float getFold() const { return mChebyMorph; }
     void setOscCount(int c)
     {
         m_active_oscils = clamp(c,1,16);
@@ -1858,13 +1865,7 @@ static int patestCallback( const void *inputBuffer, void *outputBuffer,
     memset(oscbuf,0,16*4);
     int oscCount = 6;
     osc->setOscCount(oscCount);
-    //osc->setRootPitch(-24);
     
-    osc->setFold(0.1f);
-    //osc->setPitchOffset(12.0f);
-    osc->setScale(0.5);
-    osc->setScaleBank(0);
-    //osc->setBalance(0.75);
     osc->setFreezeEnabled(false);
     osc->setPitchQuantizeMode(0);
     osc->updateOscFrequencies();
@@ -1891,15 +1892,22 @@ static void StreamFinished( void* userData )
 int main(int argc, char** argv)
 {
     char c;
-    float rootpitch = 0.0f;
-    float bal = 0.25f;
-    float spread = 0.5f;
+    
+    auto valuef = [&](char c, char decc, char incc, float oldval, float delta)
+    {
+        if (c == decc)
+            return oldval-delta;
+        if (c == incc)
+            return oldval+delta;
+        return oldval;
+    };
     double NUM_SECONDS = 2;
     int FRAMES_PER_BUFFER = 512;
     double SAMPLE_RATE = 44100;
     std::cout << "Starting headless KLANG\n";
     ScaleOscillator osc;
-    osc.setScale(0.5);
+    osc.setScaleBank(1);
+    osc.setScale(0.3);
     osc.setFrequencySmoothing(0.2);
     std::cout << osc.getScaleName() << "\n";
     PaStreamParameters outputParameters;
@@ -1930,15 +1938,12 @@ int main(int argc, char** argv)
               &osc );
     if( err != paNoError ) goto error;
 
-    //sprintf( data.message, "No Message" );
+    
     err = Pa_SetStreamFinishedCallback( stream, &StreamFinished );
     if( err != paNoError ) goto error;
 
     err = Pa_StartStream( stream );
     if( err != paNoError ) goto error;
-
-    //printf("Play for %f seconds.\n", NUM_SECONDS );
-    //Pa_Sleep( NUM_SECONDS * 1000 );
 
     initscr();
     cbreak();
@@ -1946,21 +1951,11 @@ int main(int argc, char** argv)
     
     while((c = getch()) != 'q')
     {
-        if (c=='a')
-            rootpitch -= 0.5f;
-        if (c=='A')
-            rootpitch += 0.5f;
-        if (c=='s')
-            bal -= 0.05;
-        if (c=='S')
-            bal += 0.05;
-        if (c=='d')
-            spread += 0.05f;
-        if (c=='D')
-            spread -= 0.05f;
-        osc.setBalance(bal);
-        osc.setRootPitch(rootpitch);
-        osc.setSpread(spread);
+        osc.setRootPitch(valuef(c,'A','a',osc.getRootPitch(),0.125f));
+        osc.setBalance(valuef(c,'S','s',osc.getBalance(),0.01f));
+        osc.setSpread(valuef(c,'D','d',osc.getSpread(),0.01f));
+        osc.setFold(valuef(c,'F','f',osc.getFold(),0.01f));
+        osc.setPitchOffset(valuef(c,'G','g',osc.getPitchOffset(),0.125f));
     }
     endwin();
     err = Pa_StopStream( stream );
