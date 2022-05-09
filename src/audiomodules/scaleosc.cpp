@@ -1854,6 +1854,9 @@ Model* modelXScaleOscillator = createModel<XScaleOsc, XScaleOscWidget>("XScaleOs
 #else
 #include "curses.h"
 #endif
+
+std::atomic<bool> g_quit{false};
+
 static int patestCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
                            const PaStreamCallbackTimeInfo* timeInfo,
@@ -1881,6 +1884,8 @@ static int patestCallback( const void *inputBuffer, void *outputBuffer,
         obuf[i*2+0] = outs[0];
         obuf[i*2+1] = outs[1];
     }
+    if (g_quit == true)
+        return paComplete;
     return paContinue;
 }
 
@@ -1889,6 +1894,8 @@ static void StreamFinished( void* userData )
    //paTestData *data = (paTestData *) userData;
    //printf( "Stream Completed: %s\n", data->message );
 }
+
+
 
 void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
 {
@@ -1900,22 +1907,25 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
         return;
     if (msg[0] >= 176)
     {
-        //std::cout << "got midi cc " << (int)msg[1] << " " << (int)msg[2] << "\n";
+        
         float norm = 1.0/127*msg[2];
         if (msg[1] == 21)
             osc->setRootPitch(rescale(norm,0.0f,1.0f,-24.0f,24.0f));
-        if (msg[1] == 22)
+        else if (msg[1] == 22)
             osc->setBalance(norm);
-        if (msg[1] == 23)
+        else if (msg[1] == 23)
             osc->setSpread(norm);
-        if (msg[1] == 24)
+        else if (msg[1] == 24)
             osc->setFold(norm);
-        if (msg[1] == 25)
+        else if (msg[1] == 25)
             osc->setPitchOffset(rescale(norm,0.0f,1.0f,-24.0f,24.0f));
-        if (msg[1] == 26)
+        else if (msg[1] == 26)
             osc->setFMAmount(norm);
-        if (msg[1] == 27)
+        else if (msg[1] == 27)
             osc->setScale(norm);
+        else if (msg[1] == 57)
+            g_quit = true;
+        //    std::cout << "got midi cc " << (int)msg[1] << " " << (int)msg[2] << "\n";
     }
 
 }
