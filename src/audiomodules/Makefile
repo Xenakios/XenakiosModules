@@ -16,6 +16,7 @@ CXXFLAGS += -DNCURSES_STATIC
 # CXXFLAGS += -framework CoreMIDI -framework CoreAudio -framework CoreFoundation
 # for linux
 CXXFLAGS += -D__LINUX_ALSA__
+# CXXFLAGS += -D__UNIX_JACK__
 SOURCES += scaleosc.cpp
 SOURCES += rtmidi/RtMidi.cpp
 # LDFLAGS += portaudio

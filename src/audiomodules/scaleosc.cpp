@@ -1926,7 +1926,7 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             osc->setFold(norm);
         else if (msg[1] == 25)
             osc->setPitchOffset(rescale(norm,0.0f,1.0f,-24.0f,24.0f));
-        else if (msg[1] == 26)
+        else if (msg[1] == 26 || msg[1] == 50)
             osc->setFMAmount(norm);
         else if (msg[1] == 27)
             osc->setScale(norm);
@@ -1947,7 +1947,10 @@ int main(int argc, char** argv)
     int incount = midi_input->getPortCount();
     for (int i=0;i<incount;++i)
         std::cout << i << "\t" << midi_input->getPortName(i) << "\n";
-    midi_input->openPort(1);
+    std::cout << "which MIDI port to use?\n";
+    int pnum = 0;
+    std::cin >> pnum;
+    midi_input->openPort(pnum);
     //Pa_Sleep(10000);
     //return 0;
     char c;
@@ -1961,7 +1964,7 @@ int main(int argc, char** argv)
         return oldval;
     };
     double NUM_SECONDS = 2;
-    int FRAMES_PER_BUFFER = 512;
+    int FRAMES_PER_BUFFER = 128;
     double SAMPLE_RATE = 44100;
     std::cout << "Starting headless KLANG\n";
     
@@ -1984,8 +1987,9 @@ int main(int argc, char** argv)
     outputParameters.channelCount = 2;       /* stereo output */
     outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
     outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
+    std::cout << "portaudio default low out latency " << outputParameters.suggestedLatency << "\n";
     outputParameters.hostApiSpecificStreamInfo = NULL;
-
+    //return 0;
     err = Pa_OpenStream(
               &stream,
               NULL, /* no input */
