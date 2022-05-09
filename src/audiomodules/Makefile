@@ -12,17 +12,17 @@ CXXFLAGS += -DRAPIHEADLESS
 CXXFLAGS += -DM_PI=3.141592653
 CXXFLAGS += -DNCURSES_STATIC
 # mac 
-CXXFLAGS += -D__MACOSX_CORE__
-CXXFLAGS += -framework CoreMIDI -framework CoreAudio -framework CoreFoundation
+# CXXFLAGS += -D__MACOSX_CORE__
+# CXXFLAGS += -framework CoreMIDI -framework CoreAudio -framework CoreFoundation
 # for linux
-# CXXFLAGS += -D__LINUX_ALSA__ -lasound -lpthread
+CXXFLAGS += -D__LINUX_ALSA__
 SOURCES += scaleosc.cpp
 SOURCES += rtmidi/RtMidi.cpp
 # LDFLAGS += portaudio
 # LDFLAGS += curses
 
 klang: 
-	g++ $(CXXFLAGS) $(SOURCES) -oklangcli -lportaudio -lncurses
+	g++ $(CXXFLAGS) $(SOURCES) -oklangcli -lportaudio -lncurses -lasound -lpthread
 
 
 
