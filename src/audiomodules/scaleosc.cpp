@@ -1856,6 +1856,7 @@ Model* modelXScaleOscillator = createModel<XScaleOsc, XScaleOscWidget>("XScaleOs
 #endif
 
 std::atomic<bool> g_quit{false};
+float g_pan_spread = 0.0f;
 
 static int patestCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
@@ -1879,7 +1880,13 @@ static int patestCallback( const void *inputBuffer, void *outputBuffer,
         float outs[2] = {0.0f,0.0f};
         for (int j=0;j<oscCount;++j)
         {
-            outs[j % 2] += oscbuf[j] * 0.2f;
+            //outs[j % 2] += oscbuf[j] * 0.2f;
+            float panpos = rescale(j,0,oscCount,-g_pan_spread,g_pan_spread);
+            panpos = rescale(panpos,-1.0f,1.0f,0.0f,1.0f);
+            float gain_left = panpos;
+            float gain_right = 1.0f-panpos;
+            outs[0] += oscbuf[j] * 0.2f * gain_left;
+            outs[1] += oscbuf[j] * 0.2f * gain_right;
         }
         obuf[i*2+0] = outs[0];
         obuf[i*2+1] = outs[1];
@@ -1923,6 +1930,8 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             osc->setFMAmount(norm);
         else if (msg[1] == 27)
             osc->setScale(norm);
+        else if (msg[1] == 28)
+            g_pan_spread = rescale(norm,0.0f,1.0f,-1.0f,1.0f);
         else if (msg[1] == 57)
             g_quit = true;
         //    std::cout << "got midi cc " << (int)msg[1] << " " << (int)msg[2] << "\n";
