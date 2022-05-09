@@ -1848,6 +1848,7 @@ Model* modelXScaleOscillator = createModel<XScaleOsc, XScaleOscWidget>("XScaleOs
 #else
 
 #include "portaudio.h"
+#include "rtmidi/RtMidi.h"
 #ifdef _WIN32
 #include "ncurses/curses.h"
 #else
@@ -1889,8 +1890,47 @@ static void StreamFinished( void* userData )
    //printf( "Stream Completed: %s\n", data->message );
 }
 
+void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
+{
+    if (!message)
+        return;
+    ScaleOscillator* osc = (ScaleOscillator*)userData;
+    auto& msg = *message;
+    if (msg.size()!=3)
+        return;
+    if (msg[0] >= 176)
+    {
+        //std::cout << "got midi cc " << (int)msg[1] << " " << (int)msg[2] << "\n";
+        float norm = 1.0/127*msg[2];
+        if (msg[1] == 21)
+            osc->setRootPitch(rescale(norm,0.0f,1.0f,-24.0f,24.0f));
+        if (msg[1] == 22)
+            osc->setBalance(norm);
+        if (msg[1] == 23)
+            osc->setSpread(norm);
+        if (msg[1] == 24)
+            osc->setFold(norm);
+        if (msg[1] == 25)
+            osc->setPitchOffset(rescale(norm,0.0f,1.0f,-24.0f,24.0f));
+        if (msg[1] == 26)
+            osc->setFMAmount(norm);
+        if (msg[1] == 27)
+            osc->setScale(norm);
+    }
+
+}
+
 int main(int argc, char** argv)
 {
+    ScaleOscillator osc;
+    std::unique_ptr<RtMidiIn> midi_input(new RtMidiIn);
+    midi_input->setCallback(mymidicb,&osc);
+    int incount = midi_input->getPortCount();
+    for (int i=0;i<incount;++i)
+        std::cout << i << "\t" << midi_input->getPortName(i) << "\n";
+    midi_input->openPort(1);
+    //Pa_Sleep(10000);
+    //return 0;
     char c;
     
     auto valuef = [&](char c, char decc, char incc, float oldval, float delta)
@@ -1905,7 +1945,7 @@ int main(int argc, char** argv)
     int FRAMES_PER_BUFFER = 512;
     double SAMPLE_RATE = 44100;
     std::cout << "Starting headless KLANG\n";
-    ScaleOscillator osc;
+    
     osc.setScaleBank(1);
     osc.setScale(0.3);
     osc.setFrequencySmoothing(0.2);
