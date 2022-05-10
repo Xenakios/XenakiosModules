@@ -1534,7 +1534,7 @@ public:
         float looplen = 1.0f;
         float loopslide = 0.0f;
         float posrand = eng->m_par_srcposrand;
-        float grate = 32.0f;
+        float grate = std::pow(2.0f,1.0f/12*(12.0f*eng->m_par_grainrate));
         float lenm = eng->m_par_lenmultip;
         float revprob = 0.0f;
         float pitchspread = eng->m_par_pitchsrpead;
@@ -1562,6 +1562,7 @@ public:
     std::atomic<float> m_par_pitchsrpead{0.0f};
     std::atomic<float> m_par_scanpos{0.0f};
     std::atomic<float> m_par_lenmultip{0.5f};
+    std::atomic<float> m_par_grainrate{4.0f}; // "octaves", 0 is 1 Hz
     int m_cbcount = 0;
     int m_shift_state = 0;
     int m_big_fader_state = 0;
@@ -1643,6 +1644,8 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             cf(eng->m_par_srcposrand,delta*0.01,0.0f,1.0f);
         else if (msg[1] == 67)
             cf(eng->m_par_lenmultip,delta*0.01,0.0f,1.0f);
+        else if (msg[1] == 68)
+            cf(eng->m_par_grainrate,delta*0.02f,-1.0f,7.0f);
     }
 
 }
