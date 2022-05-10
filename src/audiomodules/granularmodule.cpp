@@ -1470,6 +1470,7 @@ class AudioEngine
 public:
     GrainEngine* m_eng = nullptr;
     PaStreamParameters outputParameters;
+    PaStreamParameters inputParameters;
     PaStream *stream = nullptr;
     bool inited = false;
     AudioEngine(GrainEngine* e) : m_eng(e)
@@ -1482,24 +1483,40 @@ public:
             inited = true;
         else return;
         printError(err);
-        outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
+        for (int i=0;i<Pa_GetDeviceCount();++i)
+        {
+            std::cout << i << " :: " << Pa_GetDeviceInfo(i)->name << "\n";
+        }
+        outputParameters.device = 0; // Pa_GetDefaultOutputDevice(); /* default output device */
+        inputParameters.device = 0; //Pa_GetDefaultInputDevice();
+        if (inputParameters.device == paNoDevice)
+        {
+            std::cout << "no default input device\n";
+        }
         if (outputParameters.device == paNoDevice) 
         {
             fprintf(stderr,"Error: No default output device.\n");
         } else
         {
+            inputParameters.channelCount = 2;
+            inputParameters.sampleFormat = paFloat32;
+            inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
+            
             outputParameters.channelCount = 2;       /* stereo output */
             outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
             outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
+            std::cout << Pa_GetDeviceInfo(inputParameters.device)->name << "\n";
+            std::cout << "portaudio default low in latency " << inputParameters.suggestedLatency << "\n";
             std::cout << "portaudio default low out latency " << outputParameters.suggestedLatency << "\n";
+            inputParameters.hostApiSpecificStreamInfo = NULL;
             outputParameters.hostApiSpecificStreamInfo = NULL;
             //return 0;
             err = Pa_OpenStream(
                     &stream,
-                    NULL, /* no input */
+                    &inputParameters, 
                     &outputParameters,
                     44100,
-                    256,
+                    512,
                     paClipOff,      /* we won't output out of range samples so don't bother clipping them */
                     paCallback,
                     this );
@@ -1560,10 +1577,10 @@ public:
         float pitchspread = eng->m_par_pitchsrpead;
         eng->m_eng->m_scanpos = eng->m_par_scanpos;
         float* obuf = (float*)outputBuffer;
+        float* inbuf = (float*)inputBuffer;
         float panspread = clamp(eng->m_par_stereo_spread,-1.0f,1.0f);
-        float pangains[2] = {0.0f,0.0f};
-        //pangains[0] = rescale(panspread,-1.0f,1.0f,0.0f,1.0f);
-        //pangains[1] = 1.0f-pangains[0];
+        float inputgain = eng->m_par_inputmix;
+        float procgain = 1.0f-inputgain;
         for (int i=0;i<framesPerBuffer;++i)
         {
             eng->m_eng->process(deltatime,sr,procbuf,playrate,pitch,loopstart,looplen,loopslide,
@@ -1571,8 +1588,8 @@ public:
             float mid = procbuf[0]+procbuf[1];
             float side = procbuf[1]-procbuf[0];
             side *= panspread;  
-            obuf[i*2+0] = mid - side;
-            obuf[i*2+1] = mid + side;
+            obuf[i*2+0] = (mid - side) * procgain + inbuf[i*2+0] * inputgain; 
+            obuf[i*2+1] = (mid + side) * procgain + inbuf[i*2+0] * inputgain;
         }
         
         return paContinue;
@@ -1595,6 +1612,7 @@ public:
     std::atomic<float> m_par_stereo_spread{1.0f};
     std::atomic<float> m_par_grainrate{4.0f}; // "octaves", 0 is 1 Hz
     std::atomic<float> m_par_regionselect{0.0f};
+    std::atomic<float> m_par_inputmix{1.0f};
     int m_cbcount = 0;
     int m_shift_state = 0;
     int m_big_fader_state = 0;
