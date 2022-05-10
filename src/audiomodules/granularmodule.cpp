@@ -1526,7 +1526,7 @@ public:
         float deltatime = 1.0f/sr;
         float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
         float playrate = eng->m_par_playrate;
-        float pitch = 0.0f;
+        float pitch = eng->m_par_pitch;
         float loopstart = 0.0f;
         float looplen = 1.0f;
         float loopslide = 0.0f;
@@ -1547,6 +1547,7 @@ public:
         return paContinue;
     }
     std::atomic<float> m_par_playrate{1.0f};
+    std::atomic<float> m_par_pitch{0.0f};
     int m_cbcount = 0;
 };
 
@@ -1594,7 +1595,7 @@ int main(int argc, char** argv)
         if (c == 'q')
             break;
         cf(c,'a','A', aeng.m_par_playrate,0.05f);
-        
+        cf(c,'s','S', aeng.m_par_pitch,0.5f);
         Pa_Sleep(10);
     }
     return 0;
