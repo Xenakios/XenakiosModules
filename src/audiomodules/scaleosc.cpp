@@ -1924,18 +1924,20 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
     {
         float norm = 1.0/127*msg[2];
         float delta = 0.0f;
+        float stepsmall = 0.05f;
+        float steplarge = 0.2f;
         if (msg[2]>=64)
         {
             if (msg[2]==127)
-                delta = -0.05f;
+                delta = -stepsmall;
             else 
-                delta = -0.2f;
+                delta = -steplarge;
         }
         if (msg[2]<64)
         {
             if (msg[2]==1)
-                delta = 0.05f;
-            else delta = 0.2f;
+                delta = stepsmall;
+            else delta = steplarge;
         }
             
 
