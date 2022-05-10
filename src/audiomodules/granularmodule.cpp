@@ -1550,6 +1550,12 @@ public:
         
         return paContinue;
     }
+    void setNextPlayState()
+    {
+        int& st = m_eng->m_playmode;
+        st = (st + 1) % 3;
+        //std::cout << "set to playmode " << st << "\n";
+    }
     std::atomic<float> m_par_playrate{1.0f};
     std::atomic<float> m_par_pitch{0.0f};
     std::atomic<float> m_par_srcposrand{0.0f};
@@ -1584,6 +1590,11 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
                 eng->m_shift_state = 1;
             else eng->m_shift_state = 0;
         }
+        if (msg[1] == 113)
+        {
+            if (msg[2]>0)
+                eng->setNextPlayState();
+        }
         if (msg[1] == 72 && eng->m_big_fader_state == 0)
         {
             eng->m_big_fader_values[0] = msg[2];
@@ -1599,7 +1610,7 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             eng->m_big_fader_state = 0;
             int thevalue = eng->m_big_fader_values[0]*128+eng->m_big_fader_values[1];
             float bigfadernorm = 1.0f/16384*thevalue;
-            std::cout << "big fader norm pos " << bigfadernorm << "\n";
+            //std::cout << "big fader norm pos " << bigfadernorm << "\n";
             bigfadernorm = clamp(bigfadernorm,0.0f,1.0f);
             eng->m_par_scanpos = clamp(bigfadernorm,0.0f,2.0f);
         }
