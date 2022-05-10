@@ -1916,10 +1916,15 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
     {
         
         float norm = 1.0/127*msg[2];
-        if (msg[1] == 21)
-            osc->setRootPitch(rescale(norm,0.0f,1.0f,-24.0f,24.0f));
-        else if (msg[1] == 22)
-            osc->setBalance(norm);
+        float delta = 0.1f;
+        if (msg[2]<64)
+            delta = -0.1f;
+
+        if (msg[1] == 64)
+            osc->setRootPitch(osc->getRootPitch()+delta);
+            //osc->setRootPitch(rescale(norm,0.0f,1.0f,-24.0f,24.0f));
+        else if (msg[1] == 65)
+            osc->setBalance(osc->getBalance()+delta*0.1f);
         else if (msg[1] == 23)
             osc->setSpread(norm);
         else if (msg[1] == 24)
