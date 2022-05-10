@@ -1,7 +1,13 @@
 //#include "plugin.hpp"
 #include "grain_engine.h"
+#ifndef RAPIHEADLESS
 #include "helperwidgets.h"
 #include <osdialog.h>
+#else
+#include <system.hpp>
+#include <jansson.h>
+#include <iostream>
+#endif
 #include <thread>
 #include <mutex>
 #include "dr_wav.h"
@@ -329,10 +335,12 @@ public:
     {
         if (m_has_recorded)
         {
+            #ifndef RAPIHEADLESS
             std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
             uint64_t t = system::getUnixTime();
             std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
             saveFile(audioFile);
+            #endif
         }
     }
     int getSourceNumChannels() override
@@ -623,7 +631,7 @@ private:
     
 };
 
-
+#ifndef RAPIHEADLESS
 
 class XGranularModule : public rack::Module
 {
@@ -1430,3 +1438,22 @@ public:
 };
 
 Model* modelXGranular = createModel<XGranularModule, XGranularWidget>("XGranular");
+
+#else
+int main(int argc, char** argv)
+{
+    std::cout << "STARTING HEADLESS KLANG\n";
+    GrainEngine ge;
+    auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
+    if (drsrc->importFile("/home/teemu/AudioStuff/count.wav"))
+    {
+        std::cout << "loaded test source file\n";
+    } else
+    {
+        std::cout << "could not load test file\n";
+        return;
+    }
+        
+    return 0;
+}
+#endif

@@ -11,6 +11,7 @@ CXXFLAGS += -O2
 CXXFLAGS += -DRAPIHEADLESS
 CXXFLAGS += -DM_PI=3.14159265358979323846
 CXXFLAGS += -DNCURSES_STATIC
+CXXFLAGS += -D_M_ARM
 # mac 
 # CXXFLAGS += -D__MACOSX_CORE__
 # CXXFLAGS += -framework CoreMIDI -framework CoreAudio -framework CoreFoundation
@@ -23,7 +24,7 @@ SOURCES += rtmidi/RtMidi.cpp
 # LDFLAGS += curses
 
 klang: 
-	g++ $(CXXFLAGS) $(SOURCES) -oklangcli -lportaudio -lncurses -lasound -lpthread
-
-
+	g++ $(CXXFLAGS) scaleosc.cpp -oklangcli -lportaudio -lncurses -lasound -lpthread
+grlooper: 
+	g++ $(CXXFLAGS) ../dr_wav.c granularmodule.cpp -ogrloopercli -lportaudio -lncurses -lasound -lpthread
 

@@ -4,12 +4,24 @@
 #include <vector>
 #include <cmath>
 #include <random>
+#include <memory>
+#ifdef RAPIHEADLESS
+//#include <simd/Vector.hpp>
+//#include <simd/functions.hpp>
+#include <dsp/common.hpp>
+#include <dsp/filter.hpp>
+#include <dsp/digital.hpp>
+#include <math.hpp>
+#else
 #include <rack.hpp>
+#endif
+//#include <rack.hpp>
 // #include "../plugin.hpp"
-#include "../wdl/resample.h"
+// #include "../wdl/resample.h"
 #include "mischelpers.h"
 
 using namespace rack;
+using namespace rack::math;
 
 // adapted from https://github.com/Chowdhury-DSP/chowdsp_utils
 // begin Chowdhury code
