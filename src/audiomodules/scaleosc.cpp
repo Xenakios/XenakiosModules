@@ -1224,11 +1224,14 @@ public:
         }
     }
     std::string mCustomScaleFileName;
+    float m_norm_fm_amt = 0.0f;
     void setFMAmount(float a)
     {
         a = clamp(a,0.0f,1.0f);
+        m_norm_fm_amt = a;
         m_fm_amt = std::pow(a,2.0f);
     }
+    float getFMAmount() const { return m_norm_fm_amt; }
     int m_warp_mode = 0;
     void setWarp(int mode,float w)
     {
@@ -1925,18 +1928,23 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             //osc->setRootPitch(rescale(norm,0.0f,1.0f,-24.0f,24.0f));
         else if (msg[1] == 65)
             osc->setBalance(osc->getBalance()+delta*0.1f);
-        else if (msg[1] == 23)
-            osc->setSpread(norm);
-        else if (msg[1] == 24)
-            osc->setFold(norm);
-        else if (msg[1] == 25)
-            osc->setPitchOffset(rescale(norm,0.0f,1.0f,-24.0f,24.0f));
-        else if (msg[1] == 26 || msg[1] == 50)
-            osc->setFMAmount(norm);
+        else if (msg[1] == 66)
+            osc->setSpread(osc->getSpread()+delta*0.1f);
+        else if (msg[1] == 67)
+            osc->setFold(osc->getFold()+delta*0.1f);
+        else if (msg[1] == 68)
+            osc->setPitchOffset(osc->getPitchOffset()+delta);
+        else if (msg[1] == 69)
+            osc->setFMAmount(osc->getFMAmount()+delta*0.1f);
         else if (msg[1] == 27)
             osc->setScale(norm);
-        else if (msg[1] == 28)
-            g_pan_spread = rescale(norm,0.0f,1.0f,-1.0f,1.0f);
+        else if (msg[1] == 71)
+        {
+            // g_pan_spread = rescale(norm,0.0f,1.0f,-1.0f,1.0f);
+            g_pan_spread += delta * 0.1f;
+            g_pan_spread = clamp(g_pan_spread,-1.0f,1.0f);
+        }
+            
         else if (msg[1] == 57)
             g_quit = true;
         //    std::cout << "got midi cc " << (int)msg[1] << " " << (int)msg[2] << "\n";
