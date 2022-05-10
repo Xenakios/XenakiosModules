@@ -1447,6 +1447,24 @@ Model* modelXGranular = createModel<XGranularModule, XGranularWidget>("XGranular
 #include <unistd.h>
 #include "rtmidi/RtMidi.h"
 
+char mygetch() {
+    char buf = 0;
+    struct termios old = { 0 };
+    fflush(stdout);
+    if (tcgetattr(0, &old) < 0) perror("tcsetattr()");
+    old.c_lflag    &= ~ICANON;   // local modes = Non Canonical mode
+    old.c_lflag    &= ~ECHO;     // local modes = Disable echo. 
+    old.c_cc[VMIN]  = 1;         // control chars (MIN value) = 1
+    old.c_cc[VTIME] = 0;         // control chars (TIME value) = 0 (No time)
+    if (tcsetattr(0, TCSANOW, &old) < 0) perror("tcsetattr ICANON");
+    if (read(0, &buf, 1) < 0) perror("read()");
+    old.c_lflag    |= ICANON;    // local modes = Canonical mode
+    old.c_lflag    |= ECHO;      // local modes = Enable echo. 
+    if (tcsetattr(0, TCSADRAIN, &old) < 0) perror ("tcsetattr ~ICANON");
+    return buf;
+ }
+
+
 class AudioEngine
 {
 public:
@@ -1456,6 +1474,7 @@ public:
     bool inited = false;
     AudioEngine(GrainEngine* e) : m_eng(e)
     {
+        m_cur_playstate = m_eng->m_playmode;
         std::cout << "attempting to start portaudio\n";
         PaError err;
         err = Pa_Initialize();
@@ -1531,7 +1550,7 @@ public:
         float pitch = eng->m_par_pitch;
         float separ = rescale(pitch,-24.0f,24.0f,0.0f,1.0f);
         eng->m_eng->m_scrubber->setSeparation(separ);
-        float loopstart = 0.0f;
+        float loopstart = eng->m_par_regionselect;
         float looplen = 1.0f;
         float loopslide = 0.0f;
         float posrand = eng->m_par_srcposrand;
@@ -1562,8 +1581,10 @@ public:
     {
         int& st = m_eng->m_playmode;
         st = (st + 1) % 3;
+        m_cur_playstate = st;
         //std::cout << "set to playmode " << st << "\n";
     }
+    int m_cur_playstate = 0;
     std::atomic<float> m_par_playrate{1.0f};
     std::atomic<float> m_par_pitch{0.0f};
     std::atomic<float> m_par_srcposrand{0.0f};
@@ -1573,6 +1594,7 @@ public:
     std::atomic<float> m_par_reverseprob{0.0f};
     std::atomic<float> m_par_stereo_spread{1.0f};
     std::atomic<float> m_par_grainrate{4.0f}; // "octaves", 0 is 1 Hz
+    std::atomic<float> m_par_regionselect{0.0f};
     int m_cbcount = 0;
     int m_shift_state = 0;
     int m_big_fader_state = 0;
@@ -1623,7 +1645,12 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             float bigfadernorm = 1.0f/16384*thevalue;
             //std::cout << "big fader norm pos " << bigfadernorm << "\n";
             bigfadernorm = clamp(bigfadernorm,0.0f,1.0f);
-            eng->m_par_scanpos = clamp(bigfadernorm,0.0f,2.0f);
+            if (eng->m_cur_playstate>0 && eng->m_shift_state == 0)
+                eng->m_par_scanpos = clamp(bigfadernorm,0.0f,1.0f);
+            if (eng->m_cur_playstate>0 && eng->m_shift_state == 1)
+                eng->m_par_regionselect = clamp(bigfadernorm,0.0f,1.0f);
+            if (eng->m_cur_playstate==0 && eng->m_shift_state == 0)
+                eng->m_par_regionselect = clamp(bigfadernorm,0.0f,1.0f);
         }
         float norm = 1.0/127*msg[2];
         float delta = 0.0f;
@@ -1664,22 +1691,6 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
 
 }
 
-char mygetch() {
-    char buf = 0;
-    struct termios old = { 0 };
-    fflush(stdout);
-    if (tcgetattr(0, &old) < 0) perror("tcsetattr()");
-    old.c_lflag    &= ~ICANON;   // local modes = Non Canonical mode
-    old.c_lflag    &= ~ECHO;     // local modes = Disable echo. 
-    old.c_cc[VMIN]  = 1;         // control chars (MIN value) = 1
-    old.c_cc[VTIME] = 0;         // control chars (TIME value) = 0 (No time)
-    if (tcsetattr(0, TCSANOW, &old) < 0) perror("tcsetattr ICANON");
-    if (read(0, &buf, 1) < 0) perror("read()");
-    old.c_lflag    |= ICANON;    // local modes = Canonical mode
-    old.c_lflag    |= ECHO;      // local modes = Enable echo. 
-    if (tcsetattr(0, TCSADRAIN, &old) < 0) perror ("tcsetattr ~ICANON");
-    return buf;
- }
 
 int main(int argc, char** argv)
 {
@@ -1698,7 +1709,7 @@ int main(int argc, char** argv)
     
     // ge.m_gm->m_interpmode = 1;
     auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
-    if (drsrc->importFile("/home/teemu/AudioStuff/sheila.wav"))
+    if (drsrc->importFile("/home/teemu/AudioStuff/chimes.wav"))
     {
         std::cout << "loaded test source file\n";
     } else
@@ -1706,6 +1717,7 @@ int main(int argc, char** argv)
         std::cout << "could not load test file\n";
         return 1;
     }
+    ge.addEquidistantMarkers(8);
     AudioEngine aeng(&ge);
     midi_input->setCallback(mymidicb,(void*)&aeng);
     auto cf = [](char c, char incc, char decc, std::atomic<float>& par, float step)
