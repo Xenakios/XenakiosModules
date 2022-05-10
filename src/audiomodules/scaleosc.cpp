@@ -580,7 +580,9 @@ public:
         #ifndef RAPIHEADLESS
         std::string dir = asset::plugin(pluginInstance, "res/scala_scales");
         #else
-        std::string dir = "/Users/teemu/codeprojects/vcv/XenakiosModules/res/scala_scales";
+        //std::string dir = "/Users/teemu/codeprojects/vcv/XenakiosModules/res/scala_scales";
+        std::string dir = "../../res/scala_scales";
+        
         #endif
         scalafiles.push_back(dir+"/syntonic_comma.scl");
         scalafiles.push_back(dir+"/major_tone_ji.scl");
@@ -1142,10 +1144,13 @@ public:
         }
     }
     int m_curScale = 0;
+    float m_cur_scale_norm = 0.0f;
+    float getScaleNorm() const { return m_cur_scale_norm; }
     void setScale(float x)
     {
         
         x = clamp(x,0.0f,1.0f);
+        m_cur_scale_norm = x;
         auto& bank = m_all_banks[m_cur_bank];
         int i = x * (bank.scales.size()-1);
         if (i!=m_curScale)
@@ -1936,8 +1941,8 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             osc->setPitchOffset(osc->getPitchOffset()+delta);
         else if (msg[1] == 69)
             osc->setFMAmount(osc->getFMAmount()+delta*0.1f);
-        else if (msg[1] == 27)
-            osc->setScale(norm);
+        else if (msg[1] == 70)
+            osc->setScale(osc->getScaleNorm()+delta*0.2f);
         else if (msg[1] == 71)
         {
             // g_pan_spread = rescale(norm,0.0f,1.0f,-1.0f,1.0f);
