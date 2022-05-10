@@ -1922,11 +1922,22 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
         return;
     if (msg[0] >= 176)
     {
-        
         float norm = 1.0/127*msg[2];
-        float delta = -0.1f;
+        float delta = 0.0f;
+        if (msg[2]>=64)
+        {
+            if (msg[2]==127)
+                delta = -0.05f;
+            else 
+                delta = -0.2f;
+        }
         if (msg[2]<64)
-            delta = 0.1f;
+        {
+            if (msg[2]==1)
+                delta = 0.05f;
+            else delta = 0.2f;
+        }
+            
 
         if (msg[1] == 64)
             osc->setRootPitch(osc->getRootPitch()+delta);
@@ -1942,7 +1953,7 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
         else if (msg[1] == 69)
             osc->setFMAmount(osc->getFMAmount()+delta*0.1f);
         else if (msg[1] == 70)
-            osc->setScale(osc->getScaleNorm()+delta*0.2f);
+            osc->setScale(osc->getScaleNorm()+delta*0.1f);
         else if (msg[1] == 71)
         {
             // g_pan_spread = rescale(norm,0.0f,1.0f,-1.0f,1.0f);
