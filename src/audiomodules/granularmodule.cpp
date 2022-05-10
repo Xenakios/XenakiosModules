@@ -1445,6 +1445,7 @@ Model* modelXGranular = createModel<XGranularModule, XGranularWidget>("XGranular
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
+#include "rtmidi/RtMidi.h"
 
 class AudioEngine
 {
@@ -1530,9 +1531,9 @@ public:
         float loopstart = 0.0f;
         float looplen = 1.0f;
         float loopslide = 0.0f;
-        float posrand = 0.0f;
-        float grate = 8.0f;
-        float lenm = 0.7f;
+        float posrand = eng->m_par_srcposrand;
+        float grate = 32.0f;
+        float lenm = 1.0f;
         float revprob = 0.0f;
         float pitchspread = 0.0f;
         float* obuf = (float*)outputBuffer;
@@ -1548,8 +1549,54 @@ public:
     }
     std::atomic<float> m_par_playrate{1.0f};
     std::atomic<float> m_par_pitch{0.0f};
+    std::atomic<float> m_par_srcposrand{0.0f};
     int m_cbcount = 0;
 };
+
+void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
+{
+    if (!message)
+        return;
+    AudioEngine* eng = (AudioEngine*)userData;
+    auto& msg = *message;
+    if (msg.size()!=3)
+        return;
+    auto cf = [](std::atomic<float>& par,float step,float minv,float maxv)
+    {
+        float temp = par + step;
+        temp = clamp(temp,minv,maxv);
+        par = temp;
+    };
+    if (msg[0] >= 176)
+    {
+        float norm = 1.0/127*msg[2];
+        float delta = 0.0f;
+        float stepsmall = 0.05f;
+        float steplarge = 0.2f;
+        if (msg[2]>=64)
+        {
+            if (msg[2]==127)
+                delta = -stepsmall;
+            else 
+                delta = -steplarge;
+        }
+        if (msg[2]<64)
+        {
+            if (msg[2]==1)
+                delta = stepsmall;
+            else delta = steplarge;
+        }
+            
+
+        if (msg[1] == 64)
+            cf(eng->m_par_playrate,delta,-2.0f,2.0f);
+        else if (msg[1] == 65)
+            cf(eng->m_par_pitch,delta,-24.0f,24.0f);
+        else if (msg[1] == 66)
+            cf(eng->m_par_srcposrand,delta,0.0f,1.0f);
+    }
+
+}
 
 char mygetch() {
     char buf = 0;
@@ -1572,8 +1619,19 @@ int main(int argc, char** argv)
 {
     std::cout << "STARTING HEADLESS KLANG\n";
     GrainEngine ge;
+    std::unique_ptr<RtMidiIn> midi_input(new RtMidiIn);
+    
+    int incount = midi_input->getPortCount();
+    for (int i=0;i<incount;++i)
+        std::cout << i << "\t" << midi_input->getPortName(i) << "\n";
+    std::cout << "which MIDI port to use?\n";
+    int pnum = 0;
+    std::cin >> pnum;
+    midi_input->openPort(pnum);
+    
+    // ge.m_gm->m_interpmode = 1;
     auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
-    if (drsrc->importFile("/home/teemu/AudioStuff/count.wav"))
+    if (drsrc->importFile("/home/teemu/AudioStuff/sheila.wav"))
     {
         std::cout << "loaded test source file\n";
     } else
@@ -1582,6 +1640,7 @@ int main(int argc, char** argv)
         return 1;
     }
     AudioEngine aeng(&ge);
+    midi_input->setCallback(mymidicb,(void*)&aeng);
     auto cf = [](char c, char incc, char decc, std::atomic<float>& par, float step)
     {
         if (c == incc)
@@ -1596,7 +1655,14 @@ int main(int argc, char** argv)
             break;
         cf(c,'a','A', aeng.m_par_playrate,0.05f);
         cf(c,'s','S', aeng.m_par_pitch,0.5f);
-        Pa_Sleep(10);
+        if (c=='i')
+        {
+            auto& mo = ge.m_gm->m_interpmode;
+            if (mo == 0)
+                mo = 1;
+            else mo = 0;
+        }
+        Pa_Sleep(20);
     }
     return 0;
 }

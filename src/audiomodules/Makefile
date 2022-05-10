@@ -24,7 +24,7 @@ SOURCES += rtmidi/RtMidi.cpp
 # LDFLAGS += curses
 
 klang: 
-	g++ $(CXXFLAGS) scaleosc.cpp -oklangcli -lportaudio -lncurses -lasound -lpthread
+	g++ $(CXXFLAGS) rtmidi/RtMidi.cpp scaleosc.cpp -oklangcli -lportaudio -lncurses -lasound -lpthread
 grlooper: 
-	g++ $(CXXFLAGS) ../dr_wav.c ../grain_engine.cpp granularmodule.cpp -ogrloopercli -lportaudio -lncurses -lasound -lpthread
+	g++ $(CXXFLAGS) rtmidi/RtMidi.cpp ../dr_wav.c ../grain_engine.cpp granularmodule.cpp -ogrloopercli -lportaudio -lncurses -lasound -lpthread
 
