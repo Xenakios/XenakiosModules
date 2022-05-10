@@ -625,7 +625,7 @@ public:
             m_markers.push_back(pos);
         }
     }
-    int m_playmode = 0; // 0 normal, 1 scan mode, 2 granulation disabled
+    int m_playmode = 0; // 0 normal, 1 scan mode, 2 scrub
     float m_scanpos = 0.0f;
 private:
     
@@ -1528,14 +1528,17 @@ public:
         float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
         float playrate = eng->m_par_playrate;
         float pitch = eng->m_par_pitch;
+        float separ = rescale(pitch,-24.0f,24.0f,0.0f,1.0f);
+        eng->m_eng->m_scrubber->setSeparation(separ);
         float loopstart = 0.0f;
         float looplen = 1.0f;
         float loopslide = 0.0f;
         float posrand = eng->m_par_srcposrand;
         float grate = 32.0f;
-        float lenm = 1.0f;
+        float lenm = eng->m_par_lenmultip;
         float revprob = 0.0f;
         float pitchspread = eng->m_par_pitchsrpead;
+        eng->m_eng->m_scanpos = eng->m_par_scanpos;
         float* obuf = (float*)outputBuffer;
         for (int i=0;i<framesPerBuffer;++i)
         {
@@ -1551,8 +1554,12 @@ public:
     std::atomic<float> m_par_pitch{0.0f};
     std::atomic<float> m_par_srcposrand{0.0f};
     std::atomic<float> m_par_pitchsrpead{0.0f};
+    std::atomic<float> m_par_scanpos{0.0f};
+    std::atomic<float> m_par_lenmultip{0.5f};
     int m_cbcount = 0;
     int m_shift_state = 0;
+    int m_big_fader_state = 0;
+    int m_big_fader_values[2] = {0,0};
 };
 
 void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
@@ -1576,6 +1583,25 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             if (msg[2]>0)
                 eng->m_shift_state = 1;
             else eng->m_shift_state = 0;
+        }
+        if (msg[1] == 72 && eng->m_big_fader_state == 0)
+        {
+            eng->m_big_fader_values[0] = msg[2];
+            eng->m_big_fader_state = 1;
+        }
+        if (msg[1] == 73 && eng->m_big_fader_state == 1)
+        {
+            eng->m_big_fader_values[1] = msg[2];
+            eng->m_big_fader_state = 2;
+        }
+        if (eng->m_big_fader_state == 2)
+        {
+            eng->m_big_fader_state = 0;
+            int thevalue = eng->m_big_fader_values[0]*128+eng->m_big_fader_values[1];
+            float bigfadernorm = 1.0f/16384*thevalue;
+            std::cout << "big fader norm pos " << bigfadernorm << "\n";
+            bigfadernorm = clamp(bigfadernorm,0.0f,1.0f);
+            eng->m_par_scanpos = clamp(bigfadernorm,0.0f,2.0f);
         }
         float norm = 1.0/127*msg[2];
         float delta = 0.0f;
@@ -1604,7 +1630,8 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             cf(eng->m_par_pitchsrpead,delta*0.01f,-1.0f,1.0f);
         else if (msg[1] == 66)
             cf(eng->m_par_srcposrand,delta*0.01,0.0f,1.0f);
-        
+        else if (msg[1] == 67)
+            cf(eng->m_par_lenmultip,delta*0.01,0.0f,1.0f);
     }
 
 }
@@ -1630,6 +1657,7 @@ int main(int argc, char** argv)
 {
     std::cout << "STARTING HEADLESS KLANG\n";
     GrainEngine ge;
+    ge.m_playmode = 2;
     std::unique_ptr<RtMidiIn> midi_input(new RtMidiIn);
     
     int incount = midi_input->getPortCount();
