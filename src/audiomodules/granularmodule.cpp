@@ -1440,6 +1440,132 @@ public:
 Model* modelXGranular = createModel<XGranularModule, XGranularWidget>("XGranular");
 
 #else
+
+#include "portaudio.h"
+#include <stdio.h>
+#include <termios.h>
+#include <unistd.h>
+
+class AudioEngine
+{
+public:
+    GrainEngine* m_eng = nullptr;
+    PaStreamParameters outputParameters;
+    PaStream *stream = nullptr;
+    bool inited = false;
+    AudioEngine(GrainEngine* e) : m_eng(e)
+    {
+        std::cout << "attempting to start portaudio\n";
+        PaError err;
+        err = Pa_Initialize();
+        if (err == paNoError)
+            inited = true;
+        else return;
+        printError(err);
+        outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
+        if (outputParameters.device == paNoDevice) 
+        {
+            fprintf(stderr,"Error: No default output device.\n");
+        } else
+        {
+            outputParameters.channelCount = 2;       /* stereo output */
+            outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
+            outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
+            std::cout << "portaudio default low out latency " << outputParameters.suggestedLatency << "\n";
+            outputParameters.hostApiSpecificStreamInfo = NULL;
+            //return 0;
+            err = Pa_OpenStream(
+                    &stream,
+                    NULL, /* no input */
+                    &outputParameters,
+                    44100,
+                    256,
+                    paClipOff,      /* we won't output out of range samples so don't bother clipping them */
+                    paCallback,
+                    this );
+            printError(err);
+            err = Pa_StartStream( stream );
+            printError(err);
+        }
+
+    
+    }
+    void printError(PaError e)
+    {
+        if (e == paNoError)
+            return;
+        fprintf( stderr, "An error occured while using the portaudio stream\n" );
+        fprintf( stderr, "Error number: %d\n", e );
+        fprintf( stderr, "Error message: %s\n", Pa_GetErrorText( e ) );
+    }
+    ~AudioEngine()
+    {
+        std::cout << "finishing portaudio\n";
+        if (stream)
+        {
+            Pa_StopStream(stream);
+            Pa_CloseStream( stream );
+        }
+        if (inited)
+            Pa_Terminate();
+    }
+    static int paCallback( const void *inputBuffer, void *outputBuffer,
+                           unsigned long framesPerBuffer,
+                           const PaStreamCallbackTimeInfo* timeInfo,
+                           PaStreamCallbackFlags statusFlags,
+                           void *userData )
+    {
+        AudioEngine* eng = (AudioEngine*)userData;
+        if (eng->m_cbcount<50)
+        {
+            ++eng->m_cbcount;
+            memset(outputBuffer,0,sizeof(float)*2*framesPerBuffer);
+            return paContinue;
+        }
+        float sr = 44100.0f;
+        float deltatime = 1.0f/sr;
+        float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
+        float playrate = 1.0f;
+        float pitch = 0.0f;
+        float loopstart = 0.0f;
+        float looplen = 1.0f;
+        float loopslide = 0.0f;
+        float posrand = 0.0f;
+        float grate = 8.0f;
+        float lenm = 0.5f;
+        float revprob = 0.0f;
+        float pitchspread = 0.0f;
+        float* obuf = (float*)outputBuffer;
+        for (int i=0;i<framesPerBuffer;++i)
+        {
+            eng->m_eng->process(deltatime,sr,procbuf,playrate,pitch,loopstart,looplen,loopslide,
+                posrand,grate,lenm,revprob,0,pitchspread);
+            obuf[i*2+0] = procbuf[0];
+            obuf[i*2+1] = procbuf[1];
+        }
+        
+        return paContinue;
+    }
+    int m_cbcount = 0;
+};
+
+char mygetch() {
+    char buf = 0;
+    struct termios old = { 0 };
+    fflush(stdout);
+    if (tcgetattr(0, &old) < 0) perror("tcsetattr()");
+    old.c_lflag    &= ~ICANON;   // local modes = Non Canonical mode
+    old.c_lflag    &= ~ECHO;     // local modes = Disable echo. 
+    old.c_cc[VMIN]  = 1;         // control chars (MIN value) = 1
+    old.c_cc[VTIME] = 0;         // control chars (TIME value) = 0 (No time)
+    if (tcsetattr(0, TCSANOW, &old) < 0) perror("tcsetattr ICANON");
+    if (read(0, &buf, 1) < 0) perror("read()");
+    old.c_lflag    |= ICANON;    // local modes = Canonical mode
+    old.c_lflag    |= ECHO;      // local modes = Enable echo. 
+    if (tcsetattr(0, TCSADRAIN, &old) < 0) perror ("tcsetattr ~ICANON");
+    return buf;
+ }
+
 int main(int argc, char** argv)
 {
     std::cout << "STARTING HEADLESS KLANG\n";
@@ -1451,9 +1577,13 @@ int main(int argc, char** argv)
     } else
     {
         std::cout << "could not load test file\n";
-        return;
+        return 1;
     }
-        
+    AudioEngine aeng(&ge);
+    while (mygetch()!='q')
+    {
+        Pa_Sleep(10);
+    }
     return 0;
 }
 #endif

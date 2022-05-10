@@ -2007,7 +2007,6 @@ int main(int argc, char** argv)
     PaStreamParameters outputParameters;
     PaStream *stream;
     PaError err;
-    //paTestData data;
     err = Pa_Initialize();
     if( err != paNoError ) goto error;
 
@@ -2069,7 +2068,5 @@ error:
     fprintf( stderr, "Error number: %d\n", err );
     fprintf( stderr, "Error message: %s\n", Pa_GetErrorText( err ) );
     return err;
-    //osc.processNextFrame()
-    return 0;
 }
 #endif
