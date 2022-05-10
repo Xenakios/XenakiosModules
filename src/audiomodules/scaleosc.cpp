@@ -1955,11 +1955,11 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
         else if (msg[1] == 69)
             osc->setFMAmount(osc->getFMAmount()+delta*0.1f);
         else if (msg[1] == 70)
-            osc->setScale(osc->getScaleNorm()+delta*0.1f);
+            osc->setScale(osc->getScaleNorm()+delta*0.01f);
         else if (msg[1] == 71)
         {
             // g_pan_spread = rescale(norm,0.0f,1.0f,-1.0f,1.0f);
-            g_pan_spread += delta * 0.1f;
+            g_pan_spread += delta * 0.2f;
             g_pan_spread = clamp(g_pan_spread,-1.0f,1.0f);
         }
             
@@ -2001,6 +2001,7 @@ int main(int argc, char** argv)
     
     osc.setScaleBank(1);
     osc.setScale(0.3);
+    osc.setBalance(0.4);
     osc.setFrequencySmoothing(0.2);
     std::cout << osc.getScaleName() << "\n";
     PaStreamParameters outputParameters;
