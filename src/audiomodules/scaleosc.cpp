@@ -1919,9 +1919,9 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
     {
         
         float norm = 1.0/127*msg[2];
-        float delta = 0.1f;
+        float delta = -0.1f;
         if (msg[2]<64)
-            delta = -0.1f;
+            delta = 0.1f;
 
         if (msg[1] == 64)
             osc->setRootPitch(osc->getRootPitch()+delta);
