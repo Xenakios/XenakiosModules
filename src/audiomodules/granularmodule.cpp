@@ -1516,7 +1516,7 @@ public:
                            void *userData )
     {
         AudioEngine* eng = (AudioEngine*)userData;
-        if (eng->m_cbcount<50)
+        if (eng->m_cbcount<50) // little hack to do no work at startup
         {
             ++eng->m_cbcount;
             memset(outputBuffer,0,sizeof(float)*2*framesPerBuffer);
@@ -1525,14 +1525,14 @@ public:
         float sr = 44100.0f;
         float deltatime = 1.0f/sr;
         float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
-        float playrate = 1.0f;
+        float playrate = eng->m_par_playrate;
         float pitch = 0.0f;
         float loopstart = 0.0f;
         float looplen = 1.0f;
         float loopslide = 0.0f;
         float posrand = 0.0f;
         float grate = 8.0f;
-        float lenm = 0.5f;
+        float lenm = 0.7f;
         float revprob = 0.0f;
         float pitchspread = 0.0f;
         float* obuf = (float*)outputBuffer;
@@ -1546,6 +1546,7 @@ public:
         
         return paContinue;
     }
+    std::atomic<float> m_par_playrate{1.0f};
     int m_cbcount = 0;
 };
 
@@ -1580,8 +1581,20 @@ int main(int argc, char** argv)
         return 1;
     }
     AudioEngine aeng(&ge);
-    while (mygetch()!='q')
+    auto cf = [](char c, char incc, char decc, std::atomic<float>& par, float step)
     {
+        if (c == incc)
+            par = par + step;
+        if (c == decc)
+            par = par - step;
+    };
+    while (true)
+    {
+        char c = mygetch();
+        if (c == 'q')
+            break;
+        cf(c,'a','A', aeng.m_par_playrate,0.05f);
+        
         Pa_Sleep(10);
     }
     return 0;
