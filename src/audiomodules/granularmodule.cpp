@@ -1535,7 +1535,7 @@ public:
         float grate = 32.0f;
         float lenm = 1.0f;
         float revprob = 0.0f;
-        float pitchspread = 0.0f;
+        float pitchspread = eng->m_par_pitchsrpead;
         float* obuf = (float*)outputBuffer;
         for (int i=0;i<framesPerBuffer;++i)
         {
@@ -1550,7 +1550,9 @@ public:
     std::atomic<float> m_par_playrate{1.0f};
     std::atomic<float> m_par_pitch{0.0f};
     std::atomic<float> m_par_srcposrand{0.0f};
+    std::atomic<float> m_par_pitchsrpead{0.0f};
     int m_cbcount = 0;
+    int m_shift_state = 0;
 };
 
 void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
@@ -1569,10 +1571,16 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
     };
     if (msg[0] >= 176)
     {
+        if (msg[1] == 112)
+        {
+            if (msg[2]>0)
+                eng->m_shift_state = 1;
+            else eng->m_shift_state = 0;
+        }
         float norm = 1.0/127*msg[2];
         float delta = 0.0f;
-        float stepsmall = 0.05f;
-        float steplarge = 0.2f;
+        float stepsmall = 1.0f;
+        float steplarge = 2.0f;
         if (msg[2]>=64)
         {
             if (msg[2]==127)
@@ -1589,11 +1597,14 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             
 
         if (msg[1] == 64)
-            cf(eng->m_par_playrate,delta,-2.0f,2.0f);
-        else if (msg[1] == 65)
-            cf(eng->m_par_pitch,delta,-24.0f,24.0f);
+            cf(eng->m_par_playrate,delta*0.01f,-2.0f,2.0f);
+        else if (msg[1] == 65 && eng->m_shift_state == 0)
+            cf(eng->m_par_pitch,delta*0.1f,-24.0f,24.0f);
+        else if (msg[1] == 65 && eng->m_shift_state == 1)
+            cf(eng->m_par_pitchsrpead,delta*0.01f,-1.0f,1.0f);
         else if (msg[1] == 66)
-            cf(eng->m_par_srcposrand,delta,0.0f,1.0f);
+            cf(eng->m_par_srcposrand,delta*0.01,0.0f,1.0f);
+        
     }
 
 }
