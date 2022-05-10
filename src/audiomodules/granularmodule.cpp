@@ -1517,10 +1517,11 @@ public:
                            void *userData )
     {
         AudioEngine* eng = (AudioEngine*)userData;
+        memset(outputBuffer,0,sizeof(float)*2*framesPerBuffer); // not known yet if the output buffer is precleared
         if (eng->m_cbcount<50) // little hack to do no work at startup
         {
             ++eng->m_cbcount;
-            memset(outputBuffer,0,sizeof(float)*2*framesPerBuffer);
+            
             return paContinue;
         }
         float sr = 44100.0f;
@@ -1536,16 +1537,23 @@ public:
         float posrand = eng->m_par_srcposrand;
         float grate = std::pow(2.0f,1.0f/12*(12.0f*eng->m_par_grainrate));
         float lenm = eng->m_par_lenmultip;
-        float revprob = 0.0f;
+        float revprob = eng->m_par_reverseprob;
         float pitchspread = eng->m_par_pitchsrpead;
         eng->m_eng->m_scanpos = eng->m_par_scanpos;
         float* obuf = (float*)outputBuffer;
+        float panspread = clamp(eng->m_par_stereo_spread,-1.0f,1.0f);
+        float pangains[2] = {0.0f,0.0f};
+        //pangains[0] = rescale(panspread,-1.0f,1.0f,0.0f,1.0f);
+        //pangains[1] = 1.0f-pangains[0];
         for (int i=0;i<framesPerBuffer;++i)
         {
             eng->m_eng->process(deltatime,sr,procbuf,playrate,pitch,loopstart,looplen,loopslide,
                 posrand,grate,lenm,revprob,0,pitchspread);
-            obuf[i*2+0] = procbuf[0];
-            obuf[i*2+1] = procbuf[1];
+            float mid = procbuf[0]+procbuf[1];
+            float side = procbuf[1]-procbuf[0];
+            side *= panspread;  
+            obuf[i*2+0] = mid - side;
+            obuf[i*2+1] = mid + side;
         }
         
         return paContinue;
@@ -1562,6 +1570,8 @@ public:
     std::atomic<float> m_par_pitchsrpead{0.0f};
     std::atomic<float> m_par_scanpos{0.0f};
     std::atomic<float> m_par_lenmultip{0.5f};
+    std::atomic<float> m_par_reverseprob{0.0f};
+    std::atomic<float> m_par_stereo_spread{1.0f};
     std::atomic<float> m_par_grainrate{4.0f}; // "octaves", 0 is 1 Hz
     int m_cbcount = 0;
     int m_shift_state = 0;
@@ -1646,6 +1656,10 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             cf(eng->m_par_lenmultip,delta*0.01,0.0f,1.0f);
         else if (msg[1] == 68)
             cf(eng->m_par_grainrate,delta*0.02f,-1.0f,7.0f);
+        else if (msg[1] == 69)
+            cf(eng->m_par_reverseprob,delta*0.01f,0.0f,1.0f);
+        else if (msg[1] == 70)
+            cf(eng->m_par_stereo_spread,delta*0.02f,-1.0f,1.0f);
     }
 
 }
