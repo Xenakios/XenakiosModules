@@ -1779,7 +1779,7 @@ inline bool findStringIC(const std::string & strSource, const std::string & strT
 
 int main(int argc, char** argv)
 {
-    std::cout << "STARTING HEADLESS KLANG\n";
+    std::cout << "STARTING HEADLESS GRLOOPER\n";
     GrainEngine ge;
     ge.m_playmode = 0;
     std::unique_ptr<RtMidiIn> midi_input(new RtMidiIn);
