@@ -1583,6 +1583,10 @@ public:
             }
             eng->m_toggle_record = false;
         }
+        if (eng->m_add_marker == true)
+        {
+            eng->m_add_marker = false;
+        }
         float deltatime = 1.0f/sr;
         float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
         float playrate = eng->m_par_playrate;
@@ -1633,7 +1637,6 @@ public:
         int& st = m_eng->m_playmode;
         st = (st + 1) % 3;
         m_cur_playstate = st;
-        //std::cout << "set to playmode " << st << "\n";
     }
     int m_cur_playstate = 0;
     std::atomic<float> m_par_playrate{1.0f};
@@ -1648,6 +1651,7 @@ public:
     std::atomic<float> m_par_regionselect{0.0f};
     std::atomic<float> m_par_inputmix{1.0f};
     std::atomic<bool> m_toggle_record{false};
+    std::atomic<bool> m_add_marker{false};
     int m_cbcount = 0;
     int m_shift_state = 0;
     int m_big_fader_state = 0;
@@ -1686,6 +1690,10 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
         if (msg[1] == 114 && msg[2]>0)
         {
             eng->m_toggle_record = true;
+        }
+        if (msg[1] == 115 && msg[2]>0)
+        {
+            eng->m_add_marker = true;
         }
         if (msg[1] == 72 && eng->m_big_fader_state == 0)
         {
