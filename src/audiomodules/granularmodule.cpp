@@ -255,6 +255,7 @@ public:
             ++m_recordBufPos;
             if (m_recordBufPos==m_audioBuffer.size())
             {
+                std::cout << "RECORD BUFFER FULL, STOPPING\n";
                 stopRecording();
                 break;
             }
@@ -1561,6 +1562,24 @@ public:
             return paContinue;
         }
         float sr = 44100.0f;
+        auto drsrc = dynamic_cast<DrWavSource*>(eng->m_eng->m_srcs[0].get());
+        bool rec_active = eng->m_eng->isRecording();
+        if (eng->m_toggle_record == true)
+        {
+            if (rec_active == false)
+            {
+                drsrc->startRecording(2,sr);
+                rec_active = true;
+                std::cout << "START RECORDING\n";
+            } else
+            {
+                eng->m_eng->addMarkerAtPosition(drsrc->getRecordPosition());
+                drsrc->stopRecording();
+                rec_active = false;
+                std::cout << "END RECORDING\n";
+            }
+            eng->m_toggle_record = false;
+        }
         float deltatime = 1.0f/sr;
         float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
         float playrate = eng->m_par_playrate;
@@ -1583,18 +1602,23 @@ public:
         float procgain = 1.0f-inputgain;
         for (int i=0;i<framesPerBuffer;++i)
         {
+            float ins[2] = {inbuf[i*2+0],inbuf[i*2+0]};
             eng->m_eng->process(deltatime,sr,procbuf,playrate,pitch,loopstart,looplen,loopslide,
                 posrand,grate,lenm,revprob,0,pitchspread);
             float mid = procbuf[0]+procbuf[1];
             float side = procbuf[1]-procbuf[0];
             side *= panspread;  
-            obuf[i*2+0] = (mid - side) * procgain + inbuf[i*2+0] * inputgain; 
-            obuf[i*2+1] = (mid + side) * procgain + inbuf[i*2+0] * inputgain;
+            obuf[i*2+0] = (mid - side) * procgain + ins[0] * inputgain; 
+            obuf[i*2+1] = (mid + side) * procgain + ins[0] * inputgain;
+            if (rec_active)
+            {
+                drsrc->pushSamplesToRecordBuffer(ins,0.9f);
+            }
         }
         
         return paContinue;
     }
-    void setNextPlayState()
+    void setNextPlayMode()
     {
         int& st = m_eng->m_playmode;
         st = (st + 1) % 3;
@@ -1613,6 +1637,7 @@ public:
     std::atomic<float> m_par_grainrate{4.0f}; // "octaves", 0 is 1 Hz
     std::atomic<float> m_par_regionselect{0.0f};
     std::atomic<float> m_par_inputmix{1.0f};
+    std::atomic<bool> m_toggle_record{false};
     int m_cbcount = 0;
     int m_shift_state = 0;
     int m_big_fader_state = 0;
@@ -1644,7 +1669,11 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
         if (msg[1] == 113)
         {
             if (msg[2]>0)
-                eng->setNextPlayState();
+                eng->setNextPlayMode();
+        }
+        if (msg[1] == 114 && msg[2]>0)
+        {
+            eng->m_toggle_record = true;
         }
         if (msg[1] == 72 && eng->m_big_fader_state == 0)
         {
@@ -1705,6 +1734,8 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             cf(eng->m_par_reverseprob,delta*0.01f,0.0f,1.0f);
         else if (msg[1] == 70)
             cf(eng->m_par_stereo_spread,delta*0.02f,-1.0f,1.0f);
+        else if (msg[1] == 71)
+            cf(eng->m_par_inputmix,delta*0.05f,0.0f,1.0f);
     }
 
 }
@@ -1735,7 +1766,7 @@ int main(int argc, char** argv)
         std::cout << "could not load test file\n";
         return 1;
     }
-    ge.addEquidistantMarkers(8);
+    //ge.addEquidistantMarkers(8);
     AudioEngine aeng(&ge);
     midi_input->setCallback(mymidicb,(void*)&aeng);
     auto cf = [](char c, char incc, char decc, std::atomic<float>& par, float step)
