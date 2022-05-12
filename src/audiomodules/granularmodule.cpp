@@ -1586,6 +1586,7 @@ public:
         if (eng->m_add_marker == true)
         {
             eng->m_add_marker = false;
+            eng->m_eng->addMarker();
         }
         float deltatime = 1.0f/sr;
         float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
@@ -1765,7 +1766,7 @@ int main(int argc, char** argv)
 {
     std::cout << "STARTING HEADLESS KLANG\n";
     GrainEngine ge;
-    ge.m_playmode = 2;
+    ge.m_playmode = 0;
     std::unique_ptr<RtMidiIn> midi_input(new RtMidiIn);
     
     int incount = midi_input->getPortCount();
