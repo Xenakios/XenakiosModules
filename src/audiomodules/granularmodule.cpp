@@ -1,4 +1,3 @@
-//#include "plugin.hpp"
 #include "grain_engine.h"
 #ifndef RAPIHEADLESS
 #include "helperwidgets.h"
@@ -337,12 +336,15 @@ public:
     {
         if (m_has_recorded)
         {
-            #ifndef RAPIHEADLESS
+#ifndef RAPIHEADLESS
             std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
             uint64_t t = system::getUnixTime();
+#else
+            std::string audioDir = "/home/teemu/AudioStuff/GRLOOPER_RECORDINGS";
+            auto t = std::chrono::system_clock::now().time_since_epoch().count();
+#endif
             std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
             saveFile(audioFile);
-            #endif
         }
     }
     int getSourceNumChannels() override
@@ -1595,10 +1597,15 @@ public:
             }
             eng->m_toggle_record = false;
         }
-        if (eng->m_add_marker == true)
+        if (eng->m_next_marker_act == 1)
         {
-            eng->m_add_marker = false;
+            eng->m_next_marker_act = 0;
             eng->m_eng->addMarker();
+        }
+        if (eng->m_next_marker_act == 2)
+        {
+            eng->m_next_marker_act = 0;
+            eng->m_eng->clearMarkers();
         }
         float deltatime = 1.0f/sr;
         float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
@@ -1664,7 +1671,7 @@ public:
     std::atomic<float> m_par_regionselect{0.0f};
     std::atomic<float> m_par_inputmix{0.0f};
     std::atomic<bool> m_toggle_record{false};
-    std::atomic<bool> m_add_marker{false};
+    std::atomic<int> m_next_marker_act{0};
     std::atomic<int> m_led_ring_option{0};
     int m_cbcount = 0;
     int m_shift_state = 0;
@@ -1707,7 +1714,11 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
         }
         if (msg[1] == 115 && msg[2]>0)
         {
-            eng->m_add_marker = true;
+            eng->m_next_marker_act = 1;
+        }
+        if (eng->m_shift_state == 1 && msg[1] == 115 && msg[2]>0)
+        {
+            eng->m_next_marker_act = 2;
         }
         if (msg[1] == 120 && msg[2]>0)
         {
