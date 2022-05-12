@@ -339,12 +339,16 @@ public:
 #ifndef RAPIHEADLESS
             std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
             uint64_t t = system::getUnixTime();
-#else
-            std::string audioDir = "/home/teemu/AudioStuff/GRLOOPER_RECORDINGS";
-            auto t = std::chrono::system_clock::now().time_since_epoch().count();
-#endif
             std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
             saveFile(audioFile);
+#else
+            std::cout << "saving audio buffer...\n";
+            std::string audioDir = "/home/teemu/AudioStuff/GRLOOPER_RECORDINGS";
+            auto t = std::chrono::system_clock::now().time_since_epoch().count();
+            std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
+            saveFile(audioFile);
+            std::cout << "finished saving audio buffer\n";
+#endif
         }
     }
     int getSourceNumChannels() override
@@ -1910,6 +1914,17 @@ int main(int argc, char** argv)
             if (mo == 0)
                 mo = 1;
             else mo = 0;
+        }
+        if (c=='r')
+        {
+            
+            if (!ge.isRecording())
+            {
+                drsrc->startRecording(2,44100.0f);   
+            } else
+            {
+                drsrc->stopRecording();
+            }
         }
     }
     quit_thread = true;
