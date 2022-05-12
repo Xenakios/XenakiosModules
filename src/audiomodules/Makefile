@@ -12,7 +12,7 @@ CXXFLAGS += -DRAPIHEADLESS
 CXXFLAGS += -DM_PI=3.14159265358979323846
 CXXFLAGS += -DNCURSES_STATIC
 CXXFLAGS += -D_M_ARM
-# mac 
+# for mac 
 # CXXFLAGS += -D__MACOSX_CORE__
 # CXXFLAGS += -framework CoreMIDI -framework CoreAudio -framework CoreFoundation
 # for linux

@@ -1478,6 +1478,9 @@ public:
     {
         m_cur_playstate = m_eng->m_playmode;
         std::cout << "attempting to start portaudio\n";
+        m_dc_blockers[0].setParameters(rack::dsp::BiquadFilter::HIGHPASS_1POLE,30.0f/44100.0,1.0,1.0f);
+        m_dc_blockers[1].setParameters(rack::dsp::BiquadFilter::HIGHPASS_1POLE,30.0f/44100.0,1.0,1.0f);
+        m_drywetsmoother.setParameters(rack::dsp::BiquadFilter::LOWPASS_1POLE,10.0f/44100.0,1.0,1.0f);
         PaError err;
         err = Pa_Initialize();
         if (err == paNoError)
@@ -1598,13 +1601,20 @@ public:
         float* obuf = (float*)outputBuffer;
         float* inbuf = (float*)inputBuffer;
         float panspread = clamp(eng->m_par_stereo_spread,-1.0f,1.0f);
-        float inputgain = eng->m_par_inputmix;
-        float procgain = 1.0f-inputgain;
+        
         for (int i=0;i<framesPerBuffer;++i)
         {
+            float inputgain = eng->m_drywetsmoother.process(eng->m_par_inputmix);
+            float procgain = 1.0f-inputgain;
             float ins[2] = {inbuf[i*2+0],inbuf[i*2+0]};
             eng->m_eng->process(deltatime,sr,procbuf,playrate,pitch,loopstart,looplen,loopslide,
                 posrand,grate,lenm,revprob,0,pitchspread);
+            // filter low frequency junk
+            procbuf[0] = eng->m_dc_blockers[0].process(procbuf[0]);
+            procbuf[1] = eng->m_dc_blockers[1].process(procbuf[1]);
+            // saturate (would ideally need some oversampling for this...)
+            procbuf[0] = std::tanh(procbuf[0]);
+            procbuf[1] = std::tanh(procbuf[1]);
             float mid = procbuf[0]+procbuf[1];
             float side = procbuf[1]-procbuf[0];
             side *= panspread;  
@@ -1642,6 +1652,8 @@ public:
     int m_shift_state = 0;
     int m_big_fader_state = 0;
     int m_big_fader_values[2] = {0,0};
+    std::array<dsp::BiquadFilter,2> m_dc_blockers;
+    dsp::BiquadFilter m_drywetsmoother;
 };
 
 void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
