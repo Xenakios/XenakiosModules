@@ -7,6 +7,7 @@
 #include <system.hpp>
 #include <jansson.h>
 #include <iostream>
+#include <string.hpp>
 #endif
 #include <thread>
 #include <mutex>
@@ -1761,6 +1762,15 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
 
 }
 
+inline bool findStringIC(const std::string & strSource, const std::string & strToFind)
+{
+  auto it = std::search(
+    strSource.begin(), strSource.end(),
+    strToFind.begin(),   strToFind.end(),
+    [](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
+  );
+  return (it != strSource.end() );
+}
 
 int main(int argc, char** argv)
 {
@@ -1770,12 +1780,22 @@ int main(int argc, char** argv)
     std::unique_ptr<RtMidiIn> midi_input(new RtMidiIn);
     
     int incount = midi_input->getPortCount();
+    int idx = -1;
     for (int i=0;i<incount;++i)
-        std::cout << i << "\t" << midi_input->getPortName(i) << "\n";
-    std::cout << "which MIDI port to use?\n";
-    int pnum = 0;
-    std::cin >> pnum;
-    midi_input->openPort(pnum);
+    {
+        if (findStringIC(midi_input->getPortName(i),"noctu"))
+        {
+            idx = i;
+            break;
+        }
+    }
+    if (idx>=0)
+        std::cout << "using " << midi_input->getPortName(idx) << "\n";
+    else std::cout << "could not find nocturn\n";
+    //std::cout << "which MIDI port to use?\n";
+    //int pnum = 0;
+    //std::cin >> pnum;
+    //midi_input->openPort(pnum);
     
     // ge.m_gm->m_interpmode = 1;
     auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
