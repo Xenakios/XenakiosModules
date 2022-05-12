@@ -517,6 +517,11 @@ public:
         m_marker_added = true;
         m_marker_add_pos = tpos;
         std::sort(m_markers.begin(),m_markers.end());
+        #ifdef RAPIHEADLESS
+        for (auto& e : m_markers)
+            std::cout << e << " ";
+        std::cout << "\n";
+        #endif
         //m_gm->m_srcpos = 0.0f;
     }
     void addEquidistantMarkers(int nummarkers)
@@ -1651,7 +1656,7 @@ public:
     std::atomic<float> m_par_stereo_spread{1.0f};
     std::atomic<float> m_par_grainrate{4.0f}; // "octaves", 0 is 1 Hz
     std::atomic<float> m_par_regionselect{0.0f};
-    std::atomic<float> m_par_inputmix{1.0f};
+    std::atomic<float> m_par_inputmix{0.0f};
     std::atomic<bool> m_toggle_record{false};
     std::atomic<bool> m_add_marker{false};
     int m_cbcount = 0;
@@ -1790,16 +1795,15 @@ int main(int argc, char** argv)
         }
     }
     if (idx>=0)
+    {
         std::cout << "using " << midi_input->getPortName(idx) << "\n";
+        midi_input->openPort(idx);
+    }
+        
     else std::cout << "could not find nocturn\n";
-    //std::cout << "which MIDI port to use?\n";
-    //int pnum = 0;
-    //std::cin >> pnum;
-    //midi_input->openPort(pnum);
     
-    // ge.m_gm->m_interpmode = 1;
     auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
-    if (drsrc->importFile("/home/teemu/AudioStuff/chimes.wav"))
+    if (drsrc->importFile("/home/teemu/AudioStuff/NilsVanOttorloo44/bassClarinet1.wav"))
     {
         std::cout << "loaded test source file\n";
     } else
