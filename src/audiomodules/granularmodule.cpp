@@ -1492,8 +1492,23 @@ public:
     PaStreamParameters inputParameters;
     PaStream *stream = nullptr;
     bool inited = false;
+    drwav m_out_wav;
+    bool dr_wav_inited = false;
     AudioEngine(GrainEngine* e) : m_eng(e)
     {
+        /*
+        drwav_data_format format;
+		format.container = drwav_container_riff;
+		format.format = DR_WAVE_FORMAT_IEEE_FLOAT;
+		format.channels = 2;
+		format.sampleRate = 44100;
+		format.bitsPerSample = 32;
+        if (drwav_init_file_write(&m_out_wav,"/home/teemu/AudioStuff/testrec.wav",&format,nullptr))
+        {
+            
+            dr_wav_inited = true;
+        }
+        */
         m_cur_playstate = m_eng->m_playmode;
         std::cout << "attempting to start portaudio\n";
         m_dc_blockers[0].setParameters(rack::dsp::BiquadFilter::HIGHPASS_1POLE,30.0f/44100.0,1.0,1.0f);
@@ -1546,7 +1561,7 @@ public:
             err = Pa_StartStream( stream );
             printError(err);
         }
-
+        //m_out_rec_buffer.resize(m_out_rec_len*2);
     
     }
     void printError(PaError e)
@@ -1567,6 +1582,8 @@ public:
         }
         if (inited)
             Pa_Terminate();
+        if (this->dr_wav_inited)
+            drwav_uninit(&m_out_wav);
     }
     static int paCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
@@ -1643,6 +1660,7 @@ public:
             // saturate (would ideally need some oversampling for this...)
             procbuf[0] = std::tanh(procbuf[0]);
             procbuf[1] = std::tanh(procbuf[1]);
+            //eng->pushToRecordBuffer(procbuf[0],procbuf[1]);
             float mid = procbuf[0]+procbuf[1];
             float side = procbuf[1]-procbuf[0];
             side *= panspread;  
@@ -1655,6 +1673,25 @@ public:
         }
         
         return paContinue;
+    }
+    void pushToRecordBuffer(float left, float right)
+    {
+        m_out_rec_buffer[m_out_rec_pos*2+0] = left;
+        m_out_rec_buffer[m_out_rec_pos*2+1] = right;
+        ++m_out_rec_pos;
+        if (m_out_rec_pos == m_out_rec_len)
+        {
+            m_out_rec_pos = 0;
+            drwav_write_pcm_frames(&m_out_wav,m_out_rec_len,(void*)m_out_rec_buffer.data());
+            if (drwav_seek_to_pcm_frame(&m_out_wav,0))
+            {
+                std::cout << "rewinded output record file!\n";
+            } else
+            {
+                std::cout << "could not rewind output record file :-(\n";
+            }
+        }
+        //
     }
     void setNextPlayMode()
     {
@@ -1683,6 +1720,10 @@ public:
     int m_big_fader_values[2] = {0,0};
     std::array<dsp::BiquadFilter,2> m_dc_blockers;
     dsp::BiquadFilter m_drywetsmoother;
+    std::vector<float> m_out_rec_buffer;
+    int m_out_rec_len = 10*44100;
+    int m_out_rec_pos = 0;
+    
 };
 
 void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
