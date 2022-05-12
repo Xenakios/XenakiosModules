@@ -1746,7 +1746,7 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             
 
         if (msg[1] == 64)
-            cf(eng->m_par_playrate,delta*0.01f,-2.0f,2.0f);
+            cf(eng->m_par_playrate,delta*0.02f,-2.0f,2.0f);
         else if (msg[1] == 65 && eng->m_shift_state == 0)
             cf(eng->m_par_pitch,delta*0.1f,-24.0f,24.0f);
         else if (msg[1] == 65 && eng->m_shift_state == 1)
@@ -1783,7 +1783,7 @@ int main(int argc, char** argv)
     GrainEngine ge;
     ge.m_playmode = 0;
     std::unique_ptr<RtMidiIn> midi_input(new RtMidiIn);
-    
+    std::unique_ptr<RtMidiOut> midi_output(new RtMidiOut);
     int incount = midi_input->getPortCount();
     int idx = -1;
     for (int i=0;i<incount;++i)
@@ -1799,8 +1799,21 @@ int main(int argc, char** argv)
         std::cout << "using " << midi_input->getPortName(idx) << "\n";
         midi_input->openPort(idx);
     }
-        
-    else std::cout << "could not find nocturn\n";
+    else std::cout << "could not find nocturn input\n";
+    idx = -1;
+    for (int i=0;i<midi_output->getPortCount();++i)
+        if (findStringIC(midi_output->getPortName(i),"noctu"))
+        {
+            idx = i;
+            break;    
+        }
+    if (idx>=0)
+    {
+        std::cout << "using " << midi_output->getPortName(idx) << "\n";
+        midi_output->openPort(idx);
+    }
+    else std::cout << "could not find nocturn output\n";
+    std::atomic<bool> quit_thread{false};
     
     auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
     if (drsrc->importFile("/home/teemu/AudioStuff/NilsVanOttorloo44/bassClarinet1.wav"))
@@ -1813,6 +1826,31 @@ int main(int argc, char** argv)
     }
     //ge.addEquidistantMarkers(8);
     AudioEngine aeng(&ge);
+    std::thread midiout_th([&]()
+    {
+        std::cout << "starting midi out thread\n";
+        unsigned char midimsg[4]={176,81,64,0};
+        midi_output->sendMessage(midimsg,3);
+        while (!quit_thread)
+        {
+            // show source position in nocturn speed dial LED ring
+            float tpos = ge.m_gm->getSourcePlayPosition();
+            float srclen = ge.m_gm->m_inputdur;
+                    
+            tpos = rescale(tpos,0.0f,srclen,0.0f,127.0f);
+            tpos = clamp(tpos,0.0f,127.0f);
+            midimsg[0] = 176;
+            midimsg[1] = 80;
+            midimsg[2] = (unsigned char)tpos;
+            midi_output->sendMessage(midimsg,3);
+            // show record status on button 3
+            midimsg[1] = 114;
+            midimsg[2] = (unsigned char)ge.isRecording();
+            midi_output->sendMessage(midimsg,3);
+            Pa_Sleep(50);
+        }
+        std::cout << "ended midi out thread\n";
+    });
     midi_input->setCallback(mymidicb,(void*)&aeng);
     auto cf = [](char c, char incc, char decc, std::atomic<float>& par, float step)
     {
@@ -1835,8 +1873,9 @@ int main(int argc, char** argv)
                 mo = 1;
             else mo = 0;
         }
-        Pa_Sleep(20);
     }
+    quit_thread = true;
+    midiout_th.join();
     return 0;
 }
 #endif
