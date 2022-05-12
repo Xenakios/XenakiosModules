@@ -545,6 +545,11 @@ public:
     {
         m_markers = {0.0f,1.0f};
     }
+    float getCurrentRegionAsPercentage()
+    {
+        return clamp(1.0f/(m_markers.size()-1)*m_chosen_region,0.0f,1.0f);
+    }
+    int m_chosen_region = 0;
     void process(float deltatime, float sr,float* buf, float playrate, float pitch, 
         float loopstart, float looplen, float loopslide,
         float posrand, float grate, float lenm, float revprob, int ss, float pitchspread)
@@ -559,6 +564,7 @@ public:
         m_gm->m_pitch_spread = pitchspread;
         int markerIndex = ((m_markers.size()-1)*loopstart);
         markerIndex = clamp(markerIndex,0,m_markers.size()-2);
+        m_chosen_region = markerIndex;
         float regionStart = m_markers[markerIndex];
         ++markerIndex;
         if (markerIndex >= m_markers.size())
@@ -1603,7 +1609,7 @@ public:
         float loopstart = eng->m_par_regionselect;
         float looplen = 1.0f;
         float loopslide = 0.0f;
-        float posrand = eng->m_par_srcposrand;
+        float posrand = std::pow(eng->m_par_srcposrand,2.0f);
         float grate = std::pow(2.0f,1.0f/12*(12.0f*eng->m_par_grainrate));
         float lenm = eng->m_par_lenmultip;
         float revprob = eng->m_par_reverseprob;
@@ -1651,7 +1657,7 @@ public:
     std::atomic<float> m_par_srcposrand{0.0f};
     std::atomic<float> m_par_pitchsrpead{0.0f};
     std::atomic<float> m_par_scanpos{0.0f};
-    std::atomic<float> m_par_lenmultip{0.5f};
+    std::atomic<float> m_par_lenmultip{0.75f};
     std::atomic<float> m_par_reverseprob{0.0f};
     std::atomic<float> m_par_stereo_spread{1.0f};
     std::atomic<float> m_par_grainrate{4.0f}; // "octaves", 0 is 1 Hz
@@ -1659,6 +1665,7 @@ public:
     std::atomic<float> m_par_inputmix{0.0f};
     std::atomic<bool> m_toggle_record{false};
     std::atomic<bool> m_add_marker{false};
+    std::atomic<int> m_led_ring_option{0};
     int m_cbcount = 0;
     int m_shift_state = 0;
     int m_big_fader_state = 0;
@@ -1701,6 +1708,12 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
         if (msg[1] == 115 && msg[2]>0)
         {
             eng->m_add_marker = true;
+        }
+        if (msg[1] == 120 && msg[2]>0)
+        {
+            int temp = eng->m_led_ring_option;
+            temp = (temp + 1) % 2;
+            eng->m_led_ring_option = temp;
         }
         if (msg[1] == 72 && eng->m_big_fader_state == 0)
         {
@@ -1833,16 +1846,30 @@ int main(int argc, char** argv)
         midi_output->sendMessage(midimsg,3);
         while (!quit_thread)
         {
-            // show source position in nocturn speed dial LED ring
-            float tpos = ge.m_gm->getSourcePlayPosition();
-            float srclen = ge.m_gm->m_inputdur;
+            if (aeng.m_led_ring_option == 1)
+            {
+                // show source position in nocturn speed dial LED ring
+                float tpos = ge.m_gm->getSourcePlayPosition();
+                float srclen = ge.m_gm->m_inputdur;
                     
-            tpos = rescale(tpos,0.0f,srclen,0.0f,127.0f);
-            tpos = clamp(tpos,0.0f,127.0f);
-            midimsg[0] = 176;
-            midimsg[1] = 80;
-            midimsg[2] = (unsigned char)tpos;
-            midi_output->sendMessage(midimsg,3);
+                tpos = rescale(tpos,0.0f,srclen,0.0f,127.0f);
+                tpos = clamp(tpos,0.0f,127.0f);
+                midimsg[0] = 176;
+                midimsg[1] = 80;
+                midimsg[2] = (unsigned char)tpos;
+                midi_output->sendMessage(midimsg,3);
+            } else
+            {
+                // show region number in LED ring
+                float tpos = ge.getCurrentRegionAsPercentage();
+                tpos = rescale(tpos,0.0f,1.0f,0.0f,127.0f);
+                tpos = clamp(tpos,0.0f,127.0f);
+                midimsg[0] = 176;
+                midimsg[1] = 80;
+                midimsg[2] = (unsigned char)tpos;
+                midi_output->sendMessage(midimsg,3);
+            }
+            
             // show record status on button 3
             midimsg[1] = 114;
             midimsg[2] = (unsigned char)ge.isRecording();
