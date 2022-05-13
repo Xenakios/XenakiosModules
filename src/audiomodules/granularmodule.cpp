@@ -1924,6 +1924,7 @@ private:
 
 int main(int argc, char** argv)
 {
+    //testclass object;
     //int data = 999;
     //lambdacontainer func([data](){ std::cout << "hello from hacky lambda container\n" << data << "\n"; });
     //func();
