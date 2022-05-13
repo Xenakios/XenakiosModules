@@ -1459,6 +1459,7 @@ Model* modelXGranular = createModel<XGranularModule, XGranularWidget>("XGranular
 #include <termios.h>
 #include <unistd.h>
 #include "rtmidi/RtMidi.h"
+#include <type_traits>
 
 char mygetch() {
     char buf = 0;
@@ -1896,6 +1897,7 @@ public:
     lambdacontainer(F&& f)
     {
         static_assert(sizeof(F)<=64,"too BIG lambda, make it smaller!!!!");
+        static_assert (std::is_trivially_copyable<F>::value,"Passed in lambda must be trivially copyable");
         new (internalbuf) funccontainerimp<F>(f);
     }
     void operator()()
@@ -1924,9 +1926,7 @@ private:
 
 int main(int argc, char** argv)
 {
-    //testclass object;
-    //int data = 999;
-    //lambdacontainer func([data](){ std::cout << "hello from hacky lambda container\n" << data << "\n"; });
+    //lambdacontainer func([data,data_ex](){ std::cout << "hello from hacky lambda container\n" << data << "\n"; });
     //func();
     //return 0;
     std::cout << "STARTING HEADLESS GRLOOPER\n";
