@@ -5,9 +5,10 @@
 #else
 #include <system.hpp>
 #include <jansson.h>
-#include <iostream>
+
 #include <string.hpp>
 #endif
+#include <iostream>
 #include <thread>
 #include <mutex>
 #include "dr_wav.h"
@@ -82,11 +83,7 @@ public:
     int m_peak_updates_counter = 0;
     int m_minFramePos = 0;
     int m_maxFramePos = 0;
-    void setSubSection(int startFrame, int endFrame) override
-    {
-        m_minFramePos = clamp(startFrame,0,m_totalPCMFrameCount);
-        m_maxFramePos = clamp(endFrame,1,m_totalPCMFrameCount);
-    }
+    
     void updatePeaks()
     {
         if (m_do_update_peaks == 0)
@@ -275,28 +272,29 @@ public:
         m_totalPCMFrameCount = m_audioBuffer.size()/m_recordChannels;
         m_do_update_peaks = 1;
     }
-    void getSamplesSafeAndFade(float* destbuf,int startframe,int nsamples, int channel, int fadelen) override
+    void getSamplesSafeAndFade(float* destbuf,int startframe,int nsamples, int channel, 
+        int minFramepos, int maxFramePos, int fadelen) override
     {
         for (int i=0;i<nsamples;++i)
         {
-            destbuf[i] = getBufferSampleSafeAndFadeImpl(startframe+i,channel,fadelen);
+            destbuf[i] = getBufferSampleSafeAndFadeImpl(startframe+i,channel, minFramepos, maxFramePos, fadelen);
         }
     }
-    float getBufferSampleSafeAndFade(int frame, int channel, int fadelen) override final
+    float getBufferSampleSafeAndFade(int frame, int channel, int minFramePos, int maxFramePos, int fadelen) override final
     {
-        return getBufferSampleSafeAndFadeImpl(frame,channel,fadelen);
+        return getBufferSampleSafeAndFadeImpl(frame,channel, minFramePos, maxFramePos, fadelen);
     }
     // OK, probably not the most efficient implementation, but will have to see later if can be optimized
-    float getBufferSampleSafeAndFadeImpl(int frame, int channel, int fadelen) 
+    float getBufferSampleSafeAndFadeImpl(int frame, int channel, int minFramePos, int maxFramePos, int fadelen) 
     {
         if (frame>=0 && frame < m_totalPCMFrameCount)
         {
             float gain = 1.0f;
-            if (frame>=m_minFramePos && frame<m_minFramePos+fadelen)
-                gain = rescale((float)frame,m_minFramePos,m_minFramePos+fadelen,0.0f,1.0f);
-            if (frame>=m_maxFramePos-fadelen && frame<m_maxFramePos)
-                gain = rescale((float)frame,m_maxFramePos-fadelen,m_maxFramePos,1.0f,0.0f);
-            if (frame<m_minFramePos || frame>=m_maxFramePos)
+            if (frame>=minFramePos && frame<minFramePos+fadelen)
+                gain = rescale((float)frame,minFramePos,minFramePos+fadelen,0.0f,1.0f);
+            if (frame>=maxFramePos-fadelen && frame<maxFramePos)
+                gain = rescale((float)frame,maxFramePos-fadelen,maxFramePos,1.0f,0.0f);
+            if (frame<minFramePos || frame>=maxFramePos)
                 gain = 0.0f;
             return m_audioBuffer[frame*m_channels+channel] * gain;
         }
@@ -328,7 +326,7 @@ public:
             for (int j=0;j<channels;++j)
             {
                 int actsrcchan = srcchanmap[m_channels-1][j];
-                dest[i*channels+j] = getBufferSampleSafeAndFade(index,actsrcchan,fadelen);
+                dest[i*channels+j] = getBufferSampleSafeAndFade(index,actsrcchan,0,m_totalPCMFrameCount, fadelen);
             }
         }
     }
@@ -400,7 +398,7 @@ public:
         int srcstartsamples = m_src->getSourceNumSamples() * m_reg_start;
         int srcendsamples = m_src->getSourceNumSamples() * m_reg_end;
         int srclensamps = srcendsamples - srcstartsamples;
-        m_src->setSubSection(srcstartsamples,srcendsamples);
+        //m_src->setSubSection(srcstartsamples,srcendsamples);
         for (int i=0;i<2;++i)
         {
             double target_pos = m_position_smoothers[i].process(positions[i]);
@@ -436,14 +434,14 @@ public:
                 float bogus = 0.0f;
                 if (m_resampler_type == 0)
                 {
-                    float y0 = m_src->getBufferSampleSafeAndFade(index0,i,256);
-                    float y1 = m_src->getBufferSampleSafeAndFade(index1,i,256);
+                    float y0 = m_src->getBufferSampleSafeAndFade(index0,i,srcstartsamples,srcendsamples, 256);
+                    float y1 = m_src->getBufferSampleSafeAndFade(index1,i,srcstartsamples,srcendsamples, 256);
                     float y2 = y0+(y1-y0)*frac;
                     outbuf[i] = y2 * gain;
                 }    
                 else
                 {
-                    float y2 = m_sinc_interpolator.call(*m_src,index0,frac,bogus,i);
+                    float y2 = m_sinc_interpolator.call(*m_src,index0,frac,bogus,i,srcstartsamples,srcendsamples);
                     outbuf[i] = y2 * gain;
                     
                 }

@@ -76,11 +76,11 @@ struct Sinc
 //#define SIMDSINC
     
     template<typename Source>
-    inline T call (Source& buffer, int delayInt, double delayFrac, const T& /*state*/, int channel)
+    inline T call (Source& buffer, int delayInt, double delayFrac, const T& /*state*/, int channel, int sposmin, int sposmax)
     {
         auto sincTableOffset = (size_t) (( 1.0 - delayFrac) * (T) M) * N * 2;
         
-        buffer.getSamplesSafeAndFade(srcbuf,delayInt, N, channel, 512);
+        buffer.getSamplesSafeAndFade(srcbuf,delayInt, N, channel, sposmin, sposmax, 512);
     #ifndef SIMDSINC
         auto out = ((T) 0);
         for (size_t i = 0; i < N; i += 1)
@@ -227,9 +227,9 @@ public:
     virtual int getSourceNumSamples() = 0;
     virtual int getSourceNumChannels() = 0;
     virtual void putIntoBuffer(float* dest, int frames, int channels, int startInSource) = 0;
-    virtual void setSubSection(int startFrame, int endFrame) {}
-    virtual float getBufferSampleSafeAndFade(int frame, int channel, int fadelen) { return 0.0f; }
-    virtual void getSamplesSafeAndFade(float* destbuf,int startframe, int nsamples, int channel, int fadelen) {}
+    //virtual void setSubSection(int startFrame, int endFrame) {}
+    virtual float getBufferSampleSafeAndFade(int frame, int channel, int minFramePos, int maxFramePos, int fadelen) { return 0.0f; }
+    virtual void getSamplesSafeAndFade(float* destbuf,int startframe, int nsamples, int channel, int minFramePos, int maxFramepos, int fadelen) {}
 };
 
 class WindowLookup
@@ -298,6 +298,8 @@ private:
     int m_outpos = 0;
     int m_grainSize = 2048;
     int m_chans = 2;
+    int m_sourceFrameMin = 0;
+    int m_sourceFrameMax = 1;
 };
 
 

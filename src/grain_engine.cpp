@@ -21,8 +21,9 @@ bool ISGrain::initGrain(float inputdur, float startInSource,float len, float pit
     int srcpossamples = startInSource;
     //srcpossamples+=rack::random::normal()*lensamples;
     srcpossamples = xenakios::clamp((float)srcpossamples,(float)0,inputdur-1.0f);
-    
-    m_syn->setSubSection(sourceFrameMin, sourceFrameMax);
+    m_sourceFrameMin = sourceFrameMin;
+    m_sourceFrameMax = sourceFrameMax;
+    //m_syn->setSubSection(sourceFrameMin, sourceFrameMax);
     m_pan = pan;
     m_inputdur = inputdur;
     return true;
@@ -44,7 +45,7 @@ void ISGrain::process(float* buf)
     {
         for (int i=0;i<m_chans;++i)
         {
-            float y0 = m_sinc.call(*m_syn,sourceposint,(1.0-frac),dummy,i);
+            float y0 = m_sinc.call(*m_syn,sourceposint,(1.0-frac),dummy,i,m_sourceFrameMin,m_sourceFrameMax);
             y0 *= win * pangains[i];
             buf[i] += y0;
         }
@@ -52,8 +53,8 @@ void ISGrain::process(float* buf)
     {
         for (int i=0;i<m_chans;++i)
         {
-            float y0 = m_syn->getBufferSampleSafeAndFade(sourceposint,i,1024);
-            float y1 = m_syn->getBufferSampleSafeAndFade(sourceposint+1,i,1024);
+            float y0 = m_syn->getBufferSampleSafeAndFade(sourceposint,i, m_sourceFrameMin, m_sourceFrameMax, 1024);
+            float y1 = m_syn->getBufferSampleSafeAndFade(sourceposint+1,i, m_sourceFrameMin, m_sourceFrameMax, 1024);
             float y2 = y0+(y1-y0) * frac;
             y2 *= win * pangains[i];
             buf[i] += y2;
