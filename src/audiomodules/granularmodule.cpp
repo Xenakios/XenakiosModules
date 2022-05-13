@@ -1481,7 +1481,6 @@ char mygetch() {
     return buf;
  }
 
-
 class AudioEngine
 {
 public:
@@ -1520,7 +1519,7 @@ public:
         printError(err);
         for (int i=0;i<Pa_GetDeviceCount();++i)
         {
-            std::cout << i << " :: " << Pa_GetDeviceInfo(i)->name << "\n";
+            std::cout << i << " :: " << (*Pa_GetDeviceInfo(i)).name << "\n";
         }
         outputParameters.device = 0; // Pa_GetDefaultOutputDevice(); /* default output device */
         inputParameters.device = 0; //Pa_GetDefaultInputDevice();
@@ -1559,7 +1558,7 @@ public:
             err = Pa_StartStream( stream );
             printError(err);
         }
-        //m_out_rec_buffer.resize(m_out_rec_len*2);
+        m_out_rec_buffer.resize(m_out_rec_len*2);
     
     }
     void printError(PaError e)
@@ -1658,7 +1657,7 @@ public:
             // saturate (would ideally need some oversampling for this...)
             procbuf[0] = std::tanh(procbuf[0]);
             procbuf[1] = std::tanh(procbuf[1]);
-            //eng->pushToRecordBuffer(procbuf[0],procbuf[1]);
+            eng->pushToRecordBuffer(procbuf[0],procbuf[1]);
             float mid = procbuf[0]+procbuf[1];
             float side = procbuf[1]-procbuf[0];
             side *= panspread;  
@@ -1674,9 +1673,18 @@ public:
     }
     void pushToRecordBuffer(float left, float right)
     {
-        m_out_rec_buffer[m_out_rec_pos*2+0] = left;
-        m_out_rec_buffer[m_out_rec_pos*2+1] = right;
-        ++m_out_rec_pos;
+        if (m_out_rec_pos < m_out_rec_len)
+        {
+            m_out_rec_buffer[m_out_rec_pos*2+0] = left;
+            m_out_rec_buffer[m_out_rec_pos*2+1] = right;
+            ++m_out_rec_pos;
+            int notif_interval = 10*44100;
+            if (m_out_rec_pos % notif_interval == 0)
+            {
+                std::cout << "recorded " << (float)m_out_rec_pos/44100 << " seconds of output...\n";
+            }
+        }
+        return;
         if (m_out_rec_pos == m_out_rec_len)
         {
             m_out_rec_pos = 0;
@@ -1689,7 +1697,7 @@ public:
                 std::cout << "could not rewind output record file :-(\n";
             }
         }
-        //
+        
     }
     void setNextPlayMode()
     {
@@ -1724,7 +1732,7 @@ public:
     std::array<dsp::BiquadFilter,2> m_dc_blockers;
     dsp::BiquadFilter m_drywetsmoother;
     std::vector<float> m_out_rec_buffer;
-    int m_out_rec_len = 10*44100;
+    int m_out_rec_len = 600*44100;
     int m_out_rec_pos = 0;
     
 };
