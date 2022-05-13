@@ -1697,6 +1697,11 @@ public:
         st = (st + 1) % 3;
         m_cur_playstate = st;
     }
+    void setPlayMode(int m)
+    {
+        m_eng->m_playmode = m;
+        m_cur_playstate = m;
+    }
     int m_cur_playstate = 0;
     std::atomic<float> m_par_playrate{1.0f};
     std::atomic<float> m_par_pitch{0.0f};
@@ -1844,9 +1849,38 @@ inline bool findStringIC(const std::string & strSource, const std::string & strT
   return (it != strSource.end() );
 }
 
+void saveSettings(AudioEngine& aeng)
+{
+    auto root = json_object();
+    json_object_set(root,"playmode",json_integer(aeng.m_cur_playstate));
+    auto markers = aeng.m_eng->dataToJson();
+    json_object_set(root,"markers_etc",markers);
+    json_dump_file(root,"settings.json",JSON_INDENT(2));
+    json_decref(root);
+}
+
+void loadSettings(AudioEngine& aeng)
+{
+    json_error_t jerr;
+    auto rootj = json_load_file("settings.json",0,&jerr);
+    if (rootj)
+    {
+        std::cout << "loaded json settings!\n";
+        auto valJ = json_object_get(rootj,"playmode");
+        if (valJ)
+            aeng.setPlayMode(json_integer_value(valJ));
+        auto markersJ = json_object_get(rootj,"markers_etc");
+        if (markersJ)
+            aeng.m_eng->dataFromJson(markersJ);
+        json_decref(rootj);
+    } else
+        std::cout << "could not load json settings :-(\n";
+}
+
 int main(int argc, char** argv)
 {
     std::cout << "STARTING HEADLESS GRLOOPER\n";
+    
     GrainEngine ge;
     ge.m_playmode = 0;
     std::unique_ptr<RtMidiIn> midi_input(new RtMidiIn);
@@ -1893,6 +1927,7 @@ int main(int argc, char** argv)
     }
     //ge.addEquidistantMarkers(8);
     AudioEngine aeng(&ge);
+    loadSettings(aeng);
     std::thread midiout_th([&]()
     {
         std::cout << "starting midi out thread\n";
@@ -1968,6 +2003,9 @@ int main(int argc, char** argv)
     }
     quit_thread = true;
     midiout_th.join();
+    saveSettings(aeng);
+    
+    
     return 0;
 }
 #endif
