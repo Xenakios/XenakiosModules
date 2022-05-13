@@ -521,11 +521,7 @@ public:
         m_marker_added = true;
         m_marker_add_pos = tpos;
         std::sort(m_markers.begin(),m_markers.end());
-        #ifdef RAPIHEADLESS
-        for (auto& e : m_markers)
-            std::cout << e << " ";
-        std::cout << "\n";
-        #endif
+        
         //m_gm->m_srcpos = 0.0f;
     }
     void addEquidistantMarkers(int nummarkers)
@@ -1507,6 +1503,7 @@ public:
     }
     AudioEngine(GrainEngine* e) : m_eng(e)
     {
+        exFIFO.reset(64);
         m_cur_playstate = m_eng->m_playmode;
         std::cout << "attempting to start portaudio\n";
         m_dc_blockers[0].setParameters(rack::dsp::BiquadFilter::HIGHPASS_1POLE,30.0f/44100.0,1.0,1.0f);
@@ -1605,13 +1602,20 @@ public:
             {
                 drsrc->startRecording(2,sr);
                 rec_active = true;
-                std::cout << "START RECORDING\n";
+                eng->exFIFO.push([]()
+                {
+                    std::cout << "STARTED RECORDING\n";
+                });
+                
             } else
             {
                 eng->m_eng->addMarkerAtPosition(drsrc->getRecordPosition());
                 drsrc->stopRecording();
                 rec_active = false;
-                std::cout << "END RECORDING\n";
+                eng->exFIFO.push([]()
+                {
+                    std::cout << "ENDED RECORDING\n";
+                });
             }
             eng->m_toggle_record = false;
         }
@@ -1619,6 +1623,14 @@ public:
         {
             eng->m_next_marker_act = 0;
             eng->m_eng->addMarker();
+            eng->exFIFO.push([eng]
+            {
+                for (auto& e : eng->m_eng->m_markers)
+                    std::cout << e << " ";
+                std::cout << "\n";
+            });
+            
+    
         }
         if (eng->m_next_marker_act == 2)
         {
@@ -1683,7 +1695,11 @@ public:
             int notif_interval = 10*44100;
             if (m_out_rec_pos % notif_interval == 0)
             {
-                std::cout << "recorded " << (float)m_out_rec_pos/44100 << " seconds of output...\n";
+                exFIFO.push([this]()
+                {
+                    std::cout << "recorded " << (float)m_out_rec_pos/44100 << " seconds of output...\n";
+                });
+                
             }
         }
     }
@@ -1722,7 +1738,7 @@ public:
     std::vector<float> m_out_rec_buffer;
     int m_out_rec_len = 600*44100;
     int m_out_rec_pos = 0;
-    
+    choc::fifo::SingleReaderSingleWriterFIFO<std::function<void(void)>> exFIFO;
 };
 
 void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
@@ -1959,6 +1975,11 @@ int main(int argc, char** argv)
             midimsg[1] = 114;
             midimsg[2] = (unsigned char)ge.isRecording();
             midi_output->sendMessage(midimsg,3);
+            std::function<void(void)> func;
+            while(aeng.exFIFO.pop(func))
+            {
+                if (func) func();
+            }
             Pa_Sleep(50);
         }
         std::cout << "ended midi out thread\n";
