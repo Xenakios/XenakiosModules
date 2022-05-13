@@ -1889,8 +1889,45 @@ void loadSettings(AudioEngine& aeng)
         std::cout << "could not load json settings :-(\n";
 }
 
+class lambdacontainer
+{
+public:
+    template<typename F>
+    lambdacontainer(F&& f)
+    {
+        static_assert(sizeof(F)<=64,"too BIG lambda, make it smaller!!!!");
+        new (internalbuf) funccontainerimp<F>(f);
+    }
+    void operator()()
+    {
+        funccontainerbase* f = reinterpret_cast<funccontainerbase*>(internalbuf);
+        f->call();
+    }
+private:
+    struct funccontainerbase
+    {
+        virtual ~funccontainerbase() {}
+        virtual void call();
+    };
+    template<typename F>
+    struct funccontainerimp  : public funccontainerbase
+    {
+        funccontainerimp(F f) : thefunc(f) {}
+        void call() override
+        {
+            thefunc();
+        }
+        F thefunc;
+    };
+    unsigned char internalbuf[64];
+};
+
 int main(int argc, char** argv)
 {
+    //int data = 999;
+    //lambdacontainer func([data](){ std::cout << "hello from hacky lambda container\n" << data << "\n"; });
+    //func();
+    //return 0;
     std::cout << "STARTING HEADLESS GRLOOPER\n";
     
     GrainEngine ge;
