@@ -1488,24 +1488,25 @@ public:
     PaStreamParameters outputParameters;
     PaStreamParameters inputParameters;
     PaStream *stream = nullptr;
-    bool inited = false;
-    drwav m_out_wav;
-    bool dr_wav_inited = false;
-    AudioEngine(GrainEngine* e) : m_eng(e)
+    bool pa_inited = false;
+    void saveOutputBuffer(std::string filename)
     {
-        /*
+        drwav out_wav;
         drwav_data_format format;
 		format.container = drwav_container_riff;
 		format.format = DR_WAVE_FORMAT_IEEE_FLOAT;
 		format.channels = 2;
 		format.sampleRate = 44100;
 		format.bitsPerSample = 32;
-        if (drwav_init_file_write(&m_out_wav,"/home/teemu/AudioStuff/testrec.wav",&format,nullptr))
+        if (drwav_init_file_write(&out_wav,filename.c_str(),&format,nullptr))
         {
+            drwav_write_pcm_frames(&out_wav,m_out_rec_pos-1,(void*)m_out_rec_buffer.data());
+            drwav_uninit(&out_wav);    
             
-            dr_wav_inited = true;
         }
-        */
+    }
+    AudioEngine(GrainEngine* e) : m_eng(e)
+    {
         m_cur_playstate = m_eng->m_playmode;
         std::cout << "attempting to start portaudio\n";
         m_dc_blockers[0].setParameters(rack::dsp::BiquadFilter::HIGHPASS_1POLE,30.0f/44100.0,1.0,1.0f);
@@ -1514,7 +1515,7 @@ public:
         PaError err;
         err = Pa_Initialize();
         if (err == paNoError)
-            inited = true;
+            pa_inited = true;
         else return;
         printError(err);
         for (int i=0;i<Pa_GetDeviceCount();++i)
@@ -1577,10 +1578,9 @@ public:
             Pa_StopStream(stream);
             Pa_CloseStream( stream );
         }
-        if (inited)
+        if (pa_inited)
             Pa_Terminate();
-        if (this->dr_wav_inited)
-            drwav_uninit(&m_out_wav);
+        
     }
     static int paCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
@@ -1657,12 +1657,14 @@ public:
             // saturate (would ideally need some oversampling for this...)
             procbuf[0] = std::tanh(procbuf[0]);
             procbuf[1] = std::tanh(procbuf[1]);
-            eng->pushToRecordBuffer(procbuf[0],procbuf[1]);
             float mid = procbuf[0]+procbuf[1];
             float side = procbuf[1]-procbuf[0];
             side *= panspread;  
-            obuf[i*2+0] = (mid - side) * procgain + ins[0] * inputgain; 
-            obuf[i*2+1] = (mid + side) * procgain + ins[0] * inputgain;
+            procbuf[0] = (mid-side);
+            procbuf[1] = (mid+side);
+            eng->pushToRecordBuffer(procbuf[0],procbuf[1]);
+            obuf[i*2+0] = procbuf[0] * procgain + ins[0] * inputgain; 
+            obuf[i*2+1] = procbuf[1] * procgain + ins[0] * inputgain;
             if (rec_active)
             {
                 drsrc->pushSamplesToRecordBuffer(ins,0.9f);
@@ -1684,20 +1686,6 @@ public:
                 std::cout << "recorded " << (float)m_out_rec_pos/44100 << " seconds of output...\n";
             }
         }
-        return;
-        if (m_out_rec_pos == m_out_rec_len)
-        {
-            m_out_rec_pos = 0;
-            drwav_write_pcm_frames(&m_out_wav,m_out_rec_len,(void*)m_out_rec_buffer.data());
-            if (drwav_seek_to_pcm_frame(&m_out_wav,0))
-            {
-                std::cout << "rewinded output record file!\n";
-            } else
-            {
-                std::cout << "could not rewind output record file :-(\n";
-            }
-        }
-        
     }
     void setNextPlayMode()
     {
