@@ -1929,6 +1929,51 @@ private:
     unsigned char internalbuf[64];
 };
 
+void worker_thread_func(RtMidiOut* midi_output, AudioEngine& aeng, std::atomic<bool>& quit_thread)
+{
+    std::cout << "starting midi out thread\n";
+    unsigned char midimsg[4]={176,81,64,0};
+    midi_output->sendMessage(midimsg,3);
+    while (!quit_thread)
+    {
+        if (aeng.m_led_ring_option == 1)
+        {
+            // show source position in nocturn speed dial LED ring
+            float tpos = aeng.m_eng->m_gm->getSourcePlayPosition();
+            float srclen = aeng.m_eng->m_gm->m_inputdur;
+                
+            tpos = rescale(tpos,0.0f,srclen,0.0f,127.0f);
+            tpos = clamp(tpos,0.0f,127.0f);
+            midimsg[0] = 176;
+            midimsg[1] = 80;
+            midimsg[2] = (unsigned char)tpos;
+            midi_output->sendMessage(midimsg,3);
+        } else
+        {
+            // show region number in LED ring
+            float tpos = aeng.m_eng->getCurrentRegionAsPercentage();
+            tpos = rescale(tpos,0.0f,1.0f,0.0f,127.0f);
+            tpos = clamp(tpos,0.0f,127.0f);
+            midimsg[0] = 176;
+            midimsg[1] = 80;
+            midimsg[2] = (unsigned char)tpos;
+            midi_output->sendMessage(midimsg,3);
+        }
+        
+        // show record status on button 3
+        midimsg[1] = 114;
+        midimsg[2] = (unsigned char)aeng.m_eng->isRecording();
+        midi_output->sendMessage(midimsg,3);
+        std::function<void(void)> func;
+        while(aeng.exFIFO.pop(func))
+        {
+            if (func) func();
+        }
+        Pa_Sleep(50);
+    }
+    std::cout << "ended midi out thread\n";
+}
+
 int main(int argc, char** argv)
 {
     //lambdacontainer func([data,data_ex](){ std::cout << "hello from hacky lambda container\n" << data << "\n"; });
@@ -1983,49 +2028,9 @@ int main(int argc, char** argv)
     //ge.addEquidistantMarkers(8);
     AudioEngine aeng(&ge);
     loadSettings(aeng);
-    std::thread midiout_th([&]()
+    std::thread worker_th([&aeng,&midi_output,&quit_thread]()
     {
-        std::cout << "starting midi out thread\n";
-        unsigned char midimsg[4]={176,81,64,0};
-        midi_output->sendMessage(midimsg,3);
-        while (!quit_thread)
-        {
-            if (aeng.m_led_ring_option == 1)
-            {
-                // show source position in nocturn speed dial LED ring
-                float tpos = ge.m_gm->getSourcePlayPosition();
-                float srclen = ge.m_gm->m_inputdur;
-                    
-                tpos = rescale(tpos,0.0f,srclen,0.0f,127.0f);
-                tpos = clamp(tpos,0.0f,127.0f);
-                midimsg[0] = 176;
-                midimsg[1] = 80;
-                midimsg[2] = (unsigned char)tpos;
-                midi_output->sendMessage(midimsg,3);
-            } else
-            {
-                // show region number in LED ring
-                float tpos = ge.getCurrentRegionAsPercentage();
-                tpos = rescale(tpos,0.0f,1.0f,0.0f,127.0f);
-                tpos = clamp(tpos,0.0f,127.0f);
-                midimsg[0] = 176;
-                midimsg[1] = 80;
-                midimsg[2] = (unsigned char)tpos;
-                midi_output->sendMessage(midimsg,3);
-            }
-            
-            // show record status on button 3
-            midimsg[1] = 114;
-            midimsg[2] = (unsigned char)ge.isRecording();
-            midi_output->sendMessage(midimsg,3);
-            std::function<void(void)> func;
-            while(aeng.exFIFO.pop(func))
-            {
-                if (func) func();
-            }
-            Pa_Sleep(50);
-        }
-        std::cout << "ended midi out thread\n";
+        worker_thread_func(midi_output.get(),aeng,quit_thread);
     });
     midi_input->setCallback(mymidicb,(void*)&aeng);
     auto cf = [](char c, char incc, char decc, std::atomic<float>& par, float step)
@@ -2062,10 +2067,8 @@ int main(int argc, char** argv)
         }
     }
     quit_thread = true;
-    midiout_th.join();
+    worker_th.join();
     saveSettings(aeng);
-    
-    
     return 0;
 }
 #endif
