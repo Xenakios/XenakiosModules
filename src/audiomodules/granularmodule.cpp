@@ -1612,19 +1612,13 @@ public:
         {
             m_next_marker_act = 0;
             m_eng->addMarker();
-            exFIFO.push([this]
-            {
-                for (auto& e : m_eng->m_markers)
-                    std::cout << e << " ";
-                std::cout << "\n";
-            });
-            
-    
+            dumpMarkers();
         }
         if (m_next_marker_act == 2)
         {
             m_next_marker_act = 0;
             m_eng->clearMarkers();
+            dumpMarkers();
         }
         float deltatime = 1.0f/sr;
         float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
@@ -1671,6 +1665,15 @@ public:
             }
         }
         return paContinue;
+    }
+    void dumpMarkers()
+    {
+        exFIFO.push([this]
+        {
+            for (auto& e : m_eng->m_markers)
+                std::cout << e << " ";
+            std::cout << "\n";
+        });
     }
     static int paCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
@@ -1735,6 +1738,20 @@ public:
     std::atomic<bool> m_toggle_record{false};
     std::atomic<int> m_next_marker_act{0};
     std::atomic<int> m_led_ring_option{0};
+    using par_pair = std::pair<std::string,std::atomic<float>*>;
+    std::vector<par_pair> params={
+            {"par_playrate",&m_par_playrate},
+            {"par_pitch",&m_par_pitch},
+            {"par_stereospread",&m_par_stereo_spread},
+            {"par_sourceposspread",&m_par_srcposrand},
+            {"par_pitchspread",&m_par_pitchsrpead},
+            {"par_inputmix",&m_par_inputmix},
+            {"par_scanpos",&m_par_scanpos},
+            {"par_lenmultip",&m_par_lenmultip},
+            {"par_reverseprob",&m_par_reverseprob},
+            {"par_regionselect",&m_par_regionselect},
+            {"par_grainrate",&m_par_grainrate}
+            };
     int m_cbcount = 0;
     int m_shift_state = 0;
     int m_big_fader_state = 0;
@@ -1871,6 +1888,11 @@ void saveSettings(AudioEngine& aeng)
 {
     auto root = json_object();
     json_object_set(root,"playmode",json_integer(aeng.m_cur_playstate));
+    for (auto& e : aeng.params)
+    {
+        json_object_set(root,e.first.c_str(),json_real(e.second->load()));    
+    }
+    
     auto markers = aeng.m_eng->dataToJson();
     json_object_set(root,"markers_etc",markers);
     json_dump_file(root,"settings.json",JSON_INDENT(2));
@@ -1887,6 +1909,13 @@ void loadSettings(AudioEngine& aeng)
         auto valJ = json_object_get(rootj,"playmode");
         if (valJ)
             aeng.setPlayMode(json_integer_value(valJ));
+        
+        for (auto& e : aeng.params)
+        {
+            auto pj = json_object_get(rootj,e.first.c_str());
+            if (pj)
+                e.second->store(json_real_value(pj));
+        }
         auto markersJ = json_object_get(rootj,"markers_etc");
         if (markersJ)
             aeng.m_eng->dataFromJson(markersJ);
