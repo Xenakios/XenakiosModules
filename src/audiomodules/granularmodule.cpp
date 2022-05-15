@@ -1568,7 +1568,7 @@ public:
         fprintf( stderr, "Error number: %d\n", e );
         fprintf( stderr, "Error message: %s\n", Pa_GetErrorText( e ) );
     }
-    ~AudioEngine()
+    virtual ~AudioEngine()
     {
         std::cout << "finishing portaudio\n";
         if (stream)
@@ -1579,6 +1579,98 @@ public:
         if (pa_inited)
             Pa_Terminate();
         
+    }
+    virtual int processBlock(const float* inputBuffer, float* outputBuffer, int nFrames)
+    {
+        float sr = 44100.0f;
+        auto drsrc = dynamic_cast<DrWavSource*>(m_eng->m_srcs[0].get());
+        bool rec_active = m_eng->isRecording();
+        if (m_toggle_record == true)
+        {
+            if (rec_active == false)
+            {
+                drsrc->startRecording(2,sr);
+                rec_active = true;
+                exFIFO.push([]()
+                {
+                    std::cout << "STARTED RECORDING\n";
+                });
+                
+            } else
+            {
+                m_eng->addMarkerAtPosition(drsrc->getRecordPosition());
+                drsrc->stopRecording();
+                rec_active = false;
+                exFIFO.push([]()
+                {
+                    std::cout << "ENDED RECORDING\n";
+                });
+            }
+            m_toggle_record = false;
+        }
+        if (m_next_marker_act == 1)
+        {
+            m_next_marker_act = 0;
+            m_eng->addMarker();
+            exFIFO.push([this]
+            {
+                for (auto& e : m_eng->m_markers)
+                    std::cout << e << " ";
+                std::cout << "\n";
+            });
+            
+    
+        }
+        if (m_next_marker_act == 2)
+        {
+            m_next_marker_act = 0;
+            m_eng->clearMarkers();
+        }
+        float deltatime = 1.0f/sr;
+        float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
+        float playrate = m_par_playrate;
+        float pitch = m_par_pitch;
+        float separ = rescale(pitch,-24.0f,24.0f,0.0f,1.0f);
+        m_eng->m_scrubber->setSeparation(separ);
+        float loopstart = m_par_regionselect;
+        float looplen = 1.0f;
+        float loopslide = 0.0f;
+        float posrand = std::pow(m_par_srcposrand,2.0f);
+        float grate = std::pow(2.0f,1.0f/12*(12.0f*m_par_grainrate));
+        float lenm = m_par_lenmultip;
+        float revprob = m_par_reverseprob;
+        float pitchspread = m_par_pitchsrpead;
+        m_eng->m_scanpos = m_par_scanpos;
+        
+        float panspread = clamp(m_par_stereo_spread,-1.0f,1.0f);
+        
+        for (int i=0;i<nFrames;++i)
+        {
+            float inputgain = m_drywetsmoother.process(m_par_inputmix);
+            float procgain = 1.0f-inputgain;
+            float ins[2] = {inputBuffer[i*2+0],inputBuffer[i*2+0]};
+            m_eng->process(deltatime,sr,procbuf,playrate,pitch,loopstart,looplen,loopslide,
+                posrand,grate,lenm,revprob,0,pitchspread);
+            // filter low frequency junk
+            procbuf[0] = m_dc_blockers[0].process(procbuf[0]);
+            procbuf[1] = m_dc_blockers[1].process(procbuf[1]);
+            // saturate (would ideally need some oversampling for this...)
+            procbuf[0] = std::tanh(procbuf[0]);
+            procbuf[1] = std::tanh(procbuf[1]);
+            float mid = procbuf[0]+procbuf[1];
+            float side = procbuf[1]-procbuf[0];
+            side *= panspread;  
+            procbuf[0] = (mid-side);
+            procbuf[1] = (mid+side);
+            pushToRecordBuffer(procbuf[0],procbuf[1]);
+            outputBuffer[i*2+0] = procbuf[0] * procgain + ins[0] * inputgain; 
+            outputBuffer[i*2+1] = procbuf[1] * procgain + ins[0] * inputgain;
+            if (rec_active)
+            {
+                drsrc->pushSamplesToRecordBuffer(ins,0.9f);
+            }
+        }
+        return paContinue;
     }
     static int paCallback( const void *inputBuffer, void *outputBuffer,
                            unsigned long framesPerBuffer,
@@ -1594,97 +1686,10 @@ public:
             
             return paContinue;
         }
-        float sr = 44100.0f;
-        auto drsrc = dynamic_cast<DrWavSource*>(eng->m_eng->m_srcs[0].get());
-        bool rec_active = eng->m_eng->isRecording();
-        if (eng->m_toggle_record == true)
-        {
-            if (rec_active == false)
-            {
-                drsrc->startRecording(2,sr);
-                rec_active = true;
-                eng->exFIFO.push([]()
-                {
-                    std::cout << "STARTED RECORDING\n";
-                });
-                
-            } else
-            {
-                eng->m_eng->addMarkerAtPosition(drsrc->getRecordPosition());
-                drsrc->stopRecording();
-                rec_active = false;
-                eng->exFIFO.push([]()
-                {
-                    std::cout << "ENDED RECORDING\n";
-                });
-            }
-            eng->m_toggle_record = false;
-        }
-        if (eng->m_next_marker_act == 1)
-        {
-            eng->m_next_marker_act = 0;
-            eng->m_eng->addMarker();
-            eng->exFIFO.push([eng]
-            {
-                for (auto& e : eng->m_eng->m_markers)
-                    std::cout << e << " ";
-                std::cout << "\n";
-            });
-            
-    
-        }
-        if (eng->m_next_marker_act == 2)
-        {
-            eng->m_next_marker_act = 0;
-            eng->m_eng->clearMarkers();
-        }
-        float deltatime = 1.0f/sr;
-        float procbuf[4] = {0.0f,0.0f,0.0f,0.0f};
-        float playrate = eng->m_par_playrate;
-        float pitch = eng->m_par_pitch;
-        float separ = rescale(pitch,-24.0f,24.0f,0.0f,1.0f);
-        eng->m_eng->m_scrubber->setSeparation(separ);
-        float loopstart = eng->m_par_regionselect;
-        float looplen = 1.0f;
-        float loopslide = 0.0f;
-        float posrand = std::pow(eng->m_par_srcposrand,2.0f);
-        float grate = std::pow(2.0f,1.0f/12*(12.0f*eng->m_par_grainrate));
-        float lenm = eng->m_par_lenmultip;
-        float revprob = eng->m_par_reverseprob;
-        float pitchspread = eng->m_par_pitchsrpead;
-        eng->m_eng->m_scanpos = eng->m_par_scanpos;
         float* obuf = (float*)outputBuffer;
-        float* inbuf = (float*)inputBuffer;
-        float panspread = clamp(eng->m_par_stereo_spread,-1.0f,1.0f);
+        const float* inbuf = (const float*)inputBuffer;
+        return eng->processBlock(inbuf,obuf,framesPerBuffer);
         
-        for (int i=0;i<framesPerBuffer;++i)
-        {
-            float inputgain = eng->m_drywetsmoother.process(eng->m_par_inputmix);
-            float procgain = 1.0f-inputgain;
-            float ins[2] = {inbuf[i*2+0],inbuf[i*2+0]};
-            eng->m_eng->process(deltatime,sr,procbuf,playrate,pitch,loopstart,looplen,loopslide,
-                posrand,grate,lenm,revprob,0,pitchspread);
-            // filter low frequency junk
-            procbuf[0] = eng->m_dc_blockers[0].process(procbuf[0]);
-            procbuf[1] = eng->m_dc_blockers[1].process(procbuf[1]);
-            // saturate (would ideally need some oversampling for this...)
-            procbuf[0] = std::tanh(procbuf[0]);
-            procbuf[1] = std::tanh(procbuf[1]);
-            float mid = procbuf[0]+procbuf[1];
-            float side = procbuf[1]-procbuf[0];
-            side *= panspread;  
-            procbuf[0] = (mid-side);
-            procbuf[1] = (mid+side);
-            eng->pushToRecordBuffer(procbuf[0],procbuf[1]);
-            obuf[i*2+0] = procbuf[0] * procgain + ins[0] * inputgain; 
-            obuf[i*2+1] = procbuf[1] * procgain + ins[0] * inputgain;
-            if (rec_active)
-            {
-                drsrc->pushSamplesToRecordBuffer(ins,0.9f);
-            }
-        }
-        
-        return paContinue;
     }
     void pushToRecordBuffer(float left, float right)
     {
