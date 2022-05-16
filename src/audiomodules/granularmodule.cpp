@@ -616,7 +616,7 @@ public:
         {
             m_scrubber->setRegion(regionStart,regionEnd);
             m_scrubber->setNextPosition(m_scanpos);
-            float scrubsmoothcutoff = rescale(std::pow(lenm,2.5f),0.0f,1.0f,0.1f,64.0f);
+            float scrubsmoothcutoff = rescale(std::pow(lenm,2.5f),0.0f,1.0f,0.1f,16.0f);
             m_scrubber->processFrame(buf,2,sr,scrubsmoothcutoff);
             return;
         }
