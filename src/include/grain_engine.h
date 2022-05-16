@@ -11,6 +11,7 @@
 #include <dsp/common.hpp>
 #include <dsp/filter.hpp>
 #include <dsp/digital.hpp>
+#include <dsp/fir.hpp>
 #include <math.hpp>
 #else
 #include <rack.hpp>

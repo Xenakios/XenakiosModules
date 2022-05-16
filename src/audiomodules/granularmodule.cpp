@@ -150,20 +150,37 @@ public:
             return false;
         }
         std::cout << "opened successfully, reading...\n";
+        std::vector<unsigned char> temp(st.st_size);
+        fread((void*)temp.data(),1,st.st_size,f);
+        fclose(f);
         if (bits == 8)
         {
-            int bytestoread = std::min((int)m_audioBuffer.size(),(int)st.st_size/4);
-            std::vector<unsigned char> temp(bytestoread);
-            fread((void*)temp.data(),1,bytestoread,f);
-            
-            for (int i=0;i<bytestoread;++i)
+            int framestomake = clamp(temp.size()/4,5,m_audioBuffer.size());
+            for (int i=0;i<framestomake;++i)
             {
                 int8_t b = temp[i];
                 float s = rescale((float)b,-128,127,-0.5f,0.5f);
                 m_audioBuffer[i] = s;
+            } 
+            float ir[4] = {1.0f,0.5f,0.25f,0.1f};
+            for (int i=0;i<framestomake;++i)
+            {
+                float s = dsp::convolveNaive(&m_audioBuffer[i],ir,4);
+                m_audioBuffer[s] = s;
+            }
+        }
+        if (bits == 16)
+        {
+            int framestomake = clamp(temp.size()/8,0,m_audioBuffer.size());
+            for (int i=0;i<framestomake;++i)
+            {
+                int8_t b0 = temp[i*2];
+                int8_t b1 = temp[i*2+1];
+                short w = b0 * 256 + (uint8_t)b1;
+                float s = rescale((float)w,-32768,32767,-0.5f,0.5f);
+                m_audioBuffer[i] = s;
             }    
         }
-        fclose(f);
         std::cout << "read successfully!\n";
         return true;
         
