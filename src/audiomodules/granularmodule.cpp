@@ -138,6 +138,32 @@ public:
         }
         return false;
     }
+    bool importRawFile(std::string filename,float samplerate, int bits)
+    {
+        return false;
+        /*
+        try
+        {
+            auto data = system::readFile(filename);
+            if (bits == 8)
+            {
+                int framestoread = std::min(m_audioBuffer.size(),(size_t)data.size()/4);
+                for (int i=0;i<framestoread;++i)
+                {
+                    int8_t b = data[i];
+                    float s = rescale((float)b,-128,127,-0.5f,0.5f);
+                    m_audioBuffer[i] = s;
+                }    
+            }
+        }
+        catch(std::exception& ex)
+        {
+            std::cout << ex.what() << "\n";
+            return false;
+        }
+        return true;
+        */
+    }
     bool importFile(std::string filename)
     {
         drwav_uint64 totalPCMFrameCount = 0;
@@ -1960,7 +1986,7 @@ private:
 
 void worker_thread_func(RtMidiOut* midi_output, AudioEngine& aeng, std::atomic<bool>& quit_thread)
 {
-    std::cout << "starting midi out thread\n";
+    std::cout << "starting worker thread\n";
     unsigned char midimsg[4]={176,81,64,0};
     midi_output->sendMessage(midimsg,3);
     while (!quit_thread)
@@ -2000,7 +2026,7 @@ void worker_thread_func(RtMidiOut* midi_output, AudioEngine& aeng, std::atomic<b
         }
         Pa_Sleep(50);
     }
-    std::cout << "ended midi out thread\n";
+    std::cout << "ended worker thread\n";
 }
 
 int main(int argc, char** argv)
@@ -2082,6 +2108,10 @@ int main(int argc, char** argv)
             if (mo == 0)
                 mo = 1;
             else mo = 0;
+        }
+        if (c=='N')
+        {
+            drsrc->importRawFile("/usr/bin/python3.9",44100.0f,8);
         }
         if (c=='r')
         {
