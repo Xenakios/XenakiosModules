@@ -5,7 +5,7 @@
 #else
 #include <system.hpp>
 #include <jansson.h>
-
+#include <sys/stat.h>
 #include <string.hpp>
 #endif
 #include <iostream>
@@ -140,29 +140,33 @@ public:
     }
     bool importRawFile(std::string filename,float samplerate, int bits)
     {
-        return false;
-        /*
-        try
+        struct stat st;
+        stat(filename.c_str(),&st);
+        std::cout << "size of " << filename << " is " << st.st_size << "\n";
+        FILE* f = fopen(filename.c_str(),"rb");
+        if (f == NULL)
         {
-            auto data = system::readFile(filename);
-            if (bits == 8)
-            {
-                int framestoread = std::min(m_audioBuffer.size(),(size_t)data.size()/4);
-                for (int i=0;i<framestoread;++i)
-                {
-                    int8_t b = data[i];
-                    float s = rescale((float)b,-128,127,-0.5f,0.5f);
-                    m_audioBuffer[i] = s;
-                }    
-            }
-        }
-        catch(std::exception& ex)
-        {
-            std::cout << ex.what() << "\n";
+            std::cout << "could not open for reading\n";
             return false;
         }
+        std::cout << "opened successfully, reading...\n";
+        if (bits == 8)
+        {
+            int bytestoread = std::min((int)m_audioBuffer.size(),(int)st.st_size/4);
+            std::vector<unsigned char> temp(bytestoread);
+            fread((void*)temp.data(),1,bytestoread,f);
+            
+            for (int i=0;i<bytestoread;++i)
+            {
+                int8_t b = temp[i];
+                float s = rescale((float)b,-128,127,-0.5f,0.5f);
+                m_audioBuffer[i] = s;
+            }    
+        }
+        fclose(f);
+        std::cout << "read successfully!\n";
         return true;
-        */
+        
     }
     bool importFile(std::string filename)
     {
@@ -2112,6 +2116,7 @@ int main(int argc, char** argv)
         if (c=='N')
         {
             drsrc->importRawFile("/usr/bin/python3.9",44100.0f,8);
+            aeng.m_par_regionselect = 0.0f;
         }
         if (c=='r')
         {
