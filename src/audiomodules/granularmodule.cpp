@@ -1703,8 +1703,8 @@ public:
             // saturate (would ideally need some oversampling for this...)
             procbuf[0] = std::tanh(procbuf[0]);
             procbuf[1] = std::tanh(procbuf[1]);
-            float mid = procbuf[0]+procbuf[1];
-            float side = procbuf[1]-procbuf[0];
+            float mid = 0.5f*(procbuf[0]+procbuf[1]);
+            float side = 0.5f*(procbuf[1]-procbuf[0]);
             side *= panspread;  
             procbuf[0] = (mid-side);
             procbuf[1] = (mid+side);
