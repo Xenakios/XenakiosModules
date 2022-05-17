@@ -1542,10 +1542,10 @@ public:
         drwav out_wav;
         drwav_data_format format;
 		format.container = drwav_container_riff;
-		format.format = DR_WAVE_FORMAT_PCM;
+		format.format = DR_WAVE_FORMAT_IEEE_FLOAT;
 		format.channels = 2;
 		format.sampleRate = 44100;
-		format.bitsPerSample = 16;
+		format.bitsPerSample = 32;
         if (drwav_init_file_write(&out_wav,filename.c_str(),&format,nullptr))
         {
             drwav_write_pcm_frames(&out_wav,m_out_rec_pos-1,(void*)m_out_rec_buffer.data());
