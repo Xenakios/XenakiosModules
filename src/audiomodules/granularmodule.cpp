@@ -1542,10 +1542,10 @@ public:
         drwav out_wav;
         drwav_data_format format;
 		format.container = drwav_container_riff;
-		format.format = DR_WAVE_FORMAT_IEEE_FLOAT;
+		format.format = DR_WAVE_FORMAT_PCM;
 		format.channels = 2;
 		format.sampleRate = 44100;
-		format.bitsPerSample = 32;
+		format.bitsPerSample = 16;
         if (drwav_init_file_write(&out_wav,filename.c_str(),&format,nullptr))
         {
             drwav_write_pcm_frames(&out_wav,m_out_rec_pos-1,(void*)m_out_rec_buffer.data());
@@ -1631,6 +1631,7 @@ public:
             Pa_Terminate();
         
     }
+    
     virtual int processBlock(const float* inputBuffer, float* outputBuffer, int nFrames)
     {
         float sr = 44100.0f;
@@ -1752,7 +1753,7 @@ public:
             m_out_rec_buffer[m_out_rec_pos*2+0] = left;
             m_out_rec_buffer[m_out_rec_pos*2+1] = right;
             ++m_out_rec_pos;
-            int notif_interval = 10*44100;
+            int notif_interval = 30*44100;
             if (m_out_rec_pos % notif_interval == 0)
             {
                 exFIFO.push([this]()
@@ -2136,8 +2137,8 @@ int main(int argc, char** argv)
         }
         if (c=='N')
         {
-            drsrc->importRawFile("/usr/bin/python3.9",44100.0f,8);
-            aeng.m_par_regionselect = 0.0f;
+            //drsrc->importRawFile("/usr/bin/python3.9",44100.0f,8);
+            //aeng.m_par_regionselect = 0.0f;
         }
         if (c=='r')
         {
@@ -2154,6 +2155,7 @@ int main(int argc, char** argv)
     quit_thread = true;
     worker_th.join();
     saveSettings(aeng);
+    aeng.saveOutputBuffer("recorded_output.wav");
     return 0;
 }
 #endif
