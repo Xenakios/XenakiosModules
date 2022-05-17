@@ -162,11 +162,15 @@ public:
                 float s = rescale((float)b,-128,127,-0.5f,0.5f);
                 m_audioBuffer[i] = s;
             } 
-            float ir[4] = {1.0f,0.5f,0.25f,0.1f};
+            float ir[16];
+            static std::mt19937 rng;
+            std::uniform_real_distribution<float> dist{-1.0f,1.0f};
+            for (int i=0;i<16;++i)
+                ir[i] = dist(rng);
             for (int i=0;i<framestomake;++i)
             {
-                float s = dsp::convolveNaive(&m_audioBuffer[i],ir,4);
-                m_audioBuffer[s] = s;
+                float s = dsp::convolveNaive(&m_audioBuffer[i],ir,16);
+                m_audioBuffer[i] = s;
             }
         }
         if (bits == 16)
