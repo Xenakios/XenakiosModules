@@ -1707,8 +1707,16 @@ public:
         // Basic output volume compensation method. 
         // Assume more grains mixed are louder and out volume needs to be attenuated.
         // In practice a more sophisticated way to calculate this should probably be figured out. 
-        if (m_eng->m_playmode < 2 && m_eng->m_gm->m_grainsUsed>0) // if in scrub mode, use unity gain
-            mastergain = 0.95f/m_eng->m_gm->m_grainsUsed;
+        int gused = m_eng->m_gm->m_grainsUsed;
+        if (m_eng->m_playmode < 2 && gused>0) // if in scrub mode, use unity gain
+            mastergain = 0.95f/gused;
+        if (m_cbcount % 100 == 0)
+        {
+            exFIFO.push([mastergain,gused]()
+            {
+                std::cout << "num grains active " << gused << ", compensated gain " << mastergain << "\n";
+            });
+        }
         for (int i=0;i<nFrames;++i)
         {
             float inputgain = m_drywetsmoother.process(m_par_inputmix);
@@ -1756,10 +1764,9 @@ public:
     {
         AudioEngine* eng = (AudioEngine*)userData;
         memset(outputBuffer,0,sizeof(float)*2*framesPerBuffer); // not known yet if the output buffer is precleared
+        ++eng->m_cbcount;
         if (eng->m_cbcount<100) // little hack to do no work at startup
         {
-            ++eng->m_cbcount;
-            
             return paContinue;
         }
         float* obuf = (float*)outputBuffer;
@@ -2126,7 +2133,7 @@ int main(int argc, char** argv)
     std::atomic<bool> quit_thread{false};
     
     auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
-    if (drsrc->importFile("/home/teemu/AudioStuff/NilsVanOttorloo44/bassClarinet1.wav"))
+    if (drsrc->importFile("/home/teemu/AudioStuff/sheila.wav"))
     {
         std::cout << "loaded test source file\n";
     } else
@@ -2183,7 +2190,7 @@ int main(int argc, char** argv)
     quit_thread = true;
     worker_th.join();
     saveSettings(aeng);
-    aeng.saveOutputBuffer("recorded_output.wav");
+    //aeng.saveOutputBuffer("recorded_output.wav");
     return 0;
 }
 #endif
