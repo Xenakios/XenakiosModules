@@ -1664,12 +1664,13 @@ public:
                 
             } else
             {
-                m_eng->addMarkerAtPosition(drsrc->getRecordPosition());
+                float rpos = drsrc->getRecordPosition();
+                m_eng->addMarkerAtPosition(rpos);
                 drsrc->stopRecording();
                 rec_active = false;
-                exFIFO.push([]()
+                exFIFO.push([rpos]()
                 {
-                    std::cout << "ENDED RECORDING\n";
+                    std::cout << "ENDED RECORDING, added marker at pos " << rpos << "\n";
                 });
             }
             m_toggle_record = false;
@@ -1709,12 +1710,12 @@ public:
         // In practice a more sophisticated way to calculate this should probably be figured out. 
         int gused = m_eng->m_gm->m_grainsUsed;
         if (m_eng->m_playmode < 2 && gused>0) // if in scrub mode, use unity gain
-            mastergain = 0.95f/gused;
+            mastergain = clamp(1.0f/gused,0.0f,0.70f);
         if (m_cbcount % 100 == 0)
         {
             exFIFO.push([mastergain,gused]()
             {
-                std::cout << "num grains active " << gused << ", compensated gain " << mastergain << "\n";
+                //std::cout << "num grains active " << gused << ", compensated gain " << mastergain << "\n";
             });
         }
         for (int i=0;i<nFrames;++i)
@@ -2177,14 +2178,11 @@ int main(int argc, char** argv)
         }
         if (c=='r')
         {
-            
-            if (!ge.isRecording())
-            {
-                drsrc->startRecording(2,44100.0f);   
-            } else
-            {
-                drsrc->stopRecording();
-            }
+            aeng.m_toggle_record = true;
+        }
+        if (c=='M')
+        {
+            aeng.m_next_marker_act = 2;
         }
     }
     quit_thread = true;
