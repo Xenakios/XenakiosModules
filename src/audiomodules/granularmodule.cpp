@@ -1707,7 +1707,7 @@ public:
         // Basic output volume compensation method. 
         // Assume more grains mixed are louder and out volume needs to be attenuated.
         // In practice a more sophisticated way to calculate this should probably be figured out. 
-        if (m_eng->m_gm->m_grainsUsed>0)
+        if (m_eng->m_playmode < 2 && m_eng->m_gm->m_grainsUsed>0) // if in scrub mode, use unity gain
             mastergain = 0.95f/m_eng->m_gm->m_grainsUsed;
         for (int i=0;i<nFrames;++i)
         {
