@@ -1703,7 +1703,12 @@ public:
         m_eng->m_scanpos = m_par_scanpos;
         
         float panspread = clamp(m_par_stereo_spread,-1.0f,1.0f);
-        
+        float mastergain = 1.0f;
+        // Basic output volume compensation method. 
+        // Assume more grains mixed are louder and out volume needs to be attenuated.
+        // In practice a more sophisticated way to calculate this should probably be figured out. 
+        if (m_eng->m_gm->m_grainsUsed>0)
+            mastergain = 0.95f/m_eng->m_gm->m_grainsUsed;
         for (int i=0;i<nFrames;++i)
         {
             float inputgain = m_drywetsmoother.process(m_par_inputmix);
@@ -1714,10 +1719,11 @@ public:
             // filter low frequency junk
             procbuf[0] = m_dc_blockers[0].process(procbuf[0]);
             procbuf[1] = m_dc_blockers[1].process(procbuf[1]);
-            // saturate (would ideally need some oversampling for this...)
+            float outgain = m_mastergainsmoother.process(mastergain);
+            // clip/saturate (would ideally need some oversampling for this...)
             float morpha = m_wsmorphsmoother.process(m_par_waveshapemorph);
-            procbuf[0] = waveShape(procbuf[0],morpha);
-            procbuf[1] = waveShape(procbuf[1],morpha);
+            procbuf[0] = waveShape(procbuf[0]*outgain,1.0f);
+            procbuf[1] = waveShape(procbuf[1]*outgain,1.0f);
             float mid = 0.5f*(procbuf[0]+procbuf[1]);
             float side = 0.5f*(procbuf[1]-procbuf[0]);
             side *= panspread;  
@@ -1750,7 +1756,7 @@ public:
     {
         AudioEngine* eng = (AudioEngine*)userData;
         memset(outputBuffer,0,sizeof(float)*2*framesPerBuffer); // not known yet if the output buffer is precleared
-        if (eng->m_cbcount<50) // little hack to do no work at startup
+        if (eng->m_cbcount<100) // little hack to do no work at startup
         {
             ++eng->m_cbcount;
             
