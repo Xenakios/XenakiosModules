@@ -1634,12 +1634,16 @@ public:
     }
     float waveShape(float in, float morph)
     {
+        morph *= 3.0f;
         float outs[4]; // = {0.0f,0.0f,0.0f,0.0f};
         outs[0] = std::tanh(in);
         outs[1] = clamp(in,-1.0f,1.0f);
-        outs[2] = std::atan(in)*2.0f/g_pi;
+        float drive = 1.0f;
+        if (morph>=2.0f)
+            drive = rescale(morph,2.0f,3.0f,1.0f,10.0f);
+        outs[2] = std::atan(in*drive)*2.0f/g_pi;
         outs[3] = outs[2]; // guard point
-        return interpolateLinear(outs,morph*3.0f);
+        return interpolateLinear(outs,morph);
     }
     virtual int processBlock(const float* inputBuffer, float* outputBuffer, int nFrames)
     {
