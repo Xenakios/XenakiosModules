@@ -172,23 +172,16 @@ void GrainMixer::processAudio(float* buf, float deltatime)
 
     }
     m_loop_eoc_out = 10.0f*(float)m_loop_eoc_pulse.process(deltatime);
+    int usedgrains = 0;
     for (int i=0;i<(int)m_grains.size();++i)
     {
         if (m_grains[i].playState==1)
         {
             m_grains[i].process(buf);
+            ++usedgrains;
         }
     }
-    if (debugDivider.process())
-    {
-        int usedgrains = 0;
-        for (int i=0;i<m_grains.size();++i)
-        {
-            if (m_grains[i].playState == 1)
-                ++usedgrains;
-        }
-        m_grainsUsed = usedgrains;
-    }
+    m_grainsUsed = usedgrains;
     ++m_outcounter;
     if (!m_random_timing)
         m_grain_phasor += deltatime * m_grainDensity;

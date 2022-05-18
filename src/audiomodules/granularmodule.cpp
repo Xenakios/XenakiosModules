@@ -1562,6 +1562,7 @@ public:
         m_dc_blockers[1].setParameters(rack::dsp::BiquadFilter::HIGHPASS_1POLE,30.0f/44100.0,1.0,1.0f);
         m_drywetsmoother.setParameters(rack::dsp::BiquadFilter::LOWPASS_1POLE,10.0f/44100.0,1.0,1.0f);
         m_wsmorphsmoother.setParameters(rack::dsp::BiquadFilter::LOWPASS_1POLE,10.0f/44100.0,1.0,1.0f);
+        m_mastergainsmoother.setParameters(rack::dsp::BiquadFilter::LOWPASS_1POLE,10.0f/44100.0,1.0,1.0f);
         PaError err;
         err = Pa_Initialize();
         if (err == paNoError)
@@ -1828,6 +1829,7 @@ public:
     std::array<dsp::BiquadFilter,2> m_dc_blockers;
     dsp::BiquadFilter m_drywetsmoother;
     dsp::BiquadFilter m_wsmorphsmoother;
+    dsp::BiquadFilter m_mastergainsmoother;
     std::vector<float> m_out_rec_buffer;
     int m_out_rec_len = 600*44100;
     int m_out_rec_pos = 0;
