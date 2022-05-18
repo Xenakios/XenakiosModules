@@ -1561,6 +1561,7 @@ public:
         m_dc_blockers[0].setParameters(rack::dsp::BiquadFilter::HIGHPASS_1POLE,30.0f/44100.0,1.0,1.0f);
         m_dc_blockers[1].setParameters(rack::dsp::BiquadFilter::HIGHPASS_1POLE,30.0f/44100.0,1.0,1.0f);
         m_drywetsmoother.setParameters(rack::dsp::BiquadFilter::LOWPASS_1POLE,10.0f/44100.0,1.0,1.0f);
+        m_wsmorphsmoother.setParameters(rack::dsp::BiquadFilter::LOWPASS_1POLE,10.0f/44100.0,1.0,1.0f);
         PaError err;
         err = Pa_Initialize();
         if (err == paNoError)
@@ -1631,7 +1632,15 @@ public:
             Pa_Terminate();
         
     }
-    
+    float waveShape(float in, float morph)
+    {
+        float outs[4]; // = {0.0f,0.0f,0.0f,0.0f};
+        outs[0] = std::tanh(in);
+        outs[1] = clamp(in,-1.0f,1.0f);
+        outs[2] = std::atan(in)*2.0f/g_pi;
+        outs[3] = outs[2]; // guard point
+        return interpolateLinear(outs,morph*3.0f);
+    }
     virtual int processBlock(const float* inputBuffer, float* outputBuffer, int nFrames)
     {
         float sr = 44100.0f;
@@ -1701,8 +1710,9 @@ public:
             procbuf[0] = m_dc_blockers[0].process(procbuf[0]);
             procbuf[1] = m_dc_blockers[1].process(procbuf[1]);
             // saturate (would ideally need some oversampling for this...)
-            procbuf[0] = std::tanh(procbuf[0]);
-            procbuf[1] = std::tanh(procbuf[1]);
+            float morpha = m_wsmorphsmoother.process(m_par_waveshapemorph);
+            procbuf[0] = waveShape(procbuf[0],morpha);
+            procbuf[1] = waveShape(procbuf[1],morpha);
             float mid = 0.5f*(procbuf[0]+procbuf[1]);
             float side = 0.5f*(procbuf[1]-procbuf[0]);
             side *= panspread;  
@@ -1787,9 +1797,11 @@ public:
     std::atomic<float> m_par_grainrate{4.0f}; // "octaves", 0 is 1 Hz
     std::atomic<float> m_par_regionselect{0.0f};
     std::atomic<float> m_par_inputmix{0.0f};
+    std::atomic<float> m_par_waveshapemorph{0.0f};
     std::atomic<bool> m_toggle_record{false};
     std::atomic<int> m_next_marker_act{0};
     std::atomic<int> m_led_ring_option{0};
+    
     using par_pair = std::pair<std::string,std::atomic<float>*>;
     std::vector<par_pair> params={
             {"par_playrate",&m_par_playrate},
@@ -1802,7 +1814,8 @@ public:
             {"par_lenmultip",&m_par_lenmultip},
             {"par_reverseprob",&m_par_reverseprob},
             {"par_regionselect",&m_par_regionselect},
-            {"par_grainrate",&m_par_grainrate}
+            {"par_grainrate",&m_par_grainrate},
+            {"par_waveshapemorph",&m_par_waveshapemorph}
             };
     int m_cbcount = 0;
     int m_shift_state = 0;
@@ -1810,6 +1823,7 @@ public:
     int m_big_fader_values[2] = {0,0};
     std::array<dsp::BiquadFilter,2> m_dc_blockers;
     dsp::BiquadFilter m_drywetsmoother;
+    dsp::BiquadFilter m_wsmorphsmoother;
     std::vector<float> m_out_rec_buffer;
     int m_out_rec_len = 600*44100;
     int m_out_rec_pos = 0;
@@ -1920,8 +1934,10 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             cf(eng->m_par_reverseprob,delta*0.01f,0.0f,1.0f);
         else if (msg[1] == 70)
             cf(eng->m_par_stereo_spread,delta*0.02f,-1.0f,1.0f);
-        else if (msg[1] == 71)
+        else if (msg[1] == 71 && eng->m_shift_state == 0)
             cf(eng->m_par_inputmix,delta*0.05f,0.0f,1.0f);
+        else if (msg[1] == 71 && eng->m_shift_state == 1)
+            cf(eng->m_par_waveshapemorph,delta*0.01f,0.0f,1.0f);
     }
 
 }
