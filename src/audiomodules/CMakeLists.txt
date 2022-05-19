@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-include_directories(../../src/include ../../../Rack-SDK/include ../../../Rack-SDK/include/simd ../../../Rack-SDK/include/dsp ../../../Rack-SDK/dep/include)
+include_directories(claphosting ../../src/include ../../../Rack-SDK/include ../../../Rack-SDK/include/simd ../../../Rack-SDK/include/dsp ../../../Rack-SDK/dep/include)
 
 project(GRLOOPER)
 
