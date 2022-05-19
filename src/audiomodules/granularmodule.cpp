@@ -1511,6 +1511,7 @@ Model* modelXGranular = createModel<XGranularModule, XGranularWidget>("XGranular
 #include <unistd.h>
 #include "rtmidi/RtMidi.h"
 #include <type_traits>
+#include "claphost.h"
 
 char mygetch() {
     char buf = 0;
@@ -1532,6 +1533,7 @@ char mygetch() {
 class AudioEngine
 {
 public:
+    std::unique_ptr<clap_processor> m_clap_host;
     GrainEngine* m_eng = nullptr;
     PaStreamParameters outputParameters;
     PaStreamParameters inputParameters;
@@ -1611,7 +1613,7 @@ public:
             printError(err);
         }
         m_out_rec_buffer.resize(m_out_rec_len*2);
-    
+        m_clap_host = std::make_unique<clap_processor>();
     }
     void printError(PaError e)
     {
