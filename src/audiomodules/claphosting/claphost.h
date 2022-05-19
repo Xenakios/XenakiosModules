@@ -7,6 +7,8 @@
 #include <clap/ext/params.h>
 #include <clap/ext/audio-ports.h>
 #include <dlfcn.h>
+#include <vector>
+#include <unordered_map>
 
 inline clap_plugin_entry_t *entryFromClapPath(const std::string &p)
 {
@@ -41,8 +43,17 @@ public:
         }
         
     }
-    void prepare(int inchans, int outchans, int maxblocksize, float samplerate)
-    {
-
-    }
+    void prepare(int inchans, int outchans, int maxblocksize, float samplerate);
+    void processAudio(float* buf, int nframes);
+private:
+    std::vector<std::vector<float>> m_in_bufs;
+    std::vector<float*> m_in_buf_ptrs;
+    std::vector<clap_audio_buffer_t> m_clap_in_ports;
+    std::vector<std::vector<float>> m_out_bufs;
+    std::vector<float*> m_out_buf_ptrs;
+    std::vector<clap_audio_buffer_t> m_clap_out_ports;
+    clap_input_events_t m_in_events;
+    clap_output_events_t m_out_events;
+    bool isStarted = false;
+    std::unordered_map<uint32_t, clap_param_info> paramInfo;
 };

@@ -1748,6 +1748,7 @@ public:
                 drsrc->pushSamplesToRecordBuffer(ins,0.9f);
             }
         }
+        m_clap_host->processAudio(outputBuffer,nFrames);
         return paContinue;
     }
     void dumpMarkers()

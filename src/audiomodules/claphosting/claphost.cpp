@@ -1,4 +1,5 @@
 #include "claphost.h"
+#include <cstring>
 
 const void *get_extension(const struct clap_host *host, const char *eid)
 {
@@ -15,6 +16,92 @@ void request_callback(const struct clap_host *h) {}
 static clap_host xen_host_static{
     CLAP_VERSION_INIT, nullptr,       "GRLOOPERHOST",     "Xenakios", "no website",
     "0.0.0",           get_extension, request_restart, request_process,     request_callback};
+
+struct micro_input_events
+{
+    static constexpr int max_evt_size = 10 * 1024;
+    static constexpr int max_events = 4096;
+    uint8_t data[max_evt_size * max_events];
+    uint32_t sz{0};
+
+    static void setup(clap_input_events *evt)
+    {
+        evt->ctx = new micro_input_events();
+        evt->size = size;
+        evt->get = get;
+    }
+    static void destroy(clap_input_events *evt) { delete (micro_input_events *)evt->ctx; }
+
+    static uint32_t size(const clap_input_events *e)
+    {
+        auto mie = static_cast<micro_input_events *>(e->ctx);
+        return mie->sz;
+    }
+
+    static const clap_event_header_t *get(const clap_input_events *e, uint32_t index)
+    {
+        auto mie = static_cast<micro_input_events *>(e->ctx);
+        //assert(index >= 0);
+        //assert(index < max_events);
+        uint8_t *ptr = &(mie->data[index * max_evt_size]);
+        return reinterpret_cast<clap_event_header_t *>(ptr);
+    }
+
+    template <typename T> static void push(clap_input_events *e, const T &t)
+    {
+        auto mie = static_cast<micro_input_events *>(e->ctx);
+        //assert(t.header.size <= max_evt_size);
+        //assert(mie->sz < max_events - 1);
+        uint8_t *ptr = &(mie->data[mie->sz * max_evt_size]);
+        memcpy(ptr, &t, t.header.size);
+        mie->sz++;
+    }
+
+    static void reset(clap_input_events *e)
+    {
+        auto mie = static_cast<micro_input_events *>(e->ctx);
+        mie->sz = 0;
+    }
+};
+
+struct micro_output_events
+{
+    static constexpr int max_evt_size = 10 * 1024;
+    static constexpr int max_events = 4096;
+    uint8_t data[max_evt_size * max_events];
+    uint32_t sz{0};
+
+    static void setup(clap_output_events *evt)
+    {
+        evt->ctx = new micro_output_events();
+        evt->try_push = try_push;
+    }
+    static void destroy(clap_output_events *evt) { delete (micro_output_events *)evt->ctx; }
+
+    static bool try_push(const struct clap_output_events *list, const clap_event_header_t *event)
+    {
+        auto mie = static_cast<micro_output_events *>(list->ctx);
+        if (mie->sz >= max_events || event->size >= max_evt_size)
+            return false;
+
+        uint8_t *ptr = &(mie->data[mie->sz * max_evt_size]);
+        memcpy(ptr, event, event->size);
+        mie->sz++;
+        return true;
+    }
+
+    static uint32_t size(clap_output_events *e)
+    {
+        auto mie = static_cast<micro_output_events *>(e->ctx);
+        return mie->sz;
+    }
+
+    static void reset(clap_output_events *e)
+    {
+        auto mie = static_cast<micro_output_events *>(e->ctx);
+        mie->sz = 0;
+    }
+};
 
 clap_processor::clap_processor()
 {
@@ -63,6 +150,7 @@ clap_processor::clap_processor()
         {
             clap_param_info_t inf;
             inst_param->get_info(m_plug, i, &inf);
+            paramInfo[inf.id] = inf;
             //aud.paramInfo[inf.id] = inf;
 
             double d;
@@ -77,5 +165,94 @@ clap_processor::clap_processor()
     {
         std::cout << "No Parameters Available" << std::endl;
     }
+    m_clap_in_ports.resize(1);
+    m_clap_out_ports.resize(1);
+    m_in_bufs.resize(2);
+    m_in_buf_ptrs.resize(2);
+    m_out_bufs.resize(2);
+    m_out_buf_ptrs.resize(2);
+    for (int i=0;i<m_in_bufs.size();++i)
+    {
+        m_in_bufs[i].resize(4096);
+        m_in_buf_ptrs[i] = m_in_bufs[i].data();
+    }
+    for (int i=0;i<m_out_bufs.size();++i)
+    {
+        m_out_bufs[i].resize(4096);
+        m_out_buf_ptrs[i] = m_out_bufs[i].data();
+    }
+        
+    m_clap_in_ports[0].channel_count = 2;
+    m_clap_in_ports[0].constant_mask = 0;
+    m_clap_in_ports[0].latency = 0;
+    m_clap_in_ports[0].data64 = nullptr;
+    m_clap_in_ports[0].data32 = m_in_buf_ptrs.data();
+    
+    m_clap_out_ports[0].channel_count = 2;
+    m_clap_out_ports[0].constant_mask = 0;
+    m_clap_out_ports[0].latency = 0;
+    m_clap_out_ports[0].data64 = nullptr;
+    m_clap_out_ports[0].data32 = m_out_buf_ptrs.data();
+    
+    micro_input_events::setup(&m_in_events);
+    micro_output_events::setup(&m_out_events);
+
     m_inited = true;
+
+}
+
+void clap_processor::prepare(int inchans, int outchans, int maxblocksize, float samplerate)
+{
+
+}
+
+void clap_processor::processAudio(float* buf, int nframes)
+{
+    if (!isStarted)
+    {
+        m_plug->start_processing(m_plug);
+        isStarted = true;
+    }
+    auto valset = clap_event_param_value();
+    valset.header.size = sizeof(clap_event_param_value);
+    valset.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
+    valset.header.time = 0;
+    valset.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+    valset.header.flags = 0;
+    valset.param_id = 0xb4dfe30c; // surge fx type
+    valset.note_id = -1;
+    valset.port_index = -1;
+    valset.channel = -1;
+    valset.key = -1;
+    valset.value = 0.384; // type reverb 2
+    valset.cookie = paramInfo[0xb4dfe30c].cookie;
+
+    micro_input_events::push(&m_in_events, valset);
+
+    for (int i=0;i<nframes;++i)
+    {
+        m_in_bufs[0][i] = buf[i*2+0];
+        m_in_bufs[1][i] = buf[i*2+1];
+    }
+    clap_process_t process;
+    process.steady_time = -1;
+    process.frames_count = nframes;
+    process.transport = nullptr; // we do need to fix this
+
+    process.audio_inputs = m_clap_in_ports.data();
+    process.audio_inputs_count = 1;
+    process.audio_outputs = m_clap_out_ports.data();
+    process.audio_outputs_count = 1;
+
+    process.in_events = &m_in_events;
+    process.out_events = &m_out_events;
+
+    auto res = m_plug->process(m_plug, &process);
+    micro_output_events::reset(&m_out_events);
+    micro_input_events::reset(&m_in_events);
+    for (int i=0;i<nframes;++i)
+    {
+        buf[i*2+0] = m_out_bufs[0][i];
+        buf[i*2+1] = m_out_bufs[1][i];
+    }   
 }
