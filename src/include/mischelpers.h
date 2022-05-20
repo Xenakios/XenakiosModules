@@ -7,10 +7,12 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <cmath>
 
-using namespace rack;
+
 #ifndef RAPIHEADLESS
 extern Plugin *pluginInstance;
+using namespace rack;
 #endif
 const double g_pi = 3.14159265358979;
 
@@ -46,7 +48,11 @@ struct spinlock {
       while (lock_.load(std::memory_order_relaxed)) {
         // Issue X86 PAUSE or ARM YIELD instruction to reduce contention between
         // hyper-threads
-        __builtin_ia32_pause();
+        #ifndef RAPIHEADLESS
+		__builtin_ia32_pause();
+		#else
+		asm volatile("yield");
+		#endif
       }
     }
   }

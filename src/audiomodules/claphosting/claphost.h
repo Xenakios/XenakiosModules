@@ -9,6 +9,7 @@
 #include <dlfcn.h>
 #include <vector>
 #include <unordered_map>
+#include "mischelpers.h"
 
 inline clap_plugin_entry_t *entryFromClapPath(const std::string &p)
 {
@@ -45,6 +46,8 @@ public:
     }
     void prepare(int inchans, int outchans, int maxblocksize, float samplerate);
     void processAudio(float* buf, int nframes);
+    void setParameter(int id, float v);
+    void incDecParameter(int index, float step);
 private:
     std::vector<std::vector<float>> m_in_bufs;
     std::vector<float*> m_in_buf_ptrs;
@@ -56,4 +59,6 @@ private:
     clap_output_events_t m_out_events;
     bool isStarted = false;
     std::unordered_map<uint32_t, clap_param_info> paramInfo;
+    std::vector<uint32_t> orderedParamIds;
+    spinlock m_spinlock;
 };

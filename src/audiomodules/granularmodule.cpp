@@ -1839,8 +1839,30 @@ public:
             {"par_grainrate",&m_par_grainrate},
             {"par_waveshapemorph",&m_par_waveshapemorph}
             };
+    void stepPage(int step)
+    {
+        int temp = m_page_state;
+        temp += step;
+        temp = wrap_value_safe(0,temp,3);
+        if (temp == 0)
+            std::cout << "switched to looper main MIDI control page\n";
+        if (temp == 1)
+            std::cout << "switched to looper aux MIDI control page\n";
+        if (temp == 2)
+            std::cout << "switched to looper fx MIDI control page 1\n";
+        if (temp == 3)
+            std::cout << "switched to looper fx MIDI control page 2\n";
+        m_page_state = temp;
+    }
     int m_cbcount = 0;
-    int m_shift_state = 0;
+    /*
+    0 : main grlooper parameters
+    1 : aux grlooper parameters
+    2 : fx params 0..7
+    3 : fx params 8..11
+    */
+    std::atomic<int> m_page_state{0};
+    std::atomic<int> m_shift_state{0};
     int m_big_fader_state = 0;
     int m_big_fader_values[2] = {0,0};
     std::array<dsp::BiquadFilter,2> m_dc_blockers;
@@ -1869,30 +1891,41 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
     };
     if (msg[0] >= 176)
     {
-        if (msg[1] == 112)
+        if (msg[1] == 112) // button 1
         {
             if (msg[2]>0)
                 eng->m_shift_state = 1;
             else eng->m_shift_state = 0;
         }
-        if (msg[1] == 113)
+        if (msg[1] == 122) // page - button
+        {
+            if (msg[2]>0)
+                eng->stepPage(-1);
+        }
+        if (msg[1] == 123) // page + button
+        {
+            if (msg[2]>0)
+                eng->stepPage(1);
+        }
+
+        if (msg[1] == 113) // button 2
         {
             if (msg[2]>0)
                 eng->setNextPlayMode();
         }
-        if (msg[1] == 114 && msg[2]>0)
+        if (msg[1] == 114 && msg[2]>0) // button 3
         {
             eng->m_toggle_record = true;
         }
-        if (msg[1] == 115 && msg[2]>0)
+        if (msg[1] == 115 && msg[2]>0) // button 4
         {
             eng->m_next_marker_act = 1;
         }
-        if (eng->m_shift_state == 1 && msg[1] == 115 && msg[2]>0)
+        if (eng->m_shift_state == 1 && msg[1] == 115 && msg[2]>0) // button 4 with shift
         {
             eng->m_next_marker_act = 2;
         }
-        if (msg[1] == 120 && msg[2]>0)
+        if (msg[1] == 120 && msg[2]>0) // "learn" button
         {
             int temp = eng->m_led_ring_option;
             temp = (temp + 1) % 2;
@@ -1939,28 +1972,37 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
                 delta = stepsmall;
             else delta = steplarge;
         }
-            
-
-        if (msg[1] == 64)
-            cf(eng->m_par_playrate,delta*0.02f,-2.0f,2.0f);
-        else if (msg[1] == 65 && eng->m_shift_state == 0)
-            cf(eng->m_par_pitch,delta*0.1f,-24.0f,24.0f);
-        else if (msg[1] == 65 && eng->m_shift_state == 1)
-            cf(eng->m_par_pitchsrpead,delta*0.01f,-1.0f,1.0f);
-        else if (msg[1] == 66)
-            cf(eng->m_par_srcposrand,delta*0.01,0.0f,1.0f);
-        else if (msg[1] == 67)
-            cf(eng->m_par_lenmultip,delta*0.01,0.0f,1.0f);
-        else if (msg[1] == 68)
-            cf(eng->m_par_grainrate,delta*0.02f,-1.0f,7.0f);
-        else if (msg[1] == 69)
-            cf(eng->m_par_reverseprob,delta*0.01f,0.0f,1.0f);
-        else if (msg[1] == 70)
-            cf(eng->m_par_stereo_spread,delta*0.02f,-1.0f,1.0f);
-        else if (msg[1] == 71 && eng->m_shift_state == 0)
-            cf(eng->m_par_inputmix,delta*0.05f,0.0f,1.0f);
-        else if (msg[1] == 71 && eng->m_shift_state == 1)
-            cf(eng->m_par_waveshapemorph,delta*0.01f,0.0f,1.0f);
+        if (eng->m_page_state < 2)
+        {
+            if (msg[1] == 64)
+                cf(eng->m_par_playrate,delta*0.02f,-2.0f,2.0f);
+            else if (msg[1] == 65 && eng->m_page_state == 0)
+                cf(eng->m_par_pitch,delta*0.1f,-24.0f,24.0f);
+            else if (msg[1] == 65 && eng->m_page_state == 1)
+                cf(eng->m_par_pitchsrpead,delta*0.01f,-1.0f,1.0f);
+            else if (msg[1] == 66)
+                cf(eng->m_par_srcposrand,delta*0.01,0.0f,1.0f);
+            else if (msg[1] == 67)
+                cf(eng->m_par_lenmultip,delta*0.01,0.0f,1.0f);
+            else if (msg[1] == 68)
+                cf(eng->m_par_grainrate,delta*0.02f,-1.0f,7.0f);
+            else if (msg[1] == 69)
+                cf(eng->m_par_reverseprob,delta*0.01f,0.0f,1.0f);
+            else if (msg[1] == 70)
+                cf(eng->m_par_stereo_spread,delta*0.02f,-1.0f,1.0f);
+            else if (msg[1] == 71 && eng->m_page_state == 0)
+                cf(eng->m_par_inputmix,delta*0.05f,0.0f,1.0f);
+            else if (msg[1] == 71 && eng->m_page_state == 1)
+                cf(eng->m_par_waveshapemorph,delta*0.01f,0.0f,1.0f);
+        }
+        if (eng->m_page_state>=2) // control fx params
+        {
+            int paramindex = msg[1] - 64;
+            if (eng->m_page_state == 3)
+                paramindex += 8;
+            eng->m_clap_host->incDecParameter(paramindex,delta);
+        }
+        
     }
 
 }

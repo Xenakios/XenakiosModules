@@ -152,9 +152,10 @@ clap_processor::clap_processor()
             inst_param->get_info(m_plug, i, &inf);
             paramInfo[inf.id] = inf;
             //aud.paramInfo[inf.id] = inf;
-
+            orderedParamIds.push_back(inf.id);
             double d;
             inst_param->get_value(m_plug, inf.id, &d);
+            
             //aud.initialParamValues[inf.id] = d;
 
             std::cout << i << " " << inf.module << " " << inf.name << " (id=0x" << std::hex
@@ -201,6 +202,53 @@ clap_processor::clap_processor()
 
 }
 
+void clap_processor::setParameter(int id, float v)
+{
+    if (id>=0 && id < orderedParamIds.size())
+    {
+        const auto& parinfo = paramInfo[orderedParamIds[id]];
+        auto valset = clap_event_param_value();
+        valset.header.size = sizeof(clap_event_param_value);
+        valset.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
+        valset.header.time = 0;
+        valset.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+        valset.header.flags = 0;
+        valset.param_id = parinfo.id;
+        valset.note_id = -1;
+        valset.port_index = -1;
+        valset.channel = -1;
+        valset.key = -1;
+        valset.value = v;
+        valset.cookie = parinfo.cookie;
+        m_spinlock.lock();
+        micro_input_events::push(&m_in_events, valset);
+        m_spinlock.unlock();
+    }
+}
+
+void clap_processor::incDecParameter(int index, float step)
+{
+    if (index>=0 && index<orderedParamIds.size())
+    {
+        auto inst_param = (clap_plugin_params_t *)m_plug->get_extension(m_plug, CLAP_EXT_PARAMS);
+        auto parid = orderedParamIds[index];
+        double minval = paramInfo[parid].min_value;
+        double maxval = paramInfo[parid].max_value;
+        double oldval = 0.0;
+        if (inst_param->get_value(m_plug,parid,&oldval))
+        {
+            oldval += step * 0.01f;
+            if (oldval<minval)
+                oldval = minval;
+            if (oldval>maxval)
+                oldval = maxval;
+            std::cout << "set parameter " << paramInfo[parid].name << " relatively to " << oldval << "\n";
+            setParameter(index,oldval);
+        }
+    }
+    
+}
+
 void clap_processor::prepare(int inchans, int outchans, int maxblocksize, float samplerate)
 {
 
@@ -208,11 +256,13 @@ void clap_processor::prepare(int inchans, int outchans, int maxblocksize, float 
 
 void clap_processor::processAudio(float* buf, int nframes)
 {
+    m_spinlock.lock();
     if (!isStarted)
     {
         m_plug->start_processing(m_plug);
         isStarted = true;
     }
+    /*
     auto valset = clap_event_param_value();
     valset.header.size = sizeof(clap_event_param_value);
     valset.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
@@ -226,8 +276,8 @@ void clap_processor::processAudio(float* buf, int nframes)
     valset.key = -1;
     valset.value = 0.384; // type reverb 2
     valset.cookie = paramInfo[0xb4dfe30c].cookie;
-
-    micro_input_events::push(&m_in_events, valset);
+    */
+    
 
     for (int i=0;i<nframes;++i)
     {
@@ -254,5 +304,6 @@ void clap_processor::processAudio(float* buf, int nframes)
     {
         buf[i*2+0] = m_out_bufs[0][i];
         buf[i*2+1] = m_out_bufs[1][i];
-    }   
+    }
+    m_spinlock.unlock();   
 }
