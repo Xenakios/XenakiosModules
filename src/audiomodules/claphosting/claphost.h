@@ -10,6 +10,8 @@
 #include <vector>
 #include <unordered_map>
 #include "mischelpers.h"
+#include <functional>
+#include "choc_SingleReaderSingleWriterFIFO.h"
 
 inline clap_plugin_entry_t *entryFromClapPath(const std::string &p)
 {
@@ -48,6 +50,7 @@ public:
     void processAudio(float* buf, int nframes);
     void setParameter(int id, float v);
     void incDecParameter(int index, float step);
+    choc::fifo::SingleReaderSingleWriterFIFO<std::function<void(void)>>* exFIFO = nullptr;
 private:
     std::vector<std::vector<float>> m_in_bufs;
     std::vector<float*> m_in_buf_ptrs;

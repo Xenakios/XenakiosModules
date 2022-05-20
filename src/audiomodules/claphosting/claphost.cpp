@@ -168,8 +168,8 @@ clap_processor::clap_processor()
     }
     m_clap_in_ports.resize(1);
     m_clap_out_ports.resize(1);
-    m_in_bufs.resize(2);
-    m_in_buf_ptrs.resize(2);
+    m_in_bufs.resize(4);
+    m_in_buf_ptrs.resize(4);
     m_out_bufs.resize(2);
     m_out_buf_ptrs.resize(2);
     for (int i=0;i<m_in_bufs.size();++i)
@@ -183,7 +183,7 @@ clap_processor::clap_processor()
         m_out_buf_ptrs[i] = m_out_bufs[i].data();
     }
         
-    m_clap_in_ports[0].channel_count = 2;
+    m_clap_in_ports[0].channel_count = 4;
     m_clap_in_ports[0].constant_mask = 0;
     m_clap_in_ports[0].latency = 0;
     m_clap_in_ports[0].data64 = nullptr;
@@ -243,6 +243,16 @@ void clap_processor::incDecParameter(int index, float step)
             if (oldval>maxval)
                 oldval = maxval;
             std::cout << "set parameter " << paramInfo[parid].name << " relatively to " << oldval << "\n";
+            
+            exFIFO->push([this,parid,oldval,inst_param,index]()
+            {
+                //std::cout << "set parameter " << paramInfo[parid].name << " relatively to " << oldval << "\n";
+                char txtbuf[256];
+                memset(txtbuf,0,256);
+                inst_param->value_to_text(m_plug,parid,oldval,txtbuf,256);
+                std::cout << txtbuf << "\n";
+            });
+            
             setParameter(index,oldval);
         }
     }
@@ -262,27 +272,12 @@ void clap_processor::processAudio(float* buf, int nframes)
         m_plug->start_processing(m_plug);
         isStarted = true;
     }
-    /*
-    auto valset = clap_event_param_value();
-    valset.header.size = sizeof(clap_event_param_value);
-    valset.header.type = (uint16_t)CLAP_EVENT_PARAM_VALUE;
-    valset.header.time = 0;
-    valset.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-    valset.header.flags = 0;
-    valset.param_id = 0xb4dfe30c; // surge fx type
-    valset.note_id = -1;
-    valset.port_index = -1;
-    valset.channel = -1;
-    valset.key = -1;
-    valset.value = 0.384; // type reverb 2
-    valset.cookie = paramInfo[0xb4dfe30c].cookie;
-    */
-    
-
     for (int i=0;i<nframes;++i)
     {
         m_in_bufs[0][i] = buf[i*2+0];
         m_in_bufs[1][i] = buf[i*2+1];
+        m_in_bufs[2][i] = 0.0f;
+        m_in_bufs[3][i] = 0.0f;
     }
     clap_process_t process;
     process.steady_time = -1;

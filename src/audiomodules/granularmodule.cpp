@@ -1614,6 +1614,7 @@ public:
         }
         m_out_rec_buffer.resize(m_out_rec_len*2);
         m_clap_host = std::make_unique<clap_processor>();
+        m_clap_host->exFIFO = &exFIFO;
     }
     void printError(PaError e)
     {
