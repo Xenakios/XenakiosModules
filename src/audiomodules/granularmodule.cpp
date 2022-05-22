@@ -1663,7 +1663,7 @@ public:
                 rec_active = true;
                 exFIFO.push([]()
                 {
-                    std::cout << "STARTED RECORDING\n";
+                    //std::cout << "STARTED RECORDING\n";
                 });
                 
             } else
@@ -1674,7 +1674,7 @@ public:
                 rec_active = false;
                 exFIFO.push([rpos]()
                 {
-                    std::cout << "ENDED RECORDING, added marker at pos " << rpos << "\n";
+                    //std::cout << "ENDED RECORDING, added marker at pos " << rpos << "\n";
                 });
             }
             m_toggle_record = false;
@@ -2213,22 +2213,13 @@ int main(int argc, char** argv)
     
     WINDOW *win = newwin(12,100,0,0);
     wtimeout(win,500);
+    aeng.m_page_state = 0;
     while (true)
     {
-        //wmove(win,1,0);
-        //wclrtoeol(win);
-        //wmove(win,2,0);
-        //wclrtoeol(win);
-        //wclear(win);
-        
         char c = wgetch(win);
         if (c == 'q')
             break;
-        for (int i=0;i<9;++i)
-        {
-            mvwprintw(win,1,i*12,"            ");
-            mvwprintw(win,2,i*12,"            ");
-        }
+        wclear(win);
         cf(c,'a','A', aeng.m_par_playrate,0.05f);
         cf(c,'s','S', aeng.m_par_pitch,0.5f);
         if (c=='i')
@@ -2275,9 +2266,19 @@ int main(int argc, char** argv)
             {
                 auto parname = aeng.m_clap_host->getParameterName(paroffs+i);
                 auto parform = aeng.m_clap_host->getParameterValueFormatted(paroffs+i);
-                mvwprintw(win,1,12*i,parname.c_str());
-                mvwprintw(win,2,12*i,parform.c_str());
+                int xc = i % 4;
+                int yc = i / 4;
+                mvwprintw(win,1+2*yc, 24*xc,parname.c_str());
+                mvwprintw(win,2+2*yc, 24*xc,parform.c_str());
             }
+        }
+        float rpos = drsrc->getRecordPosition();
+        if (rpos >= 0.0f)
+        {
+            mvwprintw(win,7,0,"Capturing input at %.1f seconds",rpos*5*60.0);    
+        } else
+        {
+            //mvwprintw(win,7,0,"                                    ",rpos);    
         }
         mvwprintw(win,8,0,"%.1f seconds of output recorded",aeng.m_recseconds.load());
         wrefresh(win);
