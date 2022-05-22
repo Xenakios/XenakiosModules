@@ -244,14 +244,14 @@ void clap_processor::incDecParameter(int index, float step)
                 oldval = maxval;
             std::cout << "set parameter " << paramInfo[parid].name << " relatively to " << oldval << "\n";
             
-            exFIFO->push([this,parid,oldval,inst_param,index]()
-            {
+            //exFIFO->push([this,parid,oldval,inst_param,index]()
+            //{
                 //std::cout << "set parameter " << paramInfo[parid].name << " relatively to " << oldval << "\n";
                 char txtbuf[256];
                 memset(txtbuf,0,256);
                 inst_param->value_to_text(m_plug,parid,oldval,txtbuf,256);
                 std::cout << txtbuf << "\n";
-            });
+            //});
             
             setParameter(index,oldval);
         }
