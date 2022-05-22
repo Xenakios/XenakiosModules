@@ -50,6 +50,8 @@ public:
     void processAudio(float* buf, int nframes);
     void setParameter(int id, float v);
     void incDecParameter(int index, float step);
+    std::string getParameterValueFormatted(int index);
+    std::string getParameterName(int index);
     choc::fifo::SingleReaderSingleWriterFIFO<std::function<void(void)>>* exFIFO = nullptr;
 private:
     std::vector<std::vector<float>> m_in_bufs;

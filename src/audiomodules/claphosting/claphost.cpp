@@ -226,6 +226,32 @@ void clap_processor::setParameter(int id, float v)
     }
 }
 
+std::string clap_processor::getParameterValueFormatted(int index)
+{
+    if (index>=0 && index<orderedParamIds.size())
+    {
+        auto inst_param = (clap_plugin_params_t *)m_plug->get_extension(m_plug, CLAP_EXT_PARAMS);
+        auto parid = orderedParamIds[index];
+        double oldval = 0.0;
+        inst_param->get_value(m_plug,parid,&oldval);
+        char txtbuf[256];
+        memset(txtbuf,0,256);
+        inst_param->value_to_text(m_plug,parid,oldval,txtbuf,256);
+        return txtbuf;
+    }
+    return "N/A";
+}
+
+std::string clap_processor::getParameterName(int index)
+{
+    if (index>=0 && index<orderedParamIds.size())
+    {
+        auto parid = orderedParamIds[index];
+        return paramInfo[parid].name;
+    }
+    return "N/A";
+}
+
 void clap_processor::incDecParameter(int index, float step)
 {
     if (index>=0 && index<orderedParamIds.size())
@@ -242,7 +268,7 @@ void clap_processor::incDecParameter(int index, float step)
                 oldval = minval;
             if (oldval>maxval)
                 oldval = maxval;
-            std::cout << "set parameter " << paramInfo[parid].name << " relatively to " << oldval << "\n";
+            //std::cout << "set parameter " << paramInfo[parid].name << " relatively to " << oldval << "\n";
             
             //exFIFO->push([this,parid,oldval,inst_param,index]()
             //{
@@ -250,7 +276,7 @@ void clap_processor::incDecParameter(int index, float step)
                 char txtbuf[256];
                 memset(txtbuf,0,256);
                 inst_param->value_to_text(m_plug,parid,oldval,txtbuf,256);
-                std::cout << txtbuf << "\n";
+                //std::cout << txtbuf << "\n";
             //});
             
             setParameter(index,oldval);

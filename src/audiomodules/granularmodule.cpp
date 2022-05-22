@@ -1512,6 +1512,7 @@ Model* modelXGranular = createModel<XGranularModule, XGranularWidget>("XGranular
 #include "rtmidi/RtMidi.h"
 #include <type_traits>
 #include "claphost.h"
+#include <ncurses.h>
 
 char mygetch() {
     char buf = 0;
@@ -1779,6 +1780,7 @@ public:
         return eng->processBlock(inbuf,obuf,framesPerBuffer);
         
     }
+    std::atomic<float> m_recseconds{0.0f};
     void pushToRecordBuffer(float left, float right)
     {
         if (m_out_rec_pos < m_out_rec_len)
@@ -1786,12 +1788,13 @@ public:
             m_out_rec_buffer[m_out_rec_pos*2+0] = left;
             m_out_rec_buffer[m_out_rec_pos*2+1] = right;
             ++m_out_rec_pos;
+            m_recseconds = (float)m_out_rec_pos/44100;
             int notif_interval = 30*44100;
             if (m_out_rec_pos % notif_interval == 0)
             {
                 exFIFO.push([this]()
                 {
-                    std::cout << "recorded " << (float)m_out_rec_pos/44100 << " seconds of output...\n";
+                    //std::cout << "recorded " << (float)m_out_rec_pos/44100 << " seconds of output...\n";
                 });
                 
             }
@@ -1845,6 +1848,7 @@ public:
         int temp = m_page_state;
         temp += step;
         temp = wrap_value_safe(0,temp,3);
+        /*
         if (temp == 0)
             std::cout << "switched to looper main MIDI control page\n";
         if (temp == 1)
@@ -1853,6 +1857,7 @@ public:
             std::cout << "switched to looper fx MIDI control page 1\n";
         if (temp == 3)
             std::cout << "switched to looper fx MIDI control page 2\n";
+        */
         m_page_state = temp;
     }
     int m_cbcount = 0;
@@ -2203,11 +2208,27 @@ int main(int argc, char** argv)
         if (c == decc)
             par = par - step;
     };
+    initscr();
+    noecho();
+    
+    WINDOW *win = newwin(12,100,0,0);
+    wtimeout(win,500);
     while (true)
     {
-        char c = mygetch();
+        //wmove(win,1,0);
+        //wclrtoeol(win);
+        //wmove(win,2,0);
+        //wclrtoeol(win);
+        //wclear(win);
+        
+        char c = wgetch(win);
         if (c == 'q')
             break;
+        for (int i=0;i<9;++i)
+        {
+            mvwprintw(win,1,i*12,"            ");
+            mvwprintw(win,2,i*12,"            ");
+        }
         cf(c,'a','A', aeng.m_par_playrate,0.05f);
         cf(c,'s','S', aeng.m_par_pitch,0.5f);
         if (c=='i')
@@ -2217,11 +2238,7 @@ int main(int argc, char** argv)
                 mo = 1;
             else mo = 0;
         }
-        if (c=='N')
-        {
-            //drsrc->importRawFile("/usr/bin/python3.9",44100.0f,8);
-            //aeng.m_par_regionselect = 0.0f;
-        }
+        mvwprintw(win,0,0,"Interpolation mode %d",ge.m_gm->m_interpmode);
         if (c=='r')
         {
             aeng.m_toggle_record = true;
@@ -2230,7 +2247,44 @@ int main(int argc, char** argv)
         {
             aeng.m_next_marker_act = 2;
         }
+        if (aeng.m_page_state == 0)
+        {
+            mvwprintw(win,1,0,"Play rate");
+            mvwprintw(win,2,0,"%f",aeng.m_par_playrate.load());
+            mvwprintw(win,1,12,"Pitch");
+            mvwprintw(win,2,12,"%f",aeng.m_par_pitch.load());
+            mvwprintw(win,1,24,"Pos spread");
+            mvwprintw(win,2,24,"%f",aeng.m_par_srcposrand.load());
+            mvwprintw(win,1,36,"Overlap");
+            mvwprintw(win,2,36,"%f",aeng.m_par_lenmultip.load());
+            mvwprintw(win,1,48,"Grain rate");
+            mvwprintw(win,2,48,"%f",aeng.m_par_grainrate.load());
+            mvwprintw(win,1,60,"Rev prob");
+            mvwprintw(win,2,60,"%f",aeng.m_par_reverseprob.load());
+            mvwprintw(win,1,72,"Pan spread");
+            mvwprintw(win,2,72,"%f",aeng.m_par_stereo_spread.load());
+            mvwprintw(win,1,84,"Out/In mix");
+            mvwprintw(win,2,84,"%f",aeng.m_par_inputmix.load());
+        }
+        if (aeng.m_page_state > 1)
+        {
+            int paroffs = 0;
+            if (aeng.m_page_state == 3)
+                paroffs = 8;
+            for (int i=0;i<8;++i)
+            {
+                auto parname = aeng.m_clap_host->getParameterName(paroffs+i);
+                auto parform = aeng.m_clap_host->getParameterValueFormatted(paroffs+i);
+                mvwprintw(win,1,12*i,parname.c_str());
+                mvwprintw(win,2,12*i,parform.c_str());
+            }
+        }
+        mvwprintw(win,8,0,"%.1f seconds of output recorded",aeng.m_recseconds.load());
+        wrefresh(win);
+        refresh();
     }
+    delwin(win);
+    endwin();
     quit_thread = true;
     worker_th.join();
     saveSettings(aeng);
