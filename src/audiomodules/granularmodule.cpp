@@ -2212,7 +2212,7 @@ int main(int argc, char** argv)
     noecho();
     
     WINDOW *win = newwin(12,100,0,0);
-    wtimeout(win,500);
+    wtimeout(win,100);
     aeng.m_page_state = 0;
     while (true)
     {

@@ -246,8 +246,15 @@ std::string clap_processor::getParameterName(int index)
 {
     if (index>=0 && index<orderedParamIds.size())
     {
-        auto parid = orderedParamIds[index];
-        return paramInfo[parid].name;
+        auto inst_param = (clap_plugin_params_t *)m_plug->get_extension(m_plug, CLAP_EXT_PARAMS);
+        clap_param_info_t parinfo;
+        if (inst_param->get_info(m_plug,index,&parinfo))
+        {
+            return parinfo.name;// paramInfo[parid].name;
+        } else return "Error";
+        
+        //auto parid = orderedParamIds[index];
+        
     }
     return "N/A";
 }
