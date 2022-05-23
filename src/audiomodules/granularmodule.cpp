@@ -1616,6 +1616,7 @@ public:
         m_out_rec_buffer.resize(m_out_rec_len*2);
         m_clap_host = std::make_unique<clap_processor>();
         m_clap_host->exFIFO = &exFIFO;
+        m_cpu_smoother.setRiseFall(1.0f,0.005f);
     }
     void printError(PaError e)
     {
@@ -1879,6 +1880,13 @@ public:
     int m_out_rec_len = 600*44100;
     int m_out_rec_pos = 0;
     choc::fifo::SingleReaderSingleWriterFIFO<std::function<void(void)>> exFIFO;
+    dsp::SlewLimiter m_cpu_smoother;
+    float getSmoothedCPU_Usage()
+    {
+        auto usage = Pa_GetStreamCpuLoad(stream);
+        return m_cpu_smoother.process(0.1f,usage);
+    }
+
 };
 
 void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
@@ -2229,7 +2237,8 @@ int main(int argc, char** argv)
                 mo = 1;
             else mo = 0;
         }
-        mvwprintw(win,0,0,"Interpolation mode %d",ge.m_gm->m_interpmode);
+        mvwprintw(win,0,0,"Interpolation mode %d, PortAudio CPU load %.1f %%"
+            ,ge.m_gm->m_interpmode,100.0f*aeng.getSmoothedCPU_Usage());
         if (c=='r')
         {
             aeng.m_toggle_record = true;
@@ -2281,6 +2290,7 @@ int main(int argc, char** argv)
             //mvwprintw(win,7,0,"                                    ",rpos);    
         }
         mvwprintw(win,8,0,"%.1f seconds of output recorded",aeng.m_recseconds.load());
+        
         wrefresh(win);
         refresh();
     }
