@@ -290,6 +290,18 @@ public:
         m_recordState = 1;
         m_recordStartPos = m_recordBufPos;
     }
+    int m_odub_minpos_frames = 0;
+    int m_odub_maxpos_frames = 0;
+    void startOverDubbing(int numchans, float sr, int startPosFrames, int minposFrames, int maxposFrames)
+    {
+        m_odub_minpos_frames = minposFrames;
+        m_odub_maxpos_frames = maxposFrames;
+        m_has_recorded = true;
+        m_recordChannels = numchans;
+        m_recordSampleRate = sr;
+        m_recordState = 2;
+        m_recordStartPos = clamp(startPosFrames,minposFrames,maxposFrames);
+    }
     void pushSamplesToRecordBuffer(float* samples, float gain)
     {
         if (m_recordState == 0)
@@ -298,14 +310,21 @@ public:
         {
             if (m_recordBufPos<m_audioBuffer.size())
             {
-                m_audioBuffer[m_recordBufPos] = samples[i]*gain;
+                if (m_recordState == 1)
+                    m_audioBuffer[m_recordBufPos] = samples[i]*gain;
+                else if (m_recordState == 2)
+                    m_audioBuffer[m_recordBufPos] += samples[i]*gain;
             }
             ++m_recordBufPos;
-            if (m_recordBufPos==m_audioBuffer.size())
+            if (m_recordState == 1 && m_recordBufPos == m_audioBuffer.size())
             {
                 std::cout << "RECORD BUFFER FULL, STOPPING\n";
                 stopRecording();
                 break;
+            }
+            if (m_recordState == 2 && m_recordBufPos == m_odub_maxpos_frames)
+            {
+                m_recordBufPos = m_odub_minpos_frames;
             }
         }
     }
@@ -1656,29 +1675,39 @@ public:
         float sr = 44100.0f;
         auto drsrc = dynamic_cast<DrWavSource*>(m_eng->m_srcs[0].get());
         bool rec_active = m_eng->isRecording();
-        if (m_toggle_record == true)
+        if (m_next_record_action == 1)
         {
             if (rec_active == false)
             {
                 drsrc->startRecording(2,sr);
                 rec_active = true;
-                exFIFO.push([]()
-                {
-                    //std::cout << "STARTED RECORDING\n";
-                });
-                
             } else
             {
                 float rpos = drsrc->getRecordPosition();
                 m_eng->addMarkerAtPosition(rpos);
                 drsrc->stopRecording();
                 rec_active = false;
-                exFIFO.push([rpos]()
-                {
-                    //std::cout << "ENDED RECORDING, added marker at pos " << rpos << "\n";
-                });
             }
-            m_toggle_record = false;
+            m_next_record_action = 0;
+        }
+        if (m_next_record_action == 2)
+        {
+            if (rec_active == false)
+            {
+                int curplaypos = m_eng->m_gm->getSourcePlayPosition();
+                auto range = m_eng->getActiveRegionRange();
+                int minpos = range.first * m_eng->m_gm->m_inputdur;
+                int maxpos = range.second * m_eng->m_gm->m_inputdur;
+                drsrc->startOverDubbing(2,sr,curplaypos,minpos,maxpos);
+                rec_active = true;
+            } else
+            {
+                //float rpos = drsrc->getRecordPosition();
+                //m_eng->addMarkerAtPosition(rpos);
+                drsrc->stopRecording();
+                rec_active = false;
+            }
+            m_next_record_action = 0;
         }
         if (m_next_marker_act == 1)
         {
@@ -1716,13 +1745,7 @@ public:
         int gused = m_eng->m_gm->m_grainsUsed;
         if (m_eng->m_playmode < 2 && gused>0) // if in scrub mode, use unity gain
             mastergain = clamp(1.0f/gused,0.0f,0.70f);
-        if (m_cbcount % 100 == 0)
-        {
-            exFIFO.push([mastergain,gused]()
-            {
-                //std::cout << "num grains active " << gused << ", compensated gain " << mastergain << "\n";
-            });
-        }
+        
         for (int i=0;i<nFrames;++i)
         {
             float inputgain = m_drywetsmoother.process(m_par_inputmix);
@@ -1825,7 +1848,7 @@ public:
     std::atomic<float> m_par_regionselect{0.0f};
     std::atomic<float> m_par_inputmix{0.0f};
     std::atomic<float> m_par_waveshapemorph{0.0f};
-    std::atomic<bool> m_toggle_record{false};
+    std::atomic<int> m_next_record_action{0};
     std::atomic<int> m_next_marker_act{0};
     std::atomic<int> m_led_ring_option{0};
     
@@ -1927,9 +1950,13 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             if (msg[2]>0)
                 eng->setNextPlayMode();
         }
-        if (msg[1] == 114 && msg[2]>0) // button 3
+        if (msg[1] == 114 && msg[2]>0 && eng->m_shift_state == 0) // button 3, record
         {
-            eng->m_toggle_record = true;
+            eng->m_next_record_action = 1;
+        }
+        if (msg[1] == 114 && msg[2]>0 && eng->m_shift_state == 1) // button 3 with shift, overdub
+        {
+            eng->m_next_record_action = 2;
         }
         if (msg[1] == 115 && msg[2]>0) // button 4
         {
@@ -2241,7 +2268,11 @@ int main(int argc, char** argv)
             ,ge.m_gm->m_interpmode,100.0f*aeng.getSmoothedCPU_Usage());
         if (c=='r')
         {
-            aeng.m_toggle_record = true;
+            aeng.m_next_record_action = 1;
+        }
+        if (c=='R')
+        {
+            aeng.m_next_record_action = 2;
         }
         if (c=='M')
         {
@@ -2284,11 +2315,11 @@ int main(int argc, char** argv)
         float rpos = drsrc->getRecordPosition();
         if (rpos >= 0.0f)
         {
-            mvwprintw(win,7,0,"Capturing input at %.1f seconds",rpos*5*60.0);    
-        } else
-        {
-            //mvwprintw(win,7,0,"                                    ",rpos);    
-        }
+            if (drsrc->m_recordState == 1)
+                mvwprintw(win,7,0,"Recording input at %.1f seconds",rpos*5*60.0);
+            if (drsrc->m_recordState == 2)
+                mvwprintw(win,7,0,"Overdubbing input at %.1f seconds",rpos*5*60.0);
+        } 
         mvwprintw(win,8,0,"%.1f seconds of output recorded",aeng.m_recseconds.load());
         
         wrefresh(win);
