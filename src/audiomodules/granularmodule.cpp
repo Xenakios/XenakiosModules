@@ -301,6 +301,7 @@ public:
         m_recordSampleRate = sr;
         m_recordState = 2;
         m_recordStartPos = clamp(startPosFrames,minposFrames,maxposFrames);
+        m_recordBufPos = m_recordStartPos;
     }
     void pushSamplesToRecordBuffer(float* samples, float gain)
     {
