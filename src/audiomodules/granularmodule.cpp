@@ -2321,8 +2321,12 @@ int main(int argc, char** argv)
             if (drsrc->m_recordState == 2)
                 mvwprintw(win,7,0,"Overdubbing input at %.1f seconds",rpos*5*60.0);
         } 
-        mvwprintw(win,8,0,"%.1f seconds of output recorded",aeng.m_recseconds.load());
-        
+        mvwprintw(win,6,0,"%.1f seconds of output recorded",aeng.m_recseconds.load());
+        auto regrng = aeng.m_eng->getActiveRegionRange();
+        regrng.first *= 5.0f*60.0f;
+        regrng.second *= 5.0f*60.0f;
+        float tpos = aeng.m_eng->m_gm->getSourcePlayPosition()/44100.0f;
+        mvwprintw(win,7,0,"Region %.2f - %.2f Playpos %.2f",regrng.first,regrng.second,tpos);
         wrefresh(win);
         refresh();
     }
