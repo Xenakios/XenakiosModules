@@ -1814,15 +1814,6 @@ public:
             m_out_rec_buffer[m_out_rec_pos*2+1] = right;
             ++m_out_rec_pos;
             m_recseconds = (float)m_out_rec_pos/44100;
-            int notif_interval = 30*44100;
-            if (m_out_rec_pos % notif_interval == 0)
-            {
-                exFIFO.push([this]()
-                {
-                    //std::cout << "recorded " << (float)m_out_rec_pos/44100 << " seconds of output...\n";
-                });
-                
-            }
         }
     }
     void setNextPlayMode()
@@ -1873,16 +1864,6 @@ public:
         int temp = m_page_state;
         temp += step;
         temp = wrap_value_safe(0,temp,3);
-        /*
-        if (temp == 0)
-            std::cout << "switched to looper main MIDI control page\n";
-        if (temp == 1)
-            std::cout << "switched to looper aux MIDI control page\n";
-        if (temp == 2)
-            std::cout << "switched to looper fx MIDI control page 1\n";
-        if (temp == 3)
-            std::cout << "switched to looper fx MIDI control page 2\n";
-        */
         m_page_state = temp;
     }
     int m_cbcount = 0;
