@@ -140,6 +140,9 @@ public:
     }
     bool importRawFile(std::string filename,float samplerate, int bits)
     {
+#ifndef RAPIHEADLESS
+        return false;
+#else
         struct stat st;
         stat(filename.c_str(),&st);
         std::cout << "size of " << filename << " is " << st.st_size << "\n";
@@ -187,7 +190,7 @@ public:
         }
         std::cout << "read successfully!\n";
         return true;
-        
+#endif        
     }
     bool importFile(std::string filename)
     {
@@ -358,7 +361,7 @@ public:
     // OK, probably not the most efficient implementation, but will have to see later if can be optimized
     float getBufferSampleSafeAndFadeImpl(int frame, int channel, int minFramePos, int maxFramePos, int fadelen) 
     {
-        if (frame>=0 && frame < m_totalPCMFrameCount)
+        if (__builtin_expect(frame>=0 && frame < m_totalPCMFrameCount,1))
         {
             float gain = 1.0f;
             if (frame>=minFramePos && frame<minFramePos+fadelen)

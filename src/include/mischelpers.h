@@ -3,6 +3,7 @@
 #ifndef RAPIHEADLESS
 #include <rack.hpp>
 #endif
+
 #include <atomic>
 #include <algorithm>
 #include <array>
@@ -11,9 +12,10 @@
 
 
 #ifndef RAPIHEADLESS
-extern Plugin *pluginInstance;
 using namespace rack;
+extern Plugin *pluginInstance;
 #endif
+
 const double g_pi = 3.14159265358979;
 
 template<typename T, size_t Sz>
