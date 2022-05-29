@@ -7,6 +7,7 @@
 #include <jansson.h>
 #include <sys/stat.h>
 #include <string.hpp>
+#include <iomanip>
 #endif
 #include <iostream>
 #include <thread>
@@ -1639,7 +1640,7 @@ public:
         m_out_rec_buffer.resize(m_out_rec_len*2);
         m_clap_host = std::make_unique<clap_processor>();
         m_clap_host->exFIFO = &exFIFO;
-        m_cpu_smoother.setRiseFall(1.0f,0.005f);
+        m_cpu_smoother.setRiseFall(1.0f,1.0f);
     }
     void printError(PaError e)
     {
@@ -1778,7 +1779,7 @@ public:
                 drsrc->pushSamplesToRecordBuffer(ins,0.9f);
             }
         }
-        m_clap_host->processAudio(outputBuffer,nFrames);
+        //m_clap_host->processAudio(outputBuffer,nFrames);
         return paContinue;
     }
     void dumpMarkers()
@@ -2249,7 +2250,7 @@ int main(int argc, char** argv)
                 mo = 1;
             else mo = 0;
         }
-        mvwprintw(win,0,0,"Interpolation mode %d, PortAudio CPU load %.1f %%"
+        mvwprintw(win,0,0,"Interpolation mode %d, PortAudio CPU load %.0f %%"
             ,ge.m_gm->m_interpmode,100.0f*aeng.getSmoothedCPU_Usage());
         if (c=='r')
         {
@@ -2301,10 +2302,16 @@ int main(int argc, char** argv)
         if (rpos >= 0.0f)
         {
             if (drsrc->m_recordState == 1)
-                mvwprintw(win,7,0,"Recording input at %.1f seconds",rpos*5*60.0);
+                mvwprintw(win,8,0,"Recording input at %.1f seconds",rpos*5*60.0);
             if (drsrc->m_recordState == 2)
-                mvwprintw(win,7,0,"Overdubbing input at %.1f seconds",rpos*5*60.0);
+                mvwprintw(win,8,0,"Overdubbing input at %.1f seconds",rpos*5*60.0);
         } 
+        std::stringstream ss;
+        ss << std::setprecision(2);
+        for (auto& e : aeng.m_eng->m_markers)
+            ss << e << " ";
+        std::string str = ss.str();
+        mvwprintw(win,5,0,"Markers : %s",str.c_str());
         mvwprintw(win,6,0,"%.1f seconds of output recorded",aeng.m_recseconds.load());
         auto regrng = aeng.m_eng->getActiveRegionRange();
         regrng.first *= 5.0f*60.0f;
