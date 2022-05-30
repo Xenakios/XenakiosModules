@@ -16,7 +16,7 @@
 #include "dr_wav.h"
 #include "choc_SingleReaderSingleWriterFIFO.h"
 
-class DrWavSource : public GrainAudioSource
+class MultiBufferSource : public GrainAudioSource
 {
     std::vector<std::vector<float>> m_audioBuffers;
     int m_playbackBufferIndex = 0;
@@ -237,7 +237,7 @@ public:
         float maxpeak = 0.0f;
     };
     std::vector<std::vector<SamplePeaks>> peaksData;
-    DrWavSource()
+    MultiBufferSource()
     {
         int numbufs = 4;
         m_recordBufPositions.resize(numbufs);
@@ -308,12 +308,14 @@ public:
         m_recordStartPositions[m_recordBufferIndex] = clamp(startPosFrames,minposFrames,maxposFrames);
         m_recordBufPositions[m_recordBufferIndex] = m_recordStartPositions[m_recordBufferIndex];
     }
-    void pushSamplesToRecordBuffer(float* samples, float gain)
+    void pushSamplesToRecordBuffer(float* samples, float gain, int whichbuffer=-1, bool force=false)
     {
-        if (m_recordState == 0)
+        if (whichbuffer == -1)
+            whichbuffer = m_recordBufferIndex;
+        if (m_recordState == 0 && force == false)
             return;
-        auto& recbuf = m_audioBuffers[m_recordBufferIndex];
-        auto& recpos = m_recordBufPositions[m_recordBufferIndex];
+        auto& recbuf = m_audioBuffers[whichbuffer];
+        auto& recpos = m_recordBufPositions[whichbuffer];
         for (int i=0;i<m_recordChannels;++i)
         {
             if (recpos < recbuf.size())
@@ -408,7 +410,7 @@ public:
             }
         }
     }
-    ~DrWavSource()
+    ~MultiBufferSource()
     {
         if (m_has_recorded)
         {
@@ -443,7 +445,7 @@ class BufferScrubber
 public:
     Sinc<float,16,65536> m_sinc_interpolator;
     
-    BufferScrubber(DrWavSource* src) : m_src{src}
+    BufferScrubber(MultiBufferSource* src) : m_src{src}
     {
         m_filter_divider.setDivision(128);
         updateFiltersIfNeeded(44100.0f,20.0f, true);
@@ -553,7 +555,7 @@ public:
     std::array<float,2> m_out_gains = {0.0f,0.0f};
     double m_smoothed_out_gain = 0.0f;
 private:
-    DrWavSource* m_src = nullptr;
+    MultiBufferSource* m_src = nullptr;
     
     double m_next_pos = 0.0f;
     std::array<dsp::BiquadFilter,2> m_gain_smoothers;
@@ -567,7 +569,7 @@ public:
     std::unique_ptr<BufferScrubber> m_scrubber;
     GrainEngine()
     {
-        DrWavSource* wavsrc = new DrWavSource;
+        MultiBufferSource* wavsrc = new MultiBufferSource;
         m_srcs.emplace_back(wavsrc);
         m_gm.reset(new GrainMixer(m_srcs));
         m_markers = {0.0f,1.0f};
@@ -575,7 +577,7 @@ public:
     }
     bool isRecording()
     {
-        auto src = dynamic_cast<DrWavSource*>(m_srcs[0].get());
+        auto src = dynamic_cast<MultiBufferSource*>(m_srcs[0].get());
         return src->m_recordState>0;
     }
     std::pair<float,float> getActiveRegionRange()
@@ -680,7 +682,7 @@ public:
     json_t* dataToJson() 
     {
         json_t* resultJ = json_object();
-        auto src = dynamic_cast<DrWavSource*>(m_srcs[0].get());
+        auto src = dynamic_cast<MultiBufferSource*>(m_srcs[0].get());
         json_t* markerarr = json_array();
         for (int i=0;i<m_markers.size();++i)
         {
@@ -1567,22 +1569,7 @@ public:
     PaStreamParameters inputParameters;
     PaStream *stream = nullptr;
     bool pa_inited = false;
-    void saveOutputBuffer(std::string filename)
-    {
-        drwav out_wav;
-        drwav_data_format format;
-		format.container = drwav_container_riff;
-		format.format = DR_WAVE_FORMAT_IEEE_FLOAT;
-		format.channels = 2;
-		format.sampleRate = 44100;
-		format.bitsPerSample = 32;
-        if (drwav_init_file_write(&out_wav,filename.c_str(),&format,nullptr))
-        {
-            drwav_write_pcm_frames(&out_wav,m_out_rec_pos-1,(void*)m_out_rec_buffer.data());
-            drwav_uninit(&out_wav);    
-            
-        }
-    }
+    
     AudioEngine(GrainEngine* e) : m_eng(e)
     {
         exFIFO.reset(64);
@@ -1640,7 +1627,7 @@ public:
             err = Pa_StartStream( stream );
             printError(err);
         }
-        m_out_rec_buffer.resize(m_out_rec_len*2);
+        
         m_clap_host = std::make_unique<clap_processor>();
         m_clap_host->exFIFO = &exFIFO;
         m_cpu_smoother.setRiseFall(1.0f,1.0f);
@@ -1681,7 +1668,7 @@ public:
     virtual int processBlock(const float* inputBuffer, float* outputBuffer, int nFrames)
     {
         float sr = 44100.0f;
-        auto drsrc = dynamic_cast<DrWavSource*>(m_eng->m_srcs[0].get());
+        auto drsrc = dynamic_cast<MultiBufferSource*>(m_eng->m_srcs[0].get());
         bool rec_active = m_eng->isRecording();
         if (m_next_record_action == 1)
         {
@@ -1774,7 +1761,9 @@ public:
             side *= panspread;  
             procbuf[0] = (mid-side);
             procbuf[1] = (mid+side);
-            pushToRecordBuffer(procbuf[0],procbuf[1]);
+            if (m_out_record_active == 1)
+                drsrc->pushSamplesToRecordBuffer(procbuf,1.0f,3,true);
+            
             outputBuffer[i*2+0] = procbuf[0] * procgain + ins[0] * inputgain; 
             outputBuffer[i*2+1] = procbuf[1] * procgain + ins[0] * inputgain;
             if (rec_active)
@@ -1785,6 +1774,7 @@ public:
         //m_clap_host->processAudio(outputBuffer,nFrames);
         return paContinue;
     }
+    std::atomic<int> m_out_record_active{0};
     void dumpMarkers()
     {
         exFIFO.push([this]
@@ -1813,16 +1803,7 @@ public:
         
     }
     std::atomic<float> m_recseconds{0.0f};
-    void pushToRecordBuffer(float left, float right)
-    {
-        if (m_out_rec_pos < m_out_rec_len)
-        {
-            m_out_rec_buffer[m_out_rec_pos*2+0] = left;
-            m_out_rec_buffer[m_out_rec_pos*2+1] = right;
-            ++m_out_rec_pos;
-            m_recseconds = (float)m_out_rec_pos/44100;
-        }
-    }
+    
     void setNextPlayMode()
     {
         int& st = m_eng->m_playmode;
@@ -1888,9 +1869,7 @@ public:
     dsp::BiquadFilter m_drywetsmoother;
     dsp::BiquadFilter m_wsmorphsmoother;
     dsp::BiquadFilter m_mastergainsmoother;
-    std::vector<float> m_out_rec_buffer;
-    int m_out_rec_len = 600*44100;
-    int m_out_rec_pos = 0;
+    
     choc::fifo::SingleReaderSingleWriterFIFO<std::function<void(void)>> exFIFO;
     dsp::SlewLimiter m_cpu_smoother;
     float getSmoothedCPU_Usage()
@@ -2205,7 +2184,7 @@ int main(int argc, char** argv)
     else std::cout << "could not find nocturn output\n";
     std::atomic<bool> quit_thread{false};
     
-    auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
+    auto drsrc = dynamic_cast<MultiBufferSource*>(ge.m_srcs[0].get());
     if (drsrc->importFile("../reels/reel_00.wav",0))
     {
         std::cout << "loaded test source file\n";
