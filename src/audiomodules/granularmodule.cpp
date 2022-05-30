@@ -22,7 +22,9 @@ public:
     unsigned int m_channels = 0;
     unsigned int m_sampleRate = 44100;
     drwav_uint64 m_totalPCMFrameCount = 0;
-    std::vector<float> m_audioBuffer;
+    std::vector<std::vector<float>> m_audioBuffers;
+    int m_playbackBufferIndex = 0;
+    int m_recordBufferIndex = 0;
     int m_recordChannels = 0;
     float m_recordSampleRate = 0.0f;
     int m_recordState = 0;
@@ -31,6 +33,7 @@ public:
     //std::mutex m_mut;
     std::atomic<int> m_do_update_peaks{0};
     std::string m_filename;
+    /*
     void normalize(float level, int startframe, int endframe)
     {
         if (startframe == -1 && endframe == -1)
@@ -66,6 +69,7 @@ public:
         m_do_update_peaks = true;
         
     }
+    */
     void reverse()
     {
         /*
@@ -81,11 +85,12 @@ public:
         updatePeaks();
         */
     }
+    
     std::mutex m_peaks_mut;
     int m_peak_updates_counter = 0;
     int m_minFramePos = 0;
     int m_maxFramePos = 0;
-    
+#ifndef RAPIHEADLESS
     void updatePeaks()
     {
         if (m_do_update_peaks == 0)
@@ -123,7 +128,8 @@ public:
         } 
         m_do_update_peaks = 0;
     }
-    bool saveFile(std::string filename)
+#endif
+    bool saveFile(std::string filename, int whichbuffer)
     {
 #ifndef RAPIHEADLESS
         drwav wav;
@@ -149,69 +155,18 @@ public:
         SNDFILE* outfile = sf_open(filename.c_str(),SFM_WRITE,&sinfo);
         if (outfile)
         {
-            sf_writef_float(outfile,m_audioBuffer.data(),m_audioBuffer.size()/2);
+            sf_writef_float(outfile,m_audioBuffers[whichbuffer].data(),m_audioBuffers[whichbuffer].size()/2);
             sf_close(outfile);
             return true;
         }
         return false;
 #endif
     }
-    bool importRawFile(std::string filename,float samplerate, int bits)
+    
+    bool importFile(std::string filename, int whichbuffer)
     {
-#ifndef RAPIHEADLESS
-        return false;
-#else
-        struct stat st;
-        stat(filename.c_str(),&st);
-        std::cout << "size of " << filename << " is " << st.st_size << "\n";
-        FILE* f = fopen(filename.c_str(),"rb");
-        if (f == NULL)
-        {
-            std::cout << "could not open for reading\n";
+        if (whichbuffer<0 || whichbuffer>=m_audioBuffers.size())
             return false;
-        }
-        std::cout << "opened successfully, reading...\n";
-        std::vector<unsigned char> temp(st.st_size);
-        fread((void*)temp.data(),1,st.st_size,f);
-        fclose(f);
-        if (bits == 8)
-        {
-            int framestomake = clamp(temp.size()/4,5,m_audioBuffer.size());
-            for (int i=0;i<framestomake;++i)
-            {
-                int8_t b = temp[i];
-                float s = rescale((float)b,-128,127,-0.5f,0.5f);
-                m_audioBuffer[i] = s;
-            } 
-            float ir[16];
-            static std::mt19937 rng;
-            std::uniform_real_distribution<float> dist{-1.0f,1.0f};
-            for (int i=0;i<16;++i)
-                ir[i] = dist(rng);
-            for (int i=0;i<framestomake;++i)
-            {
-                float s = dsp::convolveNaive(&m_audioBuffer[i],ir,16);
-                m_audioBuffer[i] = s;
-            }
-        }
-        if (bits == 16)
-        {
-            int framestomake = clamp(temp.size()/8,0,m_audioBuffer.size());
-            for (int i=0;i<framestomake;++i)
-            {
-                int8_t b0 = temp[i*2];
-                int8_t b1 = temp[i*2+1];
-                short w = b0 * 256 + (uint8_t)b1;
-                float s = rescale((float)w,-32768,32767,-0.5f,0.5f);
-                m_audioBuffer[i] = s;
-            }    
-        }
-        std::cout << "read successfully!\n";
-        return true;
-#endif        
-    }
-    bool importFile(std::string filename)
-    {
         int sr = 0;
 #ifndef RAPIHEADLESS
         drwav_uint64 totalPCMFrameCount = 0;
@@ -229,7 +184,7 @@ public:
         SNDFILE* sfile = sf_open(filename.c_str(),SFM_READ,&sinfo);
         if (!sfile)
             return false;
-        int framestoread = std::min(m_audioBuffer.size()/2,(size_t)sinfo.frames);
+        int framestoread = std::min(m_audioBuffers[whichbuffer].size()/2,(size_t)sinfo.frames);
         int inchs = sinfo.channels;
         sr = sinfo.samplerate;
         SF_CUES cues;
@@ -251,18 +206,16 @@ public:
                 {
                     for (int j=0;j<2;++j)
                     {
-                        m_audioBuffer[i*2+j] = temp[i];
+                        m_audioBuffers[whichbuffer][i*2+j] = temp[i];
                     }
                 } 
             }
         } else
         {
-            sf_readf_float(sfile,m_audioBuffer.data(),framestoread);
+            sf_readf_float(sfile,m_audioBuffers[whichbuffer].data(),framestoread);
         }
         sf_close(sfile);
 #endif
-        
-        
         m_mut.lock();
             m_channels = 2;
             m_sampleRate = sr;
@@ -284,34 +237,36 @@ public:
     std::vector<std::vector<SamplePeaks>> peaksData;
     DrWavSource()
     {
-        m_audioBuffer.resize(44100*300*2);
+        m_audioBuffers.resize(4);
+        for (auto& e : m_audioBuffers)
+            e.resize(44100*300*2);
         peaksData.resize(2);
         for (auto& e : peaksData)
             e.resize(1024*1024);
 
     }
-    void clearAudio(int startSample, int endSample)
+    void clearAudio(int startSample, int endSample, int whichbuffer)
     {
         
         if (startSample == -1 && endSample == -1)
         {
             startSample = 0;
-            endSample = (m_audioBuffer.size() / m_channels)-1;
+            endSample = (m_audioBuffers[whichbuffer].size() / m_channels)-1;
         }
         startSample = startSample*m_channels;
         endSample = endSample*m_channels;
-        if (startSample>=0 && endSample<m_audioBuffer.size())
+        if (startSample>=0 && endSample<m_audioBuffers[whichbuffer].size())
         {
             for (int i=startSample;i<endSample;++i)
             {
-                m_audioBuffer[i] = 0.0f;
+                m_audioBuffers[whichbuffer][i] = 0.0f;
             }
             m_do_update_peaks = 1;
         }
     }
     void resetRecording()
     {
-        if (m_recordBufPos>=m_audioBuffer.size())
+        if (m_recordBufPos>=m_audioBuffers[m_recordBufferIndex].size())
         {
             m_recordBufPos = 0;
         }
@@ -320,8 +275,9 @@ public:
     int m_recordStartPos = 0;
     std::pair<float,float> getLastRecordedRange()
     {
-        float s0 = rescale((float)m_recordStartPos,0.0f,(float)m_audioBuffer.size()-1,0.0f,1.0f);
-        float s1 = rescale((float)m_recordBufPos,0.0f,(float)m_audioBuffer.size()-1,0.0f,1.0f);
+        auto& recbuf = m_audioBuffers[m_recordBufferIndex];
+        float s0 = rescale((float)m_recordStartPos,0.0f,(float)recbuf.size()-1,0.0f,1.0f);
+        float s1 = rescale((float)m_recordBufPos,0.0f,(float)recbuf.size()-1,0.0f,1.0f);
         return {s0,s1};
     }
     void startRecording(int numchans, float sr)
@@ -351,17 +307,18 @@ public:
     {
         if (m_recordState == 0)
             return;
+        auto& recbuf = m_audioBuffers[m_recordBufferIndex];
         for (int i=0;i<m_recordChannels;++i)
         {
-            if (m_recordBufPos<m_audioBuffer.size())
+            if (m_recordBufPos<recbuf.size())
             {
                 if (m_recordState == 1)
-                    m_audioBuffer[m_recordBufPos] = samples[i]*gain;
+                    recbuf[m_recordBufPos] = samples[i]*gain;
                 else if (m_recordState == 2)
-                    m_audioBuffer[m_recordBufPos] += samples[i]*gain;
+                    recbuf[m_recordBufPos] += samples[i]*gain;
             }
             ++m_recordBufPos;
-            if (m_recordState == 1 && m_recordBufPos == m_audioBuffer.size())
+            if (m_recordState == 1 && m_recordBufPos == recbuf.size())
             {
                 std::cout << "RECORD BUFFER FULL, STOPPING\n";
                 stopRecording();
@@ -377,14 +334,14 @@ public:
     {
         if (m_recordState == 0)
             return -1.0f;
-        return 1.0/m_audioBuffer.size()*m_recordBufPos;
+        return 1.0/m_audioBuffers[m_recordBufferIndex].size()*m_recordBufPos;
     }
     void stopRecording()
     {
         m_recordState = 0;
         m_channels = m_recordChannels;
         m_sampleRate = m_recordSampleRate;
-        m_totalPCMFrameCount = m_audioBuffer.size()/m_recordChannels;
+        m_totalPCMFrameCount = m_audioBuffers[m_recordBufferIndex].size()/m_recordChannels;
         m_do_update_peaks = 1;
     }
     void getSamplesSafeAndFade(float* destbuf,int startframe,int nsamples, int channel, 
@@ -411,7 +368,7 @@ public:
                 gain = rescale((float)frame,maxFramePos-fadelen,maxFramePos,1.0f,0.0f);
             if (frame<minFramePos || frame>=maxFramePos)
                 gain = 0.0f;
-            return m_audioBuffer[frame*m_channels+channel] * gain;
+            return m_audioBuffers[m_playbackBufferIndex][frame*m_channels+channel] * gain;
         }
         return 0.0;
     }
@@ -424,7 +381,7 @@ public:
                 dest[i]=0.0f;
             return;
         }
-        float* srcDataPtr = m_audioBuffer.data();
+        float* srcDataPtr = m_audioBuffers[m_playbackBufferIndex].data();
         const int srcchanmap[4][4]=
         {
             {0,0,0,0},
@@ -459,7 +416,7 @@ public:
             std::string audioDir = "/home/teemu/AudioStuff/GRLOOPER_RECORDINGS";
             auto t = std::chrono::system_clock::now().time_since_epoch().count();
             std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
-            saveFile(audioFile);
+            saveFile(audioFile,m_recordBufferIndex);
             std::cout << "finished saving audio buffer\n";
 #endif
         }
@@ -2243,7 +2200,7 @@ int main(int argc, char** argv)
     std::atomic<bool> quit_thread{false};
     
     auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
-    if (drsrc->importFile("../reels/reel_00.wav"))
+    if (drsrc->importFile("../reels/reel_00.wav",0))
     {
         std::cout << "loaded test source file\n";
     } else
