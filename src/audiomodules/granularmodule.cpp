@@ -241,27 +241,27 @@ public:
                 std::cout << cues.cue_points[i].sample_offset << " ";
             std::cout << "\n";
         }
-        std::vector<float> temp(inchs*framestoread);
-        sf_readf_float(sfile,temp.data(),framestoread);
+        if (inchs != 2)
+        {
+            std::vector<float> temp(inchs*framestoread);
+            sf_readf_float(sfile,temp.data(),framestoread);
+            for (int i=0;i<framestoread;++i)
+            {
+                if (inchs == 1)
+                {
+                    for (int j=0;j<2;++j)
+                    {
+                        m_audioBuffer[i*2+j] = temp[i];
+                    }
+                } 
+            }
+        } else
+        {
+            sf_readf_float(sfile,m_audioBuffer.data(),framestoread);
+        }
         sf_close(sfile);
 #endif
-        for (int i=0;i<framestoread;++i)
-        {
-            if (inchs == 1)
-            {
-                for (int j=0;j<2;++j)
-                {
-                    m_audioBuffer[i*2+j] = temp[i];
-                }
-            } else if (inchs == 2)
-            {
-                for (int j=0;j<2;++j)
-                {
-                    m_audioBuffer[i*2+j] = temp[i*2+j];
-                }
-            }
-            
-        }
+        
         
         m_mut.lock();
             m_channels = 2;
