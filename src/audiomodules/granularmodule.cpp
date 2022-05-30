@@ -2206,7 +2206,7 @@ int main(int argc, char** argv)
     std::atomic<bool> quit_thread{false};
     
     auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
-    if (drsrc->importFile("/home/teemu/AudioStuff/sheila.wav"))
+    if (drsrc->importFile("./reel_00.wav"))
     {
         std::cout << "loaded test source file\n";
     } else
@@ -2217,6 +2217,31 @@ int main(int argc, char** argv)
     //ge.addEquidistantMarkers(8);
     AudioEngine aeng(&ge);
     loadSettings(aeng);
+    std::vector<float> markers = 
+    {
+    0,
+    355710,
+    1138773,
+    1472395,
+    2116041,
+    2247057,
+    2460433,
+    3641850,
+    4146105,
+    5755050,
+    7007349,
+    7386676,
+    8622510,
+    9223067,
+    9529413,
+    13048682,
+    13230000,
+
+
+    };
+    for (auto& e : markers)
+        e = 1.0/(300.0*44100) * e;
+    ge.m_markers = markers;
     std::thread worker_th([&aeng,&midi_output,&quit_thread]()
     {
         worker_thread_func(midi_output.get(),aeng,quit_thread);
