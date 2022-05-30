@@ -2165,9 +2165,6 @@ void worker_thread_func(RtMidiOut* midi_output, AudioEngine& aeng, std::atomic<b
 
 int main(int argc, char** argv)
 {
-    //lambdacontainer func([data,data_ex](){ std::cout << "hello from hacky lambda container\n" << data << "\n"; });
-    //func();
-    //return 0;
     std::cout << "STARTING HEADLESS GRLOOPER\n";
     
     GrainEngine ge;
@@ -2206,7 +2203,7 @@ int main(int argc, char** argv)
     std::atomic<bool> quit_thread{false};
     
     auto drsrc = dynamic_cast<DrWavSource*>(ge.m_srcs[0].get());
-    if (drsrc->importFile("./reel_00.wav"))
+    if (drsrc->importFile("../reels/reel_00.wav"))
     {
         std::cout << "loaded test source file\n";
     } else
@@ -2214,30 +2211,27 @@ int main(int argc, char** argv)
         std::cout << "could not load test file\n";
         return 1;
     }
-    //ge.addEquidistantMarkers(8);
     AudioEngine aeng(&ge);
     loadSettings(aeng);
     std::vector<float> markers = 
     {
-    0,
-    355710,
-    1138773,
-    1472395,
-    2116041,
-    2247057,
-    2460433,
-    3641850,
-    4146105,
-    5755050,
-    7007349,
-    7386676,
-    8622510,
-    9223067,
-    9529413,
-    13048682,
-    13230000,
-
-
+        0,
+        355710,
+        1138773,
+        1472395,
+        2116041,
+        2247057,
+        2460433,
+        3641850,
+        4146105,
+        5755050,
+        7007349,
+        7386676,
+        8622510,
+        9223067,
+        9529413,
+        13048682,
+        13230000,
     };
     for (auto& e : markers)
         e = 1.0/(300.0*44100) * e;
