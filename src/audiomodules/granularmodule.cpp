@@ -18,19 +18,21 @@
 
 class DrWavSource : public GrainAudioSource
 {
+    std::vector<std::vector<float>> m_audioBuffers;
+    int m_playbackBufferIndex = 0;
+    int m_recordBufferIndex = 0;
+    std::vector<int> m_recordBufPositions;
 public:
     unsigned int m_channels = 0;
     unsigned int m_sampleRate = 44100;
     drwav_uint64 m_totalPCMFrameCount = 0;
-    std::vector<std::vector<float>> m_audioBuffers;
-    int m_playbackBufferIndex = 0;
-    int m_recordBufferIndex = 0;
+    
     int m_recordChannels = 0;
     float m_recordSampleRate = 0.0f;
     int m_recordState = 0;
-    int m_recordBufPos = 0;
+    
     spinlock m_mut;
-    //std::mutex m_mut;
+    
     std::atomic<int> m_do_update_peaks{0};
     std::string m_filename;
     /*
@@ -237,7 +239,10 @@ public:
     std::vector<std::vector<SamplePeaks>> peaksData;
     DrWavSource()
     {
-        m_audioBuffers.resize(4);
+        int numbufs = 4;
+        m_recordBufPositions.resize(numbufs);
+        m_recordStartPositions.resize(numbufs);
+        m_audioBuffers.resize(numbufs);
         for (auto& e : m_audioBuffers)
             e.resize(44100*300*2);
         peaksData.resize(2);
@@ -266,18 +271,18 @@ public:
     }
     void resetRecording()
     {
-        if (m_recordBufPos>=m_audioBuffers[m_recordBufferIndex].size())
+        if (m_recordBufPositions[m_recordBufferIndex] >= m_audioBuffers[m_recordBufferIndex].size())
         {
-            m_recordBufPos = 0;
+            m_recordBufPositions[m_recordBufferIndex] = 0;
         }
     }
     bool m_has_recorded = false;
-    int m_recordStartPos = 0;
+    std::vector<int> m_recordStartPositions;
     std::pair<float,float> getLastRecordedRange()
     {
         auto& recbuf = m_audioBuffers[m_recordBufferIndex];
-        float s0 = rescale((float)m_recordStartPos,0.0f,(float)recbuf.size()-1,0.0f,1.0f);
-        float s1 = rescale((float)m_recordBufPos,0.0f,(float)recbuf.size()-1,0.0f,1.0f);
+        float s0 = rescale((float)m_recordStartPositions[m_recordBufferIndex],0.0f,(float)recbuf.size()-1,0.0f,1.0f);
+        float s1 = rescale((float)m_recordBufPositions[m_recordBufferIndex],0.0f,(float)recbuf.size()-1,0.0f,1.0f);
         return {s0,s1};
     }
     void startRecording(int numchans, float sr)
@@ -288,7 +293,7 @@ public:
         m_recordChannels = numchans;
         m_recordSampleRate = sr;
         m_recordState = 1;
-        m_recordStartPos = m_recordBufPos;
+        m_recordStartPositions[m_recordBufferIndex] = m_recordBufPositions[m_recordBufferIndex];
     }
     int m_odub_minpos_frames = 0;
     int m_odub_maxpos_frames = 0;
@@ -300,33 +305,34 @@ public:
         m_recordChannels = numchans;
         m_recordSampleRate = sr;
         m_recordState = 2;
-        m_recordStartPos = clamp(startPosFrames,minposFrames,maxposFrames);
-        m_recordBufPos = m_recordStartPos;
+        m_recordStartPositions[m_recordBufferIndex] = clamp(startPosFrames,minposFrames,maxposFrames);
+        m_recordBufPositions[m_recordBufferIndex] = m_recordStartPositions[m_recordBufferIndex];
     }
     void pushSamplesToRecordBuffer(float* samples, float gain)
     {
         if (m_recordState == 0)
             return;
         auto& recbuf = m_audioBuffers[m_recordBufferIndex];
+        auto& recpos = m_recordBufPositions[m_recordBufferIndex];
         for (int i=0;i<m_recordChannels;++i)
         {
-            if (m_recordBufPos<recbuf.size())
+            if (recpos < recbuf.size())
             {
                 if (m_recordState == 1)
-                    recbuf[m_recordBufPos] = samples[i]*gain;
+                    recbuf[recpos] = samples[i]*gain;
                 else if (m_recordState == 2)
-                    recbuf[m_recordBufPos] += samples[i]*gain;
+                    recbuf[recpos] += samples[i]*gain;
             }
-            ++m_recordBufPos;
-            if (m_recordState == 1 && m_recordBufPos == recbuf.size())
+            ++recpos;
+            if (m_recordState == 1 && recpos == recbuf.size())
             {
                 std::cout << "RECORD BUFFER FULL, STOPPING\n";
                 stopRecording();
                 break;
             }
-            if (m_recordState == 2 && m_recordBufPos == m_odub_maxpos_frames)
+            if (m_recordState == 2 && recpos == m_odub_maxpos_frames)
             {
-                m_recordBufPos = m_odub_minpos_frames;
+                recpos = m_odub_minpos_frames;
             }
         }
     }
@@ -334,7 +340,7 @@ public:
     {
         if (m_recordState == 0)
             return -1.0f;
-        return 1.0/m_audioBuffers[m_recordBufferIndex].size()*m_recordBufPos;
+        return 1.0/m_audioBuffers[m_recordBufferIndex].size()*m_recordBufPositions[m_recordBufferIndex];
     }
     void stopRecording()
     {
