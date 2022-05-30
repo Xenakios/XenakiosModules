@@ -232,6 +232,15 @@ public:
         int framestoread = std::min(m_audioBuffer.size()/2,(size_t)sinfo.frames);
         int inchs = sinfo.channels;
         sr = sinfo.samplerate;
+        SF_CUES cues;
+        if (sf_command(sfile,SFC_GET_CUE,&cues,sizeof(SF_CUES)) == SF_TRUE)
+        {
+            std::cout << "found media cues for file " << filename << "\n";
+            std::cout << cues.cue_count << " cues\n";
+            for (int i=0;i<cues.cue_count;++i)
+                std::cout << cues.cue_points[i].sample_offset << " ";
+            std::cout << "\n";
+        }
         std::vector<float> temp(inchs*framestoread);
         sf_readf_float(sfile,temp.data(),framestoread);
         sf_close(sfile);
