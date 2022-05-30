@@ -7,11 +7,11 @@ include_directories(claphosting /home/teemu/codestuff/micro-clap-host/libs/clap/
 
 project(GRLOOPER)
 
-add_executable(GRLOOPER rtmidi/RtMidi.cpp ../dr_wav.c ../grain_engine.cpp granularmodule.cpp claphosting/claphost.cpp)
+add_executable(GRLOOPER rtmidi/RtMidi.cpp ../grain_engine.cpp granularmodule.cpp claphosting/claphost.cpp)
 add_executable(KLANG rtmidi/RtMidi.cpp scaleosc.cpp)
 target_compile_definitions (GRLOOPER PRIVATE RAPIHEADLESS __LINUX_ALSA__)
 target_compile_definitions (KLANG PRIVATE RAPIHEADLESS __LINUX_ALSA__)
 target_compile_options(GRLOOPER PRIVATE -O2)
 target_compile_options(KLANG PRIVATE -O2)
-target_link_libraries (GRLOOPER PRIVATE portaudio ncurses asound pthread jansson dl)
+target_link_libraries (GRLOOPER PRIVATE portaudio ncurses asound pthread jansson dl sndfile)
 target_link_libraries (KLANG PRIVATE portaudio ncurses asound pthread)

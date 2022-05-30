@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <string.hpp>
 #include <iomanip>
+#include "sndfile.h"
 #endif
 #include <iostream>
 #include <thread>
@@ -124,6 +125,7 @@ public:
     }
     bool saveFile(std::string filename)
     {
+#ifndef RAPIHEADLESS
         drwav wav;
         drwav_data_format format;
 		format.container = drwav_container_riff;
@@ -138,6 +140,21 @@ public:
             return true;
         }
         return false;
+#else
+        SF_INFO sinfo;
+        memset(&sinfo,0,sizeof(SF_INFO));
+        sinfo.channels = 2;
+        sinfo.format = SF_FORMAT_PCM_16 | SF_FORMAT_WAV;
+        sinfo.samplerate = m_sampleRate;
+        SNDFILE* outfile = sf_open(filename.c_str(),SFM_WRITE,&sinfo);
+        if (outfile)
+        {
+            sf_writef_float(outfile,m_audioBuffer.data(),m_audioBuffer.size()/2);
+            sf_close(outfile);
+            return true;
+        }
+        return false;
+#endif
     }
     bool importRawFile(std::string filename,float samplerate, int bits)
     {
@@ -195,16 +212,30 @@ public:
     }
     bool importFile(std::string filename)
     {
+        int sr = 0;
+#ifndef RAPIHEADLESS
         drwav_uint64 totalPCMFrameCount = 0;
         drwav wav;
         if (!drwav_init_file(&wav, filename.c_str(), nullptr))
             return false;
         int framestoread = std::min(m_audioBuffer.size()/2,(size_t)wav.totalPCMFrameCount);
         int inchs = wav.channels;
+        sr = wav.sampleRate;
         std::vector<float> temp(inchs*framestoread);
         drwav_read_pcm_frames_f32(&wav, framestoread, temp.data());
 		drwav_uninit(&wav);
-        
+#else
+        SF_INFO sinfo;
+        SNDFILE* sfile = sf_open(filename.c_str(),SFM_READ,&sinfo);
+        if (!sfile)
+            return false;
+        int framestoread = std::min(m_audioBuffer.size()/2,(size_t)sinfo.frames);
+        int inchs = sinfo.channels;
+        sr = sinfo.samplerate;
+        std::vector<float> temp(inchs*framestoread);
+        sf_readf_float(sfile,temp.data(),framestoread);
+        sf_close(sfile);
+#endif
         for (int i=0;i<framestoread;++i)
         {
             if (inchs == 1)
@@ -225,7 +256,7 @@ public:
         
         m_mut.lock();
             m_channels = 2;
-            m_sampleRate = wav.sampleRate;
+            m_sampleRate = sr;
             m_totalPCMFrameCount = framestoread;
             m_recordState = 0;
         
