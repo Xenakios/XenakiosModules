@@ -1,5 +1,6 @@
 #include "claphost.h"
 #include <cstring>
+#include "portaudio.h"
 
 const void *get_extension(const struct clap_host *host, const char *eid)
 {
@@ -66,7 +67,7 @@ struct micro_input_events
 
 struct micro_output_events
 {
-    static constexpr int max_evt_size = 10 * 1024;
+    static constexpr int max_evt_size = 1024;
     static constexpr int max_events = 4096;
     uint8_t data[max_evt_size * max_events];
     uint32_t sz{0};
@@ -202,6 +203,61 @@ clap_processor::clap_processor()
 
 }
 
+clap_processor::~clap_processor()
+{
+    if (m_plug)
+    {
+        m_plug->deactivate(m_plug);
+        m_plug->destroy(m_plug);
+    }
+    if (m_entry)
+    {
+        m_entry->deinit();
+    }
+    
+}
+
+json_t* clap_processor::dataToJson()
+{
+    json_t* result = json_object();
+    json_t* paramsj = json_array();
+    auto inst_param = (clap_plugin_params_t *)m_plug->get_extension(m_plug, CLAP_EXT_PARAMS);
+    for (int i=0;i<inst_param->count(m_plug);++i)
+    {
+        auto parid = orderedParamIds[i];
+        double theval = 0.0;
+        inst_param->get_value(m_plug,parid,&theval);    
+        json_array_append(paramsj,json_real(theval));
+    }
+    json_object_set(result,"params",paramsj);
+    return result;
+}
+
+std::string clap_processor::dataFromJson(json_t* j)
+{
+    if (!j)
+        return "no plugin data";
+    json_t* paramsj = json_object_get(j,"params");
+    if (!paramsj)
+        return "no params data";
+    while (!isStarted) 
+    {
+        Pa_Sleep(10);
+    } // awful hack...
+    int numparsstored = json_array_size(paramsj);
+    auto inst_param = (clap_plugin_params_t *)m_plug->get_extension(m_plug, CLAP_EXT_PARAMS);
+    int numcurpars = inst_param->count(m_plug);
+    for (int i=0;i<numparsstored;++i)
+    {
+        if (i<numcurpars)
+        {
+            float val = json_real_value(json_array_get(paramsj,i));
+            setParameter(i,val);
+        }
+    }
+    return "";
+}
+
 void clap_processor::setParameter(int id, float v)
 {
     if (id>=0 && id < orderedParamIds.size())
@@ -224,6 +280,19 @@ void clap_processor::setParameter(int id, float v)
         micro_input_events::push(&m_in_events, valset);
         m_spinlock.unlock();
     }
+}
+
+float clap_processor::getParameter(int index)
+{
+    if (index>=0 && index<orderedParamIds.size())
+    {
+        auto inst_param = (clap_plugin_params_t *)m_plug->get_extension(m_plug, CLAP_EXT_PARAMS);
+        auto parid = orderedParamIds[index];
+        double oldval = 0.0;
+        inst_param->get_value(m_plug,parid,&oldval);
+        return oldval;
+    }
+    return 0.0f;
 }
 
 std::string clap_processor::getParameterValueFormatted(int index)
@@ -267,10 +336,11 @@ void clap_processor::incDecParameter(int index, float step)
         auto parid = orderedParamIds[index];
         double minval = paramInfo[parid].min_value;
         double maxval = paramInfo[parid].max_value;
+        double range = maxval - minval;
         double oldval = 0.0;
         if (inst_param->get_value(m_plug,parid,&oldval))
         {
-            oldval += step * 0.01f;
+            oldval += step * range * 0.01f;
             if (oldval<minval)
                 oldval = minval;
             if (oldval>maxval)

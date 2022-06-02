@@ -12,6 +12,7 @@
 #include "mischelpers.h"
 #include <functional>
 #include "choc_SingleReaderSingleWriterFIFO.h"
+#include "jansson.h"
 
 inline clap_plugin_entry_t *entryFromClapPath(const std::string &p)
 {
@@ -33,25 +34,17 @@ public:
     clap_plugin_entry_t* m_entry = nullptr;
     clap_processor();
     
-    ~clap_processor()
-    {
-        if (m_plug)
-        {
-            m_plug->deactivate(m_plug);
-            m_plug->destroy(m_plug);
-        }
-        if (m_entry)
-        {
-            m_entry->deinit();
-        }
-        
-    }
+    ~clap_processor();
+    
     void prepare(int inchans, int outchans, int maxblocksize, float samplerate);
     void processAudio(float* buf, int nframes);
+    float getParameter(int id);
     void setParameter(int id, float v);
     void incDecParameter(int index, float step);
     std::string getParameterValueFormatted(int index);
     std::string getParameterName(int index);
+    json_t* dataToJson();
+    std::string dataFromJson(json_t* j);
     choc::fifo::SingleReaderSingleWriterFIFO<std::function<void(void)>>* exFIFO = nullptr;
 private:
     std::vector<std::vector<float>> m_in_bufs;
@@ -62,7 +55,7 @@ private:
     std::vector<clap_audio_buffer_t> m_clap_out_ports;
     clap_input_events_t m_in_events;
     clap_output_events_t m_out_events;
-    bool isStarted = false;
+    std::atomic<bool> isStarted{false};
     std::unordered_map<uint32_t, clap_param_info> paramInfo;
     std::vector<uint32_t> orderedParamIds;
     spinlock m_spinlock;

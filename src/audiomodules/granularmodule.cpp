@@ -1771,7 +1771,7 @@ public:
                 drsrc->pushSamplesToRecordBuffer(ins,0.9f);
             }
         }
-        //m_clap_host->processAudio(outputBuffer,nFrames);
+        m_clap_host->processAudio(outputBuffer,nFrames);
         return paContinue;
     }
     std::atomic<int> m_out_record_active{0};
@@ -1851,8 +1851,25 @@ public:
     {
         int temp = m_page_state;
         temp += step;
-        temp = wrap_value_safe(0,temp,3);
+        if (temp>3)
+            temp = 0;
+        if (temp<0)
+            temp = 3;
         m_page_state = temp;
+    }
+    json_t* dataToJson()
+    {
+        json_t* result = json_object();
+        json_object_set(result,"plug0state",m_clap_host->dataToJson());
+        return result;
+    }
+    std::string dataFromJson(json_t* j)
+    {
+        if (!j)
+            return "no data";
+        json_t* plugdata = json_object_get(j,"plug0state");
+        auto err = m_clap_host->dataFromJson(plugdata);
+        return err;
     }
     int m_cbcount = 0;
     /*
@@ -2034,7 +2051,8 @@ void saveSettings(AudioEngine& aeng)
     {
         json_object_set(root,e.first.c_str(),json_real(e.second->load()));    
     }
-    
+    auto pluginj = aeng.dataToJson();
+    json_object_set(root,"aengdata",pluginj);
     auto markers = aeng.m_eng->dataToJson();
     json_object_set(root,"markers_etc",markers);
     json_dump_file(root,"settings.json",JSON_INDENT(2));
@@ -2058,6 +2076,9 @@ void loadSettings(AudioEngine& aeng)
             if (pj)
                 e.second->store(json_real_value(pj));
         }
+        json_t* aengdata = json_object_get(rootj,"aengdata");
+        auto err = aeng.dataFromJson(aengdata);
+        std::cout << err << "\n";
         auto markersJ = json_object_get(rootj,"markers_etc");
         if (markersJ)
             aeng.m_eng->dataFromJson(markersJ);
@@ -2265,6 +2286,8 @@ int main(int argc, char** argv)
         {
             aeng.m_next_marker_act = 2;
         }
+        if (c=='p')
+            aeng.stepPage(1);
         if (aeng.m_page_state == 0)
         {
             mvwprintw(win,1,0,"Play rate");
