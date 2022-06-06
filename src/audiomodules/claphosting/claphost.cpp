@@ -107,7 +107,7 @@ struct micro_output_events
 clap_processor::clap_processor()
 {
     std::cout << "initing clap host processor...\n";
-    std::string cpath = "/home/teemu/codestuff/surge/build/surge_xt_products/Surge XT Effects.clap";
+    std::string cpath = "/home/pi/codestuff/surge/build/surge_xt_products/Surge XT Effects.clap";
     auto entry = entryFromClapPath(cpath);
 
     if (!entry)
