@@ -35,9 +35,10 @@ public:
     
     std::atomic<int> m_do_update_peaks{0};
     std::string m_filename;
-    /*
+#ifndef RAPIHEADLESS
     void normalize(float level, int startframe, int endframe)
     {
+        /*
         if (startframe == -1 && endframe == -1)
         {
             startframe = 0;
@@ -69,25 +70,25 @@ public:
             }
         }
         m_do_update_peaks = true;
-        
+        */
     }
-    */
+
     void reverse()
     {
-        /*
+        
         for (int i=0;i<m_totalPCMFrameCount/2;i++)
         {
             int index=(m_totalPCMFrameCount-i-1);
             if (index<0 || index>=m_totalPCMFrameCount) break;
             for (int j=0;j<m_channels;j++)
             {
-                std::swap(m_pSampleData[i*m_channels+j],m_pSampleData[index*m_channels+j]);
+                //std::swap(m_pSampleData[i*m_channels+j],m_pSampleData[index*m_channels+j]);
             }
         }
         updatePeaks();
-        */
+        
     }
-    
+#endif    
     std::mutex m_peaks_mut;
     int m_peak_updates_counter = 0;
     int m_minFramePos = 0;
@@ -99,7 +100,7 @@ public:
             return;
         m_peak_updates_counter++;
         std::lock_guard<std::mutex> locker(m_peaks_mut);
-        float* dataPtr = m_audioBuffer.data();
+        float* dataPtr = m_audioBuffers[0].data();
         peaksData.resize(m_channels);
         int samplesPerPeak = 256;
         int numPeaks = m_totalPCMFrameCount/(float)samplesPerPeak;
@@ -143,7 +144,8 @@ public:
 		format.bitsPerSample = 32;
         if (drwav_init_file_write(&wav,filename.c_str(),&format,nullptr))
         {
-            drwav_write_pcm_frames(&wav,m_audioBuffer.size()/2,(void*)m_audioBuffer.data());
+            drwav_write_pcm_frames(&wav,m_audioBuffers[whichbuffer].size()/2,
+                (void*)m_audioBuffers[whichbuffer].data());
             drwav_uninit(&wav);
             return true;
         }
@@ -175,12 +177,32 @@ public:
         drwav wav;
         if (!drwav_init_file(&wav, filename.c_str(), nullptr))
             return false;
-        int framestoread = std::min(m_audioBuffer.size()/2,(size_t)wav.totalPCMFrameCount);
+        int framestoread = std::min(m_audioBuffers[whichbuffer].size()/2,(size_t)wav.totalPCMFrameCount);
         int inchs = wav.channels;
         sr = wav.sampleRate;
-        std::vector<float> temp(inchs*framestoread);
-        drwav_read_pcm_frames_f32(&wav, framestoread, temp.data());
-		drwav_uninit(&wav);
+        if (inchs==2)
+        {
+            drwav_read_pcm_frames_f32(&wav, framestoread, m_audioBuffers[whichbuffer].data());
+		    drwav_uninit(&wav);
+        }
+        if (inchs == 1)
+        {
+            std::vector<float> temp(inchs*framestoread);
+            drwav_read_pcm_frames_f32(&wav, framestoread, temp.data());
+            for (int i=0;i<framestoread;++i)
+            {
+                if (inchs == 1)
+                {
+                    for (int j=0;j<2;++j)
+                    {
+                        m_audioBuffers[whichbuffer][i*2+j] = temp[i];
+                    }
+                } 
+            }
+            drwav_uninit(&wav);
+        }
+        
+        
 #else
         SF_INFO sinfo;
         SNDFILE* sfile = sf_open(filename.c_str(),SFM_READ,&sinfo);
@@ -418,7 +440,7 @@ public:
             std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
             uint64_t t = system::getUnixTime();
             std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
-            saveFile(audioFile);
+            saveFile(audioFile,0);
 #else
             std::cout << "saving audio buffer...\n";
             std::string audioDir = "/home/pi/AudioStuff/GRLOOPER_RECORDINGS";
@@ -856,8 +878,8 @@ public:
     {
         if (filename.size()==0)
             return;
-        auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
-        if (drsrc && drsrc->importFile(filename))
+        auto drsrc = dynamic_cast<MultiBufferSource*>(m_eng.m_srcs[0].get());
+        if (drsrc && drsrc->importFile(filename,0))
         {
             m_currentFile = filename;
         }
@@ -992,7 +1014,7 @@ public:
         glenm = clamp(glenm,0.0f,1.0f);
 
         float revprob = params[PAR_REVERSE].getValue();
-        auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
+        auto drsrc = dynamic_cast<MultiBufferSource*>(m_eng.m_srcs[0].get());
         if (m_recordTrigger.process(params[PAR_RECORD_ACTIVE].getValue()>0.5f))
         {
             
@@ -1066,15 +1088,15 @@ public:
     }
     void clearRegionAudio()
     {
-        auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
+        auto drsrc = dynamic_cast<MultiBufferSource*>(m_eng.m_srcs[0].get());
         int startSample = m_eng.m_gm->m_region_start * m_eng.m_gm->m_inputdur;
         int endSample = startSample + (m_eng.m_gm->m_region_len * m_eng.m_gm->m_inputdur);
-        drsrc->clearAudio(startSample,endSample);
+        drsrc->clearAudio(startSample,endSample,0);
     }
     int graindebugcounter = 0;
     void normalizeAudio(int opts, float peakgain)
     {
-        auto drsrc = dynamic_cast<DrWavSource*>(m_eng.m_srcs[0].get());
+        auto drsrc = dynamic_cast<MultiBufferSource*>(m_eng.m_srcs[0].get());
         if (opts == 0)
             drsrc->normalize(peakgain,-1,-1);
         if (opts == 1)
@@ -1163,7 +1185,7 @@ public:
         nvgRect(args.vg,0.0f,0.0f,box.size.x,box.size.y);
         nvgFill(args.vg);
 
-        auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
+        auto& src = *dynamic_cast<MultiBufferSource*>(m_gm->m_eng.m_srcs[0].get());
         if (src.m_channels>0)
         {
             std::lock_guard<std::mutex> locker(src.m_peaks_mut);
@@ -1355,7 +1377,7 @@ public:
 		auto loadItem = createMenuItem<LoadFileItem>("Import .wav file...");
 		loadItem->m_mod = m_gm;
 		menu->addChild(loadItem);
-        auto drsrc = dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
+        auto drsrc = dynamic_cast<MultiBufferSource*>(m_gm->m_eng.m_srcs[0].get());
         auto procaudiomenufunc = [this,drsrc](Menu* targmenu)
         {
             auto normItem = createMenuItem([this](){ m_gm->normalizeAudio(0,1.0f); },"Normalize all audio");
@@ -1370,7 +1392,7 @@ public:
             { 
                 m_gm->exFIFO.push([this,drsrc]()
                 {
-                    drsrc->clearAudio(-1,-1);
+                    drsrc->clearAudio(-1,-1,0);
                 });
                  
             },"Clear all audio");
@@ -1487,7 +1509,7 @@ public:
     {
         if (m_gm)
         {
-            auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
+            auto& src = *dynamic_cast<MultiBufferSource*>(m_gm->m_eng.m_srcs[0].get());
             src.updatePeaks();
         }
         
@@ -1503,7 +1525,7 @@ public:
         if (m_gm)
         {
             char buf[200];
-            auto& src = *dynamic_cast<DrWavSource*>(m_gm->m_eng.m_srcs[0].get());
+            auto& src = *dynamic_cast<MultiBufferSource*>(m_gm->m_eng.m_srcs[0].get());
             std::string rectext;
             if (m_gm->m_eng.isRecording())
                 rectext = "REC";
