@@ -39,13 +39,13 @@ void ISGrain::process(float* buf)
     float dummy = 0.0f;
     float hannpos = 1.0/(m_grainSize-1)*m_outpos;
     hannpos = clamp(hannpos,0.0,1.0f);
-    float win = m_hannwind.getValue(hannpos);
+    float win = m_hannwind->getValue(hannpos);
     m_cur_gain = win;
     if (*m_interpmode == 1)
     {
         for (int i=0;i<m_chans;++i)
         {
-            float y0 = m_sinc.call(*m_syn,sourceposint,(1.0-frac),dummy,i,m_sourceFrameMin,m_sourceFrameMax);
+            float y0 = m_sinc->call(*m_syn,sourceposint,(1.0-frac),dummy,i,m_sourceFrameMin,m_sourceFrameMax);
             y0 *= win * pangains[i];
             buf[i] += y0;
         }

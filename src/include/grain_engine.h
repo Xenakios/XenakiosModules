@@ -228,7 +228,6 @@ public:
     virtual int getSourceNumSamples() = 0;
     virtual int getSourceNumChannels() = 0;
     virtual void putIntoBuffer(float* dest, int frames, int channels, int startInSource) = 0;
-    //virtual void setSubSection(int startFrame, int endFrame) {}
     virtual float getBufferSampleSafeAndFade(int frame, int channel, int minFramePos, int maxFramePos, int fadelen) { return 0.0f; }
     virtual void getSamplesSafeAndFade(float* destbuf,int startframe, int nsamples, int channel, int minFramePos, int maxFramepos, int fadelen) {}
 };
@@ -259,8 +258,8 @@ private:
 class ISGrain
 {
 public:
-    Sinc<float,8,512> m_sinc; // could share this between grain instances, but not yet...
-    WindowLookup m_hannwind;
+    Sinc<float,8,512>* m_sinc = nullptr; 
+    WindowLookup* m_hannwind = nullptr;
     ISGrain() {}
     double m_source_phase = 0.0;
     double m_source_phase_inc = 0.0;
@@ -315,6 +314,8 @@ public:
     {
         for (int i=0;i<(int)m_grains.size();++i)
         {
+            m_grains[i].m_sinc = &m_sinc;
+            m_grains[i].m_hannwind = &m_hannwind;
             m_grains[i].m_syn = m_sources[0].get();
             m_grains[i].m_interpmode = &m_interpmode;
             m_grains[i].setNumOutChans(2);
@@ -325,6 +326,8 @@ public:
     {
         for (int i=0;i<(int)m_grains.size();++i)
         {
+            m_grains[i].m_sinc = &m_sinc;
+            m_grains[i].m_hannwind = &m_hannwind;
             m_grains[i].m_syn = s;
             m_grains[i].m_interpmode = &m_interpmode;
             m_grains[i].setNumOutChans(2);
@@ -399,6 +402,8 @@ public:
     int m_nextGrainPos = 0;
     int m_playmode = 0;
     float m_scanpos = 0.0f;
+    Sinc<float,8,512> m_sinc;
+    WindowLookup m_hannwind;
     std::array<ISGrain,10> m_grains;
     void setDensity(float d)
     {
