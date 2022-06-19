@@ -261,9 +261,10 @@ public:
     std::vector<std::vector<SamplePeaks>> peaksData;
     MultiBufferSource()
     {
-        int numbufs = 4;
+        int numbufs = 5;
         m_recordBufPositions.resize(numbufs);
         m_recordStartPositions.resize(numbufs);
+        m_has_recorded.resize(numbufs);
         m_audioBuffers.resize(numbufs);
         for (auto& e : m_audioBuffers)
             e.resize(44100*300*2);
@@ -298,7 +299,7 @@ public:
             m_recordBufPositions[m_recordBufferIndex] = 0;
         }
     }
-    bool m_has_recorded = false;
+    std::vector<bool> m_has_recorded;
     std::vector<int> m_recordStartPositions;
     std::pair<float,float> getLastRecordedRange()
     {
@@ -311,7 +312,7 @@ public:
     {
         if (m_recordState!=0)
             return;
-        m_has_recorded = true;
+        m_has_recorded[m_recordBufferIndex] = true;
         m_recordChannels = numchans;
         m_recordSampleRate = sr;
         m_recordState = 1;
@@ -323,7 +324,7 @@ public:
     {
         m_odub_minpos_frames = minposFrames;
         m_odub_maxpos_frames = maxposFrames;
-        m_has_recorded = true;
+        m_has_recorded[m_recordBufferIndex] = true;
         m_recordChannels = numchans;
         m_recordSampleRate = sr;
         m_recordState = 2;
@@ -336,6 +337,7 @@ public:
             whichbuffer = m_recordBufferIndex;
         if (m_recordState == 0 && force == false)
             return;
+        m_has_recorded[whichbuffer] = true;
         auto& recbuf = m_audioBuffers[whichbuffer];
         auto& recpos = m_recordBufPositions[whichbuffer];
         for (int i=0;i<m_recordChannels;++i)
@@ -373,6 +375,28 @@ public:
         m_sampleRate = m_recordSampleRate;
         m_totalPCMFrameCount = m_audioBuffers[m_recordBufferIndex].size()/m_recordChannels;
         m_do_update_peaks = 1;
+    }
+    void setPlaybackBufferIndex(int which)
+    {
+        if (which>=0 && which<m_audioBuffers.size())
+        {
+            m_playbackBufferIndex = which;
+        }
+    }
+    int getPlaybackBufferIndex() const
+    {
+        return m_playbackBufferIndex;
+    }
+    int getRecordBufferIndex() const
+    {
+        return m_recordBufferIndex;
+    }
+    void setRecordBufferIndex(int which)
+    {
+        if (which>=0 && which<m_audioBuffers.size())
+        {
+            m_recordBufferIndex = which;
+        }
     }
     void getSamplesSafeAndFade(float* destbuf,int startframe,int nsamples, int channel, 
         int minFramepos, int maxFramePos, int fadelen) override
@@ -434,21 +458,24 @@ public:
     }
     ~MultiBufferSource()
     {
-        if (m_has_recorded)
+        for (int i=0;i<m_has_recorded.size();++i)
         {
-#ifndef RAPIHEADLESS
-            std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
-            uint64_t t = system::getUnixTime();
-            std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
-            saveFile(audioFile,0);
-#else
-            std::cout << "saving audio buffer...\n";
-            std::string audioDir = "/home/pi/AudioStuff/GRLOOPER_RECORDINGS";
-            auto t = std::chrono::system_clock::now().time_since_epoch().count();
-            std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
-            saveFile(audioFile,m_recordBufferIndex);
-            std::cout << "finished saving audio buffer\n";
-#endif
+            if (m_has_recorded[i])
+            {
+    #ifndef RAPIHEADLESS
+                std::string audioDir = rack::asset::user("XenakiosGrainAudioFiles");
+                uint64_t t = system::getUnixTime();
+                std::string audioFile = audioDir+"/GrainRec_"+std::to_string(t)+".wav";
+                saveFile(audioFile,0);
+    #else
+                std::cout << "saving audio buffer " << i << "...\n";
+                std::string audioDir = "/home/pi/codestuff/XenakiosModules/src/audiomodules/reels";
+                //auto t = std::chrono::system_clock::now().time_since_epoch().count();
+                std::string audioFile = audioDir+"/reel_"+std::to_string(i)+".wav";
+                saveFile(audioFile,i);
+                std::cout << "finished saving audio buffer\n";
+    #endif
+            }
         }
     }
     int getSourceNumChannels() override
@@ -1674,6 +1701,8 @@ public:
     {
         float sr = 44100.0f;
         auto drsrc = dynamic_cast<MultiBufferSource*>(m_eng->m_srcs[0].get());
+        drsrc->setPlaybackBufferIndex(m_active_reel);
+
         bool rec_active = m_eng->isRecording();
         if (m_next_record_action == 1)
         {
@@ -1767,7 +1796,10 @@ public:
             procbuf[0] = (mid-side);
             procbuf[1] = (mid+side);
             if (m_out_record_active == 1)
-                drsrc->pushSamplesToRecordBuffer(procbuf,1.0f,3,true);
+            {
+                drsrc->pushSamplesToRecordBuffer(procbuf,1.0f,4,true);
+            }
+                
             
             outputBuffer[i*2+0] = procbuf[0] * procgain + ins[0] * inputgain; 
             outputBuffer[i*2+1] = procbuf[1] * procgain + ins[0] * inputgain;
@@ -1815,6 +1847,16 @@ public:
         st = (st + 1) % 3;
         m_cur_playstate = st;
     }
+    void stepActiveReel(int step)
+    {
+        int temp = m_active_reel;
+        temp += step;
+        if (temp<0)
+            temp = 4;
+        if (temp>4)
+            temp = 0;
+        m_active_reel = temp;
+    }
     void setPlayMode(int m)
     {
         m_eng->m_playmode = m;
@@ -1836,7 +1878,7 @@ public:
     std::atomic<int> m_next_record_action{0};
     std::atomic<int> m_next_marker_act{0};
     std::atomic<int> m_led_ring_option{0};
-    
+    std::atomic<int> m_active_reel{0};
     using par_pair = std::pair<std::string,std::atomic<float>*>;
     std::vector<par_pair> params={
             {"par_playrate",&m_par_playrate},
@@ -2211,14 +2253,19 @@ int main(int argc, char** argv)
     std::atomic<bool> quit_thread{false};
     
     auto drsrc = dynamic_cast<MultiBufferSource*>(ge.m_srcs[0].get());
-    if (drsrc->importFile("../reels/reel_00.wav",0))
+    for (int i=0;i<5;++i)
     {
-        std::cout << "loaded test source file\n";
-    } else
-    {
-        std::cout << "could not load test file\n";
-        return 1;
+        std::string ifn = "../reels/reel_"+std::to_string(i)+".wav";
+        std::cout << "trying to load audio file " << ifn << "\n";
+        if (drsrc->importFile(ifn,i))
+        {
+            std::cout << "success\n";
+        } else
+        {
+            std::cout << "failed\n";
+        }
     }
+    
     AudioEngine aeng(&ge);
     loadSettings(aeng);
     std::vector<float> markers = 
@@ -2293,6 +2340,8 @@ int main(int argc, char** argv)
         }
         if (c=='p')
             aeng.stepPage(1);
+        if (c=='l')
+            aeng.stepActiveReel(1);
         if (aeng.m_page_state == 0)
         {
             mvwprintw(win,1,0,"Play rate");
@@ -2346,7 +2395,8 @@ int main(int argc, char** argv)
         regrng.first *= 5.0f*60.0f;
         regrng.second *= 5.0f*60.0f;
         float tpos = aeng.m_eng->m_gm->getSourcePlayPosition()/44100.0f;
-        mvwprintw(win,7,0,"Region %.2f - %.2f Playpos %.2f",regrng.first,regrng.second,tpos);
+        mvwprintw(win,7,0,"Region %.2f - %.2f Playpos %.2f Active Reel %d",
+            regrng.first,regrng.second,tpos,aeng.m_active_reel.load());
         wrefresh(win);
         refresh();
     }
