@@ -252,6 +252,17 @@ public:
         m_filename = filename;
         return true;
     }
+    void copyBuffer(int sourceBufferIndex,int destBufferIndex)
+    {
+        if (sourceBufferIndex == destBufferIndex)
+            return;
+        if (sourceBufferIndex>=0 && sourceBufferIndex < m_audioBuffers.size() &&
+            destBufferIndex>=0 && destBufferIndex < m_audioBuffers.size())
+        {
+            std::copy(m_audioBuffers[sourceBufferIndex].begin(),
+                m_audioBuffers[sourceBufferIndex].end(),m_audioBuffers[destBufferIndex].begin());
+        }
+    }
     std::atomic<int> busy_state{0};
     struct SamplePeaks
     {
@@ -1701,41 +1712,51 @@ public:
     {
         float sr = 44100.0f;
         auto drsrc = dynamic_cast<MultiBufferSource*>(m_eng->m_srcs[0].get());
+        // can always play any reel
         drsrc->setPlaybackBufferIndex(m_active_reel);
-
-        bool rec_active = m_eng->isRecording();
-        if (m_next_record_action == 1)
+        bool rec_active = false;
+        // but only reels 1-3 can record input
+        if (m_active_reel>0 && m_active_reel<4)
         {
-            if (rec_active == false)
+            drsrc->setRecordBufferIndex(m_active_reel);
+        
+            rec_active = m_eng->isRecording();
+            if (m_next_record_action == 1)
             {
-                drsrc->startRecording(2,sr);
-                rec_active = true;
-            } else
-            {
-                float rpos = drsrc->getRecordPosition();
-                m_eng->addMarkerAtPosition(rpos);
-                drsrc->stopRecording();
-                rec_active = false;
+                if (rec_active == false)
+                {
+                    drsrc->startRecording(2,sr);
+                    rec_active = true;
+                } else
+                {
+                    float rpos = drsrc->getRecordPosition();
+                    m_eng->addMarkerAtPosition(rpos);
+                    drsrc->stopRecording();
+                    rec_active = false;
+                }
+                m_next_record_action = 0;
             }
-            m_next_record_action = 0;
-        }
-        if (m_next_record_action == 2)
+            if (m_next_record_action == 2)
+            {
+                if (rec_active == false)
+                {
+                    int curplaypos = m_eng->m_gm->getSourcePlayPosition();
+                    auto range = m_eng->getActiveRegionRange();
+                    int minpos = range.first * m_eng->m_gm->m_inputdur;
+                    int maxpos = range.second * m_eng->m_gm->m_inputdur;
+                    drsrc->startOverDubbing(2,sr,curplaypos,minpos,maxpos);
+                    rec_active = true;
+                } else
+                {
+                    //float rpos = drsrc->getRecordPosition();
+                    //m_eng->addMarkerAtPosition(rpos);
+                    drsrc->stopRecording();
+                    rec_active = false;
+                }
+                m_next_record_action = 0;
+            }
+        } else
         {
-            if (rec_active == false)
-            {
-                int curplaypos = m_eng->m_gm->getSourcePlayPosition();
-                auto range = m_eng->getActiveRegionRange();
-                int minpos = range.first * m_eng->m_gm->m_inputdur;
-                int maxpos = range.second * m_eng->m_gm->m_inputdur;
-                drsrc->startOverDubbing(2,sr,curplaypos,minpos,maxpos);
-                rec_active = true;
-            } else
-            {
-                //float rpos = drsrc->getRecordPosition();
-                //m_eng->addMarkerAtPosition(rpos);
-                drsrc->stopRecording();
-                rec_active = false;
-            }
             m_next_record_action = 0;
         }
         if (m_next_marker_act == 1)
