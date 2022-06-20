@@ -1708,6 +1708,7 @@ public:
         outs[3] = outs[2]; // guard point
         return interpolateLinear(outs,morph);
     }
+    std::atomic<bool> m_rec_active{false};
     virtual int processBlock(const float* inputBuffer, float* outputBuffer, int nFrames)
     {
         float sr = 44100.0f;
@@ -1870,6 +1871,11 @@ public:
     }
     void stepActiveReel(int step)
     {
+        if (m_eng->isRecording())
+        {
+            return;
+        }
+            
         int temp = m_active_reel;
         temp += step;
         if (temp<0)
