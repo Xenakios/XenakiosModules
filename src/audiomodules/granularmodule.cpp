@@ -2091,7 +2091,7 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             else if (msg[1] == 70)
                 cf(eng->m_par_stereo_spread,delta*0.02f,-1.0f,1.0f);
             else if (msg[1] == 71 && eng->m_page_state == 0)
-                cf(eng->m_par_inputmix,delta*0.05f,0.0f,1.0f);
+                cf(eng->m_par_inputmix,delta*0.01f,0.0f,1.0f);
             else if (msg[1] == 71 && eng->m_page_state == 1)
                 cf(eng->m_par_waveshapemorph,delta*0.01f,0.0f,1.0f);
         }
@@ -2387,6 +2387,13 @@ int main(int argc, char** argv)
             mvwprintw(win,2,72,"%f",aeng.m_par_stereo_spread.load());
             mvwprintw(win,1,84,"Out/In mix");
             mvwprintw(win,2,84,"%f",aeng.m_par_inputmix.load());
+        }
+        if (aeng.m_page_state == 1)
+        {
+            mvwprintw(win,1,12,"Pitch spread");
+            mvwprintw(win,2,12,"%f",aeng.m_par_pitchsrpead.load());
+            mvwprintw(win,1,84,"WS Morph");
+            mvwprintw(win,2,84,"%f",aeng.m_par_waveshapemorph.load());
         }
         if (aeng.m_page_state > 1)
         {
