@@ -131,6 +131,12 @@ clap_processor::clap_processor()
     }
     
     auto desc = fac->get_plugin_descriptor(fac, 0);
+    std::string descname(desc->name);
+    if (findStringIC(descname,"surge xt effects"))
+    {
+        std::cout << "plugin is surge fx\n";
+        m_is_surge_fx = true;
+    }
     /*
     std::cout << "Plugin description: \n"
             << "   name     : " << desc->name << "\n"
@@ -339,9 +345,12 @@ void clap_processor::incDecParameter(int index, float step)
         double maxval = paramInfo[parid].max_value;
         double range = maxval - minval;
         double oldval = 0.0;
+        float pardelta = 0.01f;
+        if (m_is_surge_fx && index == 12) // surge fx fx type
+            pardelta = 1.0/27;
         if (inst_param->get_value(m_plug,parid,&oldval))
         {
-            oldval += step * range * 0.01f;
+            oldval += step * range * pardelta;
             if (oldval<minval)
                 oldval = minval;
             if (oldval>maxval)
@@ -351,9 +360,9 @@ void clap_processor::incDecParameter(int index, float step)
             //exFIFO->push([this,parid,oldval,inst_param,index]()
             //{
                 //std::cout << "set parameter " << paramInfo[parid].name << " relatively to " << oldval << "\n";
-                char txtbuf[256];
-                memset(txtbuf,0,256);
-                inst_param->value_to_text(m_plug,parid,oldval,txtbuf,256);
+                //char txtbuf[256];
+                //memset(txtbuf,0,256);
+                //inst_param->value_to_text(m_plug,parid,oldval,txtbuf,256);
                 //std::cout << txtbuf << "\n";
             //});
             

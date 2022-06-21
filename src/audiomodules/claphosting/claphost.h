@@ -14,6 +14,16 @@
 #include "choc_SingleReaderSingleWriterFIFO.h"
 #include "jansson.h"
 
+inline bool findStringIC(const std::string & strSource, const std::string & strToFind)
+{
+  auto it = std::search(
+    strSource.begin(), strSource.end(),
+    strToFind.begin(),   strToFind.end(),
+    [](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
+  );
+  return (it != strSource.end() );
+}
+
 inline clap_plugin_entry_t *entryFromClapPath(const std::string &p)
 {
     void    *handle;
@@ -59,4 +69,5 @@ private:
     std::unordered_map<uint32_t, clap_param_info> paramInfo;
     std::vector<uint32_t> orderedParamIds;
     spinlock m_spinlock;
+    bool m_is_surge_fx = false;
 };

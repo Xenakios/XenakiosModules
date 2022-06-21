@@ -2107,16 +2107,6 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
 
 }
 
-inline bool findStringIC(const std::string & strSource, const std::string & strToFind)
-{
-  auto it = std::search(
-    strSource.begin(), strSource.end(),
-    strToFind.begin(),   strToFind.end(),
-    [](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
-  );
-  return (it != strSource.end() );
-}
-
 void saveSettings(AudioEngine& aeng)
 {
     auto root = json_object();
