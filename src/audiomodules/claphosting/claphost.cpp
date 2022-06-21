@@ -107,7 +107,7 @@ struct micro_output_events
 clap_processor::clap_processor()
 {
     std::cout << "initing clap host processor...\n";
-    std::string cpath = "/home/pi/codestuff/surge/build/surge_xt_products/Surge XT Effects.clap";
+    std::string cpath = "/home/pi/.clap/Surge XT Effects.clap";
     auto entry = entryFromClapPath(cpath);
 
     if (!entry)
@@ -131,13 +131,14 @@ clap_processor::clap_processor()
     }
     
     auto desc = fac->get_plugin_descriptor(fac, 0);
-
+    /*
     std::cout << "Plugin description: \n"
             << "   name     : " << desc->name << "\n"
             << "   version  : " << desc->version << "\n"
             << "   id       : " << desc->id << "\n"
             << "   desc     : " << desc->description << "\n";
     //      << "   features : ";
+    */
     m_plug = fac->create_plugin(fac, &xen_host_static, desc->id);
     m_plug->init(m_plug);
     m_plug->activate(m_plug, 44100, 512, 512);
@@ -159,8 +160,8 @@ clap_processor::clap_processor()
             
             //aud.initialParamValues[inf.id] = d;
 
-            std::cout << i << " " << inf.module << " " << inf.name << " (id=0x" << std::hex
-                      << inf.id << std::dec << ") val=" << d << std::endl;
+            //std::cout << i << " " << inf.module << " " << inf.name << " (id=0x" << std::hex
+            //          << inf.id << std::dec << ") val=" << d << std::endl;
         }
     }
     else
