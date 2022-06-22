@@ -309,11 +309,16 @@ std::string clap_processor::getParameterValueFormatted(int index)
         auto inst_param = (clap_plugin_params_t *)m_plug->get_extension(m_plug, CLAP_EXT_PARAMS);
         auto parid = orderedParamIds[index];
         double oldval = 0.0;
-        inst_param->get_value(m_plug,parid,&oldval);
-        char txtbuf[256];
-        memset(txtbuf,0,256);
-        inst_param->value_to_text(m_plug,parid,oldval,txtbuf,256);
-        return txtbuf;
+        if (inst_param->get_value(m_plug,parid,&oldval))
+        {
+            char txtbuf[256];
+            memset(txtbuf,0,256);
+            if (inst_param->value_to_text(m_plug,parid,oldval,txtbuf,256))
+                return txtbuf;
+            else return "err1";
+        } else
+            return "err0";
+        
     }
     return "N/A";
 }
@@ -347,7 +352,10 @@ void clap_processor::incDecParameter(int index, float step)
         double oldval = 0.0;
         float pardelta = 0.01f;
         if (m_is_surge_fx && index == 12) // surge fx fx type
+        {
+            //oldval = std::floor(1.0*27)/27;
             pardelta = 1.0/27;
+        }    
         if (inst_param->get_value(m_plug,parid,&oldval))
         {
             oldval += step * range * pardelta;
