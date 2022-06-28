@@ -23,6 +23,21 @@ class MultiBufferSource : public GrainAudioSource
     int m_recordBufferIndex = 0;
     std::vector<int> m_recordBufPositions;
 public:
+    MultiBufferSource()
+    {
+        int numbufs = 5;
+        m_recordBufPositions.resize(numbufs);
+        m_recordStartPositions.resize(numbufs);
+        m_media_cues.resize(numbufs);
+        m_has_recorded.resize(numbufs);
+        m_audioBuffers.resize(numbufs);
+        for (auto& e : m_audioBuffers)
+            e.resize(44100*300*2);
+        peaksData.resize(2);
+        for (auto& e : peaksData)
+            e.resize(1024*1024);
+
+    }
     unsigned int m_channels = 0;
     unsigned int m_sampleRate = 44100;
     drwav_uint64 m_totalPCMFrameCount = 0;
@@ -166,7 +181,7 @@ public:
         return false;
 #endif
     }
-    
+    std::vector<std::vector<uint32_t>> m_media_cues; 
     bool importFile(std::string filename, int whichbuffer)
     {
         if (whichbuffer<0 || whichbuffer>=m_audioBuffers.size())
@@ -212,13 +227,19 @@ public:
         int inchs = sinfo.channels;
         sr = sinfo.samplerate;
         SF_CUES cues;
+        
         if (sf_command(sfile,SFC_GET_CUE,&cues,sizeof(SF_CUES)) == SF_TRUE)
         {
+            m_media_cues[whichbuffer].clear();
             std::cout << "found media cues for file " << filename << "\n";
             std::cout << cues.cue_count << " cues\n";
             for (int i=0;i<cues.cue_count;++i)
-                std::cout << cues.cue_points[i].sample_offset << " ";
-            std::cout << "\n";
+            {
+                m_media_cues[whichbuffer].push_back(cues.cue_points[i].sample_offset);
+                //std::cout << cues.cue_points[i].sample_offset << " ";
+            }
+                
+            //std::cout << "\n";
         }
         if (inchs != 2)
         {
@@ -270,20 +291,7 @@ public:
         float maxpeak = 0.0f;
     };
     std::vector<std::vector<SamplePeaks>> peaksData;
-    MultiBufferSource()
-    {
-        int numbufs = 5;
-        m_recordBufPositions.resize(numbufs);
-        m_recordStartPositions.resize(numbufs);
-        m_has_recorded.resize(numbufs);
-        m_audioBuffers.resize(numbufs);
-        for (auto& e : m_audioBuffers)
-            e.resize(44100*300*2);
-        peaksData.resize(2);
-        for (auto& e : peaksData)
-            e.resize(1024*1024);
-
-    }
+    
     void clearAudio(int startSample, int endSample, int whichbuffer)
     {
         
@@ -2277,6 +2285,22 @@ int main(int argc, char** argv)
         if (drsrc->importFile(ifn,i))
         {
             std::cout << "success\n";
+            
+            if (i == 0)
+            {
+                auto markers = drsrc->m_media_cues[i];
+                if (markers.size()>1)
+                {
+                    ge.m_markers.clear();
+                    for (auto& mark : markers)
+                    {
+                        float tpos = 1.0f/drsrc->getSourceNumSamples()*mark;
+                        ge.m_markers.push_back(tpos);
+                    }
+                }
+                
+            }
+            
         } else
         {
             std::cout << "failed\n";
@@ -2285,29 +2309,7 @@ int main(int argc, char** argv)
     
     AudioEngine aeng(&ge);
     loadSettings(aeng);
-    std::vector<float> markers = 
-    {
-        0,
-        355710,
-        1138773,
-        1472395,
-        2116041,
-        2247057,
-        2460433,
-        3641850,
-        4146105,
-        5755050,
-        7007349,
-        7386676,
-        8622510,
-        9223067,
-        9529413,
-        13048682,
-        13230000,
-    };
-    for (auto& e : markers)
-        e = 1.0/(300.0*44100) * e;
-    ge.m_markers = markers;
+    
     std::thread worker_th([&aeng,&midi_output,&quit_thread]()
     {
         worker_thread_func(midi_output.get(),aeng,quit_thread);
