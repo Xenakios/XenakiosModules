@@ -1678,8 +1678,8 @@ public:
             err = Pa_StartStream( stream );
             printError(err);
         }
-        
-        m_clap_host = std::make_unique<clap_processor>();
+        clap_info_item item{"/home/pi/.clap/Surge XT Effects.clap","",0};
+        m_clap_host = std::make_unique<clap_processor>(item);
         m_clap_host->exFIFO = &exFIFO;
         m_cpu_smoother.setRiseFall(1.0f,1.0f);
     }
@@ -2306,7 +2306,7 @@ int main(int argc, char** argv)
             std::cout << "failed\n";
         }
     }
-    clap_processor::scanClaps();
+    auto clapplugs = clap_processor::scanClaps();
     AudioEngine aeng(&ge);
     loadSettings(aeng);
     

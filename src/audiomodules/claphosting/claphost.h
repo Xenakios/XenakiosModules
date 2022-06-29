@@ -38,9 +38,12 @@ inline clap_plugin_entry_t *entryFromClapPath(const std::string &p)
 
 struct clap_info_item
 {
-    std::string clap_filepath;
-    std::string clap_plugname;
-    int sub_plugin_index = 0; 
+  clap_info_item() {}
+  clap_info_item(std::string path, std::string pname, int idx)
+    : clap_filepath(path), clap_plugname(pname), sub_plugin_index(idx) {}
+  std::string clap_filepath;
+  std::string clap_plugname;
+  int sub_plugin_index = 0; 
 };
 
 class clap_processor
@@ -49,7 +52,7 @@ public:
     bool m_inited = false;
     const clap_plugin_t* m_plug = nullptr;
     clap_plugin_entry_t* m_entry = nullptr;
-    clap_processor();
+    clap_processor(clap_info_item item);
     
     ~clap_processor();
     

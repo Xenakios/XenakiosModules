@@ -156,10 +156,10 @@ struct micro_output_events
     }
 };
 
-clap_processor::clap_processor()
+clap_processor::clap_processor(clap_info_item item)
 {
-    std::cout << "initing clap host processor...\n";
-    std::string cpath = "/home/pi/.clap/Surge XT Effects.clap";
+    std::cout << "initing clap host processor : " << item.clap_filepath << "\n";
+    std::string cpath = item.clap_filepath; // 
     auto entry = entryFromClapPath(cpath);
 
     if (!entry)
@@ -182,7 +182,7 @@ clap_processor::clap_processor()
         return;
     }
     
-    auto desc = fac->get_plugin_descriptor(fac, 0);
+    auto desc = fac->get_plugin_descriptor(fac, item.sub_plugin_index);
     std::string descname(desc->name);
     if (findStringIC(descname,"surge xt effects"))
     {
