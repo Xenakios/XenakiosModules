@@ -36,6 +36,13 @@ inline clap_plugin_entry_t *entryFromClapPath(const std::string &p)
     return (clap_plugin_entry_t *)iptr;
 }
 
+struct clap_info_item
+{
+    std::string clap_filepath;
+    std::string clap_plugname;
+    int sub_plugin_index = 0; 
+};
+
 class clap_processor
 {
 public:
@@ -56,6 +63,7 @@ public:
     json_t* dataToJson();
     std::string dataFromJson(json_t* j);
     choc::fifo::SingleReaderSingleWriterFIFO<std::function<void(void)>>* exFIFO = nullptr;
+    static std::vector<clap_info_item> scanClaps();
 private:
     std::vector<std::vector<float>> m_in_bufs;
     std::vector<float*> m_in_buf_ptrs;

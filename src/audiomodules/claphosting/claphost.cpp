@@ -475,3 +475,46 @@ void clap_processor::processAudio(float* buf, int nframes)
     }
     m_spinlock.unlock();   
 }
+
+std::vector<clap_info_item> clap_processor::scanClaps()
+{
+    std::vector<clap_info_item> results;
+    std::system("clap-info -s > clap-infos.json");
+    json_error_t err{};
+    auto json = json_load_file("clap-infos.json",0,&err);
+    if (json)
+    {
+        auto clapsarrj = json_object_get(json,"clap-files");
+        if (clapsarrj)
+        {
+            int numfiles = json_array_size(clapsarrj);
+            for (int i=0;i<numfiles;++i)
+            {
+                auto plugjson = json_array_get(clapsarrj,i);
+                auto plugpathjson = json_object_get(plugjson,"path");
+                if (plugpathjson)
+                {
+                    std::string temp(json_string_value(plugpathjson));
+                    auto pluginsarrjson = json_object_get(plugjson,"plugins");
+                    int numsubplugs = json_array_size(pluginsarrjson);
+                    for (int i=0;i<numsubplugs;++i)
+                    {
+                        auto subplugjson = json_array_get(pluginsarrjson,i);
+                        auto plugnamejson = json_object_get(subplugjson,"name");
+                        clap_info_item item;
+                        item.clap_filepath = temp;
+                        item.clap_plugname = json_string_value(plugnamejson);
+                        item.sub_plugin_index = i;
+                        results.push_back(item);
+                        std::cout << temp << " : " << item.clap_plugname << "\n";
+                    }
+                }
+            }
+        }
+        json_decref(json);
+    } else
+    {
+        std::cout << err.text << "\n";
+    }
+    return results;
+}

@@ -2306,7 +2306,7 @@ int main(int argc, char** argv)
             std::cout << "failed\n";
         }
     }
-    
+    clap_processor::scanClaps();
     AudioEngine aeng(&ge);
     loadSettings(aeng);
     
