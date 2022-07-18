@@ -9,12 +9,14 @@
 #include <string.hpp>
 #include <iomanip>
 #include "sndfile.h"
+#include "choc_AudioFileFormat.h"
 #endif
 #include <iostream>
 #include <thread>
 #include <mutex>
 #include "dr_wav.h"
 #include "choc_SingleReaderSingleWriterFIFO.h"
+
 
 class MultiBufferSource : public GrainAudioSource
 {
