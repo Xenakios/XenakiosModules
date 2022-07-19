@@ -6,8 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 include_directories(
 claphosting 
 /home/pi/codestuff/clap/include 
-/home/pi/codestuff/choc/containers
-/home/pi/codestuff/choc/audio
+../../dep/choc/containers
+../../dep/choc/audio
 ../../src/include 
 ../../../Rack-SDK/include 
 ../../../Rack-SDK/include/simd 
