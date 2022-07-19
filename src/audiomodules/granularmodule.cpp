@@ -6,6 +6,9 @@
 #include <system.hpp>
 #include <jansson.h>
 #include <sys/stat.h>
+#include <iostream>
+#include <mutex>
+#include <functional>
 #include <string.hpp>
 #include <iomanip>
 #include "sndfile.h"
