@@ -2025,10 +2025,23 @@ public:
                 cf(m_eng.m_par_waveshapemorph,delta*0.01f,0.0f,1.0f);
             
         }
+        if (m_page>=2) // control fx params
+        {
+            int paramindex = idx;
+            if (m_page == 3)
+                paramindex += 8;
+            m_eng.m_clap_host->incDecParameter(paramindex,delta);
+        }
     }
     void onCrossFader(float val) override
     {
-
+        float bigfadernorm = clamp(val,0.0f,1.0f);
+        if (m_eng.m_cur_playstate>0 && m_shiftstate == 0)
+            m_eng.m_par_scanpos = clamp(bigfadernorm,0.0f,1.0f);
+        if (m_eng.m_cur_playstate>0 && m_shiftstate == 1)
+            m_eng.m_par_regionselect = clamp(bigfadernorm,0.0f,1.0f);
+        if (m_eng.m_cur_playstate==0 && m_shiftstate == 0)
+            m_eng.m_par_regionselect = clamp(bigfadernorm,0.0f,1.0f);
     }
     void onStepPage(int step) override
     {
