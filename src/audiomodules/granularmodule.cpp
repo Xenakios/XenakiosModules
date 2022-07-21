@@ -2007,24 +2007,23 @@ public:
                 cf(m_eng.m_par_playrate,delta*0.02f,-2.0f,2.0f);
             else if (idx == 1 && m_page == 0)
                 cf(m_eng.m_par_pitch,delta*0.1f,-24.0f,24.0f);
-            /*
-            else if (msg[1] == 65 && eng->m_page_state == 1)
-                cf(eng->m_par_pitchsrpead,delta*0.01f,-1.0f,1.0f);
-            else if (msg[1] == 66)
-                cf(eng->m_par_srcposrand,delta*0.01,0.0f,1.0f);
-            else if (msg[1] == 67)
-                cf(eng->m_par_lenmultip,delta*0.01,0.0f,1.0f);
-            else if (msg[1] == 68)
-                cf(eng->m_par_grainrate,delta*0.02f,-1.0f,7.0f);
-            else if (msg[1] == 69)
-                cf(eng->m_par_reverseprob,delta*0.01f,0.0f,1.0f);
-            else if (msg[1] == 70)
-                cf(eng->m_par_stereo_spread,delta*0.02f,-1.0f,1.0f);
-            else if (msg[1] == 71 && eng->m_page_state == 0)
-                cf(eng->m_par_inputmix,delta*0.01f,0.0f,1.0f);
-            else if (msg[1] == 71 && eng->m_page_state == 1)
-                cf(eng->m_par_waveshapemorph,delta*0.01f,0.0f,1.0f);
-            */
+            else if (idx == 1 && m_page == 1)
+                cf(m_eng.m_par_pitchsrpead,delta*0.01f,-1.0f,1.0f);
+            else if (idx == 2)
+                cf(m_eng.m_par_srcposrand,delta*0.01,0.0f,1.0f);
+            else if (idx == 3)
+                cf(m_eng.m_par_lenmultip,delta*0.01,0.0f,1.0f);
+            else if (idx == 4)
+                cf(m_eng.m_par_grainrate,delta*0.02f,-1.0f,7.0f);
+            else if (idx == 5)
+                cf(m_eng.m_par_reverseprob,delta*0.01f,0.0f,1.0f);
+            else if (idx == 6)
+                cf(m_eng.m_par_stereo_spread,delta*0.02f,-1.0f,1.0f);
+            else if (idx == 7 && m_page == 0)
+                cf(m_eng.m_par_inputmix,delta*0.01f,0.0f,1.0f);
+            else if (idx == 7 && m_page == 1)
+                cf(m_eng.m_par_waveshapemorph,delta*0.01f,0.0f,1.0f);
+            
         }
     }
     void onCrossFader(float val) override
@@ -2040,6 +2039,7 @@ public:
         if (temp>3)
             temp = 0;
         m_page = temp;
+        m_eng.stepPage(step);
     }
     void onButton(int idx, bool down) override
     {
