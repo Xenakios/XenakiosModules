@@ -1615,6 +1615,7 @@ Model* modelXGranular = createModel<XGranularModule, XGranularWidget>("XGranular
 #include <type_traits>
 #include "claphost.h"
 #include <ncurses.h>
+#include "nocturncontrol.h"
 
 class AudioEngine
 {
@@ -1984,6 +1985,76 @@ public:
 
 };
 
+class GrlooperNocturnControl : public NocturnControlBase
+{
+public:
+    GrlooperNocturnControl(AudioEngine& eng) : m_eng(eng)
+    {
+
+    }
+    void onEncoder(int idx, int step) override
+    {
+        auto cf = [](std::atomic<float>& par,float step,float minv,float maxv)
+        {
+            float temp = par + step;
+            temp = clamp(temp,minv,maxv);
+            par = temp;
+        };
+        float delta = step;
+        if (m_page < 2)
+        {
+            if (idx == 0)
+                cf(m_eng.m_par_playrate,delta*0.02f,-2.0f,2.0f);
+            else if (idx == 1 && m_page == 0)
+                cf(m_eng.m_par_pitch,delta*0.1f,-24.0f,24.0f);
+            /*
+            else if (msg[1] == 65 && eng->m_page_state == 1)
+                cf(eng->m_par_pitchsrpead,delta*0.01f,-1.0f,1.0f);
+            else if (msg[1] == 66)
+                cf(eng->m_par_srcposrand,delta*0.01,0.0f,1.0f);
+            else if (msg[1] == 67)
+                cf(eng->m_par_lenmultip,delta*0.01,0.0f,1.0f);
+            else if (msg[1] == 68)
+                cf(eng->m_par_grainrate,delta*0.02f,-1.0f,7.0f);
+            else if (msg[1] == 69)
+                cf(eng->m_par_reverseprob,delta*0.01f,0.0f,1.0f);
+            else if (msg[1] == 70)
+                cf(eng->m_par_stereo_spread,delta*0.02f,-1.0f,1.0f);
+            else if (msg[1] == 71 && eng->m_page_state == 0)
+                cf(eng->m_par_inputmix,delta*0.01f,0.0f,1.0f);
+            else if (msg[1] == 71 && eng->m_page_state == 1)
+                cf(eng->m_par_waveshapemorph,delta*0.01f,0.0f,1.0f);
+            */
+        }
+    }
+    void onCrossFader(float val) override
+    {
+
+    }
+    void onStepPage(int step) override
+    {
+        int temp = m_page;
+        temp += step;
+        if (temp<0)
+            temp = 3;
+        if (temp>3)
+            temp = 0;
+        m_page = temp;
+    }
+    void onButton(int idx, bool down) override
+    {
+        if (idx == 1)
+            m_eng.setNextPlayMode();
+    }
+    void onLearnButton() override
+    {
+
+    }
+private:
+    AudioEngine& m_eng;
+    std::atomic<int> m_page{0};
+};
+
 void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *userData )
 {
     if (!message)
@@ -2068,7 +2139,6 @@ void mymidicb( double /*timeStamp*/, std::vector<unsigned char> *message, void *
             if (eng->m_cur_playstate==0 && eng->m_shift_state == 0)
                 eng->m_par_regionselect = clamp(bigfadernorm,0.0f,1.0f);
         }
-        float norm = 1.0/127*msg[2];
         float delta = 0.0f;
         float stepsmall = 1.0f;
         float steplarge = 2.0f;
@@ -2319,7 +2389,8 @@ int main(int argc, char** argv)
     {
         worker_thread_func(midi_output.get(),aeng,quit_thread);
     });
-    midi_input->setCallback(mymidicb,(void*)&aeng);
+    GrlooperNocturnControl noct_contr(aeng);
+    midi_input->setCallback(GrlooperNocturnControl::MidiCallback,(void*)&noct_contr);
     auto cf = [](char c, char incc, char decc, std::atomic<float>& par, float step)
     {
         if (c == incc)
