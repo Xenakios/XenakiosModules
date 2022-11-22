@@ -648,6 +648,36 @@ public:
         }
         bank_b.scales.push_back(scale);
         
+        scale = KlangScale();
+        scale.name = "Pi divided by 8";
+        i=0;
+        freq = root_freq;
+        double pi_in_semitones = 12.0*std::log2(3.141592653);
+        while (freq<20000.0)
+        {
+            double p = pi_in_semitones/8*i;
+            if (p>128.0f)
+                break;
+            scale.pitches.push_back(p);
+            ++i;
+        }
+        bank_b.scales.push_back(scale);
+
+        scale = KlangScale();
+        scale.name = "Pi divided by 13";
+        i=0;
+        freq = root_freq;
+        
+        while (freq<20000.0)
+        {
+            double p = pi_in_semitones/13*i;
+            if (p>128.0f)
+                break;
+            scale.pitches.push_back(p);
+            ++i;
+        }
+        bank_b.scales.push_back(scale);
+
         m_all_banks.push_back(bank_b);
         scalafiles.clear();
         
