@@ -1456,6 +1456,7 @@ public:
         IN_WARP,
         IN_SCALE,
         IN_FREEZE,
+        IN_SPREAD_DIST,
         IN_LAST
     };
     enum PARAMETERS
@@ -1491,6 +1492,7 @@ public:
         PAR_FM_MODE,
         PAR_FOLD_MODE,
         PAR_HIPASSFREQ,
+        PAR_SPREAD_DIST_ATTN,
         PAR_LAST
     };
     XScaleOsc()
@@ -1516,7 +1518,8 @@ public:
         getParamQuantity(PAR_NUM_OUTPUTS)->snapEnabled = true;
         configParam(PAR_FREQSMOOTH,0.0f,1.0f,0.1f,"Pitch smoothing");
         configParam(PAR_SPREAD_DIST,0.0f,1.0f,0.5f,"Spread distribution");
-        
+        configParam(PAR_SPREAD_DIST_ATTN,-1.0f,1.0f,0.0f,"Spread distribution CV level");
+
         configParam(PAR_SPREAD_ATTN,-1.0f,1.0f,0.0f,"Spread CV level");
         configParam(PAR_ROOT_ATTN,-1.0f,1.0f,1.0f,"Root CV level");
         configParam(PAR_BAL_ATTN,-1.0f,1.0f,0.0f,"Balance CV level");
@@ -1616,7 +1619,9 @@ public:
             m_osc.setOscCount(osccount);
             float spread = getModParValue(PAR_SPREAD,IN_SPREAD,PAR_SPREAD_ATTN);
             m_osc.setSpread(spread);
+            
             float sdist = params[PAR_SPREAD_DIST].getValue();
+            sdist += inputs[IN_SPREAD_DIST].getVoltage() * params[PAR_SPREAD_DIST_ATTN].getValue() * 0.1f;
             m_osc.setSpreadDistribution(sdist);
             
             float warp = getModParValue(PAR_WARP,IN_WARP,PAR_WARP_ATTN);
@@ -1810,7 +1815,7 @@ public:
             -1,-1,xc,yc,false));
         xc += 82.0f;
         addChild(kwid = new KnobInAttnWidget(this,"SPREAD DISTR",XScaleOsc::PAR_SPREAD_DIST,
-            -1,-1,xc,yc,false));
+            XScaleOsc::IN_SPREAD_DIST,XScaleOsc::PAR_SPREAD_DIST_ATTN,xc,yc,false));
         xc += 82.0f;
         addChild(kwid = new KnobInAttnWidget(this,"XFADE MODE",XScaleOsc::PAR_XFADEMODE,
             -1,-1,xc,yc,false));
