@@ -652,7 +652,9 @@ public:
         scale.name = "Pi divided by 8";
         i=0;
         
-        double pi_in_semitones = 12.0*std::log2(3.141592653);
+        double pi_in_semitones = 12.0*std::log2(M_PI);
+        double e_in_semitones = 12.0*std::log2(M_E);
+
         while (true)
         {
             double p = pi_in_semitones/8*i;
@@ -671,6 +673,21 @@ public:
         while (true)
         {
             double p = pi_in_semitones/13*i;
+            if (p>128.0f)
+                break;
+            scale.pitches.push_back(p);
+            ++i;
+        }
+        bank_b.scales.push_back(scale);
+
+        scale = KlangScale();
+        scale.name = "e divided by 9";
+        i=0;
+        freq = root_freq;
+        
+        while (true)
+        {
+            double p = e_in_semitones/9*i;
             if (p>128.0f)
                 break;
             scale.pitches.push_back(p);
