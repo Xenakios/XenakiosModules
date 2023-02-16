@@ -8,7 +8,7 @@ First release with some of the modules enabled is planned for after Rack 2 has b
 
 ## WeightedRandom
 
-Distributes incoming gate signals up to 8 outputs with weighted random probabilities. Similar to a Bernouilli gate but has 8 outputs
+Distributes incoming gate signals up to 8 outputs with weighted random probabilities. Similar to a Bernoulli gate but has 8 outputs
 instead of 2.
 
 ## Histogram
