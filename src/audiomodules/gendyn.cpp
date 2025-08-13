@@ -112,7 +112,7 @@ inline void sanitizeRange(float &a, float &b, float mindiff)
 enum Distributions
 {
     DIST_Uniform,
-    DIST_Gauss,
+    DIST_HypCos,
     DIST_Cauchy,
     LASTDIST
 };
@@ -282,21 +282,6 @@ class GendynOsc
     }
     void updateTable()
     {
-        if (m_amp_flux < 0.25f)
-        {
-            float norm = rescale(m_amp_flux, 0.0f, 0.25f, 0.0f, 1.0f);
-            // m_amp_dev = norm*
-        }
-        else if (m_amp_flux >= 0.25f && m_amp_flux < 0.5f)
-        {
-        }
-        else if (m_amp_flux >= 0.5f && m_amp_flux < 0.75f)
-        {
-        }
-        else
-        {
-        }
-
         m_amp_primary_low_barrier = -rescale(m_amp_flux, 0.0f, 1.0f, 0.01, 1.0f);
         m_amp_primary_high_barrier = -m_amp_primary_low_barrier;
         m_amp_dev = m_amp_flux * (m_amp_primary_high_barrier - m_amp_primary_low_barrier);
@@ -306,7 +291,7 @@ class GendynOsc
         for (int i = 0; i < m_num_segs; ++i)
         {
             float x_p = m_nodes[i].m_x_prim;
-            if (m_time_dist == Distributions::DIST_Gauss)
+            if (m_time_dist == Distributions::DIST_HypCos)
                 x_p += m_rand.nextHypCos(m_time_mean, m_time_dev);
             else if (m_time_dist == Distributions::DIST_Cauchy)
                 x_p += m_rand.nextCauchy(m_time_mean, m_time_dev);
@@ -343,7 +328,7 @@ class GendynOsc
     float m_time_secondary_low_barrier = 5.0;
     float m_time_secondary_high_barrier = 20.0;
 
-    Distributions m_time_dist = Distributions::DIST_Gauss;
+    Distributions m_time_dist = Distributions::DIST_HypCos;
     float m_time_mean = 0.0f;
     float m_time_dev = 0.01;
 
@@ -538,8 +523,7 @@ void GendynModule::process(const ProcessArgs &args)
                 bar1 = bar0 + 0.01;
             m_oscs[i].m_time_primary_low_barrier = bar0;
             m_oscs[i].m_time_primary_high_barrier = bar1;
-            float aflux = aflux_base;
-            aflux += 0.1 * inputs[IN_AMP_FLUX].getVoltage(i);
+            float aflux = aflux_base + 0.1 * inputs[IN_AMP_FLUX].getVoltage(i);
             // osc clamps
             m_oscs[i].setAmplitudeFlux(aflux);
         }
