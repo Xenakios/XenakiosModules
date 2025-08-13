@@ -270,11 +270,7 @@ class GendynOsc
             m_hpfilt.setParameters(dsp::BiquadFilter::HIGHPASS, normfreq, q, 1.0f);
         }
     }
-    void setAmplitudeFlux(float f)
-    {
-        f = clamp(f, 0.0f, 1.0f);
-        m_amp_flux = f;
-    }
+    void setAmplitudeFlux(float f) { m_amp_flux = clamp(f, 0.0f, 1.0f); }
 
   private:
     int m_cur_node = 0;
@@ -311,7 +307,7 @@ class GendynModule : public rack::Module
         PAR_TimeSecondaryBarrierLow,
         PAR_TimeSecondaryBarrierHigh,
         PAR_TimeMean,
-        PAR_TimeDeviation,
+        PAR_TIME_DEVIATION,
         PAR_AMP_RESET_MODE,
         PAR_AMP_BEHAVIOR,
         PAR_PolyphonyVoices,
@@ -323,6 +319,7 @@ class GendynModule : public rack::Module
         IN_RESET,
         IN_PITCH,
         IN_PITCH_FLUX,
+        IN_AMP_FLUX,
         IN_LAST
     };
     enum OUTPUTS
@@ -358,7 +355,7 @@ GendynModule::GendynModule()
     configParam(PAR_TIME_DISTRIBUTION, 0.0, LASTDIST - 1, 1.0, "Time distribution");
     configParam(PAR_TimeMean, -5.0, 5.0, 0.0, "Time mean");
     configParam(PAR_TIME_RESET_MODE, 0.0, LASTRM, RM_Avg, "Time reset mode");
-    configParam(PAR_TimeDeviation, 0.0, 5.0, 0.1, "Time deviation");
+    configParam(PAR_TIME_DEVIATION, 0.0, 5.0, 0.1, "Time deviation");
     configParam(PAR_TimePrimaryBarrierLow, -5.0, 5.0, -1.0, "Time primary low barrier");
     configParam(PAR_TimePrimaryBarrierHigh, -5.0, 5.0, 1.0, "Time primary high barrier");
     configParam(PAR_TimeSecondaryBarrierLow, -60.0, 60.0, -1.0, "Time sec low barrier");
@@ -397,16 +394,14 @@ void GendynModule::process(const ProcessArgs &args)
     outputs[1].setChannels(numvoices);
     float numsegs = params[PAR_NUM_SEGS].getValue();
     numsegs = clamp(numsegs, 3.0, 64.0);
-    float timedev = params[PAR_TimeDeviation].getValue();
-    timedev += 2.5 * inputs[IN_PITCH_FLUX].getVoltage(0);
-    timedev = clamp(timedev, 0.0f, 5.0f);
-
+    const float timedev_base = params[PAR_TIME_DEVIATION].getValue();
     float sectimebarlow = params[PAR_TimeSecondaryBarrierLow].getValue();
     sectimebarlow = clamp(sectimebarlow, 1.0, 64.0);
     float sectimebarhigh = params[PAR_TimeSecondaryBarrierHigh].getValue();
     sectimebarhigh = clamp(sectimebarhigh, 1.0, 64.0);
     sanitizeRange(sectimebarlow, sectimebarhigh, 1.0f);
-
+    const float aflux_base = params[PAR_AMP_BEHAVIOR].getValue();
+    const float pitch_base = params[PAR_CenterFrequency].getValue();
     if (m_divider.process())
     {
         for (int i = 0; i < numvoices; ++i)
@@ -414,10 +409,13 @@ void GendynModule::process(const ProcessArgs &args)
             m_oscs[i].setSampleRate(args.sampleRate);
 
             m_oscs[i].setNumSegments(numsegs);
+            float timedev = timedev_base + 2.5 * inputs[IN_PITCH_FLUX].getVoltage(i);
+            timedev = clamp(timedev, 0.0f, 5.0f);
             m_oscs[i].m_time_dev = timedev;
             m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
-            float pitch = params[PAR_CenterFrequency].getValue();
-            pitch += rescale(inputs[IN_PITCH].getVoltage(i), -5.0f, 5.0f, -60.0f, 60.0f);
+
+            float pitch =
+                pitch_base + rescale(inputs[IN_PITCH].getVoltage(i), -5.0f, 5.0f, -60.0f, 60.0f);
             pitch = clamp(pitch, -60.0f, 60.0f);
             float centerfreq = dsp::FREQ_C4 * pow(2.0f, 1.0f / 12.0f * pitch);
             m_oscs[i].setFrequencies(centerfreq, params[PAR_TimeSecondaryBarrierLow].getValue(),
@@ -430,8 +428,10 @@ void GendynModule::process(const ProcessArgs &args)
                 bar1 = bar0 + 0.01;
             m_oscs[i].m_time_primary_low_barrier = bar0;
             m_oscs[i].m_time_primary_high_barrier = bar1;
-            float alux = params[PAR_AMP_BEHAVIOR].getValue();
-            m_oscs[i].setAmplitudeFlux(alux);
+            float aflux = aflux_base;
+            aflux += 0.1 * inputs[IN_AMP_FLUX].getVoltage(i);
+            // osc clamps
+            m_oscs[i].setAmplitudeFlux(aflux);
         }
     }
     if (shouldReset == true)
@@ -471,7 +471,7 @@ GendynWidget::GendynWidget(GendynModule *m)
     addChild(new KnobInAttnWidget(this, "PITCH", GendynModule::PAR_CenterFrequency,
                                   GendynModule::IN_PITCH, -1, xc, yc));
     xc += 82.0f;
-    addChild(new KnobInAttnWidget(this, "PITCH FLUX", GendynModule::PAR_TimeDeviation,
+    addChild(new KnobInAttnWidget(this, "PITCH FLUX", GendynModule::PAR_TIME_DEVIATION,
                                   GendynModule::IN_PITCH_FLUX, -1, xc, yc));
     xc += 82.0f;
     addChild(new KnobInAttnWidget(this, "PITCH MIN", GendynModule::PAR_TimeSecondaryBarrierLow, -1,
@@ -481,8 +481,8 @@ GendynWidget::GendynWidget(GendynModule *m)
                                   -1, xc, yc));
     yc += 47;
     xc = 1;
-    addChild(new KnobInAttnWidget(this, "AMPLITUDE FLUX", GendynModule::PAR_AMP_BEHAVIOR, -1, -1,
-                                  xc, yc));
+    addChild(new KnobInAttnWidget(this, "AMPLITUDE FLUX", GendynModule::PAR_AMP_BEHAVIOR,
+                                  GendynModule::IN_AMP_FLUX, -1, xc, yc));
     xc += 82.0f;
     addChild(new KnobInAttnWidget(this, "NUM SEGMENTS", GendynModule::PAR_NUM_SEGS, -1, -1, xc, yc,
                                   true));
