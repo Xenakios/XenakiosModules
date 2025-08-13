@@ -204,6 +204,12 @@ class GendynOsc
                     m_cur_dur = m_nodes[m_cur_node].m_x_sec;
                     m_cur_y0 = m_nodes[m_cur_node].m_y_sec;
                     m_next_segment_time = m_cur_dur;
+                    if (m_deferred_num_segs > 0)
+                    {
+                        m_num_segs = m_deferred_num_segs;
+                        m_deferred_num_segs = 0;
+                    }
+
                     updateTable();
                     m_cur_y1 = m_nodes.front().m_y_sec;
                     m_cur_node = 0;
@@ -331,6 +337,7 @@ class GendynOsc
         // m_next_segment_time = m_nodes[0].m_x_sec;
     }
     int m_num_segs = 11;
+    int m_deferred_num_segs = 0;
     float m_time_primary_low_barrier = -1.0;
     float m_time_primary_high_barrier = 1.0;
     float m_time_secondary_low_barrier = 5.0;
@@ -348,6 +355,8 @@ class GendynOsc
     float m_curFrequencyVolts = 0.0f;
     void setNumSegments(int n)
     {
+        m_deferred_num_segs = clamp(n, 3, 64);
+        return;
         if (n != m_num_segs)
         {
             m_num_segs = clamp(n, 3, 64);
@@ -508,7 +517,7 @@ void GendynModule::process(const ProcessArgs &args)
         for (int i = 0; i < numvoices; ++i)
         {
             m_oscs[i].setSampleRate(args.sampleRate);
-			m_oscs[i].m_time_dist = (Distributions)(int)params[PAR_TIME_DISTRIBUTION].getValue();
+            m_oscs[i].m_time_dist = (Distributions)(int)params[PAR_TIME_DISTRIBUTION].getValue();
             m_oscs[i].setNumSegments(numsegs);
             float timedev = timedev_base + 2.5 * inputs[IN_PITCH_FLUX].getVoltage(i);
             timedev = clamp(timedev, 0.0f, 5.0f);
