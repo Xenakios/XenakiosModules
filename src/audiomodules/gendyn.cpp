@@ -111,10 +111,10 @@ inline void sanitizeRange(float &a, float &b, float mindiff)
 
 enum Distributions
 {
-    DIST_Uniform,
-    DIST_HypCos,
-    DIST_Cauchy,
-    LASTDIST
+    DIST_UNIFORM,
+    DIST_HYPCOS,
+    DIST_CAUCHY,
+    DIST_LAST
 };
 
 enum ResetModes
@@ -291,9 +291,9 @@ class GendynOsc
         for (int i = 0; i < m_num_segs; ++i)
         {
             float x_p = m_nodes[i].m_x_prim;
-            if (m_time_dist == Distributions::DIST_HypCos)
+            if (m_time_dist == Distributions::DIST_HYPCOS)
                 x_p += m_rand.nextHypCos(m_time_mean, m_time_dev);
-            else if (m_time_dist == Distributions::DIST_Cauchy)
+            else if (m_time_dist == Distributions::DIST_CAUCHY)
                 x_p += m_rand.nextCauchy(m_time_mean, m_time_dev);
             else
                 x_p += m_rand.nextHypCos(m_time_mean, m_time_dev);
@@ -317,7 +317,7 @@ class GendynOsc
             m_nodes[i].m_y_sec = y_s;
         }
         float freq = m_sampleRate / segAcc;
-        float volts = custom_log(freq / rack::dsp::FREQ_C4, 2.0f);
+        float volts = std::log2(freq / rack::dsp::FREQ_C4);
         m_curFrequencyVolts = clamp(volts, -5.0, 5.0);
         // m_next_segment_time = m_nodes[0].m_x_sec;
     }
@@ -328,7 +328,7 @@ class GendynOsc
     float m_time_secondary_low_barrier = 5.0;
     float m_time_secondary_high_barrier = 20.0;
 
-    Distributions m_time_dist = Distributions::DIST_HypCos;
+    Distributions m_time_dist = Distributions::DIST_HYPCOS;
     float m_time_mean = 0.0f;
     float m_time_dev = 0.01;
 
@@ -397,16 +397,16 @@ class GendynModule : public rack::Module
         PAR_NUM_SEGS,
         PAR_TIME_DISTRIBUTION,
         PAR_TIME_RESET_MODE,
-        PAR_TimePrimaryBarrierLow,
-        PAR_TimePrimaryBarrierHigh,
+        PAR_TIME_PRIMARY_BARRIER_LOW,
+        PAR_TIME_PRIMARY_BARRIER_HIGH,
         PAR_TimeSecondaryBarrierLow,
         PAR_TimeSecondaryBarrierHigh,
-        PAR_TimeMean,
+        PAR_TIME_MEAN,
         PAR_TIME_DEVIATION,
         PAR_AMP_RESET_MODE,
         PAR_AMP_BEHAVIOR,
         PAR_PolyphonyVoices,
-        PAR_CenterFrequency,
+        PAR_CENTER_FREQUENCY,
         PAR_LAST
     };
     enum INPUTS
@@ -447,17 +447,17 @@ GendynModule::GendynModule()
         m_oscs[i].setRandomSeed(i);
     config(PARAMS::PAR_LAST, IN_LAST, OUT_LAST);
     configParam(PAR_NUM_SEGS, 3.0, 64.0, 10.0, "Num segments");
-    auto parq = configParam(PAR_TIME_DISTRIBUTION, 0.0, LASTDIST - 1, 1.0, "Time distribution");
-    configParam(PAR_TimeMean, -5.0, 5.0, 0.0, "Time mean");
+    auto parq = configParam(PAR_TIME_DISTRIBUTION, 0.0, DIST_LAST - 1, 1.0, "Time distribution");
+    configParam(PAR_TIME_MEAN, -5.0, 5.0, 0.0, "Time mean");
     configParam(PAR_TIME_RESET_MODE, 0.0, LASTRM, RM_Avg, "Time reset mode");
     configParam(PAR_TIME_DEVIATION, 0.0, 5.0, 0.1, "Time deviation");
-    configParam(PAR_TimePrimaryBarrierLow, -5.0, 5.0, -1.0, "Time primary low barrier");
-    configParam(PAR_TimePrimaryBarrierHigh, -5.0, 5.0, 1.0, "Time primary high barrier");
+    configParam(PAR_TIME_PRIMARY_BARRIER_LOW, -5.0, 5.0, -1.0, "Time primary low barrier");
+    configParam(PAR_TIME_PRIMARY_BARRIER_HIGH, -5.0, 5.0, 1.0, "Time primary high barrier");
     configParam(PAR_TimeSecondaryBarrierLow, -60.0, 60.0, -1.0, "Time sec low barrier");
     configParam(PAR_TimeSecondaryBarrierHigh, -60.0, 60.0, 1.0, "Time sec high barrier");
     configParam(PAR_AMP_RESET_MODE, 0.0, LASTRM, RM_UniformRandom, "Amp reset mode");
     configParam(PAR_PolyphonyVoices, 0.0, 16.0, 0, "Polyphony voices");
-    configParam(PAR_CenterFrequency, -54.f, 54.f, 0.f, "Center frequency", " Hz",
+    configParam(PAR_CENTER_FREQUENCY, -54.f, 54.f, 0.f, "Center frequency", " Hz",
                 dsp::FREQ_SEMITONE, dsp::FREQ_C4);
     configParam(PAR_AMP_BEHAVIOR, 0.0, 1.0f, 0.1f, "Amplitude flux");
     m_divider.setDivision(16);
@@ -496,7 +496,7 @@ void GendynModule::process(const ProcessArgs &args)
     sectimebarhigh = clamp(sectimebarhigh, 1.0, 64.0);
     sanitizeRange(sectimebarlow, sectimebarhigh, 1.0f);
     const float aflux_base = params[PAR_AMP_BEHAVIOR].getValue();
-    const float pitch_base = params[PAR_CenterFrequency].getValue();
+    const float pitch_base = params[PAR_CENTER_FREQUENCY].getValue();
     if (m_divider.process())
     {
         for (int i = 0; i < numvoices; ++i)
@@ -507,7 +507,7 @@ void GendynModule::process(const ProcessArgs &args)
             float timedev = timedev_base + 2.5 * inputs[IN_PITCH_FLUX].getVoltage(i);
             timedev = clamp(timedev, 0.0f, 5.0f);
             m_oscs[i].m_time_dev = timedev;
-            m_oscs[i].m_time_mean = params[PAR_TimeMean].getValue();
+            m_oscs[i].m_time_mean = params[PAR_TIME_MEAN].getValue();
 
             float pitch =
                 pitch_base + rescale(inputs[IN_PITCH].getVoltage(i), -5.0f, 5.0f, -60.0f, 60.0f);
@@ -517,8 +517,8 @@ void GendynModule::process(const ProcessArgs &args)
                                      params[PAR_TimeSecondaryBarrierHigh].getValue());
             // m_oscs[i].m_time_secondary_low_barrier = sectimebarlow;
             // m_oscs[i].m_time_secondary_high_barrier = sectimebarhigh;
-            float bar0 = params[PAR_TimePrimaryBarrierLow].getValue();
-            float bar1 = params[PAR_TimePrimaryBarrierHigh].getValue();
+            float bar0 = params[PAR_TIME_PRIMARY_BARRIER_LOW].getValue();
+            float bar1 = params[PAR_TIME_PRIMARY_BARRIER_HIGH].getValue();
             if (bar1 <= bar0)
                 bar1 = bar0 + 0.01;
             m_oscs[i].m_time_primary_low_barrier = bar0;
@@ -534,7 +534,7 @@ void GendynModule::process(const ProcessArgs &args)
         {
             m_oscs[i].m_ampResetMode = params[PAR_AMP_RESET_MODE].getValue();
             m_oscs[i].m_timeResetMode = params[PAR_TIME_RESET_MODE].getValue();
-            float pitch = params[PAR_CenterFrequency].getValue();
+            float pitch = params[PAR_CENTER_FREQUENCY].getValue();
             pitch += rescale(inputs[IN_PITCH].getVoltage(i), -5.0f, 5.0f, -60.0f, 60.0f);
             pitch = clamp(pitch, -60.0f, 60.0f);
             float centerfreq = dsp::FREQ_C4 * pow(2.0f, 1.0f / 12.0f * pitch);
@@ -562,7 +562,7 @@ GendynWidget::GendynWidget(GendynModule *m)
     port = new PortWithBackGround(m, this, GendynModule::IN_RESET, 62, 30, "RESET", false);
     float xc = 1.0f;
     float yc = 80.0f;
-    addChild(new KnobInAttnWidget(this, "PITCH", GendynModule::PAR_CenterFrequency,
+    addChild(new KnobInAttnWidget(this, "PITCH", GendynModule::PAR_CENTER_FREQUENCY,
                                   GendynModule::IN_PITCH, -1, xc, yc));
     xc += 82.0f;
     addChild(new KnobInAttnWidget(this, "PITCH FLUX", GendynModule::PAR_TIME_DEVIATION,
