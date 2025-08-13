@@ -447,7 +447,8 @@ GendynModule::GendynModule()
         m_oscs[i].setRandomSeed(i);
     config(PARAMS::PAR_LAST, IN_LAST, OUT_LAST);
     configParam(PAR_NUM_SEGS, 3.0, 64.0, 10.0, "Num segments");
-    auto parq = configParam(PAR_TIME_DISTRIBUTION, 0.0, DIST_LAST - 1, 1.0, "Time distribution");
+    configSwitch(PAR_TIME_DISTRIBUTION, 0.0, DIST_LAST - 1, 1.0, "Time distribution",
+                 {{"Uniform"}, {"HypCos (Gauss-like)"}, {"Cauchy"}});
     configParam(PAR_TIME_MEAN, -5.0, 5.0, 0.0, "Time mean");
     configParam(PAR_TIME_RESET_MODE, 0.0, LASTRM, RM_Avg, "Time reset mode");
     configParam(PAR_TIME_DEVIATION, 0.0, 5.0, 0.1, "Time deviation");
