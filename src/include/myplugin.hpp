@@ -9,6 +9,7 @@ extern Plugin *pluginInstance;
 // Declare each Model, defined in each module source file
 
 extern Model* modelGendynOSC;
+#ifdef HAVE_ALL_MODULES
 extern Model* modelPolyClock;
 extern Model* modelRandomClock;
 extern Model *modelXQuantizer;
@@ -30,3 +31,4 @@ extern Model* modelHistogram;
 extern Model* modelReducer;
 extern Model* modelCubeSymSeq;
 extern Model* modelTimeSeq;
+#endif

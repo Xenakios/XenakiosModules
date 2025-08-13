@@ -1,4 +1,4 @@
-#include "plugin.hpp"
+#include "myplugin.hpp"
 //#include "old/weightedrandom.h"
 // #include "old/xenutils.h"
 //#include "old/audiostretcher.h"
@@ -15,7 +15,10 @@ std::shared_ptr<rack::Font> getDefaultFont(int which)
 
 void init(Plugin *p) {
 	pluginInstance = p;
-	//p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));
+	
+	p->addModel(modelGendynOSC);
+#ifdef HAVE_ALL_MODULES
+	p->addModel(createModel<MyModule,MyModuleWidget>("Spatializer"));	
 	p->addModel(modelWeightGate);
 	p->addModel(modelHistogram);
 	
@@ -24,7 +27,7 @@ void init(Plugin *p) {
 	p->addModel(modelPolyClock);
 	p->addModel(modelReducer);
 	
-	p->addModel(modelGendynOSC);
+	
 	p->addModel(modelXRandom);
 	//p->addModel(modelXDerivator);
 #ifdef RBMODULE
@@ -45,5 +48,5 @@ void init(Plugin *p) {
 	p->addModel(modelXScaleOscillator);
 	p->addModel(modelCubeSymSeq);
 	p->addModel(modelTimeSeq);
-	
+#endif
 }

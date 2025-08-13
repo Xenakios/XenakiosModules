@@ -1,13 +1,17 @@
 # If RACK_DIR is not defined when calling the Makefile, default to two directories above
 RACK_DIR ?= ../../Rack-SDK
-
+CXXFLAGS += -std=c++20
 # CC:= clang
 # CXX:= clang++
 
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS += -Idep
 FLAGS += -Isrc/include
-FLAGS += -Idep/choc/containers
+# FLAGS += -Idep/choc/containers
+FLAGS += -Idep/choc
+FLAGS += -Idep/sst-basic-blocks/include
+# FLAGS += -_USE_MATH_DEFINES=1
+
 # FLAGS += -Idep/rubberband
 # FLAGS += -Idep/rubberband/src
 # FLAGS += -Idep/lua/src

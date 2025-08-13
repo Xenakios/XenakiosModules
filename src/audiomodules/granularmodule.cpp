@@ -19,7 +19,7 @@
 #include <thread>
 #include <mutex>
 #include "dr_wav.h"
-#include "choc_SingleReaderSingleWriterFIFO.h"
+#include "containers/choc_SingleReaderSingleWriterFIFO.h"
 
 #ifndef RAPIHEADLESS
 
