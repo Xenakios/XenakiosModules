@@ -5,6 +5,100 @@
 #include <random>
 #include "helperwidgets.h"
 
+/* Remaps a value from a source range to a target range. Explodes if source range has zero size.
+ */
+template <typename Type>
+inline Type mapvalue(Type sourceValue, Type sourceRangeMin, Type sourceRangeMax,
+                     Type targetRangeMin, Type targetRangeMax)
+{
+    return targetRangeMin + ((targetRangeMax - targetRangeMin) * (sourceValue - sourceRangeMin)) /
+                                (sourceRangeMax - sourceRangeMin);
+}
+
+/*
+ The C++ standard library random stuff can be a bit bonkers(*) at times,
+ so we have this custom class which has a decent enough random base generator
+ and some simple methods for getting values out as floats etc...
+
+(*) See for example the Microsoft implementation of std::uniform_int_distribution...
+Or the Cauchy distribution, which won't allow a scale factor of 0 to be used, while
+useful for our audio/music applications as a special case.
+*/
+
+struct Xoroshiro128Plus
+{
+    // have some non-zero init state to avoid the zero init state problem
+    // which would cause only zeros to be produced
+    uint64_t state[2] = {4294967311, 100007};
+    Xoroshiro128Plus()
+    {
+        // experimentally known that after seeding, useful to advance the state,
+        // otoh this might be optimized out by the compiler...?
+        operator()();
+    }
+    Xoroshiro128Plus(uint64_t s1, uint64_t s2) : state{s1, s2} { operator()(); }
+    void seed(uint64_t s0, uint64_t s1)
+    {
+        state[0] = s0;
+        state[1] = s1;
+        operator()();
+    }
+
+    bool isSeeded() { return state[0] || state[1]; }
+
+    static uint64_t rotl(uint64_t x, int k) { return (x << k) | (x >> (64 - k)); }
+
+    uint64_t operator()()
+    {
+        uint64_t s0 = state[0];
+        uint64_t s1 = state[1];
+        uint64_t result = s0 + s1;
+
+        s1 ^= s0;
+        state[0] = rotl(s0, 55) ^ s1 ^ (s1 << 14);
+        state[1] = rotl(s1, 36);
+
+        return result;
+    }
+    constexpr uint64_t min() const { return 0; }
+    constexpr uint64_t max() const { return UINT64_MAX; }
+    double nextFloat64() { return (*this)() * 5.421010862427522e-20; }
+    uint64_t nextUint64() { return (*this)(); }
+    uint32_t nextUint32()
+    {
+        // Take top 32 bits which has better randomness properties
+        return operator()() >> 32;
+    }
+    float nextFloat() { return nextUint32() * 2.32830629e-10f; }
+    float nextFloatInRange(float minvalue, float maxvalue)
+    {
+        return mapvalue(nextFloat(), 0.0f, 1.0f, minvalue, maxvalue);
+    }
+    double nextFloat64InRange(double minvalue, double maxvalue)
+    {
+        return mapvalue(nextFloat64(), 0.0, 1.0, minvalue, maxvalue);
+    }
+    int nextInt32InRange(int minval, int maxval)
+    {
+        assert(maxval > minval);
+        return minval + (nextUint32() % (maxval - minval));
+    }
+    double nextCauchy(double location, double scale)
+    {
+        double z = nextFloat64();
+        return location + scale * std::tan(M_PI * (z - 0.5));
+    }
+    // pretty good substitute for Gauss
+    double nextHypCos(double location, double scale)
+    {
+        // we can't do the final calculation with exactly 0.0 or 1.0, so clamp
+        // there might be some other ways to deal with this, but this shall suffice for now
+        double z = std::clamp(nextFloat64(), std::numeric_limits<double>::epsilon(),
+                              1.0 - std::numeric_limits<double>::epsilon());
+        return location + scale * (2.0 / M_PI * std::log(std::tan(M_PI / 2.0 * z)));
+    }
+};
+
 inline double custom_log(double value, double base) { return std::log(value) / std::log(base); }
 
 inline void sanitizeRange(float &a, float &b, float mindiff)
@@ -80,7 +174,7 @@ class GendynOsc
         m_next_segment_time = m_nodes[0].m_x_sec;
         setSampleRate(44100.0f);
     }
-    void setRandomSeed(int s) { m_rand = std::mt19937(s); }
+    void setRandomSeed(int s) { m_rand.seed(s, 7); }
     void process(float *buf, int nframes)
     {
         for (int i = 0; i < nframes; ++i)
@@ -200,13 +294,18 @@ class GendynOsc
         m_amp_primary_low_barrier = -rescale(m_amp_flux, 0.0f, 1.0f, 0.01, 1.0f);
         m_amp_primary_high_barrier = -m_amp_primary_low_barrier;
         m_amp_dev = m_amp_flux * (m_amp_primary_high_barrier - m_amp_primary_low_barrier);
-        std::normal_distribution<float> timedist(m_time_mean, m_time_dev);
+        // std::normal_distribution<float> timedist(m_time_mean, m_time_dev);
         std::normal_distribution<float> ampdist(m_amp_mean, m_amp_dev);
         float segAcc = 0.0f;
         for (int i = 0; i < m_num_segs; ++i)
         {
             float x_p = m_nodes[i].m_x_prim;
-            x_p += timedist(m_rand);
+            if (m_time_dist == Distributions::DIST_Gauss)
+                x_p += m_rand.nextHypCos(m_time_mean, m_time_dev);
+            else if (m_time_dist == Distributions::DIST_Cauchy)
+                x_p += m_rand.nextCauchy(m_time_mean, m_time_dev);
+            else
+                x_p += m_rand.nextHypCos(m_time_mean, m_time_dev);
             x_p = reflect_value(m_time_primary_low_barrier, x_p, m_time_primary_high_barrier);
             float x_s = m_nodes[i].m_x_sec;
             x_s += x_p;
@@ -236,6 +335,8 @@ class GendynOsc
     float m_time_primary_high_barrier = 1.0;
     float m_time_secondary_low_barrier = 5.0;
     float m_time_secondary_high_barrier = 20.0;
+
+    Distributions m_time_dist = Distributions::DIST_Gauss;
     float m_time_mean = 0.0f;
     float m_time_dev = 0.01;
 
@@ -278,7 +379,7 @@ class GendynOsc
     // double m_segment_phase = 0.0;
     double m_next_segment_time = 0.0;
     std::vector<GendynNode> m_nodes;
-    std::mt19937 m_rand;
+    Xoroshiro128Plus m_rand;
     float m_cur_dur = 0.0;
     float m_cur_y0 = 0.0;
     float m_cur_y1 = 0.0;
@@ -352,7 +453,7 @@ GendynModule::GendynModule()
         m_oscs[i].setRandomSeed(i);
     config(PARAMS::PAR_LAST, IN_LAST, OUT_LAST);
     configParam(PAR_NUM_SEGS, 3.0, 64.0, 10.0, "Num segments");
-    configParam(PAR_TIME_DISTRIBUTION, 0.0, LASTDIST - 1, 1.0, "Time distribution");
+    auto parq = configParam(PAR_TIME_DISTRIBUTION, 0.0, LASTDIST - 1, 1.0, "Time distribution");
     configParam(PAR_TimeMean, -5.0, 5.0, 0.0, "Time mean");
     configParam(PAR_TIME_RESET_MODE, 0.0, LASTRM, RM_Avg, "Time reset mode");
     configParam(PAR_TIME_DEVIATION, 0.0, 5.0, 0.1, "Time deviation");
@@ -407,7 +508,7 @@ void GendynModule::process(const ProcessArgs &args)
         for (int i = 0; i < numvoices; ++i)
         {
             m_oscs[i].setSampleRate(args.sampleRate);
-
+			m_oscs[i].m_time_dist = (Distributions)(int)params[PAR_TIME_DISTRIBUTION].getValue();
             m_oscs[i].setNumSegments(numsegs);
             float timedev = timedev_base + 2.5 * inputs[IN_PITCH_FLUX].getVoltage(i);
             timedev = clamp(timedev, 0.0f, 5.0f);
@@ -486,6 +587,9 @@ GendynWidget::GendynWidget(GendynModule *m)
     xc += 82.0f;
     addChild(new KnobInAttnWidget(this, "NUM SEGMENTS", GendynModule::PAR_NUM_SEGS, -1, -1, xc, yc,
                                   true));
+    xc += 82.0f;
+    addChild(new KnobInAttnWidget(this, "TIME DISTRIBUTION", GendynModule::PAR_TIME_DISTRIBUTION,
+                                  -1, -1, xc, yc, true));
 }
 
 void GendynWidget::draw(const DrawArgs &args)
