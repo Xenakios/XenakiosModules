@@ -125,8 +125,28 @@ enum ResetModes
     RM_Max,
     RM_UniformRandom,
     RM_BinaryRandom,
-    LASTRM
+    RM_Sine,
+    RM_LAST
 };
+
+std::string reset_mode_to_string(ResetModes m)
+{
+    if (m == RM_Zeros)
+        return "Zeros";
+    if (m == RM_Avg)
+        return "Average";
+    if (m == RM_BinaryRandom)
+        return "Binary Random";
+    if (m == RM_Sine)
+        return "Sine";
+    if (m == RM_UniformRandom)
+        return "Uniform Random";
+    if (m == RM_Min)
+        return "Min";
+    if (m == RM_Max)
+        return "Max";
+    return "Unnamed reset mode";
+}
 
 inline float avg(float a, float b) { return a + (b - a) / 2.0f; }
 
@@ -258,6 +278,8 @@ class GendynOsc
                 m_nodes[i].m_y_sec = 0.0f;
             else if (m_ampResetMode == RM_UniformRandom)
                 m_nodes[i].m_y_sec = ampdist(m_rand);
+            else if (m_ampResetMode == RM_Sine)
+                m_nodes[i].m_y_sec = std::sin(2.0 * M_PI / (m_num_segs - 0) * i);
             else
                 m_nodes[i].m_y_sec = 0.0f;
         }
@@ -450,13 +472,19 @@ GendynModule::GendynModule()
     configSwitch(PAR_TIME_DISTRIBUTION, 0.0, DIST_LAST - 1, 1.0, "Time distribution",
                  {{"Uniform"}, {"HypCos (Gauss-like)"}, {"Cauchy"}});
     configParam(PAR_TIME_MEAN, -5.0, 5.0, 0.0, "Time mean");
-    configParam(PAR_TIME_RESET_MODE, 0.0, LASTRM, RM_Avg, "Time reset mode");
+    std::vector<std::string> resetmodestrings;
+    for (int i = 0; i < RM_LAST; ++i)
+        resetmodestrings.push_back(reset_mode_to_string((ResetModes)i));
+    configSwitch(PAR_TIME_RESET_MODE, 0.0, RM_LAST - 1, RM_Avg, "Time reset mode",
+                 resetmodestrings);
+
     configParam(PAR_TIME_DEVIATION, 0.0, 5.0, 0.1, "Time deviation");
     configParam(PAR_TIME_PRIMARY_BARRIER_LOW, -5.0, 5.0, -1.0, "Time primary low barrier");
     configParam(PAR_TIME_PRIMARY_BARRIER_HIGH, -5.0, 5.0, 1.0, "Time primary high barrier");
     configParam(PAR_TimeSecondaryBarrierLow, -60.0, 60.0, -1.0, "Time sec low barrier");
     configParam(PAR_TimeSecondaryBarrierHigh, -60.0, 60.0, 1.0, "Time sec high barrier");
-    configParam(PAR_AMP_RESET_MODE, 0.0, LASTRM, RM_UniformRandom, "Amp reset mode");
+
+    configSwitch(PAR_AMP_RESET_MODE, 0.0, RM_LAST - 1, RM_Sine, "Amp reset mode", resetmodestrings);
     configParam(PAR_PolyphonyVoices, 0.0, 16.0, 0, "Polyphony voices");
     configParam(PAR_CENTER_FREQUENCY, -54.f, 54.f, 0.f, "Center frequency", " Hz",
                 dsp::FREQ_SEMITONE, dsp::FREQ_C4);
@@ -582,8 +610,15 @@ GendynWidget::GendynWidget(GendynModule *m)
     addChild(new KnobInAttnWidget(this, "NUM SEGMENTS", GendynModule::PAR_NUM_SEGS, -1, -1, xc, yc,
                                   true));
     xc += 82.0f;
-    addChild(new KnobInAttnWidget(this, "TIME DISTRIBUTION", GendynModule::PAR_TIME_DISTRIBUTION,
-                                  -1, -1, xc, yc, true));
+    addChild(new KnobInAttnWidget(this, "TIME DISTR", GendynModule::PAR_TIME_DISTRIBUTION, -1, -1,
+                                  xc, yc, true));
+    xc += 82.0f;
+    addChild(new KnobInAttnWidget(this, "AMP RESET MODE", GendynModule::PAR_AMP_RESET_MODE, -1, -1,
+                                  xc, yc, true));
+    yc += 47;
+    xc = 1;
+    addChild(new KnobInAttnWidget(this, "TIME RESET MODE", GendynModule::PAR_TIME_RESET_MODE, -1,
+                                  -1, xc, yc, true));
 }
 
 void GendynWidget::draw(const DrawArgs &args)
